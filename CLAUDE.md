@@ -7,14 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```bash
 # homeAssistant bot
 cd homeAssistant && npm install
-cd homeAssistant && node app.js   # or: npm start
+cd homeAssistant && npm run dev      # ts-node src/app.ts (개발)
+cd homeAssistant && npm run build    # tsc → dist/
+cd homeAssistant && npm start        # node dist/app.js (프로덕션)
+cd homeAssistant && npm test         # jest (ts-jest)
+cd homeAssistant && npm run typecheck  # tsc --noEmit
 
 # myStar bot (token-reward bot)
 cd myStar && npm install
 cd myStar && node app.js
 ```
-
-No build step or test suite is configured.
 
 ## Environment Setup
 
@@ -46,13 +48,16 @@ The repo holds multiple Slack bots, each in its own subdirectory. Each bot is in
 
 ### homeAssistant — Family Home Server Bot
 
-Slash-command based bot. Each command module in `commands/` exports `register(app, db)` and registers its own `app.command()` handlers. All modules are loaded in `app.js`.
+TypeScript + class-based architecture. Entry point: `src/app.ts`.
 
-- **DB**: SQLite via `better-sqlite3` (sync API). File at `db/homeAssistant.sqlite`, auto-created on first run. Schema in `db/migrate.js` (9 tables, idempotent).
-- **Claude API**: Used only for date parsing in `/일정` and `/일정목록`. `nlp/claudeClient.js` exports `parseDate(text)` and `parseDateRange(text)`.
+- **Architecture**: `ICommand` interface → `BaseCommand` (abstract, DB constructor injection) → `SharedableCommand` / `UpsertCommand` → concrete command classes in `src/commands/`.
+- **Public API**: Each command class exposes only `register(app: App): void`. All business logic is `private`.
+- **DB**: SQLite via `better-sqlite3` (sync API). File at `db/homeAssistant.sqlite`. Schema in `src/db/migrate.ts` (9 tables, idempotent). DB injected via constructor.
+- **Claude API**: Used only for date parsing in `/일정` and `/일정목록`. `src/nlp/claudeClient.ts` exports `parseDate(text)` and `parseDateRange(text)`.
 - **`response_type`**: `ephemeral` for personal queries, `in_channel` for shared/family data.
-- **Slash commands** must be pre-registered in the Slack app config (api.slack.com) — 21 commands total. See `/도움말` handler for full list.
+- **Slash commands** must be pre-registered in the Slack app config (api.slack.com) — 21 commands total. See `HelpCommand.ts` for full list.
 - **Personal vs shared data**: `is_shared = 1` rows are visible to all family members; personal rows are filtered by `user_id = command.user_id`.
+- **Tests**: `tests/commands/*.test.ts` — MockApp pattern (tests via `app.trigger('/command', 'text')`). 65 tests total.
 
 ### myStar — Token Reward Bot
 

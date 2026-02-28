@@ -71,3 +71,23 @@ test('multiple specs: returns multiple ContextResults', async () => {
     );
     expect(results).toHaveLength(2);
 });
+
+test('storeEmbedding: calls embed and store for embeddable table', async () => {
+    await retriever.storeEmbedding('memos', 1, '치과 메모');
+    expect(MockEmbeddingService.prototype.embed).toHaveBeenCalledWith('치과 메모');
+    expect(MockEmbeddingService.prototype.store).toHaveBeenCalledWith('vec_memos', 1, expect.any(Float32Array));
+});
+
+test('storeEmbedding: skips non-embeddable table silently', async () => {
+    await retriever.storeEmbedding('schedules', 1, '치과');
+    expect(MockEmbeddingService.prototype.embed).not.toHaveBeenCalled();
+    expect(MockEmbeddingService.prototype.store).not.toHaveBeenCalled();
+});
+
+test('retrieve with unknown table: returns empty rows', async () => {
+    const results = await retriever.retrieve(
+        [{ db: 'unknown_table' as never, type: 'recent' }],
+        'U1',
+    );
+    expect(results[0]!.rows).toHaveLength(0);
+});

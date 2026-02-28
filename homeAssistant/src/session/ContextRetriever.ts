@@ -6,6 +6,7 @@ import { CONTEXT_CONFIG } from '../config/context';
 const TABLE_META: Record<string, {
     textCol: string;
     hasUserId: boolean;
+    hasCategory?: boolean;
     dateCol?: string;
     vecTable?: string;
 }> = {
@@ -14,7 +15,7 @@ const TABLE_META: Record<string, {
     schedules:      { textCol: 'title',       hasUserId: true,  dateCol: 'event_date'                         },
     home_status:    { textCol: 'device_name', hasUserId: false, dateCol: 'updated_at'                         },
     item_locations: { textCol: 'item_name',   hasUserId: false, dateCol: 'updated_at'                         },
-    assets:         { textCol: 'category',    hasUserId: true,  dateCol: 'recorded_at'                        },
+    assets:         { textCol: 'category',    hasUserId: true,  hasCategory: true, dateCol: 'recorded_at'     },
     recipes:        { textCol: 'name',        hasUserId: true,  dateCol: 'created_at', vecTable: 'vec_recipes' },
     grocery_items:  { textCol: 'name',        hasUserId: false                                                },
 };
@@ -31,9 +32,11 @@ export class ContextRetriever {
         return Promise.all(specs.map(spec => this.retrieveOne(spec, userId)));
     }
 
-    async storeEmbedding(table: string, vecTable: string, rowId: number, text: string): Promise<void> {
+    async storeEmbedding(table: string, rowId: number, text: string): Promise<void> {
+        const meta = TABLE_META[table];
+        if (!meta?.vecTable) return;  // table not embeddable, skip silently
         const embedding = await this.embedding.embed(text);
-        this.embedding.store(vecTable, rowId, embedding);
+        this.embedding.store(meta.vecTable, rowId, embedding);
     }
 
     private async retrieveOne(spec: ContextSpec, userId: string): Promise<ContextResult> {
@@ -80,11 +83,11 @@ export class ContextRetriever {
             conditions.push(`date(${meta.dateCol}) <= ?`);
             params.push(filter.dateTo);
         }
-        if (filter.category) {
+        if (filter.category && meta.hasCategory) {
             conditions.push('category = ?');
             params.push(filter.category);
         }
-        if (filter.isShared !== undefined) {
+        if (filter.isShared !== undefined && !meta.hasUserId) {
             conditions.push('is_shared = ?');
             params.push(filter.isShared ? 1 : 0);
         }

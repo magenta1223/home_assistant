@@ -89,5 +89,14 @@ export function runMigrations(db: Database): void {
             qty          REAL    NOT NULL,
             purchased_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         );
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_memos
+        USING vec0(embedding float[384]);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_todos
+        USING vec0(embedding float[384]);
+
+        CREATE VIRTUAL TABLE IF NOT EXISTS vec_recipes
+        USING vec0(embedding float[384]);
     `);
 }

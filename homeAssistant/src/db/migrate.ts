@@ -74,22 +74,20 @@ export function runMigrations(db: Database): void {
             created_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         );
 
+        DROP TABLE IF EXISTS grocery_transactions;
+        DROP TABLE IF EXISTS grocery_items;
+
         CREATE TABLE IF NOT EXISTS grocery_items (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            name        TEXT    NOT NULL UNIQUE,
-            unit        TEXT    NOT NULL DEFAULT '개',
-            current_qty REAL    NOT NULL DEFAULT 0,
-            min_qty     REAL    NOT NULL DEFAULT 1,
-            updated_at  TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+            id   INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT    NOT NULL UNIQUE,
+            unit TEXT    NOT NULL DEFAULT '개'
         );
 
-        CREATE TABLE IF NOT EXISTS grocery_transactions (
-            id          INTEGER PRIMARY KEY AUTOINCREMENT,
-            item_id     INTEGER NOT NULL REFERENCES grocery_items(id),
-            user_id     TEXT    NOT NULL,
-            delta       REAL    NOT NULL,
-            note        TEXT,
-            recorded_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
+        CREATE TABLE IF NOT EXISTS grocery_purchases (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_id      INTEGER NOT NULL REFERENCES grocery_items(id),
+            qty          REAL    NOT NULL,
+            purchased_at TEXT    NOT NULL DEFAULT (datetime('now','localtime'))
         );
     `);
 }

@@ -1,5 +1,5 @@
 import type { App } from '@slack/bolt';
-import type { SlackResponse, ParsedGroceryItem, GroceryItemRow } from '../types';
+import type { SlackResponse, ParsedGroceryItem, GroceryItemRow, GroceryPurchaseRow } from '../types';
 import { BaseCommand } from '../core/BaseCommand';
 import { headerBlock, sectionBlock, divider } from '../formatters/blocks';
 
@@ -9,12 +9,7 @@ export class GroceryCommand extends BaseCommand {
     register(app: App): void {
         app.command('/구매', async ({ command, ack, respond }) => {
             await ack();
-            await respond(this.addPurchase(command.text.trim(), command.user_id) as never);
-        });
-
-        app.command('/사용', async ({ command, ack, respond }) => {
-            await ack();
-            await respond(this.addUsage(command.text.trim(), command.user_id) as never);
+            await respond(this.addPurchase(command.text.trim()) as never);
         });
 
         app.command('/재고', async ({ command, ack, respond }) => {
@@ -38,34 +33,15 @@ export class GroceryCommand extends BaseCommand {
         return row;
     }
 
-    private addPurchase(text: string, userId: string): SlackResponse {
+    private addPurchase(text: string): SlackResponse {
         const parsed = GroceryCommand.parseItem(text);
         if (!parsed) return this.err('형식: `/구매 달걀 10개`  (수량+단위 필수)');
 
         const item = this.getOrCreateItem(parsed.name, parsed.unit);
-        const newQty = item.current_qty + parsed.qty;
-
-        this.db.prepare("UPDATE grocery_items SET current_qty = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(newQty, item.id);
-        this.db.prepare('INSERT INTO grocery_transactions (item_id, user_id, delta) VALUES (?, ?, ?)').run(item.id, userId, parsed.qty);
+        this.db.prepare('INSERT INTO grocery_purchases (item_id, qty) VALUES (?, ?)').run(item.id, parsed.qty);
 
         return {
-            text: `*${parsed.name}* ${parsed.qty}${parsed.unit} 구매 기록. 현재 재고: ${newQty}${parsed.unit}`,
-            response_type: 'in_channel',
-        };
-    }
-
-    private addUsage(text: string, userId: string): SlackResponse {
-        const parsed = GroceryCommand.parseItem(text);
-        if (!parsed) return this.err('형식: `/사용 달걀 3개`  (수량+단위 필수)');
-
-        const item = this.getOrCreateItem(parsed.name, parsed.unit);
-        const newQty = Math.max(0, item.current_qty - parsed.qty);
-
-        this.db.prepare("UPDATE grocery_items SET current_qty = ?, updated_at = datetime('now','localtime') WHERE id = ?").run(newQty, item.id);
-        this.db.prepare('INSERT INTO grocery_transactions (item_id, user_id, delta) VALUES (?, ?, ?)').run(item.id, userId, -parsed.qty);
-
-        return {
-            text: `*${parsed.name}* ${parsed.qty}${parsed.unit} 사용 기록. 현재 재고: ${newQty}${parsed.unit}`,
+            text: `*${parsed.name}* ${parsed.qty}${parsed.unit} 구매 기록 완료`,
             response_type: 'in_channel',
         };
     }
@@ -74,40 +50,64 @@ export class GroceryCommand extends BaseCommand {
         const items = this.db.prepare('SELECT * FROM grocery_items ORDER BY name').all() as GroceryItemRow[];
         if (!items.length) return this.err('기록된 식재료가 없어요. `/구매 달걀 10개` 로 추가해보세요.');
 
-        const usageStmt = this.db.prepare(`
-            SELECT ABS(SUM(delta)) as total_used, COUNT(DISTINCT date(recorded_at)) as days
-            FROM grocery_transactions
-            WHERE item_id = ? AND delta < 0
-              AND recorded_at >= datetime('now', '-30 days', 'localtime')
-        `);
+        const purchaseStmt = this.db.prepare(
+            'SELECT purchased_at FROM grocery_purchases WHERE item_id = ? ORDER BY purchased_at ASC'
+        );
 
-        const low: string[] = [];
+        const shortage: string[] = [];
+        const imminent: string[] = [];
         const ok: string[] = [];
+        const insufficient: string[] = [];
 
         items.forEach(item => {
-            const usage = usageStmt.get(item.id) as { total_used: number | null; days: number };
-            const totalUsed = usage.total_used ?? 0;
-            const dailyUse = usage.days > 0 ? totalUsed / usage.days : 0;
-            const daysLeft = dailyUse > 0 ? Math.floor(item.current_qty / dailyUse) : null;
-            const shortage = item.current_qty <= item.min_qty;
+            const purchases = purchaseStmt.all(item.id) as Pick<GroceryPurchaseRow, 'purchased_at'>[];
 
-            const line = shortage
-                ? `⚠️ *${item.name}*: ${item.current_qty}${item.unit} (최소 ${item.min_qty}${item.unit})${daysLeft !== null ? ` — 약 ${daysLeft}일치` : ''}`
-                : `✅ *${item.name}*: ${item.current_qty}${item.unit}${daysLeft !== null ? ` — 약 ${daysLeft}일치` : ''}`;
+            if (purchases.length < 2) {
+                insufficient.push(`📊 *${item.name}*: 구매 이력 부족 (${purchases.length}회) — 예측 불가`);
+                return;
+            }
 
-            shortage ? low.push(line) : ok.push(line);
+            const dates = purchases.map(p => new Date(p.purchased_at).getTime());
+            let totalInterval = 0;
+            for (let i = 1; i < dates.length; i++) {
+                totalInterval += (dates[i]! - dates[i - 1]!) / (1000 * 60 * 60 * 24);
+            }
+            const avgInterval = totalInterval / (dates.length - 1);
+            const lastDate = new Date(purchases[purchases.length - 1]!.purchased_at).getTime();
+            const daysSinceLast = (Date.now() - lastDate) / (1000 * 60 * 60 * 24);
+            const daysRemaining = Math.round(avgInterval - daysSinceLast);
+
+            if (daysRemaining <= 0) {
+                shortage.push(`⚠️ *${item.name}*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)`);
+            } else if (daysRemaining <= 3) {
+                imminent.push(`🔔 *${item.name}*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)`);
+            } else {
+                ok.push(`✅ *${item.name}*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)`);
+            }
         });
 
         const blocks = [headerBlock('재고 현황')];
-        if (low.length) {
-            blocks.push(sectionBlock('*부족한 식재료*'));
-            blocks.push(sectionBlock(low.join('\n')));
+
+        if (shortage.length) {
+            blocks.push(sectionBlock('*부족 예상*'));
+            blocks.push(sectionBlock(shortage.join('\n')));
+            blocks.push(divider());
+        }
+        if (imminent.length) {
+            blocks.push(sectionBlock('*구매 임박*'));
+            blocks.push(sectionBlock(imminent.join('\n')));
             blocks.push(divider());
         }
         if (ok.length) {
-            blocks.push(sectionBlock('*정상 재고*'));
+            blocks.push(sectionBlock('*여유 있음*'));
             blocks.push(sectionBlock(ok.join('\n')));
         }
+        if (insufficient.length) {
+            if (ok.length || imminent.length || shortage.length) blocks.push(divider());
+            blocks.push(sectionBlock('*데이터 부족*'));
+            blocks.push(sectionBlock(insufficient.join('\n')));
+        }
+
         return { blocks, response_type: 'ephemeral' };
     }
 }

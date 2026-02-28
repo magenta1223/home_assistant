@@ -39,6 +39,18 @@ test('store and findSimilar returns rowIds', async () => {
 test('store overwrites existing embedding for same rowid', async () => {
     const embedding = await svc.embed('달걀');
     svc.store('vec_memos', 1, embedding);
-    // upsert: should not throw on duplicate rowid
-    expect(() => svc.store('vec_memos', 1, embedding)).not.toThrow();
+    svc.store('vec_memos', 1, embedding);  // overwrite
+    const results = svc.findSimilar('vec_memos', embedding, 10);
+    // Only 1 result, not 2 (duplicate deleted before re-insert)
+    expect(results).toHaveLength(1);
+});
+
+test('store throws on disallowed table name', () => {
+    const embedding = new Float32Array(384).fill(0.1);
+    expect(() => svc.store('malicious_table', 1, embedding)).toThrow('disallowed table');
+});
+
+test('findSimilar throws on disallowed table name', () => {
+    const embedding = new Float32Array(384).fill(0.1);
+    expect(() => svc.findSimilar('malicious_table', embedding, 5)).toThrow('disallowed table');
 });

@@ -3,6 +3,7 @@ import { createTestDb } from '../helpers/db';
 import { MockApp } from '../helpers/MockApp';
 import { ChatbotCommand } from '../../src/commands/ChatbotCommand';
 import { SessionManager } from '../../src/session/SessionManager';
+import type { ContextRetriever } from '../../src/session/ContextRetriever';
 
 jest.mock('../../src/nlp/claudeClient', () => ({
     chatSession: jest.fn(),
@@ -19,12 +20,17 @@ const mockAnalyzeIntent = analyzeIntent as jest.Mock;
 let db: Database;
 let app: MockApp;
 let sessions: SessionManager;
+let mockRetriever: jest.Mocked<ContextRetriever>;
 
 beforeEach(() => {
     db = createTestDb();
     app = new MockApp();
     sessions = new SessionManager(10 * 60 * 1000);
-    new ChatbotCommand(db, sessions).register(app.asApp());
+    mockRetriever = {
+        retrieve: jest.fn().mockResolvedValue([]),
+        storeEmbedding: jest.fn().mockResolvedValue(undefined),
+    } as unknown as jest.Mocked<ContextRetriever>;
+    new ChatbotCommand(db, sessions, mockRetriever).register(app.asApp());
     mockChatSession.mockReset();
     mockAnalyzeIntent.mockReset();
     mockAnalyzeIntent.mockResolvedValue({ intent: 'unknown', contexts: [] });
@@ -102,12 +108,24 @@ describe('DM 메시지 처리', () => {
         await app.triggerMessage('최근 메모 보여줘', 'U1', 'im');
 
         expect(mockAnalyzeIntent).toHaveBeenCalledWith(expect.any(Array), '최근 메모 보여줘');
-        // chatSession called with context array (3rd argument)
+        expect(mockRetriever.retrieve).toHaveBeenCalledWith(
+            [{ db: 'memos', type: 'recent' }],
+            'U1',
+        );
         expect(mockChatSession).toHaveBeenCalledWith(
             expect.any(Array),
             '최근 메모 보여줘',
-            expect.any(Array),  // contextResults
+            expect.any(Array),
         );
+    });
+
+    test('pipeline error → say 에러 메시지, 세션 미변경', async () => {
+        mockAnalyzeIntent.mockRejectedValueOnce(new Error('API 오류'));
+
+        const say = await app.triggerMessage('메모 보여줘', 'U1', 'im');
+
+        expect(say).toHaveBeenCalledWith(expect.stringContaining('오류'));
+        expect(sessions.getMessages('U1')).toHaveLength(0);
     });
 });
 

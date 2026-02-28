@@ -71,27 +71,36 @@ export class ChatbotCommand extends BaseCommand {
             if (!userText) return;
 
             const history = this.sessions.getMessages(userId);
-            const intentAnalysis = await analyzeIntent(history, userText);
-            const contextResults = await this.contextRetriever.retrieve(intentAnalysis.contexts, userId);
-            const response = await chatSession(history, userText, contextResults);
+            try {
+                const intentAnalysis = await analyzeIntent(history, userText);
+                const contextResults = await this.contextRetriever.retrieve(intentAnalysis.contexts, userId);
+                const response = await chatSession(history, userText, contextResults);
 
-            this.sessions.addMessage(userId, 'user', userText);
-            this.sessions.addMessage(userId, 'assistant', response.text);
+                this.sessions.addMessage(userId, 'user', userText);
+                this.sessions.addMessage(userId, 'assistant', response.text);
 
-            if (response.type === 'result' && response.command) {
-                const result = await this.executeCommand(response.command, response.params ?? '', userId);
-                this.sessions.resetSession(userId);
-                const replyText = result.text ?? response.text;
-                if (threadTs) {
-                    await say({ text: replyText, blocks: result.blocks, thread_ts: threadTs } as never);
+                if (response.type === 'result' && response.command) {
+                    const result = await this.executeCommand(response.command, response.params ?? '', userId);
+                    this.sessions.resetSession(userId);
+                    const replyText = result.text ?? response.text;
+                    if (threadTs) {
+                        await say({ text: replyText, blocks: result.blocks, thread_ts: threadTs } as never);
+                    } else {
+                        await say({ text: replyText, blocks: result.blocks } as never);
+                    }
                 } else {
-                    await say({ text: replyText, blocks: result.blocks } as never);
+                    if (threadTs) {
+                        await say({ text: response.text, thread_ts: threadTs } as never);
+                    } else {
+                        await say(response.text);
+                    }
                 }
-            } else {
+            } catch {
+                const errMsg = '죄송해요, 요청을 처리하는 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.';
                 if (threadTs) {
-                    await say({ text: response.text, thread_ts: threadTs } as never);
+                    await say({ text: errMsg, thread_ts: threadTs } as never);
                 } else {
-                    await say(response.text);
+                    await say(errMsg);
                 }
             }
         });

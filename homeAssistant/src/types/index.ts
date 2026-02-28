@@ -91,15 +91,11 @@ export interface GroceryItemRow {
     id: number;
     name: string;
     unit: string;
-    current_qty: number;
-    min_qty: number;
-    updated_at: string;
 }
 
-export interface GroceryTransactionRow {
+export interface GroceryPurchaseRow {
     id: number;
     item_id: number;
-    user_id: string;
-    delta: number;
-    recorded_at: string;
+    qty: number;
+    purchased_at: string;
 }

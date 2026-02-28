@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
-import type { ConversationMessage, ChatResponse, IntentAnalysis, ContextSpec } from '../types';
+import type { ConversationMessage, ChatResponse, IntentAnalysis, ContextSpec, ContextResult } from '../types';
 
 const client = new Anthropic({ apiKey: process.env['ANTHROPIC_API_KEY'] });
 
@@ -90,13 +90,39 @@ const CHATBOT_SYSTEM = `당신은 한국 가정용 Slack 봇 어시스턴트입�
 - /구매의 params 형식: "재료이름 수량단위" (예: "달걀 12개")
 - 항상 JSON만 응답하고 다른 텍스트는 포함하지 마세요`;
 
+function formatContext(results: ContextResult[]): string {
+    return results
+        .map(r => {
+            if (!r.rows.length) return '';
+            const label = `${r.db} (${r.type})`;
+            const lines = r.rows.slice(0, 10).map(row => {
+                const values = Object.entries(row)
+                    .filter(([k]) => !['id', 'user_id', 'is_shared'].includes(k))
+                    .map(([k, v]) => `${k}: ${String(v)}`)
+                    .join(', ');
+                return `- ${values}`;
+            }).join('\n');
+            return `${label}:\n${lines}`;
+        })
+        .filter(Boolean)
+        .join('\n\n');
+}
+
 export async function chatSession(
     history: ConversationMessage[],
     userMessage: string,
+    context?: ContextResult[],
 ): Promise<ChatResponse> {
+    const contextBlock = context && context.length > 0 ? formatContext(context) : '';
+
     const messages: Array<{ role: 'user' | 'assistant'; content: string }> = [
         ...history.map(m => ({ role: m.role, content: m.content })),
-        { role: 'user', content: userMessage },
+        {
+            role: 'user',
+            content: contextBlock
+                ? `[context]\n${contextBlock}\n[/context]\n\n${userMessage}`
+                : userMessage,
+        },
     ];
 
     const response = await client.messages.create({

@@ -99,3 +99,46 @@ export interface GroceryPurchaseRow {
     qty: number;
     purchased_at: string;
 }
+
+export interface ConversationMessage {
+    role: 'user' | 'assistant';
+    content: string;
+}
+
+export interface ChatResponse {
+    type: 'question' | 'result' | 'unknown';
+    text: string;
+    command?: string;
+    params?: string;
+}
+
+// ── Context pipeline types ──────────────────────────────────────
+
+export type RetrievalType = 'recent' | 'similar' | 'query';
+
+export interface FilterParams {
+    keyword?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    category?: string;
+    isShared?: boolean;
+}
+
+export interface ContextSpec {
+    db: 'memos' | 'todos' | 'schedules' | 'home_status'
+      | 'item_locations' | 'assets' | 'recipes' | 'grocery_items';
+    type: RetrievalType;
+    searchText?: string;   // type === 'similar' 일 때
+    filter?: FilterParams; // type === 'query' 일 때
+}
+
+export interface IntentAnalysis {
+    intent: string;
+    contexts: ContextSpec[];
+}
+
+export interface ContextResult {
+    db: string;
+    type: RetrievalType;
+    rows: Record<string, unknown>[];
+}

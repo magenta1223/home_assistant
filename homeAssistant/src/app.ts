@@ -1,15 +1,7 @@
 import { App } from "@slack/bolt";
 import "dotenv/config";
 import db from "./db/init";
-import { TodoCommand } from "./commands/TodoCommand";
-import { HomeStatusCommand } from "./commands/HomeStatusCommand";
-import { ItemLocationCommand } from "./commands/ItemLocationCommand";
-import { MemoCommand } from "./commands/MemoCommand";
-import { ScheduleCommand } from "./commands/ScheduleCommand";
-import { RecipeCommand } from "./commands/RecipeCommand";
-import { AssetCommand } from "./commands/AssetCommand";
-import { GroceryCommand } from "./commands/GroceryCommand";
-import { HelpCommand } from "./commands/HelpCommand";
+import { ChatbotCommand } from "./commands/ChatbotCommand";
 
 const app = new App({
     token: process.env["SLACK_BOT_TOKEN"]!,
@@ -18,19 +10,7 @@ const app = new App({
     socketMode: true,
 });
 
-const commands = [
-    new TodoCommand(db),
-    new HomeStatusCommand(db),
-    new ItemLocationCommand(db),
-    new MemoCommand(db),
-    new ScheduleCommand(db),
-    new RecipeCommand(db),
-    new AssetCommand(db),
-    new GroceryCommand(db),
-    new HelpCommand(db),
-];
-
-commands.forEach((cmd) => cmd.register(app));
+new ChatbotCommand(db).register(app);
 
 void (async () => {
     await app.start();

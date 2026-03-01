@@ -113,6 +113,8 @@ export class ChatbotCommand extends BaseCommand {
                 const isShared = params.startsWith('공유 ');
                 const content = isShared ? params.slice(3).trim() : params;
                 this.db.prepare('INSERT INTO todos (user_id, is_shared, content) VALUES (?, ?, ?)').run(userId, isShared ? 1 : 0, content);
+                const inserted = this.db.prepare('SELECT last_insert_rowid() as id').get() as { id: number };
+                void this.contextRetriever.storeEmbedding('todos', inserted.id, content);
                 return { text: isShared ? `공유 할 일 추가: *${content}*` : `할 일 추가: *${content}*` };
             }
 

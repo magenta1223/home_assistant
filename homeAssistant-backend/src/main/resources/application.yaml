@@ -1,0 +1,13 @@
+ktor:
+  deployment:
+    port: 8080
+    watch:
+      - classes
+  application:
+    modules:
+      - com.homeassistant.ApplicationKt.module
+
+homeassistant:
+  dbPath: "../homeAssistant/db/homeAssistant.sqlite"
+  anthropicApiKey: ${ANTHROPIC_API_KEY}
+  sessionTimeoutMinutes: 10

@@ -3,3 +3,9 @@ node_modules/
 .claude/
 *.sqlite
 .worktrees/
+.gradle/
+.kotlin/
+.vscode/
+bin/
+build/
+gradle/

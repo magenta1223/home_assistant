@@ -10,6 +10,8 @@ import java.time.LocalDate
 
 private val log = LoggerFactory.getLogger(CommandExecutor::class.java)
 
+
+
 private val QTY_REGEX = Regex("""^(.+?)\s+(\d+(?:\.\d+)?)\s*(개|L|리터|g|kg|봉|팩|병|캔|줄|판|묶음|포)$""")
 
 class CommandExecutor(
@@ -17,13 +19,15 @@ class CommandExecutor(
     private val contextRetriever: ContextRetriever? = null,
 ) {
 
-    suspend fun execute(command: String, params: String, userId: String): CommandResult =
-        when (command) {
+    suspend fun execute(command: String, params: String, userId: String): CommandResult {
+
+        if (params.isBlank()) return CommandResult("할 일 내용을 입력해주세요.")
+
+        return when (command) {
 
             // ── Todos ──────────────────────────────────────────────────────
 
             "/할일" -> {
-                if (params.isBlank()) return CommandResult("할 일 내용을 입력해주세요.")
                 val isShared = params.startsWith("공유 ")
                 val content = if (isShared) params.drop(3).trim() else params
                 val id = transaction {
@@ -64,13 +68,12 @@ class CommandExecutor(
             }
 
             "/완료" -> {
-                if (params.isBlank()) return CommandResult("완료할 할 일을 입력해주세요.")
                 val id = transaction {
                     execQuery(
                         "SELECT id FROM todos WHERE (user_id = ? OR is_shared = 1) AND is_done = 0 AND content LIKE ? LIMIT 1",
                         listOf(userId, "%$params%")
                     ).firstOrNull()?.get("id") as? Int
-                } ?: return CommandResult("\"$params\"에 해당하는 미완료 할 일을 찾지 못했어요.")
+                } ?: CommandResult("\"$params\"에 해당하는 미완료 할 일을 찾지 못했어요.")
                 transaction {
                     execUpdate(
                         "UPDATE todos SET is_done = 1, done_at = datetime('now','localtime') WHERE id = ?",
@@ -83,7 +86,7 @@ class CommandExecutor(
             // ── Memos ──────────────────────────────────────────────────────
 
             "/메모" -> {
-                if (params.isBlank()) return CommandResult("메모 내용을 입력해주세요.")
+                if (params.isBlank()) CommandResult("메모 내용을 입력해주세요.")
                 val isShared = params.startsWith("공유 ")
                 val content = if (isShared) params.drop(3).trim() else params
                 transaction {
@@ -111,7 +114,6 @@ class CommandExecutor(
             }
 
             "/메모검색" -> {
-                if (params.isBlank()) return CommandResult("검색어를 입력해주세요.")
                 val rows = transaction {
                     execQuery(
                         "SELECT * FROM memos WHERE (user_id = ? OR is_shared = 1) AND (title LIKE ? OR content LIKE ? OR tags LIKE ?) ORDER BY created_at DESC LIMIT 10",
@@ -127,7 +129,6 @@ class CommandExecutor(
             // ── Schedules ──────────────────────────────────────────────────
 
             "/일정" -> {
-                if (params.isBlank()) return CommandResult("일정을 입력해주세요. 예: \"내일 오후 3시 치과\"")
                 val isShared = params.startsWith("공유 ")
                 val content = if (isShared) params.drop(3).trim() else params
                 val eventDate = claudeClient.parseDate(content)
@@ -167,7 +168,6 @@ class CommandExecutor(
             // ── Home Status ────────────────────────────────────────────────
 
             "/상태" -> {
-                if (params.isBlank()) return CommandResult("기기명과 상태를 입력해주세요. 예: \"에어컨 켜\"")
                 val parts = params.trim().split(Regex("\\s+"))
                 if (parts.size < 2) return CommandResult("상태도 함께 입력해주세요. 예: \"에어컨 켜\"")
                 val device = parts[0]
@@ -205,7 +205,6 @@ class CommandExecutor(
             // ── Item Locations ─────────────────────────────────────────────
 
             "/위치저장" -> {
-                if (params.isBlank()) return CommandResult("물건명과 위치를 입력해주세요. 예: \"리모컨 소파 옆\"")
                 val parts = params.trim().split(Regex("\\s+"))
                 if (parts.size < 2) return CommandResult("위치도 함께 입력해주세요.")
                 val item = parts[0]
@@ -225,19 +224,17 @@ class CommandExecutor(
             }
 
             "/위치" -> {
-                if (params.isBlank()) return CommandResult("물건명을 입력해주세요. 예: \"리모컨\"")
                 val row = transaction {
                     execQuery("SELECT * FROM item_locations WHERE item_name = ?", listOf(params)).firstOrNull()
-                } ?: return CommandResult("*$params* 위치 정보가 없어요.")
-                CommandResult("*${row["item_name"]}*: ${row["location"]}  _(${row["updated_at"]} 기준)_")
+                } ?: CommandResult("*$params* 위치 정보가 없어요.")
+                CommandResult(row.toString())
             }
 
             // ── Assets ─────────────────────────────────────────────────────
 
             "/자산" -> {
-                if (params.isBlank()) return CommandResult("카테고리와 금액을 입력해주세요. 예: \"현금 500000\"")
                 val parts = params.split(Regex("\\s+"))
-                if (parts.size < 2) return CommandResult("금액도 함께 입력해주세요.")
+                if (parts.size < 2) CommandResult("금액도 함께 입력해주세요.")
                 val category = parts[0]
                 val amount = parts[1].replace(",", "").toDoubleOrNull()
                     ?: return CommandResult("금액은 숫자로 입력해주세요.")
@@ -267,7 +264,6 @@ class CommandExecutor(
                         listOf(userId, userId)
                     )
                 }
-                if (rows.isEmpty()) return CommandResult("기록된 자산이 없어요.")
                 val total = rows.sumOf { (it["amount"] as? Double) ?: 0.0 }
                 val lines = rows.joinToString("\n") { r ->
                     val amt = (r["amount"] as? Double) ?: 0.0
@@ -294,7 +290,6 @@ class CommandExecutor(
             // ── Recipes ────────────────────────────────────────────────────
 
             "/레시피저장" -> {
-                if (params.isBlank()) return CommandResult("레시피를 입력해주세요.")
                 val lines = params.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
                 val name = lines.firstOrNull() ?: ""
                 val body = lines.drop(1).joinToString("\n")
@@ -312,103 +307,110 @@ class CommandExecutor(
             }
 
             "/레시피" -> {
-                if (params.isBlank()) return CommandResult("레시피 이름을 입력해주세요.")
-                val row = transaction {
+                transaction {
                     execQuery("SELECT * FROM recipes WHERE name LIKE ? ORDER BY created_at DESC LIMIT 1", listOf("%$params%")).firstOrNull()
-                } ?: return CommandResult("*$params* 레시피를 찾지 못했어요.")
-                val ingredients = row["ingredients"]
-                val steps = row["steps"]
-                val stepsText = if (steps != null && steps.toString().isNotBlank()) "\n\n*조리 순서*\n$steps" else ""
-                CommandResult("*${row["name"]}*\n\n*재료*\n$ingredients$stepsText")
+                }?.let {
+                    val ingredients = it["ingredients"]
+                    val steps = it["steps"]
+                    val stepsText = if (steps != null && steps.toString().isNotBlank()) "\n\n*조리 순서*\n$steps" else ""
+                    CommandResult("*${it["name"]}*\n\n*재료*\n$ingredients$stepsText")
+                } ?: CommandResult("*$params* 레시피를 찾지 못했어요.")
+    
             }
 
             "/레시피목록" -> {
                 val rows = transaction {
                     execQuery("SELECT id, name, created_at FROM recipes ORDER BY created_at DESC LIMIT 20", emptyList())
                 }
-                if (rows.isEmpty()) return CommandResult("저장된 레시피가 없어요.")
-                val list = rows.mapIndexed { i, r -> "${i + 1}. *${r["name"]}*" }.joinToString("\n")
-                CommandResult("*레시피 목록*\n$list")
+                if (rows.isEmpty()) CommandResult("저장된 레시피가 없어요.")
+                else {
+                    val list = rows.mapIndexed { i, r -> "${i + 1}. *${r["name"]}*" }.joinToString("\n")
+                    CommandResult("*레시피 목록*\n$list")
+                }
             }
 
             // ── Grocery ────────────────────────────────────────────────────
 
             "/구매" -> {
-                val m = QTY_REGEX.matchEntire(params.trim())
-                    ?: return CommandResult("형식: \"달걀 10개\" (수량+단위 필수)")
-                val itemName = m.groupValues[1].trim()
-                val qty = m.groupValues[2].toDouble()
-                val unit = m.groupValues[3]
+                QTY_REGEX.matchEntire(params.trim())?.let {
+                    val itemName = it.groupValues[1].trim()
+                    val qty = it.groupValues[2].toDouble()
+                    val unit = it.groupValues[3]
 
-                transaction {
-                    // Upsert grocery_items
-                    val existingId = execQuery(
-                        "SELECT id FROM grocery_items WHERE name = ?", listOf(itemName)
-                    ).firstOrNull()?.get("id") as? Int
+                    transaction {
+                        // Upsert grocery_items
+                        val existingId = execQuery(
+                            "SELECT id FROM grocery_items WHERE name = ?", listOf(itemName)
+                        ).firstOrNull()?.get("id") as? Int
 
-                    val itemId = existingId ?: run {
-                        execInsert("INSERT INTO grocery_items (name, unit) VALUES (?, ?)", listOf(itemName, unit)).toInt()
+                        val itemId = existingId ?: run {
+                            execInsert("INSERT INTO grocery_items (name, unit) VALUES (?, ?)", listOf(itemName, unit)).toInt()
+                        }
+                        execInsert("INSERT INTO grocery_purchases (item_id, qty) VALUES (?, ?)", listOf(itemId, qty))
                     }
-                    execInsert("INSERT INTO grocery_purchases (item_id, qty) VALUES (?, ?)", listOf(itemId, qty))
-                }
-                CommandResult("*$itemName* ${qty.toLong()}$unit 구매 기록 완료")
+                    CommandResult("*$itemName* ${qty.toLong()}$unit 구매 기록 완료")
+                } ?: CommandResult("형식: \"달걀 10개\" (수량+단위 필수)")
+
             }
 
             "/재고" -> {
                 val items = transaction {
                     execQuery("SELECT * FROM grocery_items ORDER BY name", emptyList())
                 }
-                if (items.isEmpty()) return CommandResult("기록된 식재료가 없어요. 구매 기록부터 추가해보세요.")
+                if (items.isEmpty()) CommandResult("기록된 식재료가 없어요. 구매 기록부터 추가해보세요.")
+                else {
+                    val shortage = mutableListOf<String>()
+                    val imminent = mutableListOf<String>()
+                    val ok = mutableListOf<String>()
+                    val insufficient = mutableListOf<String>()
 
-                val shortage = mutableListOf<String>()
-                val imminent = mutableListOf<String>()
-                val ok = mutableListOf<String>()
-                val insufficient = mutableListOf<String>()
+                    items.forEach { item ->
+                        val itemId = item["id"] as? Int ?: return@forEach
+                        val itemName = item["name"] as? String ?: return@forEach
+                        val purchases = transaction {
+                            execQuery(
+                                "SELECT purchased_at FROM grocery_purchases WHERE item_id = ? ORDER BY purchased_at ASC",
+                                listOf(itemId)
+                            )
+                        }
+                        if (purchases.size < 2) {
+                            insufficient.add("📊 *$itemName*: 구매 이력 부족 (${purchases.size}회) — 예측 불가")
+                            return@forEach
+                        }
+                        val dates = purchases.mapNotNull {
+                            try {
+                                java.time.LocalDateTime.parse(
+                                    (it["purchased_at"] as? String)?.replace(" ", "T") ?: ""
+                                ).toEpochSecond(java.time.ZoneOffset.UTC) * 1000L
+                            } catch (_: Exception) { null }
+                        }
+                        var totalInterval = 0.0
+                        for (i in 1 until dates.size) {
+                            totalInterval += (dates[i] - dates[i - 1]) / (1000.0 * 60 * 60 * 24)
+                        }
+                        val avgInterval = totalInterval / (dates.size - 1)
+                        val daysSinceLast = (System.currentTimeMillis() - dates.last()) / (1000.0 * 60 * 60 * 24)
+                        val daysRemaining = Math.round(avgInterval - daysSinceLast)
+                        when {
+                            daysRemaining <= 0 -> shortage.add("⚠️ *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
+                            daysRemaining <= 3 -> imminent.add("🔔 *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
+                            else -> ok.add("✅ *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
+                        }
+                    }
 
-                items.forEach { item ->
-                    val itemId = item["id"] as? Int ?: return@forEach
-                    val itemName = item["name"] as? String ?: return@forEach
-                    val purchases = transaction {
-                        execQuery(
-                            "SELECT purchased_at FROM grocery_purchases WHERE item_id = ? ORDER BY purchased_at ASC",
-                            listOf(itemId)
-                        )
-                    }
-                    if (purchases.size < 2) {
-                        insufficient.add("📊 *$itemName*: 구매 이력 부족 (${purchases.size}회) — 예측 불가")
-                        return@forEach
-                    }
-                    val dates = purchases.mapNotNull {
-                        try {
-                            java.time.LocalDateTime.parse(
-                                (it["purchased_at"] as? String)?.replace(" ", "T") ?: ""
-                            ).toEpochSecond(java.time.ZoneOffset.UTC) * 1000L
-                        } catch (_: Exception) { null }
-                    }
-                    var totalInterval = 0.0
-                    for (i in 1 until dates.size) {
-                        totalInterval += (dates[i] - dates[i - 1]) / (1000.0 * 60 * 60 * 24)
-                    }
-                    val avgInterval = totalInterval / (dates.size - 1)
-                    val daysSinceLast = (System.currentTimeMillis() - dates.last()) / (1000.0 * 60 * 60 * 24)
-                    val daysRemaining = Math.round(avgInterval - daysSinceLast)
-                    when {
-                        daysRemaining <= 0 -> shortage.add("⚠️ *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
-                        daysRemaining <= 3 -> imminent.add("🔔 *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
-                        else -> ok.add("✅ *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
-                    }
+                    val sb = StringBuilder("*재고 현황*\n")
+                    if (shortage.isNotEmpty()) sb.append("\n*부족 예상*\n${shortage.joinToString("\n")}\n")
+                    if (imminent.isNotEmpty()) sb.append("\n*구매 임박*\n${imminent.joinToString("\n")}\n")
+                    if (ok.isNotEmpty()) sb.append("\n*여유 있음*\n${ok.joinToString("\n")}\n")
+                    if (insufficient.isNotEmpty()) sb.append("\n*데이터 부족*\n${insufficient.joinToString("\n")}")
+                    CommandResult(sb.toString())
                 }
 
-                val sb = StringBuilder("*재고 현황*\n")
-                if (shortage.isNotEmpty()) sb.append("\n*부족 예상*\n${shortage.joinToString("\n")}\n")
-                if (imminent.isNotEmpty()) sb.append("\n*구매 임박*\n${imminent.joinToString("\n")}\n")
-                if (ok.isNotEmpty()) sb.append("\n*여유 있음*\n${ok.joinToString("\n")}\n")
-                if (insufficient.isNotEmpty()) sb.append("\n*데이터 부족*\n${insufficient.joinToString("\n")}")
-                CommandResult(sb.toString())
             }
 
             else -> CommandResult("해당 명령어를 처리할 수 없어요.")
         }
+    }
 
     // ── Raw SQL helpers (called within transaction{}) ──────────────────────
 

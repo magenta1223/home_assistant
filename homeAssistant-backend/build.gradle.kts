@@ -22,6 +22,7 @@ val ktorVersion = "3.1.1"
 val exposedVersion = "0.57.0"
 val caffeineVersion = "3.1.8"
 
+
 dependencies {
     // Ktor server
     implementation("io.ktor:ktor-server-core:$ktorVersion")
@@ -49,7 +50,7 @@ dependencies {
     implementation("ai.djl:api:0.31.0")
     implementation("ai.djl.huggingface:tokenizers:0.31.0")
     implementation("ai.djl.pytorch:pytorch-engine:0.31.0")
-    implementation("ai.djl.pytorch:pytorch-native-auto:2.5.1")
+    implementation("ai.djl.pytorch:pytorch-native-auto:1.9.+")
 
     // Logging
     implementation("ch.qos.logback:logback-classic:1.5.12")
@@ -73,4 +74,13 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+
+// Gradle 9.x 호환성을 위해 유실된 속성을 강제로 연결해줍니다.
+val mainClassName = "com.homeassistant.ApplicationKt"
+tasks.withType<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar> {
+    manifest {
+        attributes["Main-Class"] = mainClassName
+    }
 }

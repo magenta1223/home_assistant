@@ -15,7 +15,7 @@ class ClaudeClient(apiKey: String) {
         .apiKey(apiKey)
         .build()
 
-    private val model = Model.CLAUDE_HAIKU_4_5_20251001
+    private val model = Model.CLAUDE_3_5_HAIKU_LATEST
 
     // ── Date parsers ─────────────────────────────────────────────────────────
 

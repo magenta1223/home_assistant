@@ -5,9 +5,17 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.models.messages.MessageCreateParams
 import com.anthropic.models.messages.Model
 import com.anthropic.models.messages.TextBlock
+import com.homeassistant.constants.AppConfig
+import com.homeassistant.constants.ChatResponseType
+import com.homeassistant.constants.Intent
+import com.homeassistant.constants.MessageRole
+import com.homeassistant.constants.Messages
+import com.homeassistant.constants.SlashCommand
+import com.homeassistant.constants.TableName
 import com.homeassistant.models.*
 import kotlinx.serialization.json.*
 import java.time.LocalDate
+import kotlin.jvm.optionals.getOrNull
 
 class ClaudeClient(apiKey: String) {
 
@@ -47,7 +55,7 @@ Examples:
         val responseText = callClaude(
             system = dateSystemPrompt(),
             userMessage = text,
-            maxTokens = 128,
+            maxTokens = AppConfig.MAX_TOKENS_DATE_PARSE,
             temperature = 0.0,
         ) ?: return null
         return try {
@@ -60,7 +68,7 @@ Examples:
         val responseText = callClaude(
             system = dateRangeSystemPrompt(),
             userMessage = text,
-            maxTokens = 128,
+            maxTokens = AppConfig.MAX_TOKENS_DATE_PARSE,
             temperature = 0.0,
         ) ?: return Pair(null, null)
         return try {
@@ -78,17 +86,9 @@ Examples:
 사용자 발화를 분석하여 필요한 DB context를 JSON으로 반환하세요.
 
 사용 가능한 intent 값 (이 중 하나만 사용):
-memo_add, memo_search, memo_list,
-todo_add, todo_list, todo_done,
-schedule_add, schedule_list,
-status_update, status_check,
-location_save, location_check,
-asset_add, asset_check, asset_history,
-recipe_save, recipe_search, recipe_list,
-grocery_add, grocery_check,
-greeting, other
+${Intent.ALL_VALUES}
 
-사용 가능한 DB: memos, todos, schedules, home_status, item_locations, assets, recipes, grocery_items
+사용 가능한 DB: ${TableName.ALL_DATA_TABLES.joinToString(", ")}
 
 조회 타입:
 - recent: 최근 데이터가 필요할 때
@@ -107,22 +107,18 @@ greeting, other
         val responseText = callClaude(
             system = intentSystem,
             messages = messages,
-            maxTokens = 512,
+            maxTokens = AppConfig.MAX_TOKENS_INTENT,
             temperature = 0.0,
-        ) ?: return IntentAnalysis("unknown", emptyList())
+        ) ?: return IntentAnalysis(ChatResponseType.UNKNOWN.value, emptyList())
 
         return try {
             val obj = Json.parseToJsonElement(responseText.trim()).jsonObject
-            val intent = obj["intent"]?.jsonPrimitive?.content ?: "unknown"
-            val validDbs = setOf(
-                "memos", "todos", "schedules", "home_status",
-                "item_locations", "assets", "recipes", "grocery_items"
-            )
+            val intent = obj["intent"]?.jsonPrimitive?.content ?: ChatResponseType.UNKNOWN.value
             val contexts = obj["contexts"]?.jsonArray?.mapNotNull { elem ->
                 val o = elem.jsonObject
                 val db = o["db"]?.jsonPrimitive?.content ?: return@mapNotNull null
                 val type = o["type"]?.jsonPrimitive?.content ?: return@mapNotNull null
-                if (db !in validDbs) return@mapNotNull null
+                if (db !in TableName.ALL_DATA_TABLES) return@mapNotNull null
                 val searchText = o["searchText"]?.jsonPrimitive?.content
                 val filter = o["filter"]?.jsonObject?.let { f ->
                     FilterParams(
@@ -137,7 +133,7 @@ greeting, other
             } ?: emptyList()
             IntentAnalysis(intent, contexts)
         } catch (_: Exception) {
-            IntentAnalysis("unknown", emptyList())
+            IntentAnalysis(ChatResponseType.UNKNOWN.value, emptyList())
         }
     }
 
@@ -147,38 +143,38 @@ greeting, other
 사용자의 자연어 메시지를 분석하여 아래 명령어 중 하나로 매핑하고 JSON으로 응답하세요.
 
 사용 가능한 명령어:
-- /메모 <내용> : 메모 저장 (앞에 "공유" 붙이면 가족 공유)
-- /메모목록 [공유] : 메모 목록 조회
-- /메모검색 <검색어> : 메모 검색
-- /일정 <날짜+제목> : 일정 등록 (앞에 "공유" 붙이면 가족 공유)
-- /일정목록 [기간] : 일정 목록 조회
-- /상태 <기기> <상태> : 집 기기 상태 업데이트
-- /상태확인 [기기] : 기기 상태 조회 (비우면 전체)
-- /위치저장 <물건> <위치> : 물건 위치 저장
-- /위치 <물건> : 물건 위치 조회
-- /자산 <카테고리> <금액> : 자산 기록
-- /자산확인 : 카테고리별 현재 자산
-- /자산내역 [카테고리] : 자산 변동 내역
-- /할일 <내용> : 할 일 추가 (앞에 "공유" 붙이면 가족 공유)
-- /할일목록 [공유|완료] : 할 일 목록
-- /완료 <키워드> : 할 일 완료 처리
-- /레시피저장 <이름\n재료: ...\n순서: ...> : 레시피 저장
-- /레시피 <검색어> : 레시피 검색
-- /레시피목록 : 전체 레시피 목록
-- /구매 <식재료> <수량+단위> : 구매 기록
-- /재고 : 재고 현황 및 부족 예측
+- ${SlashCommand.MEMO.value} <내용> : 메모 저장 (앞에 "공유" 붙이면 가족 공유)
+- ${SlashCommand.MEMO_LIST.value} [공유] : 메모 목록 조회
+- ${SlashCommand.MEMO_SEARCH.value} <검색어> : 메모 검색
+- ${SlashCommand.SCHEDULE.value} <날짜+제목> : 일정 등록 (앞에 "공유" 붙이면 가족 공유)
+- ${SlashCommand.SCHEDULE_LIST.value} [기간] : 일정 목록 조회
+- ${SlashCommand.STATUS.value} <기기> <상태> : 집 기기 상태 업데이트
+- ${SlashCommand.STATUS_CHECK.value} [기기] : 기기 상태 조회 (비우면 전체)
+- ${SlashCommand.LOCATION_SAVE.value} <물건> <위치> : 물건 위치 저장
+- ${SlashCommand.LOCATION_CHECK.value} <물건> : 물건 위치 조회
+- ${SlashCommand.ASSET.value} <카테고리> <금액> : 자산 기록
+- ${SlashCommand.ASSET_CHECK.value} : 카테고리별 현재 자산
+- ${SlashCommand.ASSET_HISTORY.value} [카테고리] : 자산 변동 내역
+- ${SlashCommand.HARILADO.value} <내용> : 할 일 추가 (앞에 "공유" 붙이면 가족 공유)
+- ${SlashCommand.HARILADO_LIST.value} [공유|완료] : 할 일 목록
+- ${SlashCommand.WANRYO.value} <키워드> : 할 일 완료 처리
+- ${SlashCommand.RECIPE_SAVE.value} <이름\n재료: ...\n순서: ...> : 레시피 저장
+- ${SlashCommand.RECIPE_SEARCH.value} <검색어> : 레시피 검색
+- ${SlashCommand.RECIPE_LIST.value} : 전체 레시피 목록
+- ${SlashCommand.PURCHASE.value} <식재료> <수량+단위> : 구매 기록
+- ${SlashCommand.INVENTORY.value} : 재고 현황 및 부족 예측
 
 응답 형식 (반드시 유효한 JSON만 출력):
-- 추가 정보가 필요한 경우: {"type":"question","text":"질문 내용"}
-- 명령어 확정된 경우: {"type":"result","text":"안내 메시지","command":"/명령어","params":"파라미터"}
-- 이해 불가한 경우: {"type":"unknown","text":"안내 메시지"}
+- 추가 정보가 필요한 경우: {"type":"${ChatResponseType.QUESTION.value}","text":"질문 내용"}
+- 명령어 확정된 경우: {"type":"${ChatResponseType.RESULT.value}","text":"안내 메시지","command":"/명령어","params":"파라미터"}
+- 이해 불가한 경우: {"type":"${ChatResponseType.UNKNOWN.value}","text":"안내 메시지"}
 
 규칙:
 - params는 명령어 뒤에 오는 텍스트만 포함 (명령어 자체 제외)
 - /구매의 params 형식: "재료이름 수량단위" (예: "달걀 12개")
 - 항상 JSON만 응답하고 다른 텍스트는 포함하지 마세요"""
 
-    suspend fun chatSession(
+    fun chatSession(
         history: List<ConversationMessage>,
         userMessage: String,
         context: List<ContextResult> = emptyList(),
@@ -193,19 +189,19 @@ greeting, other
         val responseText = callClaude(
             system = chatbotSystem,
             messages = messages,
-            maxTokens = 512,
-        ) ?: return NlpChatResponse("unknown", "응답을 처리하지 못했어요.")
+            maxTokens = AppConfig.MAX_TOKENS_CHAT,
+        ) ?: return NlpChatResponse(ChatResponseType.UNKNOWN.value, Messages.Errors.NLP_FALLBACK)
 
         return try {
             val obj = Json.parseToJsonElement(responseText.trim()).jsonObject
             NlpChatResponse(
-                type = obj["type"]?.jsonPrimitive?.content ?: "unknown",
-                text = obj["text"]?.jsonPrimitive?.content ?: "응답을 처리하지 못했어요.",
+                type = obj["type"]?.jsonPrimitive?.content ?: ChatResponseType.UNKNOWN.value,
+                text = obj["text"]?.jsonPrimitive?.content ?: Messages.Errors.NLP_FALLBACK,
                 command = obj["command"]?.jsonPrimitive?.content,
                 params = obj["params"]?.jsonPrimitive?.content,
             )
         } catch (_: Exception) {
-            NlpChatResponse("unknown", "응답을 처리하지 못했어요.")
+            NlpChatResponse(ChatResponseType.UNKNOWN.value, Messages.Errors.NLP_FALLBACK)
         }
     }
 
@@ -215,7 +211,7 @@ greeting, other
         results.filter { it.rows.isNotEmpty() }
             .joinToString("\n\n") { r ->
                 val label = "${r.db} (${r.type})"
-                val lines = r.rows.take(10).joinToString("\n") { row ->
+                val lines = r.rows.take(AppConfig.CONTEXT_ROWS_SHOWN).joinToString("\n") { row ->
                     val values = row.entries
                         .filter { it.key !in setOf("id", "user_id", "is_shared") }
                         .joinToString(", ") { "${it.key}: ${it.value}" }
@@ -229,19 +225,19 @@ greeting, other
         history: List<ConversationMessage>,
         userText: String,
     ): List<Pair<String, String>> =
-        history.map { Pair(it.role, it.content) } + Pair("user", userText)
+        history.map { Pair(it.role, it.content) } + Pair(MessageRole.USER.value, userText)
 
     /** Core Claude API call. Returns the text content or null on failure. */
     private fun callClaude(
         system: String,
         userMessage: String? = null,
         messages: List<Pair<String, String>>? = null,
-        maxTokens: Int = 512,
+        maxTokens: Int = AppConfig.MAX_TOKENS_CHAT,
         temperature: Double? = null,
     ): String? {
         val msgList = when {
             messages != null -> messages
-            userMessage != null -> listOf(Pair("user", userMessage))
+            userMessage != null -> listOf(Pair(MessageRole.USER.value, userMessage))
             else -> return null
         }
 
@@ -252,8 +248,8 @@ greeting, other
             .apply {
                 msgList.forEach { (role, content) ->
                     when (role) {
-                        "user" -> this.addUserMessage(content)
-                        "assistant" -> this.addAssistantMessage(content)
+                        MessageRole.USER.value      -> this.addUserMessage(content)
+                        MessageRole.ASSISTANT.value -> this.addAssistantMessage(content)
                     }
                 }
                 if (temperature != null) this.temperature(temperature)
@@ -261,6 +257,6 @@ greeting, other
             .build()
 
         val response = client.messages().create(params)
-        return (response.content().firstOrNull() as? TextBlock)?.text()
+        return response.content().firstOrNull()?.text()?.getOrNull()?.text()
     }
 }

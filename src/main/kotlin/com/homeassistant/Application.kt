@@ -1,6 +1,7 @@
 package com.homeassistant
 
 import com.homeassistant.commands.CommandExecutor
+import com.homeassistant.constants.AppConfig
 import com.homeassistant.context.ContextRetriever
 import com.homeassistant.context.EmbeddingService
 import com.homeassistant.db.DatabaseFactory
@@ -16,7 +17,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import kotlinx.serialization.json.Json
 
 fun main() {
-    embeddedServer(Netty, port = 8080, module = Application::module).start(wait = true)
+    embeddedServer(Netty, port = AppConfig.DEFAULT_PORT, module = Application::module).start(wait = true)
 }
 
 fun Application.module() {
@@ -29,11 +30,11 @@ fun Application.module() {
     }
 
     // Read config
-    val dbPath = environment.config.propertyOrNull("homeassistant.dbPath")?.getString()
-        ?: "../homeAssistant/db/homeAssistant.sqlite"
-    val apiKey = environment.config.propertyOrNull("homeassistant.anthropicApiKey")?.getString()
-        ?: System.getenv("ANTHROPIC_API_KEY")
-        ?: error("ANTHROPIC_API_KEY not set")
+    val dbPath = environment.config.propertyOrNull(AppConfig.CONFIG_KEY_DB_PATH)?.getString()
+        ?: AppConfig.DEFAULT_DB_PATH
+    val apiKey = environment.config.propertyOrNull(AppConfig.CONFIG_KEY_API_KEY)?.getString()
+        ?: System.getenv(AppConfig.ENV_VAR_API_KEY)
+        ?: error("${AppConfig.ENV_VAR_API_KEY} not set")
 
     // Initialize components
     DatabaseFactory.init(dbPath)

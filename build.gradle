@@ -1,0 +1,72 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
+plugins {
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktor)
+    id 'application'
+}
+
+group = 'com.homeassistant'
+version = '1.0.0'
+
+application {
+    mainClass = 'com.homeassistant.ApplicationKt'
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Ktor server
+    implementation libs.ktor.server.core
+    implementation libs.ktor.server.netty
+    implementation libs.ktor.server.content.negotiation
+    implementation libs.ktor.serialization.kotlinx.json
+    implementation libs.ktor.server.config.yaml
+
+    // Serialization
+    implementation libs.kotlinx.serialization.json
+
+    // Exposed ORM + SQLite
+    implementation libs.exposed.core
+    implementation libs.exposed.jdbc
+    implementation libs.exposed.dao
+    implementation libs.sqlite.jdbc
+
+    // Caffeine cache (session TTL)
+    implementation libs.caffeine
+
+    // Anthropic Java SDK
+    implementation libs.anthropic.java
+
+    // DJL for embeddings
+    implementation libs.djl.api
+    implementation libs.djl.huggingface.tokenizers
+    implementation libs.djl.pytorch.engine
+    implementation libs.djl.pytorch.native.auto
+
+    // Logging
+    implementation libs.logback.classic
+
+    // HTTP client (for internal use if needed)
+    implementation libs.ktor.client.core
+    implementation libs.ktor.client.cio
+    implementation libs.ktor.client.content.negotiation
+
+    // Testing
+    testImplementation libs.ktor.server.test.host
+    testImplementation libs.kotlin.test
+    testImplementation libs.mockk
+}
+
+tasks.withType(KotlinCompile).configureEach {
+    kotlinOptions {
+        jvmTarget = '21'
+    }
+}
+
+tasks.withType(Test).configureEach {
+    useJUnitPlatform()
+}

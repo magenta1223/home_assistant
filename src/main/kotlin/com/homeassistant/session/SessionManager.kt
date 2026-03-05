@@ -1,6 +1,7 @@
 package com.homeassistant.session
 
 import com.github.benmanes.caffeine.cache.Caffeine
+import com.homeassistant.constants.AppConfig
 import com.homeassistant.models.ConversationMessage
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
@@ -17,7 +18,7 @@ data class SessionKey(val platform: String, val conversationId: String)
  * In-memory session store with Caffeine TTL.
  * Each entry expires 10 minutes after the last access, mirroring the TypeScript SessionManager.
  */
-class SessionManager(timeoutMinutes: Long = 10L) {
+class SessionManager(timeoutMinutes: Long = AppConfig.SESSION_TIMEOUT_MINUTES) {
 
     private val cache = Caffeine.newBuilder()
         .expireAfterAccess(timeoutMinutes, TimeUnit.MINUTES)

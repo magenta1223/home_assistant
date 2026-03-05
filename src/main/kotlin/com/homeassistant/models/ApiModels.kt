@@ -13,14 +13,14 @@ data class ChatRequest(
 
 @Serializable
 data class ChatResponse(
-    val type: String,      // "question" | "result" | "unknown" | "error"
+    val type: String,      // See ChatResponseType
     val text: String,
     val sessionReset: Boolean = false,
 )
 
 // Internal NLP types (not serialized to client)
 data class ConversationMessage(
-    val role: String,   // "user" | "assistant"
+    val role: String,   // See MessageRole
     val content: String,
 )
 
@@ -31,7 +31,7 @@ data class IntentAnalysis(
 
 data class ContextSpec(
     val db: String,
-    val type: String,          // "recent" | "similar" | "query"
+    val type: String,          // See ContextType
     val searchText: String? = null,
     val filter: FilterParams? = null,
 )
@@ -52,7 +52,7 @@ data class ContextResult(
 
 // Claude's JSON response for the chat session
 data class NlpChatResponse(
-    val type: String,       // "question" | "result" | "unknown"
+    val type: String,       // See ChatResponseType
     val text: String,
     val command: String? = null,
     val params: String? = null,

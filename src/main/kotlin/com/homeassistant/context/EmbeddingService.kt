@@ -1,6 +1,7 @@
 package com.homeassistant.context
 
 import ai.djl.huggingface.tokenizers.HuggingFaceTokenizer
+import com.homeassistant.constants.TableName
 import ai.djl.ndarray.NDManager
 import ai.djl.repository.zoo.Criteria
 import ai.djl.training.util.ProgressBar
@@ -26,7 +27,7 @@ class EmbeddingService {
 
     companion object {
         const val EMBEDDING_DIM = 384
-        val ALLOWED_VEC_TABLES = setOf("vec_memos", "vec_todos", "vec_recipes")
+        val ALLOWED_VEC_TABLES = TableName.VEC_TABLES
     }
 
     // Lazily initialised — DJL model is loaded on first use

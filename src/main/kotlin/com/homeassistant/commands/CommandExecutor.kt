@@ -1,5 +1,10 @@
 package com.homeassistant.commands
 
+import com.homeassistant.constants.AppConfig
+import com.homeassistant.constants.InventoryStatus
+import com.homeassistant.constants.Messages
+import com.homeassistant.constants.SharedStatus
+import com.homeassistant.constants.SlashCommand
 import com.homeassistant.context.ContextRetriever
 import com.homeassistant.models.CommandResult
 import com.homeassistant.nlp.ClaudeClient
@@ -21,56 +26,56 @@ class CommandExecutor(
 
     suspend fun execute(command: String, params: String, userId: String): CommandResult {
 
-        if (params.isBlank()) return CommandResult("할 일 내용을 입력해주세요.")
+        if (params.isBlank()) return CommandResult(Messages.Errors.BLANK_INPUT)
 
         return when (command) {
 
             // ── Todos ──────────────────────────────────────────────────────
 
-            "/할일" -> {
-                val isShared = params.startsWith("공유 ")
-                val content = if (isShared) params.drop(3).trim() else params
+            SlashCommand.HARILADO.value -> {
+                val isShared = params.startsWith(SharedStatus.INPUT_PREFIX)
+                val content = if (isShared) params.drop(SharedStatus.INPUT_PREFIX_LEN).trim() else params
                 val id = transaction {
                     execInsert(
                         "INSERT INTO todos (user_id, is_shared, content) VALUES (?, ?, ?)",
-                        listOf(userId, if (isShared) 1 else 0, content)
+                        listOf(userId, SharedStatus.fromBoolean(isShared).sqlValue, content)
                     )
                 }
                 contextRetriever?.storeEmbedding("todos", id, content)
                 CommandResult(if (isShared) "공유 할 일 추가: *$content*" else "할 일 추가: *$content*")
             }
 
-            "/할일목록" -> {
+            SlashCommand.HARILADO_LIST.value -> {
                 val rows = transaction {
                     when (params) {
-                        "공유" -> execQuery(
-                            "SELECT * FROM todos WHERE is_shared = 1 AND is_done = 0 ORDER BY created_at DESC",
+                        SharedStatus.FILTER_LABEL -> execQuery(
+                            "SELECT * FROM todos WHERE is_shared = ${SharedStatus.SHARED.sqlValue} AND is_done = 0 ORDER BY created_at DESC",
                             emptyList()
                         )
-                        "완료" -> execQuery(
-                            "SELECT * FROM todos WHERE (user_id = ? OR is_shared = 1) AND is_done = 1 ORDER BY done_at DESC LIMIT 20",
+                        Messages.Todos.DONE_FILTER -> execQuery(
+                            "SELECT * FROM todos WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) AND is_done = 1 ORDER BY done_at DESC LIMIT ${AppConfig.LIST_LIMIT_LONG}",
                             listOf(userId)
                         )
                         else -> execQuery(
-                            "SELECT * FROM todos WHERE (user_id = ? OR is_shared = 1) AND is_done = 0 ORDER BY created_at DESC",
+                            "SELECT * FROM todos WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) AND is_done = 0 ORDER BY created_at DESC",
                             listOf(userId)
                         )
                     }
                 }
                 val label = when (params) {
-                    "완료" -> "완료된 할 일"
-                    "공유" -> "공유 할 일"
-                    else -> "할 일 목록"
+                    Messages.Todos.DONE_FILTER -> Messages.Todos.LABEL_DONE
+                    SharedStatus.FILTER_LABEL  -> Messages.Todos.LABEL_SHARED
+                    else                       -> Messages.Todos.LABEL_LIST
                 }
                 CommandResult(formatList(label, rows) { r ->
-                    "${r["content"]}${if ((r["is_shared"] as? Int) == 1) " _(공유)_" else ""}"
+                    "${r["content"]}${if ((r["is_shared"] as? Int) == SharedStatus.SHARED.sqlValue) Messages.Todos.SHARED_TAG else ""}"
                 })
             }
 
-            "/완료" -> {
+            SlashCommand.WANRYO.value -> {
                 val id = transaction {
                     execQuery(
-                        "SELECT id FROM todos WHERE (user_id = ? OR is_shared = 1) AND is_done = 0 AND content LIKE ? LIMIT 1",
+                        "SELECT id FROM todos WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) AND is_done = 0 AND content LIKE ? LIMIT 1",
                         listOf(userId, "%$params%")
                     ).firstOrNull()?.get("id") as? Int
                 } ?: CommandResult("\"$params\"에 해당하는 미완료 할 일을 찾지 못했어요.")
@@ -85,58 +90,58 @@ class CommandExecutor(
 
             // ── Memos ──────────────────────────────────────────────────────
 
-            "/메모" -> {
-                if (params.isBlank()) CommandResult("메모 내용을 입력해주세요.")
-                val isShared = params.startsWith("공유 ")
-                val content = if (isShared) params.drop(3).trim() else params
+            SlashCommand.MEMO.value -> {
+                if (params.isBlank()) CommandResult(Messages.Errors.BLANK_MEMO)
+                val isShared = params.startsWith(SharedStatus.INPUT_PREFIX)
+                val content = if (isShared) params.drop(SharedStatus.INPUT_PREFIX_LEN).trim() else params
                 transaction {
                     execInsert(
                         "INSERT INTO memos (user_id, is_shared, content) VALUES (?, ?, ?)",
-                        listOf(userId, if (isShared) 1 else 0, content)
+                        listOf(userId, SharedStatus.fromBoolean(isShared).sqlValue, content)
                     )
                 }
                 CommandResult(if (isShared) "공유 메모 저장했어요: _${content}_" else "메모 저장했어요!")
             }
 
-            "/메모목록" -> {
+            SlashCommand.MEMO_LIST.value -> {
                 val rows = transaction {
-                    if (params == "공유")
-                        execQuery("SELECT * FROM memos WHERE is_shared = 1 ORDER BY created_at DESC LIMIT 15", emptyList())
+                    if (params == SharedStatus.FILTER_LABEL)
+                        execQuery("SELECT * FROM memos WHERE is_shared = ${SharedStatus.SHARED.sqlValue} ORDER BY created_at DESC LIMIT ${AppConfig.LIST_LIMIT_MED}", emptyList())
                     else
-                        execQuery("SELECT * FROM memos WHERE (user_id = ? OR is_shared = 1) ORDER BY created_at DESC LIMIT 15", listOf(userId))
+                        execQuery("SELECT * FROM memos WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) ORDER BY created_at DESC LIMIT ${AppConfig.LIST_LIMIT_MED}", listOf(userId))
                 }
-                val label = if (params == "공유") "공유 메모" else "내 메모"
+                val label = if (params == SharedStatus.FILTER_LABEL) Messages.Memos.LABEL_SHARED else Messages.Memos.LABEL_MINE
                 CommandResult(formatList(label, rows) { r ->
-                    val shared = if ((r["is_shared"] as? Int) == 1) " _(공유)_" else ""
+                    val shared = if ((r["is_shared"] as? Int) == SharedStatus.SHARED.sqlValue) Messages.Memos.SHARED_TAG else ""
                     val title = r["title"]?.let { "*$it*\n" } ?: ""
                     "$title${r["content"]}$shared\n_${r["created_at"]}_"
                 })
             }
 
-            "/메모검색" -> {
+            SlashCommand.MEMO_SEARCH.value -> {
                 val rows = transaction {
                     execQuery(
-                        "SELECT * FROM memos WHERE (user_id = ? OR is_shared = 1) AND (title LIKE ? OR content LIKE ? OR tags LIKE ?) ORDER BY created_at DESC LIMIT 10",
+                        "SELECT * FROM memos WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) AND (title LIKE ? OR content LIKE ? OR tags LIKE ?) ORDER BY created_at DESC LIMIT ${AppConfig.LIST_LIMIT_SHORT}",
                         listOf(userId, "%$params%", "%$params%", "%$params%")
                     )
                 }
                 CommandResult(formatList("\"$params\" 검색 결과", rows) { r ->
-                    val shared = if ((r["is_shared"] as? Int) == 1) " _(공유)_" else ""
+                    val shared = if ((r["is_shared"] as? Int) == SharedStatus.SHARED.sqlValue) Messages.Memos.SHARED_TAG else ""
                     "${r["content"]}$shared\n_${r["created_at"]}_"
                 })
             }
 
             // ── Schedules ──────────────────────────────────────────────────
 
-            "/일정" -> {
-                val isShared = params.startsWith("공유 ")
-                val content = if (isShared) params.drop(3).trim() else params
+            SlashCommand.SCHEDULE.value -> {
+                val isShared = params.startsWith(SharedStatus.INPUT_PREFIX)
+                val content = if (isShared) params.drop(SharedStatus.INPUT_PREFIX_LEN).trim() else params
                 val eventDate = claudeClient.parseDate(content)
-                    ?: return CommandResult("날짜/시간 정보를 찾지 못했어요. 날짜를 포함해서 입력해주세요.")
+                    ?: return CommandResult(Messages.Errors.DATE_NOT_FOUND)
                 transaction {
                     execInsert(
                         "INSERT INTO schedules (user_id, is_shared, title, event_date) VALUES (?, ?, ?, ?)",
-                        listOf(userId, if (isShared) 1 else 0, content, eventDate)
+                        listOf(userId, SharedStatus.fromBoolean(isShared).sqlValue, content, eventDate)
                     )
                 }
                 CommandResult(
@@ -145,7 +150,7 @@ class CommandExecutor(
                 )
             }
 
-            "/일정목록" -> {
+            SlashCommand.SCHEDULE_LIST.value -> {
                 val (from, to) = if (params.isNotBlank()) {
                     claudeClient.parseDateRange(params)
                 } else {
@@ -154,22 +159,22 @@ class CommandExecutor(
                 }
                 val rows = transaction {
                     execQuery(
-                        "SELECT * FROM schedules WHERE (user_id = ? OR is_shared = 1) AND date(event_date) BETWEEN ? AND ? ORDER BY event_date ASC",
+                        "SELECT * FROM schedules WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) AND date(event_date) BETWEEN ? AND ? ORDER BY event_date ASC",
                         listOf(userId, from ?: LocalDate.now().toString(), to ?: LocalDate.now().plusDays(30).toString())
                     )
                 }
                 val label = if (params.isNotBlank()) "일정 ($params)" else "일정 (다음 30일)"
                 CommandResult(formatList(label, rows) { r ->
-                    val shared = if ((r["is_shared"] as? Int) == 1) " _(공유)_" else ""
+                    val shared = if ((r["is_shared"] as? Int) == SharedStatus.SHARED.sqlValue) Messages.Schedules.SHARED_TAG else ""
                     "*${r["title"]}*$shared\n_${r["event_date"]}_"
                 })
             }
 
             // ── Home Status ────────────────────────────────────────────────
 
-            "/상태" -> {
+            SlashCommand.STATUS.value -> {
                 val parts = params.trim().split(Regex("\\s+"))
-                if (parts.size < 2) return CommandResult("상태도 함께 입력해주세요. 예: \"에어컨 켜\"")
+                if (parts.size < 2) return CommandResult(Messages.Errors.NO_STATUS_INPUT)
                 val device = parts[0]
                 val status = parts.drop(1).joinToString(" ")
                 transaction {
@@ -186,12 +191,12 @@ class CommandExecutor(
                 CommandResult("*$device* 상태를 *$status*(으)로 업데이트했어요.")
             }
 
-            "/상태확인" -> {
+            SlashCommand.STATUS_CHECK.value -> {
                 if (params.isBlank()) {
                     val rows = transaction {
                         execQuery("SELECT * FROM home_status ORDER BY device_name", emptyList())
                     }
-                    CommandResult(formatList("집 전체 상태", rows) { r ->
+                    CommandResult(formatList(Messages.HomeStatus.LABEL_ALL, rows) { r ->
                         "*${r["device_name"]}*: ${r["status"]}  _(${r["updated_at"]})_"
                     })
                 } else {
@@ -204,9 +209,9 @@ class CommandExecutor(
 
             // ── Item Locations ─────────────────────────────────────────────
 
-            "/위치저장" -> {
+            SlashCommand.LOCATION_SAVE.value -> {
                 val parts = params.trim().split(Regex("\\s+"))
-                if (parts.size < 2) return CommandResult("위치도 함께 입력해주세요.")
+                if (parts.size < 2) return CommandResult(Messages.Errors.NO_LOCATION_INPUT)
                 val item = parts[0]
                 val location = parts.drop(1).joinToString(" ")
                 transaction {
@@ -223,7 +228,7 @@ class CommandExecutor(
                 CommandResult("*$item* 위치 저장: $location")
             }
 
-            "/위치" -> {
+            SlashCommand.LOCATION_CHECK.value -> {
                 val row = transaction {
                     execQuery("SELECT * FROM item_locations WHERE item_name = ?", listOf(params)).firstOrNull()
                 } ?: CommandResult("*$params* 위치 정보가 없어요.")
@@ -232,12 +237,12 @@ class CommandExecutor(
 
             // ── Assets ─────────────────────────────────────────────────────
 
-            "/자산" -> {
+            SlashCommand.ASSET.value -> {
                 val parts = params.split(Regex("\\s+"))
-                if (parts.size < 2) CommandResult("금액도 함께 입력해주세요.")
+                if (parts.size < 2) CommandResult(Messages.Errors.NO_AMOUNT_INPUT)
                 val category = parts[0]
                 val amount = parts[1].replace(",", "").toDoubleOrNull()
-                    ?: return CommandResult("금액은 숫자로 입력해주세요.")
+                    ?: return CommandResult(Messages.Errors.AMOUNT_NOT_NUMBER)
                 val note = if (parts.size > 2) parts.drop(2).joinToString(" ") else null
                 transaction {
                     execInsert(
@@ -249,7 +254,7 @@ class CommandExecutor(
                 CommandResult("*$category* ${formatted}원 기록했어요.")
             }
 
-            "/자산확인" -> {
+            SlashCommand.ASSET_CHECK.value -> {
                 val rows = transaction {
                     execQuery(
                         """SELECT a.category, a.amount, a.recorded_at
@@ -272,12 +277,12 @@ class CommandExecutor(
                 CommandResult("*자산 현황*\n$lines\n---\n*합계: ${"%.0f".format(total)}원*")
             }
 
-            "/자산내역" -> {
+            SlashCommand.ASSET_HISTORY.value -> {
                 val rows = transaction {
                     if (params.isNotBlank())
-                        execQuery("SELECT * FROM assets WHERE user_id = ? AND category = ? ORDER BY recorded_at DESC LIMIT 20", listOf(userId, params))
+                        execQuery("SELECT * FROM assets WHERE user_id = ? AND category = ? ORDER BY recorded_at DESC LIMIT ${AppConfig.LIST_LIMIT_LONG}", listOf(userId, params))
                     else
-                        execQuery("SELECT * FROM assets WHERE user_id = ? ORDER BY recorded_at DESC LIMIT 20", listOf(userId))
+                        execQuery("SELECT * FROM assets WHERE user_id = ? ORDER BY recorded_at DESC LIMIT ${AppConfig.LIST_LIMIT_LONG}", listOf(userId))
                 }
                 val label = if (params.isNotBlank()) "$params 내역" else "자산 내역"
                 CommandResult(formatList(label, rows) { r ->
@@ -289,7 +294,7 @@ class CommandExecutor(
 
             // ── Recipes ────────────────────────────────────────────────────
 
-            "/레시피저장" -> {
+            SlashCommand.RECIPE_SAVE.value -> {
                 val lines = params.split("\n").map { it.trim() }.filter { it.isNotEmpty() }
                 val name = lines.firstOrNull() ?: ""
                 val body = lines.drop(1).joinToString("\n")
@@ -306,7 +311,7 @@ class CommandExecutor(
                 CommandResult("레시피 *$name* 저장했어요!")
             }
 
-            "/레시피" -> {
+            SlashCommand.RECIPE_SEARCH.value -> {
                 transaction {
                     execQuery("SELECT * FROM recipes WHERE name LIKE ? ORDER BY created_at DESC LIMIT 1", listOf("%$params%")).firstOrNull()
                 }?.let {
@@ -314,15 +319,15 @@ class CommandExecutor(
                     val steps = it["steps"]
                     val stepsText = if (steps != null && steps.toString().isNotBlank()) "\n\n*조리 순서*\n$steps" else ""
                     CommandResult("*${it["name"]}*\n\n*재료*\n$ingredients$stepsText")
-                } ?: CommandResult("*$params* 레시피를 찾지 못했어요.")
-    
+                } ?: CommandResult(Messages.Recipes.NOT_FOUND)
+
             }
 
-            "/레시피목록" -> {
+            SlashCommand.RECIPE_LIST.value -> {
                 val rows = transaction {
-                    execQuery("SELECT id, name, created_at FROM recipes ORDER BY created_at DESC LIMIT 20", emptyList())
+                    execQuery("SELECT id, name, created_at FROM recipes ORDER BY created_at DESC LIMIT ${AppConfig.LIST_LIMIT_LONG}", emptyList())
                 }
-                if (rows.isEmpty()) CommandResult("저장된 레시피가 없어요.")
+                if (rows.isEmpty()) CommandResult(Messages.Recipes.NO_ITEMS)
                 else {
                     val list = rows.mapIndexed { i, r -> "${i + 1}. *${r["name"]}*" }.joinToString("\n")
                     CommandResult("*레시피 목록*\n$list")
@@ -331,7 +336,7 @@ class CommandExecutor(
 
             // ── Grocery ────────────────────────────────────────────────────
 
-            "/구매" -> {
+            SlashCommand.PURCHASE.value -> {
                 QTY_REGEX.matchEntire(params.trim())?.let {
                     val itemName = it.groupValues[1].trim()
                     val qty = it.groupValues[2].toDouble()
@@ -349,15 +354,15 @@ class CommandExecutor(
                         execInsert("INSERT INTO grocery_purchases (item_id, qty) VALUES (?, ?)", listOf(itemId, qty))
                     }
                     CommandResult("*$itemName* ${qty.toLong()}$unit 구매 기록 완료")
-                } ?: CommandResult("형식: \"달걀 10개\" (수량+단위 필수)")
+                } ?: CommandResult(Messages.Errors.GROCERY_FORMAT)
 
             }
 
-            "/재고" -> {
+            SlashCommand.INVENTORY.value -> {
                 val items = transaction {
                     execQuery("SELECT * FROM grocery_items ORDER BY name", emptyList())
                 }
-                if (items.isEmpty()) CommandResult("기록된 식재료가 없어요. 구매 기록부터 추가해보세요.")
+                if (items.isEmpty()) CommandResult(Messages.Grocery.NO_ITEMS)
                 else {
                     val shortage = mutableListOf<String>()
                     val imminent = mutableListOf<String>()
@@ -373,8 +378,8 @@ class CommandExecutor(
                                 listOf(itemId)
                             )
                         }
-                        if (purchases.size < 2) {
-                            insufficient.add("📊 *$itemName*: 구매 이력 부족 (${purchases.size}회) — 예측 불가")
+                        if (purchases.size < AppConfig.MIN_PURCHASES_FOR_PREDICT) {
+                            insufficient.add("${InventoryStatus.INSUFFICIENT.emoji} *$itemName*: ${Messages.Grocery.DATA_INSUF_FMT.format(purchases.size)}")
                             return@forEach
                         }
                         val dates = purchases.mapNotNull {
@@ -392,23 +397,23 @@ class CommandExecutor(
                         val daysSinceLast = (System.currentTimeMillis() - dates.last()) / (1000.0 * 60 * 60 * 24)
                         val daysRemaining = Math.round(avgInterval - daysSinceLast)
                         when {
-                            daysRemaining <= 0 -> shortage.add("⚠️ *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
-                            daysRemaining <= 3 -> imminent.add("🔔 *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
-                            else -> ok.add("✅ *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
+                            daysRemaining <= InventoryStatus.SHORTAGE.maxDays  -> shortage.add("${InventoryStatus.SHORTAGE.emoji} *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
+                            daysRemaining <= InventoryStatus.IMMINENT.maxDays  -> imminent.add("${InventoryStatus.IMMINENT.emoji} *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
+                            else                                                -> ok.add("${InventoryStatus.OK.emoji} *$itemName*: 마지막 구매 ${Math.round(daysSinceLast)}일 전, 평균 ${Math.round(avgInterval)}일 주기 (약 ${daysRemaining}일 남음)")
                         }
                     }
 
                     val sb = StringBuilder("*재고 현황*\n")
-                    if (shortage.isNotEmpty()) sb.append("\n*부족 예상*\n${shortage.joinToString("\n")}\n")
-                    if (imminent.isNotEmpty()) sb.append("\n*구매 임박*\n${imminent.joinToString("\n")}\n")
-                    if (ok.isNotEmpty()) sb.append("\n*여유 있음*\n${ok.joinToString("\n")}\n")
-                    if (insufficient.isNotEmpty()) sb.append("\n*데이터 부족*\n${insufficient.joinToString("\n")}")
+                    if (shortage.isNotEmpty()) sb.append("\n*${InventoryStatus.SHORTAGE.label}*\n${shortage.joinToString("\n")}\n")
+                    if (imminent.isNotEmpty()) sb.append("\n*${InventoryStatus.IMMINENT.label}*\n${imminent.joinToString("\n")}\n")
+                    if (ok.isNotEmpty()) sb.append("\n*${InventoryStatus.OK.label}*\n${ok.joinToString("\n")}\n")
+                    if (insufficient.isNotEmpty()) sb.append("\n*${InventoryStatus.INSUFFICIENT.label}*\n${insufficient.joinToString("\n")}")
                     CommandResult(sb.toString())
                 }
 
             }
 
-            else -> CommandResult("해당 명령어를 처리할 수 없어요.")
+            else -> CommandResult(Messages.Errors.UNKNOWN_COMMAND)
         }
     }
 

@@ -1,6 +1,9 @@
 package com.homeassistant.pipeline
 
 import com.homeassistant.commands.CommandExecutor
+import com.homeassistant.constants.ChatResponseType
+import com.homeassistant.constants.MessageRole
+import com.homeassistant.constants.Messages
 import com.homeassistant.context.ContextRetriever
 import com.homeassistant.models.ChatResponse
 import com.homeassistant.models.ChatRequest
@@ -40,15 +43,15 @@ class ChatPipeline(
             val nlpResponse = claude.chatSession(history, req.text, contextResults)
 
             // 4. Update session history
-            sessions.addMessage(sessionKey, "user", req.text)
-            sessions.addMessage(sessionKey, "assistant", nlpResponse.text)
+            sessions.addMessage(sessionKey, MessageRole.USER.value, req.text)
+            sessions.addMessage(sessionKey, MessageRole.ASSISTANT.value, nlpResponse.text)
 
             // 5. If a command was identified, execute it
-            if (nlpResponse.type == "result" && nlpResponse.command != null) {
+            if (nlpResponse.type == ChatResponseType.RESULT.value && nlpResponse.command != null) {
                 val result = commandExecutor.execute(nlpResponse.command, nlpResponse.params ?: "", req.userId)
                 sessions.resetSession(sessionKey)
                 ChatResponse(
-                    type = "result",
+                    type = ChatResponseType.RESULT.value,
                     text = result.text ?: nlpResponse.text,
                     sessionReset = true,
                 )
@@ -62,8 +65,8 @@ class ChatPipeline(
         } catch (e: Exception) {
             log.error("Pipeline error for ${req.platform}:${req.conversationId}", e)
             ChatResponse(
-                type = "error",
-                text = "죄송해요, 요청을 처리하는 중 오류가 발생했어요. 잠시 후 다시 시도해주세요.",
+                type = ChatResponseType.ERROR.value,
+                text = Messages.Errors.PIPELINE_ERROR,
                 sessionReset = false,
             )
         }

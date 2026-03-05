@@ -1,5 +1,6 @@
 package com.homeassistant.db
 
+import com.homeassistant.constants.AppConfig
 import com.homeassistant.db.schema.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -12,8 +13,8 @@ object DatabaseFactory {
         val absolutePath = File(dbPath).canonicalPath
         // Connect to SQLite file (creates it if not exists)
         Database.connect(
-            url = "jdbc:sqlite:$absolutePath",
-            driver = "org.sqlite.JDBC",
+            url = "${AppConfig.JDBC_URL_PREFIX}$absolutePath",
+            driver = AppConfig.JDBC_DRIVER,
         )
 
         // Create tables if they don't exist (idempotent, mirrors migrate.ts)

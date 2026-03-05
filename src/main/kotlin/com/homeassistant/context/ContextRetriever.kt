@@ -1,5 +1,8 @@
 package com.homeassistant.context
 
+import com.homeassistant.constants.AppConfig
+import com.homeassistant.constants.SharedStatus
+import com.homeassistant.constants.TableName
 import com.homeassistant.models.ContextResult
 import com.homeassistant.models.ContextSpec
 import com.homeassistant.models.FilterParams
@@ -8,9 +11,6 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(ContextRetriever::class.java)
-
-private const val RECENT_LIMIT = 10
-private const val SIMILAR_LIMIT = 5
 
 private data class TableMeta(
     val textCol: String,
@@ -21,14 +21,14 @@ private data class TableMeta(
 )
 
 private val TABLE_META: Map<String, TableMeta> = mapOf(
-    "memos"          to TableMeta("content",     true,  dateCol = "created_at", vecTable = "vec_memos"),
-    "todos"          to TableMeta("content",     true,  dateCol = "created_at", vecTable = "vec_todos"),
-    "schedules"      to TableMeta("title",       true,  dateCol = "event_date"),
-    "home_status"    to TableMeta("device_name", false, dateCol = "updated_at"),
-    "item_locations" to TableMeta("item_name",   false, dateCol = "updated_at"),
-    "assets"         to TableMeta("category",    true,  hasCategory = true, dateCol = "recorded_at"),
-    "recipes"        to TableMeta("name",        true,  dateCol = "created_at", vecTable = "vec_recipes"),
-    "grocery_items"  to TableMeta("name",        false),
+    TableName.MEMOS          to TableMeta("content",     true,  dateCol = "created_at", vecTable = TableName.VEC_MEMOS),
+    TableName.TODOS          to TableMeta("content",     true,  dateCol = "created_at", vecTable = TableName.VEC_TODOS),
+    TableName.SCHEDULES      to TableMeta("title",       true,  dateCol = "event_date"),
+    TableName.HOME_STATUS    to TableMeta("device_name", false, dateCol = "updated_at"),
+    TableName.ITEM_LOCATIONS to TableMeta("item_name",   false, dateCol = "updated_at"),
+    TableName.ASSETS         to TableMeta("category",    true,  hasCategory = true, dateCol = "recorded_at"),
+    TableName.RECIPES        to TableMeta("name",        true,  dateCol = "created_at", vecTable = TableName.VEC_RECIPES),
+    TableName.GROCERY_ITEMS  to TableMeta("name",        false),
 )
 
 private val ALLOWED_TABLES = TABLE_META.keys.toSet()
@@ -64,10 +64,10 @@ class ContextRetriever(private val embedding: EmbeddingService) {
         val dateCol = meta.dateCol ?: "rowid"
         val rows = transaction {
             val sql = if (meta.hasUserId)
-                "SELECT * FROM $table WHERE (user_id = ? OR is_shared = 1) ORDER BY $dateCol DESC LIMIT ?"
+                "SELECT * FROM $table WHERE (user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue}) ORDER BY $dateCol DESC LIMIT ?"
             else
                 "SELECT * FROM $table ORDER BY $dateCol DESC LIMIT ?"
-            execRaw(sql, if (meta.hasUserId) listOf(userId, RECENT_LIMIT) else listOf(RECENT_LIMIT))
+            execRaw(sql, if (meta.hasUserId) listOf(userId, AppConfig.RECENT_LIMIT) else listOf(AppConfig.RECENT_LIMIT))
         }
         return ContextResult(table, "recent", rows)
     }
@@ -79,7 +79,7 @@ class ContextRetriever(private val embedding: EmbeddingService) {
         val params = mutableListOf<Any>()
 
         if (meta.hasUserId) {
-            conditions.add("(user_id = ? OR is_shared = 1)")
+            conditions.add("(user_id = ? OR is_shared = ${SharedStatus.SHARED.sqlValue})")
             params.add(userId)
         }
         filter.keyword?.let {
@@ -100,12 +100,12 @@ class ContextRetriever(private val embedding: EmbeddingService) {
         }
         if (filter.isShared != null && !meta.hasUserId) {
             conditions.add("is_shared = ?")
-            params.add(if (filter.isShared) 1 else 0)
+            params.add(SharedStatus.fromBoolean(filter.isShared).sqlValue)
         }
 
         val where = if (conditions.isEmpty()) "" else "WHERE ${conditions.joinToString(" AND ")}"
         val rows = transaction {
-            execRaw("SELECT * FROM $table $where LIMIT ?", params + RECENT_LIMIT)
+            execRaw("SELECT * FROM $table $where LIMIT ?", params + AppConfig.RECENT_LIMIT)
         }
         return ContextResult(table, "query", rows)
     }
@@ -119,7 +119,7 @@ class ContextRetriever(private val embedding: EmbeddingService) {
 
         val similar = transaction {
             val conn = TransactionManager.current().connection.connection as java.sql.Connection
-            embedding.findSimilar(conn, meta.vecTable, queryEmbedding, SIMILAR_LIMIT)
+            embedding.findSimilar(conn, meta.vecTable, queryEmbedding, AppConfig.SIMILAR_LIMIT)
         }
         if (similar.isEmpty()) return ContextResult(table, "similar", emptyList())
 

@@ -1,12 +1,14 @@
 package com.homeassistant.db.schema
 
+import com.homeassistant.constants.AppConfig
+import com.homeassistant.constants.SharedStatus
 import org.jetbrains.exposed.sql.Table
 
 // mirrors memos table in migrate.ts
 object Memos : Table("memos") {
     val id         = integer("id").autoIncrement()
     val userId     = text("user_id")
-    val isShared   = integer("is_shared").default(0)
+    val isShared   = integer("is_shared").default(SharedStatus.PRIVATE.sqlValue)
     val title      = text("title").nullable()
     val content    = text("content")
     val tags       = text("tags").nullable()
@@ -19,7 +21,7 @@ object Memos : Table("memos") {
 object Schedules : Table("schedules") {
     val id          = integer("id").autoIncrement()
     val userId      = text("user_id")
-    val isShared    = integer("is_shared").default(0)
+    val isShared    = integer("is_shared").default(SharedStatus.PRIVATE.sqlValue)
     val title       = text("title")
     val description = text("description").nullable()
     val eventDate   = text("event_date")
@@ -52,9 +54,9 @@ object ItemLocations : Table("item_locations") {
 object Assets : Table("assets") {
     val id         = integer("id").autoIncrement()
     val userId     = text("user_id")
-    val category   = text("category").default("cash")
+    val category   = text("category").default(AppConfig.DEFAULT_ASSET_CATEGORY)
     val amount     = double("amount")
-    val currency   = text("currency").default("KRW")
+    val currency   = text("currency").default(AppConfig.DEFAULT_CURRENCY)
     val note       = text("note").nullable()
     val recordedAt = text("recorded_at")
     override val primaryKey = PrimaryKey(id)
@@ -64,7 +66,7 @@ object Assets : Table("assets") {
 object Todos : Table("todos") {
     val id        = integer("id").autoIncrement()
     val userId    = text("user_id")
-    val isShared  = integer("is_shared").default(0)
+    val isShared  = integer("is_shared").default(SharedStatus.PRIVATE.sqlValue)
     val content   = text("content")
     val isDone    = integer("is_done").default(0)
     val dueDate   = text("due_date").nullable()
@@ -90,7 +92,7 @@ object Recipes : Table("recipes") {
 object GroceryItems : Table("grocery_items") {
     val id   = integer("id").autoIncrement()
     val name = text("name").uniqueIndex()
-    val unit = text("unit").default("개")
+    val unit = text("unit").default(AppConfig.DEFAULT_GROCERY_UNIT)
     override val primaryKey = PrimaryKey(id)
 }
 

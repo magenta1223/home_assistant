@@ -7,7 +7,7 @@ import com.homeassistant.constants.Messages
 import com.homeassistant.context.ContextRetriever
 import com.homeassistant.models.ChatResponse
 import com.homeassistant.models.ChatRequest
-import com.homeassistant.nlp.ClaudeClient
+import com.homeassistant.nlp.AiClient
 import com.homeassistant.session.SessionKey
 import com.homeassistant.session.SessionManager
 import org.slf4j.LoggerFactory
@@ -23,7 +23,7 @@ private val log = LoggerFactory.getLogger(ChatPipeline::class.java)
  */
 class ChatPipeline(
     private val sessions: SessionManager,
-    private val claude: ClaudeClient,
+    private val claude: AiClient,
     private val contextRetriever: ContextRetriever,
     private val commandExecutor: CommandExecutor,
 ) {

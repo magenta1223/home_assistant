@@ -7,7 +7,7 @@ import com.homeassistant.constants.SharedStatus
 import com.homeassistant.constants.SlashCommand
 import com.homeassistant.context.ContextRetriever
 import com.homeassistant.models.CommandResult
-import com.homeassistant.nlp.ClaudeClient
+import com.homeassistant.nlp.AiClient
 import org.jetbrains.exposed.sql.transactions.TransactionManager
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.slf4j.LoggerFactory
@@ -20,7 +20,7 @@ private val log = LoggerFactory.getLogger(CommandExecutor::class.java)
 private val QTY_REGEX = Regex("""^(.+?)\s+(\d+(?:\.\d+)?)\s*(개|L|리터|g|kg|봉|팩|병|캔|줄|판|묶음|포)$""")
 
 class CommandExecutor(
-    private val claudeClient: ClaudeClient,
+    private val claudeClient: AiClient,
     private val contextRetriever: ContextRetriever? = null,
 ) {
 

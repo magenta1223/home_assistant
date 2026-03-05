@@ -1,10 +1,5 @@
 package com.homeassistant.nlp
 
-import com.anthropic.client.AnthropicClient
-import com.anthropic.client.okhttp.AnthropicOkHttpClient
-import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.models.messages.Model
-import com.anthropic.models.messages.TextBlock
 import com.homeassistant.constants.AppConfig
 import com.homeassistant.constants.ChatResponseType
 import com.homeassistant.constants.Intent
@@ -15,15 +10,8 @@ import com.homeassistant.constants.TableName
 import com.homeassistant.models.*
 import kotlinx.serialization.json.*
 import java.time.LocalDate
-import kotlin.jvm.optionals.getOrNull
 
-class ClaudeClient(apiKey: String) {
-
-    private val client: AnthropicClient = AnthropicOkHttpClient.builder()
-        .apiKey(apiKey)
-        .build()
-
-    private val model = Model.CLAUDE_3_5_HAIKU_LATEST
+class AiClient(private val backend: LlmBackend) {
 
     // ── Date parsers ─────────────────────────────────────────────────────────
 
@@ -52,7 +40,7 @@ Examples:
     }
 
     suspend fun parseDate(text: String): String? {
-        val responseText = callClaude(
+        val responseText = callBackend(
             system = dateSystemPrompt(),
             userMessage = text,
             maxTokens = AppConfig.MAX_TOKENS_DATE_PARSE,
@@ -65,7 +53,7 @@ Examples:
     }
 
     suspend fun parseDateRange(text: String): Pair<String?, String?> {
-        val responseText = callClaude(
+        val responseText = callBackend(
             system = dateRangeSystemPrompt(),
             userMessage = text,
             maxTokens = AppConfig.MAX_TOKENS_DATE_PARSE,
@@ -104,7 +92,7 @@ ${Intent.ALL_VALUES}
         userText: String,
     ): IntentAnalysis {
         val messages = buildMessages(history, userText)
-        val responseText = callClaude(
+        val responseText = callBackend(
             system = intentSystem,
             messages = messages,
             maxTokens = AppConfig.MAX_TOKENS_INTENT,
@@ -174,7 +162,7 @@ ${Intent.ALL_VALUES}
 - /구매의 params 형식: "재료이름 수량단위" (예: "달걀 12개")
 - 항상 JSON만 응답하고 다른 텍스트는 포함하지 마세요"""
 
-    fun chatSession(
+    suspend fun chatSession(
         history: List<ConversationMessage>,
         userMessage: String,
         context: List<ContextResult> = emptyList(),
@@ -186,7 +174,7 @@ ${Intent.ALL_VALUES}
             userMessage
 
         val messages = buildMessages(history, fullUserMessage)
-        val responseText = callClaude(
+        val responseText = callBackend(
             system = chatbotSystem,
             messages = messages,
             maxTokens = AppConfig.MAX_TOKENS_CHAT,
@@ -220,15 +208,13 @@ ${Intent.ALL_VALUES}
                 "$label:\n$lines"
             }
 
-    /** Build messages list for multi-turn context. */
     private fun buildMessages(
         history: List<ConversationMessage>,
         userText: String,
     ): List<Pair<String, String>> =
         history.map { Pair(it.role, it.content) } + Pair(MessageRole.USER.value, userText)
 
-    /** Core Claude API call. Returns the text content or null on failure. */
-    private fun callClaude(
+    private suspend fun callBackend(
         system: String,
         userMessage: String? = null,
         messages: List<Pair<String, String>>? = null,
@@ -240,23 +226,6 @@ ${Intent.ALL_VALUES}
             userMessage != null -> listOf(Pair(MessageRole.USER.value, userMessage))
             else -> return null
         }
-
-        val params = MessageCreateParams.builder()
-            .model(model)
-            .maxTokens(maxTokens.toLong())
-            .system(system)
-            .apply {
-                msgList.forEach { (role, content) ->
-                    when (role) {
-                        MessageRole.USER.value      -> this.addUserMessage(content)
-                        MessageRole.ASSISTANT.value -> this.addAssistantMessage(content)
-                    }
-                }
-                if (temperature != null) this.temperature(temperature)
-            }
-            .build()
-
-        val response = client.messages().create(params)
-        return response.content().firstOrNull()?.text()?.getOrNull()?.text()
+        return backend.complete(system, msgList, maxTokens, temperature)
     }
 }

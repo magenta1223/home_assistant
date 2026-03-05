@@ -4,7 +4,11 @@ object AppConfig {
     const val DEFAULT_PORT              = 8080
     const val CONFIG_KEY_DB_PATH        = "homeassistant.dbPath"
     const val CONFIG_KEY_API_KEY        = "homeassistant.anthropicApiKey"
-    const val ENV_VAR_API_KEY           = "ANTHROPIC_API_KEY"
+    const val ENV_VAR_API_KEY               = "ANTHROPIC_API_KEY"
+    const val ENV_VAR_AI_PROVIDER           = "AI_PROVIDER"
+    const val ENV_VAR_OPENROUTER_API_KEY    = "OPENROUTER_API_KEY"
+    const val ENV_VAR_OPENROUTER_MODEL      = "OPENROUTER_MODEL"
+    const val DEFAULT_OPENROUTER_MODEL      = "anthropic/claude-3-5-haiku"
     const val DEFAULT_DB_PATH           = "../homeAssistant/db/homeAssistant.sqlite"
     const val SESSION_TIMEOUT_MINUTES   = 10L
     const val RECENT_LIMIT              = 10

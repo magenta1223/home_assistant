@@ -8,6 +8,6 @@ ktor:
       - com.homeassistant.ApplicationKt.module
 
 homeassistant:
-  dbPath: "../homeAssistant/db/homeAssistant.sqlite"
+  dbPath: "db/homeAssistant.sqlite"
   anthropicApiKey: ${ANTHROPIC_API_KEY}
   sessionTimeoutMinutes: 10

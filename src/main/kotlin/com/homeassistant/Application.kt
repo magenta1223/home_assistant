@@ -2,6 +2,7 @@ package com.homeassistant
 
 import com.homeassistant.commands.CommandExecutor
 import com.homeassistant.constants.AppConfig
+import com.homeassistant.constants.Env
 import com.homeassistant.context.ContextRetriever
 import com.homeassistant.context.EmbeddingService
 import com.homeassistant.db.DatabaseFactory
@@ -44,7 +45,7 @@ fun Application.module() {
     val commandExecutor = CommandExecutor(aiClient)
     val sessionManager = SessionManager()
     val pipeline: IChatPipeline =
-        if (System.getenv(AppConfig.ENV_VAR_USE_DUMMY_PIPELINE) == "true") {
+        if (Env[AppConfig.ENV_VAR_USE_DUMMY_PIPELINE] == "true") {
             DummyChatPipeline()
         } else {
             ChatPipeline(sessionManager, aiClient, contextRetriever, commandExecutor)

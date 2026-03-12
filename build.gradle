@@ -47,6 +47,9 @@ dependencies {
     implementation libs.djl.pytorch.engine
     implementation libs.djl.pytorch.native.auto
 
+    // Dotenv
+    implementation libs.dotenv.kotlin
+
     // Logging
     implementation libs.logback.classic
 

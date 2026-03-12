@@ -3,14 +3,14 @@ package com.homeassistant.routes
 import com.homeassistant.constants.AppConfig
 import com.homeassistant.constants.Messages
 import com.homeassistant.models.ChatRequest
-import com.homeassistant.pipeline.ChatPipeline
+import com.homeassistant.pipeline.IChatPipeline
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 
-fun Application.configureRoutes(pipeline: ChatPipeline) {
+fun Application.configureRoutes(pipeline: IChatPipeline) {
     routing {
         // Health check
         get(AppConfig.ROUTE_HEALTH) {

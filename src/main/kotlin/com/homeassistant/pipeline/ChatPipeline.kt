@@ -26,9 +26,9 @@ class ChatPipeline(
     private val claude: AiClient,
     private val contextRetriever: ContextRetriever,
     private val commandExecutor: CommandExecutor,
-) {
+) : IChatPipeline {
 
-    suspend fun process(req: ChatRequest): ChatResponse {
+    override suspend fun process(req: ChatRequest): ChatResponse {
         val sessionKey = SessionKey(req.platform, req.conversationId)
         val history = sessions.getMessages(sessionKey)
 

@@ -8,6 +8,8 @@ import com.homeassistant.db.DatabaseFactory
 import com.homeassistant.nlp.AiClient
 import com.homeassistant.nlp.AiClientFactory
 import com.homeassistant.pipeline.ChatPipeline
+import com.homeassistant.pipeline.DummyChatPipeline
+import com.homeassistant.pipeline.IChatPipeline
 import com.homeassistant.routes.configureRoutes
 import com.homeassistant.session.SessionManager
 import io.ktor.serialization.kotlinx.json.*
@@ -41,7 +43,12 @@ fun Application.module() {
     val contextRetriever = ContextRetriever(embeddingService)
     val commandExecutor = CommandExecutor(aiClient)
     val sessionManager = SessionManager()
-    val pipeline = ChatPipeline(sessionManager, aiClient, contextRetriever, commandExecutor)
+    val pipeline: IChatPipeline =
+        if (System.getenv(AppConfig.ENV_VAR_USE_DUMMY_PIPELINE) == "true") {
+            DummyChatPipeline()
+        } else {
+            ChatPipeline(sessionManager, aiClient, contextRetriever, commandExecutor)
+        }
 
     // Wire routes
     configureRoutes(pipeline)

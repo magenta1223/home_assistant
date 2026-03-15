@@ -25,10 +25,12 @@ class CommandExecutor(
 ) {
 
     suspend fun execute(command: String, params: String, userId: String): CommandResult {
+        log.info("Command: $command params='$params'")
 
         if (params.isBlank()) return CommandResult(Messages.Errors.BLANK_INPUT)
 
-        return when (command) {
+        return try {
+            val result = when (command) {
 
             // ── Todos ──────────────────────────────────────────────────────
 
@@ -413,7 +415,13 @@ class CommandExecutor(
 
             }
 
-            else -> CommandResult(Messages.Errors.UNKNOWN_COMMAND)
+                else -> CommandResult(Messages.Errors.UNKNOWN_COMMAND)
+            }
+            log.info("Command done: $command")
+            result
+        } catch (e: Exception) {
+            log.error("Command failed: $command", e)
+            CommandResult(Messages.Errors.PIPELINE_ERROR)
         }
     }
 

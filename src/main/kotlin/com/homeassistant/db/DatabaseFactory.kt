@@ -5,12 +5,16 @@ import com.homeassistant.db.schema.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.slf4j.LoggerFactory
 import java.io.File
+
+private val log = LoggerFactory.getLogger(DatabaseFactory::class.java)
 
 object DatabaseFactory {
 
     fun init(dbPath: String) {
         val absolutePath = File(dbPath).canonicalPath
+        log.info("Connecting to database: $absolutePath")
         // Connect to SQLite file (creates it if not exists)
         Database.connect(
             url = "${AppConfig.JDBC_URL_PREFIX}$absolutePath",
@@ -34,5 +38,6 @@ object DatabaseFactory {
             // by the TypeScript side via sqlite-vec extension. The Kotlin backend
             // reads from them directly via raw SQL when EmbeddingService is used.
         }
+        log.info("Schema initialized (tables created if missing)")
     }
 }

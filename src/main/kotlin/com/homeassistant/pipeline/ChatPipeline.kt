@@ -29,6 +29,7 @@ class ChatPipeline(
 ) : IChatPipeline {
 
     override suspend fun process(req: ChatRequest): ChatResponse {
+        log.info("Pipeline start [${req.platform}:${req.conversationId}] text='${req.text.take(100)}'")
         val sessionKey = SessionKey(req.platform, req.conversationId)
         val history = sessions.getMessages(sessionKey)
 
@@ -50,12 +51,14 @@ class ChatPipeline(
             if (nlpResponse.type == ChatResponseType.RESULT.value && nlpResponse.command != null) {
                 val result = commandExecutor.execute(nlpResponse.command, nlpResponse.params ?: "", req.userId)
                 sessions.resetSession(sessionKey)
+                log.info("Pipeline done type=${nlpResponse.type} sessionReset=true")
                 ChatResponse(
                     type = ChatResponseType.RESULT.value,
                     text = result.text ?: nlpResponse.text,
                     sessionReset = true,
                 )
             } else {
+                log.info("Pipeline done type=${nlpResponse.type} sessionReset=false")
                 ChatResponse(
                     type = nlpResponse.type,
                     text = nlpResponse.text,

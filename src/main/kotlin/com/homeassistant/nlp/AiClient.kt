@@ -9,7 +9,10 @@ import com.homeassistant.constants.SlashCommand
 import com.homeassistant.constants.TableName
 import com.homeassistant.models.*
 import kotlinx.serialization.json.*
+import org.slf4j.LoggerFactory
 import java.time.LocalDate
+
+private val log = LoggerFactory.getLogger(AiClient::class.java)
 
 class AiClient(private val backend: LlmBackend) {
 
@@ -40,6 +43,7 @@ Examples:
     }
 
     suspend fun parseDate(text: String): String? {
+        log.info("parseDate input='$text'")
         val responseText = callBackend(
             system = dateSystemPrompt(),
             userMessage = text,
@@ -49,7 +53,10 @@ Examples:
         return try {
             Json.parseToJsonElement(responseText.trim())
                 .jsonObject["date"]?.jsonPrimitive?.content
-        } catch (_: Exception) { null }
+        } catch (_: Exception) {
+            log.warn("parseDate failed to parse response for input='$text'")
+            null
+        }
     }
 
     suspend fun parseDateRange(text: String): Pair<String?, String?> {
@@ -119,8 +126,10 @@ ${Intent.ALL_VALUES}
                 }
                 ContextSpec(db = db, type = type, searchText = searchText, filter = filter)
             } ?: emptyList()
+            log.info("analyzeIntent intent=$intent contexts=${contexts.size}")
             IntentAnalysis(intent, contexts)
         } catch (_: Exception) {
+            log.warn("analyzeIntent failed to parse response")
             IntentAnalysis(ChatResponseType.UNKNOWN.value, emptyList())
         }
     }
@@ -182,13 +191,17 @@ ${Intent.ALL_VALUES}
 
         return try {
             val obj = Json.parseToJsonElement(responseText.trim()).jsonObject
+            val type = obj["type"]?.jsonPrimitive?.content ?: ChatResponseType.UNKNOWN.value
+            val command = obj["command"]?.jsonPrimitive?.content
+            log.info("chatSession prompt='${userMessage.take(200)}' → type=$type command=$command")
             NlpChatResponse(
-                type = obj["type"]?.jsonPrimitive?.content ?: ChatResponseType.UNKNOWN.value,
+                type = type,
                 text = obj["text"]?.jsonPrimitive?.content ?: Messages.Errors.NLP_FALLBACK,
-                command = obj["command"]?.jsonPrimitive?.content,
+                command = command,
                 params = obj["params"]?.jsonPrimitive?.content,
             )
         } catch (_: Exception) {
+            log.warn("chatSession failed to parse response for prompt='${userMessage.take(200)}'")
             NlpChatResponse(ChatResponseType.UNKNOWN.value, Messages.Errors.NLP_FALLBACK)
         }
     }

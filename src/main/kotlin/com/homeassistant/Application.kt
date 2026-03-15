@@ -17,10 +17,16 @@ import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import io.ktor.server.plugins.calllogging.*
 import io.ktor.server.plugins.contentnegotiation.*
 import kotlinx.serialization.json.Json
+import org.slf4j.LoggerFactory
+import org.slf4j.event.Level
+
+private val log = LoggerFactory.getLogger("Application")
 
 fun main() {
+    log.info("Starting server on port ${AppConfig.DEFAULT_PORT}")
     embeddedServer(Netty, port = AppConfig.DEFAULT_PORT, module = Application::module).start(wait = true)
 }
 
@@ -33,9 +39,20 @@ fun Application.module() {
         })
     }
 
+    // HTTP request/response logging
+    install(CallLogging) {
+        level = Level.INFO
+    }
+
     // Read config
     val dbPath = environment.config.propertyOrNull(AppConfig.CONFIG_KEY_DB_PATH)?.getString()
         ?: AppConfig.DEFAULT_DB_PATH
+    val aiProvider = Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "anthropic"
+    val dummy = Env[AppConfig.ENV_VAR_USE_DUMMY_PIPELINE] == "true"
+
+    log.info("Database: $dbPath")
+    log.info("AI provider: $aiProvider")
+    log.info("Pipeline: ${if (dummy) "DUMMY" else "CHAT"}")
 
     // Initialize components
     DatabaseFactory.init(dbPath)
@@ -45,7 +62,7 @@ fun Application.module() {
     val commandExecutor = CommandExecutor(aiClient)
     val sessionManager = SessionManager()
     val pipeline: IChatPipeline =
-        if (Env[AppConfig.ENV_VAR_USE_DUMMY_PIPELINE] == "true") {
+        if (dummy) {
             DummyChatPipeline()
         } else {
             ChatPipeline(sessionManager, aiClient, contextRetriever, commandExecutor)

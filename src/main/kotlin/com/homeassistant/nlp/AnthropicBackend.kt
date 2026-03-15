@@ -7,7 +7,10 @@ import com.anthropic.models.messages.Model
 import com.homeassistant.constants.MessageRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import kotlin.jvm.optionals.getOrNull
+
+private val log = LoggerFactory.getLogger(AnthropicBackend::class.java)
 
 class AnthropicBackend(apiKey: String) : LlmBackend {
 
@@ -23,6 +26,9 @@ class AnthropicBackend(apiKey: String) : LlmBackend {
         maxTokens: Int,
         temperature: Double?,
     ): String? = withContext(Dispatchers.IO) {
+        log.info("Anthropic call model=$model maxTokens=$maxTokens")
+        log.info("Anthropic prompt system='${system.take(100)}' messages=${messages.size}")
+
         val params = MessageCreateParams.builder()
             .model(model)
             .maxTokens(maxTokens.toLong())
@@ -38,7 +44,10 @@ class AnthropicBackend(apiKey: String) : LlmBackend {
             }
             .build()
 
+        val start = System.currentTimeMillis()
         val response = client.messages().create(params)
-        response.content().firstOrNull()?.text()?.getOrNull()?.text()
+        val result = response.content().firstOrNull()?.text()?.getOrNull()?.text()
+        log.info("Anthropic response ${System.currentTimeMillis() - start}ms chars=${result?.length}")
+        result
     }
 }

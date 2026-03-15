@@ -8,6 +8,9 @@ import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.*
+import org.slf4j.LoggerFactory
+
+private val log = LoggerFactory.getLogger(OpenRouterBackend::class.java)
 
 class OpenRouterBackend(
     private val apiKey: String,
@@ -24,6 +27,9 @@ class OpenRouterBackend(
         maxTokens: Int,
         temperature: Double?,
     ): String? {
+        log.info("OpenRouter call model=$model maxTokens=$maxTokens")
+        log.info("OpenRouter prompt system='${system.take(100)}' messages=${messages.size}")
+
         val msgArray = buildJsonArray {
             addJsonObject {
                 put("role", "system")
@@ -44,18 +50,21 @@ class OpenRouterBackend(
             if (temperature != null) put("temperature", temperature)
         }
 
+        val start = System.currentTimeMillis()
         val response = httpClient.post("https://openrouter.ai/api/v1/chat/completions") {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $apiKey")
             setBody(body.toString())
         }
 
-        return try {
+        val result = try {
             val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
             json["choices"]?.jsonArray
                 ?.firstOrNull()?.jsonObject
                 ?.get("message")?.jsonObject
                 ?.get("content")?.jsonPrimitive?.content
         } catch (_: Exception) { null }
+        log.info("OpenRouter response ${System.currentTimeMillis() - start}ms chars=${result?.length}")
+        return result
     }
 }

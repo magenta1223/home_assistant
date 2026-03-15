@@ -3,8 +3,11 @@ package com.homeassistant.session
 import com.github.benmanes.caffeine.cache.Caffeine
 import com.homeassistant.constants.AppConfig
 import com.homeassistant.models.ConversationMessage
+import org.slf4j.LoggerFactory
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.TimeUnit
+
+private val log = LoggerFactory.getLogger(SessionManager::class.java)
 
 /**
  * Session key that uniquely identifies a conversation across platforms.
@@ -32,10 +35,12 @@ class SessionManager(timeoutMinutes: Long = AppConfig.SESSION_TIMEOUT_MINUTES) {
     fun addMessage(key: SessionKey, role: String, content: String) {
         val messages = cache.get(key) { CopyOnWriteArrayList() }
         messages.add(ConversationMessage(role, content))
+        log.debug("Session [$key] +$role (total=${messages.size})")
     }
 
     /** Clears the session (called after a command is successfully executed). */
     fun resetSession(key: SessionKey) {
         cache.invalidate(key)
+        log.info("Session [$key] reset")
     }
 }

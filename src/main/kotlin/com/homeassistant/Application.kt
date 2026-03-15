@@ -26,6 +26,8 @@ import org.slf4j.event.Level
 private val log = LoggerFactory.getLogger("Application")
 
 fun main() {
+    System.setOut(java.io.PrintStream(System.out, true, Charsets.UTF_8))
+    System.setErr(java.io.PrintStream(System.err, true, Charsets.UTF_8))
     log.info("Starting server on port ${AppConfig.DEFAULT_PORT}")
     embeddedServer(Netty, port = AppConfig.DEFAULT_PORT, module = Application::module).start(wait = true)
 }

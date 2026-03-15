@@ -9,7 +9,7 @@ object AppConfig {
     const val ENV_VAR_OPENROUTER_API_KEY    = "OPENROUTER_API_KEY"
     const val ENV_VAR_OPENROUTER_MODEL      = "OPENROUTER_MODEL"
     const val ENV_VAR_USE_DUMMY_PIPELINE    = "USE_DUMMY_PIPELINE"
-    const val DEFAULT_OPENROUTER_MODEL      = "anthropic/claude-3-5-haiku"
+    const val DEFAULT_OPENROUTER_MODEL      = "z-ai/glm-4.5-air:free"
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val SESSION_TIMEOUT_MINUTES   = 10L
     const val RECENT_LIMIT              = 10

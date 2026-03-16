@@ -187,7 +187,9 @@ ${Intent.ALL_VALUES}
             system = chatbotSystem,
             messages = messages,
             maxTokens = AppConfig.MAX_TOKENS_CHAT,
-        ) ?: return NlpChatResponse(ChatResponseType.UNKNOWN.value, Messages.Errors.NLP_FALLBACK)
+        ) ?: return NlpChatResponse(ChatResponseType.UNKNOWN.value, Messages.Errors.NLP_FALLBACK).also {
+            log.error("response is null")
+        }
 
         return try {
             val obj = Json.parseToJsonElement(responseText.trim()).jsonObject

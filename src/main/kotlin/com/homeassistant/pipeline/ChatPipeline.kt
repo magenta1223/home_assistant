@@ -41,7 +41,9 @@ class ChatPipeline(
             val contextResults = contextRetriever.retrieve(intentAnalysis.contexts, req.userId)
 
             // 3. Run the chat session (Claude maps to command)
-            val nlpResponse = claude.chatSession(history, req.text, contextResults)
+            val nlpResponse = claude.chatSession(history, req.text, contextResults).also {
+                log.info(it.text)
+            }
 
             // 4. Update session history
             sessions.addMessage(sessionKey, MessageRole.USER.value, req.text)

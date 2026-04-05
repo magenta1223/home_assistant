@@ -7,7 +7,7 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.*
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(OpenRouterBackend::class.java)
@@ -15,54 +15,49 @@ private val log = LoggerFactory.getLogger(OpenRouterBackend::class.java)
 class OpenRouterBackend(
     private val apiKey: String,
     private val model: String,
+    private val config: OpenRouterConfig = OpenRouterConfig(),
 ) : LlmBackend {
 
+    private val json = Json {
+        ignoreUnknownKeys = true
+        explicitNulls = false
+    }
+
     private val httpClient = HttpClient(CIO) {
-        install(ContentNegotiation) { json() }
+        install(ContentNegotiation) { json(json) }
     }
 
     override suspend fun complete(
         system: String,
         messages: List<Pair<String, String>>,
-        maxTokens: Int,
-        temperature: Double?,
+        config: LlmConfig,
     ): String? {
-        log.info("OpenRouter call model=$model maxTokens=$maxTokens")
+        log.info("OpenRouter call model=$model maxTokens=${config.maxTokens}")
         log.info("OpenRouter prompt system='${system.take(100)}' messages=${messages.size}")
 
-
-        val body = buildJsonObject {
-            put("model", model)
-            put("messages", buildJsonArray {
-                addJsonObject {
-                    put("role", "system")
-                    put("content", system)
-                }
-                messages.forEach { (role, content) ->
-                    addJsonObject {
-                        put("role", role)
-                        put("content", content)
-                    }
-                }
-            })
-            put("max_tokens", maxTokens)
-            if (temperature != null) put("temperature", temperature)
-        }
+        val request = OpenRouterRequest(
+            model = model,
+            messages = buildList {
+                add(OpenRouterMessage("system", system))
+                messages.forEach { (role, content) -> add(OpenRouterMessage(role, content)) }
+            },
+            max_tokens  = config.maxTokens.takeIf { it > 0 } ?: this.config.maxTokens,
+            temperature = config.temperature ?: this.config.temperature,
+            top_p       = this.config.topP,
+        )
 
         val start = System.currentTimeMillis()
         val response = httpClient.post("https://openrouter.ai/api/v1/chat/completions") {
             contentType(ContentType.Application.Json)
             header(HttpHeaders.Authorization, "Bearer $apiKey")
-            setBody(body.toString())
+            setBody(request)
         }
 
         val result = try {
-            val json = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-            json["choices"]?.jsonArray
-                ?.firstOrNull()?.jsonObject
-                ?.get("message")?.jsonObject
-                ?.get("content")?.jsonPrimitive?.content
+            json.decodeFromString<OpenRouterResponse>(response.bodyAsText())
+                .choices.firstOrNull()?.message?.content
         } catch (_: Exception) { null }
+
         log.info("OpenRouter response ${System.currentTimeMillis() - start}ms chars=${result?.length}")
         return result
     }

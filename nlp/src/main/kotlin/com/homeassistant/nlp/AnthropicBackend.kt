@@ -3,7 +3,6 @@ package com.homeassistant.nlp
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.models.messages.MessageCreateParams
-import com.anthropic.models.messages.Model
 import com.homeassistant.core.nlcore.MessageRole
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -12,26 +11,26 @@ import kotlin.jvm.optionals.getOrNull
 
 private val log = LoggerFactory.getLogger(AnthropicBackend::class.java)
 
-class AnthropicBackend(apiKey: String) : LlmBackend {
+class AnthropicBackend(
+    apiKey: String,
+    private val config: AnthropicConfig = AnthropicConfig(),
+) : LlmBackend {
 
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()
         .apiKey(apiKey)
         .build()
 
-    private val model = Model.CLAUDE_3_5_HAIKU_LATEST
-
     override suspend fun complete(
         system: String,
         messages: List<Pair<String, String>>,
-        maxTokens: Int,
-        temperature: Double?,
+        config: LlmConfig,
     ): String? = withContext(Dispatchers.IO) {
-        log.info("Anthropic call model=$model maxTokens=$maxTokens")
+        log.info("Anthropic call model=${this@AnthropicBackend.config.model} maxTokens=${config.maxTokens}")
         log.info("Anthropic prompt system='${system.take(100)}' messages=${messages.size}")
 
         val params = MessageCreateParams.builder()
-            .model(model)
-            .maxTokens(maxTokens.toLong())
+            .model(this@AnthropicBackend.config.model)
+            .maxTokens(config.maxTokens.toLong())
             .system(system)
             .apply {
                 messages.forEach { (role, content) ->
@@ -40,7 +39,8 @@ class AnthropicBackend(apiKey: String) : LlmBackend {
                         MessageRole.ASSISTANT.value -> addAssistantMessage(content)
                     }
                 }
-                if (temperature != null) temperature(temperature)
+                val t = config.temperature ?: this@AnthropicBackend.config.temperature
+                if (t != null) temperature(t)
             }
             .build()
 

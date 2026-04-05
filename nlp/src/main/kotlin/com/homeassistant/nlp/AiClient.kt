@@ -130,6 +130,6 @@ class AiClient(
             userMessage != null -> listOf(Pair(MessageRole.USER.value, userMessage))
             else -> return null
         }
-        return backend.complete(system, msgList, maxTokens, temperature)
+        return backend.complete(system, msgList, LlmCallConfig(maxTokens, temperature))
     }
 }

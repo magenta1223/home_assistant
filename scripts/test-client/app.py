@@ -18,7 +18,7 @@ def chat():
         resp = requests.post(
             f"{BACKEND_URL}/api/chat",
             json=data,
-            timeout=30,
+            timeout=90,
         )
         return jsonify(resp.json()), resp.status_code
     except requests.exceptions.ConnectionError:

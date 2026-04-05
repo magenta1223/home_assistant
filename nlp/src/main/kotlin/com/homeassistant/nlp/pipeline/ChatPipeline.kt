@@ -25,8 +25,6 @@ class ChatPipeline(
         val history = sessions.getMessages(sessionKey)
 
         return try {
-            val intentAnalysis = aiClient.analyzeIntent(history, req.text)
-//            val contextResults = contextRetriever.retrieve(intentAnalysis.contexts, req.userId)
             val nlpResponse = aiClient.chatSession(history, req.text).also {
                 log.info(it.text)
             }

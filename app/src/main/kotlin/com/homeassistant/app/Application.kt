@@ -5,7 +5,9 @@ import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.session.SessionManager
 import com.homeassistant.nlp.NliPromptConfig
+import com.homeassistant.nlp.pipeline.ChatPipeline
 import com.homeassistant.nlp.pipeline.DummyChatPipeline
+import com.homeassistant.nlp.pipeline.NoOpCommandExecutor
 import com.homeassistant.nlp.AiClientFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -57,7 +59,6 @@ fun Application.module() {
 //    val commandExecutor = CommandExecutor(aiClient, contextRetriever)
     val sessionManager = SessionManager()
 
-//    val pipeline = if (dummy) DummyChatPipeline() else ChatPipeline(sessionManager, aiClient, contextRetriever, commandExecutor)
-    val pipeline = DummyChatPipeline()
+    val pipeline = if (dummy) DummyChatPipeline() else ChatPipeline(sessionManager, aiClient, NoOpCommandExecutor())
     configureRoutes(pipeline)
 }

@@ -6,6 +6,13 @@ plugins {
     alias(libs.plugins.ktor) apply false
 }
 
+tasks.register<Exec>("runTestClient") {
+    group = "application"
+    description = "Run scripts/test-client/app.py (Flask test client)"
+    commandLine("python", "scripts/test-client/app.py")
+    workingDir(rootDir)
+}
+
 subprojects {
     group = "com.homeassistant"
     version = "1.0.0"

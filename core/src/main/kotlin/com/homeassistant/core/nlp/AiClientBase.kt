@@ -1,4 +1,4 @@
-package com.homeassistant.core.nlcore
+package com.homeassistant.core.nlp
 
 import com.homeassistant.core.models.ContextResult
 import com.homeassistant.core.models.ConversationMessage

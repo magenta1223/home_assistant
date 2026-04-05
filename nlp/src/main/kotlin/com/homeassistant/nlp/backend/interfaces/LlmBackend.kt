@@ -1,4 +1,4 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.backend.interfaces
 
 interface LlmBackend {
     suspend fun complete(

@@ -1,5 +1,11 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.backend.impl
 
+import com.homeassistant.nlp.backend.dto.OpenRouterConfig
+import com.homeassistant.nlp.backend.dto.OpenRouterMessage
+import com.homeassistant.nlp.backend.dto.OpenRouterRequest
+import com.homeassistant.nlp.backend.dto.OpenRouterResponse
+import com.homeassistant.nlp.backend.interfaces.LlmBackend
+import com.homeassistant.nlp.backend.interfaces.LlmConfig
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -41,9 +47,9 @@ class OpenRouterBackend(
                 add(OpenRouterMessage("system", system))
                 messages.forEach { (role, content) -> add(OpenRouterMessage(role, content)) }
             },
-            max_tokens  = config.maxTokens.takeIf { it > 0 } ?: this.config.maxTokens,
+            max_tokens = config.maxTokens.takeIf { it > 0 } ?: this.config.maxTokens,
             temperature = config.temperature ?: this.config.temperature,
-            top_p       = this.config.topP,
+            top_p = this.config.topP,
         )
 
         val start = System.currentTimeMillis()

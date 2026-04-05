@@ -1,4 +1,4 @@
-package com.homeassistant.core.nlcore
+package com.homeassistant.core.nlp
 
 interface PromptConfig {
     val intentSystemPrompt: String

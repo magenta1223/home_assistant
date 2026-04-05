@@ -1,4 +1,4 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.backend.dto
 
 import com.anthropic.models.messages.Model
 

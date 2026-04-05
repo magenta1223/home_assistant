@@ -1,5 +1,12 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.backend.impl
 
+import com.homeassistant.nlp.backend.dto.OllamaConfig
+import com.homeassistant.nlp.backend.dto.OllamaMessage
+import com.homeassistant.nlp.backend.dto.OllamaOptions
+import com.homeassistant.nlp.backend.dto.OllamaRequest
+import com.homeassistant.nlp.backend.dto.OllamaResponse
+import com.homeassistant.nlp.backend.interfaces.LlmBackend
+import com.homeassistant.nlp.backend.interfaces.LlmConfig
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.HttpTimeout
@@ -51,12 +58,12 @@ class OllamaBackend(
             stream = false,
             think = this.config.think,
             options = OllamaOptions(
-                temperature   = config.temperature ?: this.config.temperature,
-                topK          = this.config.topK,
-                topP          = this.config.topP,
-                numPredict    = config.maxTokens.takeIf { it > 0 } ?: this.config.numPredict,
-                numCtx        = this.config.numCtx,
-                seed          = this.config.seed,
+                temperature = config.temperature ?: this.config.temperature,
+                topK = this.config.topK,
+                topP = this.config.topP,
+                numPredict = config.maxTokens.takeIf { it > 0 } ?: this.config.numPredict,
+                numCtx = this.config.numCtx,
+                seed = this.config.seed,
                 repeatPenalty = this.config.repeatPenalty,
             ),
         )

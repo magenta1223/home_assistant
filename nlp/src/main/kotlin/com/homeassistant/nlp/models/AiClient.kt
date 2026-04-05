@@ -1,12 +1,14 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.models
 
 import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.nlcore.ChatResponseType
-import com.homeassistant.core.nlcore.CoreMessages
-import com.homeassistant.core.nlcore.MessageRole
+import com.homeassistant.core.nlp.AiClientBase
+import com.homeassistant.core.nlp.CoreMessages
+import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.models.*
-import com.homeassistant.core.nlcore.AiClientBase
-import com.homeassistant.core.nlcore.PromptConfig
+import com.homeassistant.core.nlp.ChatResponseType
+import com.homeassistant.core.nlp.PromptConfig
+import com.homeassistant.nlp.backend.interfaces.LlmBackend
+import com.homeassistant.nlp.backend.interfaces.LlmConfig
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 
@@ -130,6 +132,6 @@ class AiClient(
             userMessage != null -> listOf(Pair(MessageRole.USER.value, userMessage))
             else -> return null
         }
-        return backend.complete(system, msgList, LlmCallConfig(maxTokens, temperature))
+        return backend.complete(system, msgList, LlmConfig(maxTokens, temperature))
     }
 }

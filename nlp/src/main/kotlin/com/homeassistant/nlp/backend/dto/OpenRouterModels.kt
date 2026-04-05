@@ -1,4 +1,4 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.backend.dto
 
 import kotlinx.serialization.Serializable
 

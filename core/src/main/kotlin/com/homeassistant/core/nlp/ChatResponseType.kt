@@ -1,4 +1,4 @@
-package com.homeassistant.core.nlcore
+package com.homeassistant.core.nlp
 
 enum class ChatResponseType(val value: String) {
     QUESTION("question"),

@@ -1,9 +1,12 @@
-package com.homeassistant.nlp
+package com.homeassistant.nlp.backend.impl
 
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.models.messages.MessageCreateParams
-import com.homeassistant.core.nlcore.MessageRole
+import com.homeassistant.core.nlp.MessageRole
+import com.homeassistant.nlp.backend.dto.AnthropicConfig
+import com.homeassistant.nlp.backend.interfaces.LlmBackend
+import com.homeassistant.nlp.backend.interfaces.LlmConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory

@@ -8,7 +8,7 @@ import com.homeassistant.nlp.NliPromptConfig
 import com.homeassistant.nlp.pipeline.ChatPipeline
 import com.homeassistant.nlp.pipeline.DummyChatPipeline
 import com.homeassistant.nlp.pipeline.NoOpCommandExecutor
-import com.homeassistant.nlp.AiClientFactory
+import com.homeassistant.nlp.models.AiClientFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install

@@ -1,4 +1,4 @@
-package com.homeassistant.core.nlcore
+package com.homeassistant.core.nlp
 
 enum class MessageRole(val value: String) {
     USER("user"), ASSISTANT("assistant");

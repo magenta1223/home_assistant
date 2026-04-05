@@ -1,7 +1,7 @@
 package com.homeassistant.nlp
 
-import com.homeassistant.core.nlcore.ChatResponseType
-import com.homeassistant.core.nlcore.PromptConfig
+import com.homeassistant.core.nlp.ChatResponseType
+import com.homeassistant.core.nlp.PromptConfig
 
 class NliPromptConfig : PromptConfig {
 

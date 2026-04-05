@@ -1,12 +1,11 @@
-package com.homeassistant.nlp.backend.impl
+package com.homeassistant.nlp.backend.anthropic
 
 import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.models.messages.MessageCreateParams
 import com.homeassistant.core.nlp.MessageRole
-import com.homeassistant.nlp.backend.dto.AnthropicConfig
-import com.homeassistant.nlp.backend.interfaces.LlmBackend
-import com.homeassistant.nlp.backend.interfaces.LlmConfig
+import com.homeassistant.core.nlp.LlmBackend
+import com.homeassistant.core.nlp.LlmConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
@@ -16,7 +15,7 @@ private val log = LoggerFactory.getLogger(AnthropicBackend::class.java)
 
 class AnthropicBackend(
     apiKey: String,
-    private val config: AnthropicConfig = AnthropicConfig(),
+    private val config: AnthropicConfig = AnthropicConfig()
 ) : LlmBackend {
 
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()

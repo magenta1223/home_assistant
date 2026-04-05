@@ -2,11 +2,11 @@ package com.homeassistant.nlp.backend
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
-import com.homeassistant.nlp.backend.impl.OllamaBackend
-import com.homeassistant.nlp.backend.dto.OllamaConfig
-import com.homeassistant.nlp.backend.impl.OpenRouterBackend
-import com.homeassistant.nlp.backend.dto.OpenRouterConfig
-import com.homeassistant.nlp.backend.interfaces.LlmBackend
+import com.homeassistant.nlp.backend.ollama.OllamaBackend
+import com.homeassistant.nlp.backend.ollama.OllamaConfig
+import com.homeassistant.nlp.backend.openrouter.OpenRouterBackend
+import com.homeassistant.nlp.backend.openrouter.OpenRouterConfig
+import com.homeassistant.core.nlp.LlmBackend
 
 object LmBackendFactory {
     fun create(aiProvider: String): LlmBackend {

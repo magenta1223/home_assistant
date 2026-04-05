@@ -3,7 +3,7 @@ package com.homeassistant.nlp.pipeline
 import com.homeassistant.core.commands.ICommandExecutor
 import com.homeassistant.core.models.ChatResponse
 import com.homeassistant.core.models.ChatRequest
-import com.homeassistant.core.nlp.AiClientBase
+import com.homeassistant.core.nlp.AiClient
 import com.homeassistant.core.nlp.ChatResponseType
 import com.homeassistant.core.session.SessionKey
 import com.homeassistant.core.session.SessionManager
@@ -15,7 +15,7 @@ private val log = LoggerFactory.getLogger(ChatPipeline::class.java)
 
 class ChatPipeline(
     private val sessions: SessionManager,
-    private val aiClient: AiClientBase,
+    private val aiClient: AiClient,
     private val commandExecutor: ICommandExecutor,
 ) : IChatPipeline {
 

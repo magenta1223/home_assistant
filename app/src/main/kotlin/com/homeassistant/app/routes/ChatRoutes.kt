@@ -1,7 +1,7 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.`nlp\`.CoreMessages
+import com.homeassistant.core.nlp.CoreMessages
 import com.homeassistant.core.models.ChatRequest
 import com.homeassistant.nlp.pipeline.IChatPipeline
 import io.ktor.http.HttpStatusCode

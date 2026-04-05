@@ -1,19 +1,8 @@
-package com.homeassistant.nlp.backend.dto
+package com.homeassistant.nlp.backend.ollama
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-/** 생성자에서 주입하는 generation 설정. null = Ollama 기본값 사용. */
-data class OllamaConfig(
-    val think: Boolean = false,
-    val temperature: Double? = null,
-    val topK: Int? = null,
-    val topP: Double? = null,
-    val numPredict: Int? = null,
-    val numCtx: Int? = null,
-    val seed: Int? = null,
-    val repeatPenalty: Double? = null,
-)
 
 // ── Request ────────────────────────────────────────────────────────────
 

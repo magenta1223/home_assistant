@@ -1,24 +1,24 @@
 package com.homeassistant.nlp.models
 
 import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.nlp.AiClientBase
+import com.homeassistant.core.nlp.AiClient
 import com.homeassistant.core.nlp.CoreMessages
 import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.models.*
 import com.homeassistant.core.nlp.ChatResponseType
 import com.homeassistant.core.nlp.PromptConfig
-import com.homeassistant.nlp.backend.interfaces.LlmBackend
-import com.homeassistant.nlp.backend.interfaces.LlmConfig
+import com.homeassistant.core.nlp.LlmBackend
+import com.homeassistant.core.nlp.LlmConfig
 import kotlinx.serialization.json.*
 import org.slf4j.LoggerFactory
 
 
-class AiClient(
+class AiClientImpl(
     private val backend: LlmBackend,
     private val prompts: PromptConfig,
-) : AiClientBase {
+) : AiClient {
 
-    private val log = LoggerFactory.getLogger(AiClient::class.java)
+    private val log = LoggerFactory.getLogger(AiClientImpl::class.java)
 
     // ── Intent analyzer ──────────────────────────────────────────────────────
     override suspend fun analyzeIntent(
@@ -99,6 +99,10 @@ class AiClient(
         }
     }
 
+    override suspend fun getGenerationConfig(): LlmConfig {
+        TODO("Not yet implemented")
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private fun formatContext(results: List<ContextResult>): String =
@@ -132,6 +136,6 @@ class AiClient(
             userMessage != null -> listOf(Pair(MessageRole.USER.value, userMessage))
             else -> return null
         }
-        return backend.complete(system, msgList, LlmConfig(maxTokens, temperature))
+        return backend.complete(system, msgList, getGenerationConfig())
     }
 }

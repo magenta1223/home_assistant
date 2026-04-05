@@ -1,11 +1,7 @@
-package com.homeassistant.nlp.backend.impl
+package com.homeassistant.nlp.backend.openrouter
 
-import com.homeassistant.nlp.backend.dto.OpenRouterConfig
-import com.homeassistant.nlp.backend.dto.OpenRouterMessage
-import com.homeassistant.nlp.backend.dto.OpenRouterRequest
-import com.homeassistant.nlp.backend.dto.OpenRouterResponse
-import com.homeassistant.nlp.backend.interfaces.LlmBackend
-import com.homeassistant.nlp.backend.interfaces.LlmConfig
+import com.homeassistant.core.nlp.LlmBackend
+import com.homeassistant.core.nlp.LlmConfig
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*

@@ -6,9 +6,8 @@ import com.homeassistant.core.nlp.PromptConfig
 import com.homeassistant.nlp.backend.LmBackendFactory
 
 object AiClientFactory {
-    fun create(prompts: PromptConfig): AiClient {
-        val aiProvider = LmBackendFactory.Companion.create(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "ollama")
-        val backend = aiProvider.getBackend()
-        return AiClient(backend, prompts)
+    fun create(prompts: PromptConfig): AiClientImpl {
+        val backend = LmBackendFactory.create(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "ollama")
+        return AiClientImpl(backend, prompts)
     }
 }

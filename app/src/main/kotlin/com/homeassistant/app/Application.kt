@@ -4,8 +4,8 @@ import com.homeassistant.app.routes.configureRoutes
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.session.SessionManager
-import com.homeassistant.nli.NliPromptConfig
-import com.homeassistant.nli.pipeline.DummyChatPipeline
+import com.homeassistant.nlp.NliPromptConfig
+import com.homeassistant.nlp.pipeline.DummyChatPipeline
 import com.homeassistant.nlp.AiClientFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application

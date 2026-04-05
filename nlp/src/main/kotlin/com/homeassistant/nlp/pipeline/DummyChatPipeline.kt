@@ -1,4 +1,4 @@
-package com.homeassistant.nli.pipeline
+package com.homeassistant.nlp.pipeline
 
 import com.homeassistant.core.models.ChatRequest
 import com.homeassistant.core.models.ChatResponse

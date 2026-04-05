@@ -1,4 +1,4 @@
-package com.homeassistant.nli
+package com.homeassistant.nlp
 
 import com.homeassistant.core.nlcore.ChatResponseType
 import com.homeassistant.core.nlcore.PromptConfig

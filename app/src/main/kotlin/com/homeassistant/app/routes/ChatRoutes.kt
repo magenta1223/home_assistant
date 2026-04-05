@@ -3,7 +3,7 @@ package com.homeassistant.app.routes
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.nlcore.CoreMessages
 import com.homeassistant.core.models.ChatRequest
-import com.homeassistant.nli.pipeline.IChatPipeline
+import com.homeassistant.nlp.pipeline.IChatPipeline
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.request.receive

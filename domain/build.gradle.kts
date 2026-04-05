@@ -5,7 +5,7 @@ plugins {
 
 dependencies {
     api(project(":core"))
-    api(project(":nli"))
+    api(project(":nlp"))
 
     // Logging
     implementation(libs.logback.classic)

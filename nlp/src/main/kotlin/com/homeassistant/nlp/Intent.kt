@@ -1,4 +1,4 @@
-package com.homeassistant.nli
+package com.homeassistant.nlp
 
 enum class Intent(val value: String) {
     // TODO: from domain

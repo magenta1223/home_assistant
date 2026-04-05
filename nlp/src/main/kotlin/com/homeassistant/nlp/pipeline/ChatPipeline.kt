@@ -1,4 +1,4 @@
-package com.homeassistant.nli.pipeline
+package com.homeassistant.nlp.pipeline
 
 import com.homeassistant.core.commands.ICommandExecutor
 import com.homeassistant.core.models.ChatResponse
@@ -55,7 +55,7 @@ class ChatPipeline(
             log.error("Pipeline error for ${req.platform}:${req.conversationId}", e)
             ChatResponse(
                 type = ChatResponseType.ERROR.value,
-                text = CoreMessages.PIPELINE_ERROR,  // nli/Messages.Errors.PIPELINE_ERROR와 동일
+                text = CoreMessages.PIPELINE_ERROR,
                 sessionReset = false,
             )
         }

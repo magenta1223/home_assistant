@@ -13,7 +13,6 @@ application {
 dependencies {
     implementation(project(":core"))
     implementation(project(":nlp"))
-    implementation(project(":nli"))
     implementation(project(":domain"))
 
     // Ktor server

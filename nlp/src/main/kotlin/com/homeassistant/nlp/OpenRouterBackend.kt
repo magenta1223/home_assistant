@@ -30,22 +30,21 @@ class OpenRouterBackend(
         log.info("OpenRouter call model=$model maxTokens=$maxTokens")
         log.info("OpenRouter prompt system='${system.take(100)}' messages=${messages.size}")
 
-        val msgArray = buildJsonArray {
-            addJsonObject {
-                put("role", "system")
-                put("content", system)
-            }
-            messages.forEach { (role, content) ->
-                addJsonObject {
-                    put("role", role)
-                    put("content", content)
-                }
-            }
-        }
 
         val body = buildJsonObject {
             put("model", model)
-            put("messages", msgArray)
+            put("messages", buildJsonArray {
+                addJsonObject {
+                    put("role", "system")
+                    put("content", system)
+                }
+                messages.forEach { (role, content) ->
+                    addJsonObject {
+                        put("role", role)
+                        put("content", content)
+                    }
+                }
+            })
             put("max_tokens", maxTokens)
             if (temperature != null) put("temperature", temperature)
         }

@@ -8,8 +8,12 @@ object AppConfig {
     const val ENV_VAR_AI_PROVIDER           = "AI_PROVIDER"
     const val ENV_VAR_OPENROUTER_API_KEY    = "OPENROUTER_API_KEY"
     const val ENV_VAR_OPENROUTER_MODEL      = "OPENROUTER_MODEL"
+    const val ENV_VAR_OLLAMA_BASE_URL       = "OLLAMA_BASE_URL"
+    const val ENV_VAR_OLLAMA_MODEL          = "OLLAMA_MODEL"
     const val ENV_VAR_USE_DUMMY_PIPELINE    = "USE_DUMMY_PIPELINE"
     const val DEFAULT_OPENROUTER_MODEL      = "z-ai/glm-4.5-air:free"
+    const val DEFAULT_OLLAMA_BASE_URL       = "http://localhost:11434"
+    const val DEFAULT_OLLAMA_MODEL          = "llama3.2"
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val SESSION_TIMEOUT_MINUTES   = 10L
     const val RECENT_LIMIT              = 10

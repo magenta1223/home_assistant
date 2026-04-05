@@ -6,7 +6,7 @@ import com.homeassistant.core.nlcore.PromptConfig
 
 object AiClientFactory {
     fun create(prompts: PromptConfig): AiClient {
-        val aiProvider = LmBackendFactory.create(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "anthropic")
+        val aiProvider = LmBackendFactory.create(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "ollama")
         val backend = aiProvider.getBackend()
         return AiClient(backend, prompts)
     }

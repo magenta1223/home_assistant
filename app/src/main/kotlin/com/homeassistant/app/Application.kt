@@ -7,7 +7,8 @@ import com.homeassistant.core.session.SessionManager
 import com.homeassistant.nlp.NliPromptConfig
 import com.homeassistant.nlp.pipeline.ChatPipeline
 import com.homeassistant.nlp.models.AiClientFactory
-import com.homeassistant.nlp.pipeline.NoOpToolExecutor
+import com.homeassistant.domain.DomainToolRegistry
+import com.homeassistant.domain.db.DatabaseFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -47,16 +48,9 @@ fun Application.module() {
 
     log.info("Database: $dbPath")
     log.info("Pipeline: ${if (dummy) "DUMMY" else "CHAT"}")
-// TODO: Add contextRetriever later
-//    val registry = createDomainTableMetaRegistry()
-//    val embeddingService = EmbeddingService(registry.allowedVecTables)
-//    val contextRetriever = ContextRetriever(embeddingService, registry)
-//    DatabaseFactory.init(dbPath, ALL_DOMAIN_TABLES)
 
-    // TODO: Add commandExecutor later
-//    val commandExecutor = CommandExecutor(aiClient, contextRetriever)
-
-    val aiClient = AiClientFactory.create(NliPromptConfig(), tools = emptyList())
-    val pipeline = ChatPipeline(SessionManager(), aiClient, NoOpToolExecutor())
+    val registry = DomainToolRegistry(DatabaseFactory.init(dbPath))
+    val aiClient = AiClientFactory.create(NliPromptConfig(), tools = registry.tools())
+    val pipeline = ChatPipeline(SessionManager(), aiClient, registry)
     configureRoutes(pipeline)
 }

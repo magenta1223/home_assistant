@@ -1,5 +1,6 @@
 package com.homeassistant.core.models
 
+import com.homeassistant.core.nlp.MessageRole
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -18,21 +19,38 @@ data class ChatResponse(
     val sessionReset: Boolean = false,
 )
 
-data class ConversationMessage(
-    val role: String,
+data class Message(
+    val role: MessageRole,
     val content: String,
-)
+) {
+
+    companion object {
+        fun buildUserMessage(content: String): Message {
+            return Message(
+                role = MessageRole.USER,
+                content = content
+            )
+        }
+
+        fun buildSystemMessage(content: String): Message {
+            return Message(
+                role = MessageRole.ASSISTANT,
+                content = content
+            )
+        }
+    }
+}
 
 data class IntentAnalysis(
     val intent: String,
-    val contexts: List<com.homeassistant.core.models.ContextSpec>,
+    val contexts: List<ContextSpec>,
 )
 
 data class ContextSpec(
     val db: String,
     val type: String,
     val searchText: String? = null,
-    val filter: com.homeassistant.core.models.FilterParams? = null,
+    val filter: FilterParams? = null,
 )
 
 data class FilterParams(

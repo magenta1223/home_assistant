@@ -1,9 +1,7 @@
 package com.homeassistant.core.nlp
 
+import com.homeassistant.core.models.Message
+
 interface LlmBackend {
-    suspend fun complete(
-        system: String,
-        messages: List<Pair<String, String>>,
-        config: LlmConfig
-    ): String?
+    suspend fun complete(system: SystemPrompt, messages: List<Message>): LlmRawResponse?
 }

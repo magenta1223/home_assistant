@@ -25,18 +25,18 @@ class AiClientImpl(
             log.info("analyzeIntent intent=${dto.intent} contexts=${dto.contexts.size}")
             IntentAnalysis(
                 intent = dto.intent,
-                contexts = dto.contexts.map { c ->
+                contexts = dto.contexts.map { contextSpecDto ->
                     ContextSpec(
-                        db = c.db,
-                        type = c.type,
-                        searchText = c.searchText,
-                        filter = c.filter?.let { f ->
+                        db = contextSpecDto.db,
+                        type = contextSpecDto.type,
+                        searchText = contextSpecDto.searchText,
+                        filter = contextSpecDto.filter?.let {
                             FilterParams(
-                                keyword = f.keyword,
-                                dateFrom = f.dateFrom,
-                                dateTo = f.dateTo,
-                                category = f.category,
-                                isShared = f.isShared,
+                                keyword = it.keyword,
+                                dateFrom = it.dateFrom,
+                                dateTo = it.dateTo,
+                                category = it.category,
+                                isShared = it.isShared,
                             )
                         },
                     )

@@ -1,8 +1,12 @@
 package com.homeassistant.nlp.pipeline
 
+import com.homeassistant.core.commands.CommandName
+import com.homeassistant.core.commands.CommandParams
 import com.homeassistant.core.commands.ICommandExecutor
+import com.homeassistant.core.commands.UserId
 import com.homeassistant.core.models.ChatResponse
 import com.homeassistant.core.models.ChatRequest
+import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.AiClient
 import com.homeassistant.core.nlp.ChatResponseType
 import com.homeassistant.core.session.SessionKey
@@ -22,18 +26,27 @@ class ChatPipeline(
     override suspend fun process(req: ChatRequest):ChatResponse {
         log.info("Pipeline start [${req.platform}:${req.conversationId}] text='${req.text.take(100)}'")
         val sessionKey = SessionKey(req.platform, req.conversationId)
-        val history = sessions.getMessages(sessionKey)
+        val messages = sessions
+            .getMessages(sessionKey)
+            .toMutableList()
+            .apply {
+                add(Message.buildUserMessage(req.text))
+            }
 
         return try {
-            val nlpResponse = aiClient.chatSession(history, req.text).also {
+            val nlpResponse = aiClient.chatSession(messages).also {
                 log.info(it.text)
             }
 
-            sessions.addMessage(sessionKey, MessageRole.USER.value, req.text)
-            sessions.addMessage(sessionKey, MessageRole.ASSISTANT.value, nlpResponse.text)
+            sessions.addMessage(sessionKey, MessageRole.USER, req.text)
+            sessions.addMessage(sessionKey, MessageRole.ASSISTANT, nlpResponse.text)
 
             if (nlpResponse.type == ChatResponseType.RESULT.value && nlpResponse.command != null) {
-                val result = commandExecutor.execute(nlpResponse.command!!, nlpResponse.params ?: "", req.userId)
+                val result = commandExecutor.execute(
+                    CommandName(nlpResponse.command!!),
+                    CommandParams(nlpResponse.params ?: ""),
+                    UserId(req.userId),
+                )
                 sessions.resetSession(sessionKey)
                 log.info("Pipeline done type=${nlpResponse.type} sessionReset=true")
                 ChatResponse(

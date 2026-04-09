@@ -1,27 +1,30 @@
 package com.homeassistant.nlp.models
 
 import com.homeassistant.core.nlp.AiClient
-import com.homeassistant.core.nlp.CoreMessages
 import com.homeassistant.core.models.*
 import com.homeassistant.core.nlp.ChatResponseType
 import com.homeassistant.core.nlp.PromptConfig
 import com.homeassistant.core.nlp.LlmBackend
+import com.homeassistant.core.nlp.LlmResponse
+import com.homeassistant.core.tools.Tool
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
 class AiClientImpl(
     private val backend: LlmBackend,
     private val promptConfig: PromptConfig,
+    private val tools: List<Tool> = emptyList(),
 ) : AiClient {
 
     private val log = LoggerFactory.getLogger(AiClientImpl::class.java)
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun analyzeIntent(messages: List<Message>): IntentAnalysis {
-        val raw = backend.complete(promptConfig.intentSystemPrompt, messages)
-            ?: return IntentAnalysis(ChatResponseType.UNKNOWN.value, emptyList())
+        val response = backend.complete(promptConfig.intentSystemPrompt, messages)
         return try {
-            val dto = json.decodeFromString<IntentAnalysisDto>(raw.value)
+
+            // TODO
+            val dto = json.decodeFromString<IntentAnalysisDto>("")
             log.info("analyzeIntent intent=${dto.intent} contexts=${dto.contexts.size}")
             IntentAnalysis(
                 intent = dto.intent,
@@ -52,22 +55,17 @@ class AiClientImpl(
         messages: List<Message>,
         contextResults: List<ContextResult>,
     ): NlpChatResponse {
-        val raw = backend.complete(promptConfig.chatbotSystemPrompt, messages)
-            ?: return NlpChatResponse(ChatResponseType.UNKNOWN.value, CoreMessages.NLP_FALLBACK).also {
-                log.error("chatSession response is null")
+        return when (val response = backend.complete(promptConfig.chatbotSystemPrompt, messages, tools)) {
+            is LlmResponse.Text -> {
+                val dto = json.decodeFromString<ChatSessionDto>(response.content.value)
+                NlpChatResponse(type = ChatResponseType.valueOf(dto.type.uppercase()), text = dto.text)
             }
-        return try {
-            val dto = json.decodeFromString<ChatSessionDto>(raw.value)
-            log.info("chatSession type=${dto.type} command=${dto.command}")
-            NlpChatResponse(
-                type = dto.type,
-                text = dto.text,
-                command = dto.command,
-                params = dto.params,
+
+            is LlmResponse.ToolCall -> NlpChatResponse(
+                type = ChatResponseType.TOOL_CALL,
+                text = "",
+                toolCall = response.spec,
             )
-        } catch (_: Exception) {
-            log.warn("chatSession failed to parse response")
-            NlpChatResponse(ChatResponseType.UNKNOWN.value, CoreMessages.NLP_FALLBACK)
         }
     }
 }

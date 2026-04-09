@@ -1,6 +1,8 @@
 package com.homeassistant.core.models
 
+import com.homeassistant.core.nlp.ChatResponseType
 import com.homeassistant.core.nlp.MessageRole
+import com.homeassistant.core.tools.ToolCallSpec
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -68,11 +70,11 @@ data class ContextResult(
 )
 
 data class NlpChatResponse(
-    val type: String,
+    val type: ChatResponseType,       // String → ChatResponseType
     val text: String,
-    val command: String? = null,
-    val params: String? = null,
+    val toolCall: ToolCallSpec? = null,
 )
+
 
 data class CommandResult(
     val text: String? = null,

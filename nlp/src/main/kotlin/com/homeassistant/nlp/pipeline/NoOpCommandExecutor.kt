@@ -1,12 +1,12 @@
 package com.homeassistant.nlp.pipeline
 
-import com.homeassistant.core.commands.CommandName
-import com.homeassistant.core.commands.CommandParams
-import com.homeassistant.core.commands.ICommandExecutor
+import com.homeassistant.core.tools.IToolExecutor
+import com.homeassistant.core.commands.ToolResult
 import com.homeassistant.core.commands.UserId
-import com.homeassistant.core.models.CommandResult
+import com.homeassistant.core.tools.ToolCallSpec
 
-class NoOpCommandExecutor : ICommandExecutor {
-    override suspend fun execute(command: CommandName, params: CommandParams, userId: UserId): CommandResult =
-        CommandResult(text = null)
+
+class NoOpToolExecutor : IToolExecutor {
+    override suspend fun execute(spec: ToolCallSpec, userId: UserId): ToolResult =
+        ToolResult("Tool '${spec.name.value}' not yet implemented.")
 }

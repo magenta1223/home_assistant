@@ -1,6 +1,8 @@
 package com.homeassistant.nlp.models
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class IntentAnalysisDto(
@@ -31,4 +33,19 @@ data class ChatSessionDto(
     val text: String,
     val command: String? = null,
     val params: String? = null,
+)
+
+
+// For prompt-injection backends
+@Serializable
+data class PromptInjectionResponseDto(
+    @SerialName("tool_call") val toolCall: PromptInjectionToolCallDto? = null,
+    val type: String? = null,
+    val text: String? = null,
+)
+
+@Serializable
+data class PromptInjectionToolCallDto(
+    val name: String,
+    val arguments: JsonObject,
 )

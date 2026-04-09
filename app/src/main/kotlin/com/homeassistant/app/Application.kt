@@ -6,9 +6,8 @@ import com.homeassistant.core.constants.Env
 import com.homeassistant.core.session.SessionManager
 import com.homeassistant.nlp.NliPromptConfig
 import com.homeassistant.nlp.pipeline.ChatPipeline
-import com.homeassistant.nlp.pipeline.DummyChatPipeline
-import com.homeassistant.nlp.pipeline.NoOpCommandExecutor
 import com.homeassistant.nlp.models.AiClientFactory
+import com.homeassistant.nlp.pipeline.NoOpToolExecutor
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -54,11 +53,10 @@ fun Application.module() {
 //    val contextRetriever = ContextRetriever(embeddingService, registry)
 //    DatabaseFactory.init(dbPath, ALL_DOMAIN_TABLES)
 
-    val aiClient = AiClientFactory.create(NliPromptConfig())
     // TODO: Add commandExecutor later
 //    val commandExecutor = CommandExecutor(aiClient, contextRetriever)
-    val sessionManager = SessionManager()
 
-    val pipeline = if (dummy) DummyChatPipeline() else ChatPipeline(sessionManager, aiClient, NoOpCommandExecutor())
+    val aiClient = AiClientFactory.create(NliPromptConfig(), tools = emptyList())
+    val pipeline = ChatPipeline(SessionManager(), aiClient, NoOpToolExecutor())
     configureRoutes(pipeline)
 }

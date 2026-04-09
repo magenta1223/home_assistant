@@ -3,7 +3,10 @@ package com.homeassistant.nlp.backend.ollama
 import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
+import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.SystemPrompt
+import com.homeassistant.core.tools.Tool
+import com.homeassistant.nlp.backend.utils.withTools
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.HttpTimeout
@@ -36,14 +39,14 @@ class OllamaBackend(
         }
     }
 
-    override suspend fun complete(system: SystemPrompt, messages: List<Message>): LlmRawResponse? {
+    override suspend fun complete(system: SystemPrompt, messages: List<Message>, tools: List<Tool>): LlmResponse {
         log.info("Ollama call model=$model baseUrl=$baseUrl maxTokens=${config.maxTokens}")
         log.info("Ollama prompt system='${system.value.take(100)}' messages=${messages.size}")
 
         val request = OllamaRequest(
             model = model,
             messages = buildList {
-                add(OllamaMessage("system", system.value))
+                add(OllamaMessage("system", system.withTools(tools).value))
                 messages.forEach { add(OllamaMessage(it.role.value, it.content)) }
             },
             stream = false,
@@ -74,6 +77,10 @@ class OllamaBackend(
         } catch (_: Exception) { null }
 
         log.info("Ollama response ${System.currentTimeMillis() - start}ms chars=${result?.length}")
-        return result?.let { LlmRawResponse(it) }
+        return result?.let {
+            LlmResponse.Text(LlmRawResponse(it))
+        } ?: run {
+            LlmResponse.Text(LlmRawResponse("Response is null"))
+        }
     }
 }

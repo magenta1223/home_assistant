@@ -14,4 +14,5 @@ data class PropertySchema(
     val type: String,
     val description: String,
     val enum: List<String>? = null,
+    val items: PropertySchema? = null,
 )

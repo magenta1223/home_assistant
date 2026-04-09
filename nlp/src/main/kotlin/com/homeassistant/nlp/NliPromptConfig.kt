@@ -2,10 +2,11 @@ package com.homeassistant.nlp
 
 import com.homeassistant.core.nlp.ChatResponseType
 import com.homeassistant.core.nlp.PromptConfig
+import com.homeassistant.core.nlp.SystemPrompt
 
 class NliPromptConfig : PromptConfig {
 
-    override val intentSystemPrompt: String = """당신은 한국 가정용 Slack 봇의 의도 분석기입니다.
+    override val intentSystemPrompt: SystemPrompt = SystemPrompt("""당신은 한국 가정용 Slack 봇의 의도 분석기입니다.
 사용자 발화를 분석하여 필요한 DB context를 JSON으로 반환하세요.
 
 사용 가능한 intent 값 (이 중 하나만 사용):
@@ -20,9 +21,9 @@ ${Intent.ALL_VALUES}
   filter 가능 필드: keyword, dateFrom, dateTo, category, isShared
 
 반환 형식 (JSON only, 다른 텍스트 없이):
-{"intent":"...","contexts":[...]}"""
+{"intent":"...","contexts":[...]}""")
 
-    override val chatbotSystemPrompt: String = """당신은 한국 가정용 Slack 봇 어시스턴트입니다.
+    override val chatbotSystemPrompt: SystemPrompt = SystemPrompt("""당신은 한국 가정용 Slack 봇 어시스턴트입니다.
 사용자의 자연어 메시지를 분석하여 아래 명령어 중 하나로 매핑하고 JSON으로 응답하세요.
 
 사용 가능한 명령어:
@@ -35,5 +36,5 @@ ${Intent.ALL_VALUES}
 규칙:
 - params는 명령어 뒤에 오는 텍스트만 포함 (명령어 자체 제외)
 - /구매의 params 형식: "재료이름 수량단위" (예: "달걀 12개")
-- 항상 JSON만 응답하고 다른 텍스트는 포함하지 마세요"""
+- 항상 JSON만 응답하고 다른 텍스트는 포함하지 마세요""")
 }

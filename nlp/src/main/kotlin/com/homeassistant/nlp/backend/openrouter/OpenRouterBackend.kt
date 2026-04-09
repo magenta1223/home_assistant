@@ -1,7 +1,9 @@
 package com.homeassistant.nlp.backend.openrouter
 
+import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmConfig
+import com.homeassistant.core.nlp.LlmRawResponse
+import com.homeassistant.core.nlp.SystemPrompt
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -29,23 +31,19 @@ class OpenRouterBackend(
         install(ContentNegotiation) { json(json) }
     }
 
-    override suspend fun complete(
-        system: String,
-        messages: List<Pair<String, String>>,
-        config: LlmConfig,
-    ): String? {
+    override suspend fun complete(system: SystemPrompt, messages: List<Message>): LlmRawResponse? {
         log.info("OpenRouter call model=$model maxTokens=${config.maxTokens}")
-        log.info("OpenRouter prompt system='${system.take(100)}' messages=${messages.size}")
+        log.info("OpenRouter prompt system='${system.value.take(100)}' messages=${messages.size}")
 
         val request = OpenRouterRequest(
             model = model,
             messages = buildList {
-                add(OpenRouterMessage("system", system))
-                messages.forEach { (role, content) -> add(OpenRouterMessage(role, content)) }
+                add(OpenRouterMessage("system", system.value))
+                messages.forEach { add(OpenRouterMessage(it.role.value, it.content)) }
             },
-            max_tokens = config.maxTokens.takeIf { it > 0 } ?: this.config.maxTokens,
-            temperature = config.temperature ?: this.config.temperature,
-            top_p = this.config.topP,
+            max_tokens = config.maxTokens.takeIf { it > 0 } ?: 512,
+            temperature = config.temperature,
+            top_p = config.topP,
         )
 
         val start = System.currentTimeMillis()
@@ -61,6 +59,6 @@ class OpenRouterBackend(
         } catch (_: Exception) { null }
 
         log.info("OpenRouter response ${System.currentTimeMillis() - start}ms chars=${result?.length}")
-        return result
+        return result?.let { LlmRawResponse(it) }
     }
 }

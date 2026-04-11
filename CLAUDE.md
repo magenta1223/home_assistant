@@ -131,3 +131,43 @@ interface LlmBackend {
 ### 3. Be concise — no filler, straight to the point
 
 No redundant conditions, no defensive null-checks for values that can't be null, no wrapper functions that just delegate. Write exactly what the logic requires and nothing else.
+
+### 4. Make illegal states unrepresentable
+
+Use the type system and structure to make missing-case bugs impossible to compile, not just wrong at runtime. When adding a new variant requires manually updating N separate locations, one missed update silently corrupts behavior.
+
+**Prefer sealed exhaustiveness over `else`-guarded dispatch:**
+
+```kotlin
+// BAD — else silently swallows unhandled variants
+fun handle(r: LlmResponse): String = when (r) {
+    is LlmResponse.Text -> r.content.value
+    else -> ""
+}
+
+// GOOD — compiler enforces every case
+fun handle(r: LlmResponse): String = when (r) {
+    is LlmResponse.Text -> r.content.value
+    is LlmResponse.ToolCall -> r.spec.name.value
+}
+```
+
+**Derive dispatch from a single registration source instead of maintaining parallel structures:**
+
+```kotlin
+// BAD — tools() and execute() must be kept in sync manually
+fun tools() = memoTools.tools + todoTools.tools
+override suspend fun execute(...) = when {
+    spec.name.value.startsWith("memo_") -> memoTools.execute(spec)
+    spec.name.value.startsWith("todo_") -> todoTools.execute(spec)
+    else -> ToolResult("ERROR: ...")
+}
+
+// GOOD — one registration point; routing is derived
+private val dispatch = groups.flatMap { g -> g.tools.map { it.name to g } }.toMap()
+fun tools() = groups.flatMap { it.tools }
+override suspend fun execute(...) =
+    dispatch[spec.name]?.execute(spec) ?: error("Unhandled tool: ${spec.name.value}")
+```
+
+When an `else` branch is unavoidable (e.g. external input), throw instead of returning a silent error value so the gap is immediately visible.

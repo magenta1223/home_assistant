@@ -70,7 +70,7 @@ data class ContextResult(
 )
 
 data class NlpChatResponse(
-    val type: ChatResponseType,       // String → ChatResponseType
+    val type: ChatResponseType,
     val text: String,
     val toolCall: ToolCallSpec? = null,
 )

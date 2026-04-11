@@ -1,13 +1,13 @@
 package com.homeassistant.nlp.backend.ollama
 
+import com.homeassistant.core.nlp.MessageRole
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
 // ── Request ────────────────────────────────────────────────────────────
-
 @Serializable
-data class OllamaMessage(val role: String, val content: String)
+data class OllamaMessage(val role: MessageRole, val content: String)
 
 @Serializable
 data class OllamaOptions(

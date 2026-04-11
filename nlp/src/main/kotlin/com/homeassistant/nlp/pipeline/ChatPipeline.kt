@@ -29,13 +29,19 @@ class ChatPipeline(
 
         return when (nlpResponse.type) {
             ChatResponseType.TOOL_CALL -> {
-                val result = toolExecutor.execute(nlpResponse.toolCall!!, UserId(req.userId))
-                sessions.addMessage(sessionKey, MessageRole.USER, req.text)
-                messages.add(Message(MessageRole.TOOL_RESULT, result.value))
-                val finalResponse = aiClient.chatSession(messages.toList())
-                sessions.addMessage(sessionKey, MessageRole.ASSISTANT, finalResponse.text)
-                sessions.resetSession(sessionKey)
-                ChatResponse(type = ChatResponseType.RESULT.value, text = finalResponse.text, sessionReset = true)
+                nlpResponse.toolCall?.let {
+                    val result = toolExecutor.execute(it, UserId(req.userId))
+                    sessions.addMessage(sessionKey, MessageRole.USER, req.text)
+                    messages.add(Message(MessageRole.TOOL_RESULT, result.value))
+                    val finalResponse = aiClient.chatSession(messages.toList())
+                    sessions.addMessage(sessionKey, MessageRole.ASSISTANT, finalResponse.text)
+                    sessions.resetSession(sessionKey)
+                    ChatResponse(type = ChatResponseType.RESULT.value, text = finalResponse.text, sessionReset = true)
+                } ?: run {
+                    sessions.addMessage(sessionKey, MessageRole.USER, req.text)
+                    sessions.addMessage(sessionKey, MessageRole.ASSISTANT, nlpResponse.text)
+                    ChatResponse(type = nlpResponse.type.value, text = nlpResponse.text)
+                }
             }
             else -> {
                 sessions.addMessage(sessionKey, MessageRole.USER, req.text)

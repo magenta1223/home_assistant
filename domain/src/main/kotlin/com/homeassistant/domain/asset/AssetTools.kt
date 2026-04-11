@@ -4,7 +4,7 @@ import com.homeassistant.core.tools.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-class AssetTools(private val repo: AssetRepository) {
+class AssetTools(private val repo: AssetRepository) : ToolGroup {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -16,7 +16,7 @@ class AssetTools(private val repo: AssetRepository) {
     @Serializable private data class UpdateValueArgs(val id: Int, val value: Double)
     @Serializable private data class ListArgs(val asset_type: String? = null)
 
-    val tools: List<Tool> = listOf(
+    override val tools: List<Tool> = listOf(
         Tool(
             name = ToolName("asset_add"),
             description = ToolDescription("자산을 추가합니다"),
@@ -59,7 +59,7 @@ class AssetTools(private val repo: AssetRepository) {
         ),
     )
 
-    fun execute(spec: ToolCallSpec): ToolResult = try {
+    override fun execute(spec: ToolCallSpec): ToolResult = try {
         when (spec.name.value) {
             "asset_add" -> {
                 val args = json.decodeFromString<AddArgs>(spec.arguments.value)
@@ -89,7 +89,7 @@ class AssetTools(private val repo: AssetRepository) {
                     }
                 })
             }
-            else -> ToolResult("ERROR: 알 수 없는 tool: ${spec.name.value}")
+            else -> error("Unhandled tool: ${spec.name.value}")
         }
     } catch (e: Exception) {
         ToolResult("ERROR: ${e.message}")

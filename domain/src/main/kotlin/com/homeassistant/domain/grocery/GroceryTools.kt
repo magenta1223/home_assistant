@@ -7,14 +7,14 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class GroceryTools(private val repo: GroceryRepository) {
+class GroceryTools(private val repo: GroceryRepository) : ToolGroup {
 
     private val json = Json { ignoreUnknownKeys = true }
     private val dateFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd").withZone(ZoneId.systemDefault())
 
     @Serializable private data class RecordArgs(val item_name: String, val quantity: Double, val purchased_at: Long? = null)
 
-    val tools: List<Tool> = listOf(
+    override val tools: List<Tool> = listOf(
         Tool(
             name = ToolName("grocery_record_purchase"),
             description = ToolDescription("식료품 구매를 기록합니다"),
@@ -39,7 +39,7 @@ class GroceryTools(private val repo: GroceryRepository) {
         ),
     )
 
-    fun execute(spec: ToolCallSpec): ToolResult = try {
+    override fun execute(spec: ToolCallSpec): ToolResult = try {
         when (spec.name.value) {
             "grocery_record_purchase" -> {
                 val args = json.decodeFromString<RecordArgs>(spec.arguments.value)
@@ -56,7 +56,7 @@ class GroceryTools(private val repo: GroceryRepository) {
                 if (items.isEmpty()) ToolResult("구매 주기가 도래한 식료품이 없습니다.")
                 else ToolResult("구매가 필요한 식료품:\n" + items.joinToString("\n") { formatItem(it) })
             }
-            else -> ToolResult("ERROR: 알 수 없는 tool: ${spec.name.value}")
+            else -> error("Unhandled tool: ${spec.name.value}")
         }
     } catch (e: Exception) {
         ToolResult("ERROR: ${e.message}")

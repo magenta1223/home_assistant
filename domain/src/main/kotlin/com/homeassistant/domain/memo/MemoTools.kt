@@ -4,7 +4,7 @@ import com.homeassistant.core.tools.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-class MemoTools(private val repo: MemoRepository) {
+class MemoTools(private val repo: MemoRepository) : ToolGroup {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -14,7 +14,7 @@ class MemoTools(private val repo: MemoRepository) {
     @Serializable private data class UpdateArgs(val id: Int, val title: String? = null, val content: String? = null, val node_ids: List<Int>? = null)
     @Serializable private data class DeleteArgs(val id: Int)
 
-    val tools: List<Tool> = listOf(
+    override val tools: List<Tool> = listOf(
         Tool(
             name = ToolName("memo_create"),
             description = ToolDescription("메모를 생성합니다"),
@@ -70,7 +70,7 @@ class MemoTools(private val repo: MemoRepository) {
         ),
     )
 
-    fun execute(spec: ToolCallSpec): ToolResult = try {
+    override fun execute(spec: ToolCallSpec): ToolResult = try {
         when (spec.name.value) {
             "memo_create" -> {
                 val args = json.decodeFromString<CreateArgs>(spec.arguments.value)
@@ -100,7 +100,7 @@ class MemoTools(private val repo: MemoRepository) {
                 if (deleted) ToolResult("메모(id=${args.id})가 삭제되었습니다.")
                 else ToolResult("ERROR: id=${args.id} 메모를 찾을 수 없습니다.")
             }
-            else -> ToolResult("ERROR: 알 수 없는 tool: ${spec.name.value}")
+            else -> error("Unhandled tool: ${spec.name.value}")
         }
     } catch (e: Exception) {
         ToolResult("ERROR: ${e.message}")

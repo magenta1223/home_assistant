@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.util.concurrent.TimeUnit
 
-class TodoTools(private val repo: TodoRepository) {
+class TodoTools(private val repo: TodoRepository) : ToolGroup {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -15,7 +15,7 @@ class TodoTools(private val repo: TodoRepository) {
     @Serializable private data class ListArgs(val status: String? = null, val node_id: Int? = null)
     @Serializable private data class GetArgs(val id: Int)
 
-    val tools: List<Tool> = listOf(
+    override val tools: List<Tool> = listOf(
         Tool(
             name = ToolName("todo_create"),
             description = ToolDescription("Todo 항목을 생성합니다"),
@@ -70,7 +70,7 @@ class TodoTools(private val repo: TodoRepository) {
         ),
     )
 
-    fun execute(spec: ToolCallSpec): ToolResult = try {
+    override fun execute(spec: ToolCallSpec): ToolResult = try {
         when (spec.name.value) {
             "todo_create" -> {
                 val args = json.decodeFromString<CreateArgs>(spec.arguments.value)
@@ -99,7 +99,7 @@ class TodoTools(private val repo: TodoRepository) {
                 val todo = repo.get(args.id) ?: return ToolResult("ERROR: id=${args.id} Todo를 찾을 수 없습니다.")
                 ToolResult(formatTodoDetail(todo))
             }
-            else -> ToolResult("ERROR: 알 수 없는 tool: ${spec.name.value}")
+            else -> error("Unhandled tool: ${spec.name.value}")
         }
     } catch (e: Exception) {
         ToolResult("ERROR: ${e.message}")

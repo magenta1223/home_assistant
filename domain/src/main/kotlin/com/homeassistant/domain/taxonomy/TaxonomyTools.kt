@@ -4,7 +4,7 @@ import com.homeassistant.core.tools.*
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-class TaxonomyTools(private val repo: TaxonomyRepository) {
+class TaxonomyTools(private val repo: TaxonomyRepository) : ToolGroup {
 
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -12,7 +12,7 @@ class TaxonomyTools(private val repo: TaxonomyRepository) {
     @Serializable private data class ListArgs(val parent_id: Int? = null)
     @Serializable private data class SearchArgs(val query: String)
 
-    val tools: List<Tool> = listOf(
+    override val tools: List<Tool> = listOf(
         Tool(
             name = ToolName("taxonomy_create"),
             description = ToolDescription("taxonomy 노드(카테고리 또는 태그)를 생성합니다"),
@@ -46,7 +46,7 @@ class TaxonomyTools(private val repo: TaxonomyRepository) {
         ),
     )
 
-    fun execute(spec: ToolCallSpec): ToolResult = try {
+    override fun execute(spec: ToolCallSpec): ToolResult = try {
         when (spec.name.value) {
             "taxonomy_create" -> {
                 val args = json.decodeFromString<CreateArgs>(spec.arguments.value)
@@ -65,7 +65,7 @@ class TaxonomyTools(private val repo: TaxonomyRepository) {
                 if (nodes.isEmpty()) ToolResult("'${args.query}'에 해당하는 taxonomy 노드가 없습니다.")
                 else ToolResult(nodes.joinToString("\n") { "[${it.id}] ${it.name} (${it.nodeType})" })
             }
-            else -> ToolResult("ERROR: 알 수 없는 tool: ${spec.name.value}")
+            else -> error("Unhandled tool: ${spec.name.value}")
         }
     } catch (e: Exception) {
         ToolResult("ERROR: ${e.message}")

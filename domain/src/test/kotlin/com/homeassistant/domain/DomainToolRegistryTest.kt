@@ -16,6 +16,7 @@ import kotlin.test.BeforeTest
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
 class DomainToolRegistryTest {
@@ -86,8 +87,9 @@ class DomainToolRegistryTest {
     }
 
     @Test
-    fun `execute unknown tool returns error`() = runBlocking {
-        val result = registry.execute(spec("unknown_tool", "{}"), userId)
-        assertContains(result.value, "ERROR")
+    fun `execute unknown tool throws`() = runBlocking {
+        assertFailsWith<IllegalStateException> {
+            registry.execute(spec("unknown_tool", "{}"), userId)
+        }
     }
 }

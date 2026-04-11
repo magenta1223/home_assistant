@@ -16,21 +16,19 @@ import org.jetbrains.exposed.sql.Database
 
 class DomainToolRegistry(db: Database) : IToolExecutor {
 
-    private val taxonomyTools = TaxonomyTools(TaxonomyRepository(db))
-    private val memoTools = MemoTools(MemoRepository(db))
-    private val todoTools = TodoTools(TodoRepository(db))
-    private val assetTools = AssetTools(AssetRepository(db))
-    private val groceryTools = GroceryTools(GroceryRepository(db))
+    private val groups: List<ToolGroup> = listOf(
+        TaxonomyTools(TaxonomyRepository(db)),
+        MemoTools(MemoRepository(db)),
+        TodoTools(TodoRepository(db)),
+        AssetTools(AssetRepository(db)),
+        GroceryTools(GroceryRepository(db)),
+    )
 
-    fun tools(): List<Tool> =
-        taxonomyTools.tools + memoTools.tools + todoTools.tools + assetTools.tools + groceryTools.tools
+    private val dispatch: Map<ToolName, ToolGroup> =
+        groups.flatMap { g -> g.tools.map { it.name to g } }.toMap()
 
-    override suspend fun execute(spec: ToolCallSpec, userId: UserId): ToolResult = when {
-        spec.name.value.startsWith("taxonomy_") -> taxonomyTools.execute(spec)
-        spec.name.value.startsWith("memo_") -> memoTools.execute(spec)
-        spec.name.value.startsWith("todo_") -> todoTools.execute(spec)
-        spec.name.value.startsWith("asset_") -> assetTools.execute(spec)
-        spec.name.value.startsWith("grocery_") -> groceryTools.execute(spec)
-        else -> ToolResult("ERROR: 알 수 없는 tool: ${spec.name.value}")
-    }
+    fun tools(): List<Tool> = groups.flatMap { it.tools }
+
+    override suspend fun execute(spec: ToolCallSpec, userId: UserId): ToolResult =
+        dispatch[spec.name]?.execute(spec) ?: error("Unhandled tool: ${spec.name.value}")
 }

@@ -43,7 +43,10 @@ class ChatPipeline(
                     ChatResponse(type = nlpResponse.type.value, text = nlpResponse.text)
                 }
             }
-            else -> {
+            ChatResponseType.QUESTION,
+            ChatResponseType.RESULT,
+            ChatResponseType.UNKNOWN,
+            ChatResponseType.ERROR -> {
                 sessions.addMessage(sessionKey, MessageRole.USER, req.text)
                 sessions.addMessage(sessionKey, MessageRole.ASSISTANT, nlpResponse.text)
                 ChatResponse(type = nlpResponse.type.value, text = nlpResponse.text)

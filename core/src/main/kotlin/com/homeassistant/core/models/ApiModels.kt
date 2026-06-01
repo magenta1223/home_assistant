@@ -19,6 +19,8 @@ data class ChatResponse(
     val type: String,
     val text: String,
     val sessionReset: Boolean = false,
+    val pendingCandidateIds: List<Int> = emptyList(),
+    val evidenceMemoryIds: List<Int> = emptyList(),
 )
 
 data class Message(

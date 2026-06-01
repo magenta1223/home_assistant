@@ -36,7 +36,17 @@ class ChatPipeline(
                     val finalResponse = aiClient.chatSession(messages.toList())
                     sessions.addMessage(sessionKey, MessageRole.ASSISTANT, finalResponse.text)
                     sessions.resetSession(sessionKey)
-                    ChatResponse(type = ChatResponseType.RESULT.value, text = finalResponse.text, sessionReset = true)
+                    ChatResponse(
+                        type = ChatResponseType.RESULT.value,
+                        text = finalResponse.text,
+                        sessionReset = true,
+                        pendingCandidateIds = extractIds(result.value, "candidate_id").takeIf { candidateIds ->
+                            it.name.value == "memory_candidate_create"
+                        } ?: emptyList(),
+                        evidenceMemoryIds = extractIds(result.value, "memory_id").takeIf { memoryIds ->
+                            it.name.value == "memory_search"
+                        } ?: emptyList(),
+                    )
                 } ?: run {
                     sessions.addMessage(sessionKey, MessageRole.USER, req.text)
                     sessions.addMessage(sessionKey, MessageRole.ASSISTANT, nlpResponse.text)
@@ -53,4 +63,7 @@ class ChatPipeline(
             }
         }
     }
+
+    private fun extractIds(text: String, label: String): List<Int> =
+        Regex("""\b$label=(\d+)""").findAll(text).map { it.groupValues[1].toInt() }.toList()
 }

@@ -10,11 +10,6 @@ object DatabaseFactory {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
             SchemaUtils.create(
-                TaxonomyTable,
-                MemoTable, MemoTaxonomyTable,
-                TodoTable, SubtaskTable, TodoTaxonomyTable,
-                AssetTable, AssetValueHistoryTable,
-                GroceryItemTable, GroceryPurchaseTable,
                 FamilyTable,
                 FamilyMemberTable,
                 DomainTable,

@@ -11,9 +11,14 @@ object AppConfig {
     const val ENV_VAR_OLLAMA_BASE_URL       = "OLLAMA_BASE_URL"
     const val ENV_VAR_OLLAMA_MODEL          = "OLLAMA_MODEL"
     const val ENV_VAR_USE_DUMMY_PIPELINE    = "USE_DUMMY_PIPELINE"
+    const val ENV_VAR_QDRANT_URL            = "QDRANT_URL"
+    const val ENV_VAR_QDRANT_COLLECTION     = "QDRANT_COLLECTION"
+    const val ENV_VAR_EMBEDDING_MODEL       = "EMBEDDING_MODEL"
     const val DEFAULT_OPENROUTER_MODEL      = "z-ai/glm-4.5-air:free"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://localhost:11434"
     const val DEFAULT_OLLAMA_MODEL          = "llama3.2"
+    const val DEFAULT_QDRANT_URL            = "http://localhost:6333"
+    const val DEFAULT_QDRANT_COLLECTION     = "family_memories"
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val SESSION_TIMEOUT_MINUTES   = 10L
     const val RECENT_LIMIT              = 10

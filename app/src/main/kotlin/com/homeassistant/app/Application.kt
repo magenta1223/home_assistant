@@ -9,6 +9,8 @@ import com.homeassistant.nlp.pipeline.ChatPipeline
 import com.homeassistant.nlp.models.AiClientFactory
 import com.homeassistant.domain.DomainToolRegistry
 import com.homeassistant.domain.db.DatabaseFactory
+import com.homeassistant.domain.memory.DeterministicEmbeddingService
+import com.homeassistant.domain.memory.QdrantVectorStore
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -49,7 +51,16 @@ fun Application.module() {
     log.info("Database: $dbPath")
     log.info("Pipeline: ${if (dummy) "DUMMY" else "CHAT"}")
 
-    val registry = DomainToolRegistry(DatabaseFactory.init(dbPath))
+    val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
+        ?: error("${AppConfig.ENV_VAR_EMBEDDING_MODEL} must be set")
+    val qdrantUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL
+    val qdrantCollection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION
+
+    val registry = DomainToolRegistry(
+        DatabaseFactory.init(dbPath),
+        DeterministicEmbeddingService(embeddingModel),
+        QdrantVectorStore(qdrantUrl, qdrantCollection),
+    )
     val aiClient = AiClientFactory.create(NliPromptConfig(), tools = registry.tools())
     val pipeline = ChatPipeline(SessionManager(), aiClient, registry)
     configureRoutes(pipeline)

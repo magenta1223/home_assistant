@@ -4,9 +4,11 @@ import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
+import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
 import com.homeassistant.nlp.backend.utils.withTools
+import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.HttpTimeout
@@ -72,15 +74,8 @@ class OllamaBackend(
         val responseText = response.bodyAsText()
         log.info("Response Body: $responseText")
 
-        val result = try {
-            json.decodeFromString<OllamaResponse>(responseText).message.content
-        } catch (_: Exception) { null }
-
-        log.info("Ollama response ${System.currentTimeMillis() - start}ms chars=${result?.length}")
-        return result?.let {
-            LlmResponse.Text(LlmRawResponse(it))
-        } ?: run {
-            LlmResponse.Text(LlmRawResponse("Response is null"))
-        }
+        val text = json.decodeFromString<OllamaResponse>(responseText).message.content
+        log.info("Ollama response ${System.currentTimeMillis() - start}ms chars=${text.length}")
+        return parseToolCallOrText(text)
     }
 }

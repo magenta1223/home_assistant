@@ -57,8 +57,13 @@ class AiClientImpl(
     ): NlpChatResponse {
         return when (val response = backend.complete(promptConfig.chatbotSystemPrompt, messages, tools)) {
             is LlmResponse.Text -> {
-                val dto = json.decodeFromString<ChatSessionDto>(response.content.value)
-                NlpChatResponse(type = ChatResponseType.valueOf(dto.type.uppercase()), text = dto.text)
+                try {
+                    val dto = json.decodeFromString<ChatSessionDto>(response.content.value)
+                    NlpChatResponse(type = ChatResponseType.valueOf(dto.type.uppercase()), text = dto.text)
+                } catch (e: Exception) {
+                    log.warn("chatSession failed to parse LLM response", e)
+                    NlpChatResponse(type = ChatResponseType.ERROR, text = "LLM response parse error")
+                }
             }
 
             is LlmResponse.ToolCall -> NlpChatResponse(

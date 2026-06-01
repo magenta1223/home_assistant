@@ -5,6 +5,7 @@ import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.core.tools.ToolName
 import com.homeassistant.domain.db.tables.*
+import com.homeassistant.domain.memory.*
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -30,13 +31,16 @@ class DomainToolRegistryTest {
         val db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
             SchemaUtils.create(
-                TaxonomyTable, MemoTable, MemoTaxonomyTable,
-                TodoTable, SubtaskTable, TodoTaxonomyTable,
-                AssetTable, AssetValueHistoryTable,
-                GroceryItemTable, GroceryPurchaseTable,
+                FamilyTable,
+                FamilyMemberTable,
+                DomainTable,
+                ConversationMessageTable,
+                MemoryCandidateTable,
+                MemoryTable,
+                AuditLogTable,
             )
         }
-        registry = DomainToolRegistry(db)
+        registry = DomainToolRegistry(db, DeterministicEmbeddingService("test-model"), RecordingVectorStore())
     }
 
     @AfterTest
@@ -48,42 +52,30 @@ class DomainToolRegistryTest {
     private val userId = UserId("test-user")
 
     @Test
-    fun `tools() returns 18 tools`() {
-        assertEquals(20, registry.tools().size)
+    fun `tools() returns memory tools only`() {
+        assertEquals(
+            listOf(
+                "memory_candidate_create",
+                "memory_candidate_list_pending",
+                "memory_candidate_approve",
+                "memory_candidate_reject",
+                "memory_search",
+            ),
+            registry.tools().map { it.name.value },
+        )
     }
 
     @Test
-    fun `execute taxonomy_create succeeds`() = runBlocking {
-        val result = registry.execute(spec("taxonomy_create", """{"name":"Work","node_type":"CATEGORY"}"""), userId)
+    fun `execute memory_candidate_create succeeds`() = runBlocking {
+        val result = registry.execute(
+            spec(
+                "memory_candidate_create",
+                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_type":"FACT","content":"Min has piano","summary":"Min piano","confidence":0.8}""",
+            ),
+            userId,
+        )
+        assertContains(result.value, "candidate_id=")
         assertFalse(result.value.startsWith("ERROR"))
-    }
-
-    @Test
-    fun `execute memo_create and memo_list round-trip`() = runBlocking {
-        registry.execute(spec("memo_create", """{"title":"Test","content":"Body"}"""), userId)
-        val result = registry.execute(spec("memo_list", "{}"), userId)
-        assertContains(result.value, "Test")
-    }
-
-    @Test
-    fun `execute todo_create and todo_list round-trip`() = runBlocking {
-        registry.execute(spec("todo_create", """{"title":"Buy milk"}"""), userId)
-        val result = registry.execute(spec("todo_list", "{}"), userId)
-        assertContains(result.value, "Buy milk")
-    }
-
-    @Test
-    fun `execute asset_add and asset_list round-trip`() = runBlocking {
-        registry.execute(spec("asset_add", """{"name":"BTC","asset_type":"FINANCIAL","currency":"USD"}"""), userId)
-        val result = registry.execute(spec("asset_list", "{}"), userId)
-        assertContains(result.value, "BTC")
-    }
-
-    @Test
-    fun `execute grocery_record_purchase and grocery_list round-trip`() = runBlocking {
-        registry.execute(spec("grocery_record_purchase", """{"item_name":"Eggs","quantity":12}"""), userId)
-        val result = registry.execute(spec("grocery_list", "{}"), userId)
-        assertContains(result.value, "Eggs")
     }
 
     @Test
@@ -91,5 +83,10 @@ class DomainToolRegistryTest {
         assertFailsWith<IllegalStateException> {
             registry.execute(spec("unknown_tool", "{}"), userId)
         }
+    }
+
+    private class RecordingVectorStore : VectorStore {
+        override fun upsert(point: VectorPoint) = Unit
+        override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> = emptyList()
     }
 }

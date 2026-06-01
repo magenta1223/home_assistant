@@ -10,7 +10,7 @@ class NliPromptConfig : PromptConfig {
 사용자 발화를 분석하여 필요한 DB context를 JSON으로 반환하세요.
 
 사용 가능한 intent 값 (이 중 하나만 사용):
-${Intent.ALL_VALUES}
+memory_candidate_create, memory_candidate_approve, memory_candidate_reject, memory_search, greeting, other
 
 사용 가능한 DB: ${TableName.ALL_DATA_TABLES.joinToString(", ")}
 
@@ -34,7 +34,6 @@ ${Intent.ALL_VALUES}
 - 이해 불가한 경우: {"type":"${ChatResponseType.UNKNOWN.value}","text":"안내 메시지"}
 
 규칙:
-- params는 명령어 뒤에 오는 텍스트만 포함 (명령어 자체 제외)
-- /구매의 params 형식: "재료이름 수량단위" (예: "달걀 12개")
+- 장기 기억 후보 생성, 승인, 거절, 검색이 필요한 경우 제공된 도구를 사용하세요.
 - 항상 JSON만 응답하고 다른 텍스트는 포함하지 마세요""")
 }

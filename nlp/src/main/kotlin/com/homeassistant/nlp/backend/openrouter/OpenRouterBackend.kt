@@ -43,12 +43,12 @@ class OpenRouterBackend(
         val request = OpenRouterRequest(
             model = model,
             messages = buildList {
-                add(OpenRouterMessage(MessageRole.SYSTEM, system.withTools(tools).value))
-                messages.forEach { add(OpenRouterMessage(it.role, it.content)) }
+                add(OpenRouterMessage("system", system.withTools(tools).value))
+                messages.forEach { add(OpenRouterMessage(it.role.value, it.content)) }
             },
-            maxTokens = config.maxTokens.takeIf { it > 0 } ?: 512,
+            max_tokens = config.maxTokens.takeIf { it > 0 } ?: 512,
             temperature = config.temperature,
-            topP = config.topP,
+            top_p = config.topP,
         )
 
         val start = System.currentTimeMillis()

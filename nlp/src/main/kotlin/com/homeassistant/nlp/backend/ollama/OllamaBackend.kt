@@ -48,8 +48,8 @@ class OllamaBackend(
         val request = OllamaRequest(
             model = model,
             messages = buildList {
-                add(OllamaMessage(MessageRole.SYSTEM, system.withTools(tools).value))
-                messages.forEach { add(OllamaMessage(it.role, it.content)) }
+                add(OllamaMessage("system", system.withTools(tools).value))
+                messages.forEach { add(OllamaMessage(it.role.value, it.content)) }
             },
             stream = false,
             think = config.think,

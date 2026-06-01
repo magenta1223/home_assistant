@@ -55,7 +55,6 @@ class AnthropicBackend(
                         when (msg.role) {
                             MessageRole.USER        -> addUserMessage(msg.content)
                             MessageRole.ASSISTANT   -> addAssistantMessage(msg.content)
-                            MessageRole.SYSTEM      -> Unit  // passed separately via .system()
                             MessageRole.TOOL_RESULT -> Unit  // TODO: implement tool result handling
                         }
                     }

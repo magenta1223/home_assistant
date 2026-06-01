@@ -15,6 +15,13 @@ object DatabaseFactory {
                 TodoTable, SubtaskTable, TodoTaxonomyTable,
                 AssetTable, AssetValueHistoryTable,
                 GroceryItemTable, GroceryPurchaseTable,
+                FamilyTable,
+                FamilyMemberTable,
+                DomainTable,
+                ConversationMessageTable,
+                MemoryCandidateTable,
+                MemoryTable,
+                AuditLogTable,
             )
         }
         return db

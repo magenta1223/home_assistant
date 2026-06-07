@@ -4,11 +4,11 @@ import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
 import com.anthropic.models.messages.MessageCreateParams
-import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
+import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec

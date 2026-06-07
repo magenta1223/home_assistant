@@ -5,9 +5,6 @@ import com.homeassistant.domain.kakao.KakaoExportText
 import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.nlp.pipeline.IChatPipeline
-import com.homeassistant.core.models.ChatRequest
-import com.homeassistant.core.models.ChatResponse
 import com.homeassistant.nlp.analysis.DomainTag
 import com.homeassistant.nlp.analysis.SourceName
 import com.homeassistant.nlp.analysis.SourceRecordRef
@@ -37,7 +34,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(NoopPipeline, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
@@ -51,10 +48,6 @@ class KakaoImportRoutesTest {
         assertEquals(KakaoSourceFileName("2026-06-07.txt"), FakeAnalyzer.sourceFileName)
         assertEquals(KakaoExportText("[동훈] [오후 4:49] 따랑해"), FakeAnalyzer.text)
     }
-}
-
-private object NoopPipeline : IChatPipeline {
-    override suspend fun process(req: ChatRequest): ChatResponse = ChatResponse("result", "noop")
 }
 
 private object FakeAnalyzer : KakaoImportAnalyzeUseCase {

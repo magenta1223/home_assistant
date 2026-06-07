@@ -1,9 +1,9 @@
 package com.homeassistant.nlp.backend.openrouter
 
-import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
+import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool

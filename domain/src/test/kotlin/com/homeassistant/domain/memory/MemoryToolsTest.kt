@@ -1,6 +1,6 @@
 package com.homeassistant.domain.memory
 
-import com.homeassistant.core.commands.UserId
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.core.tools.ToolName

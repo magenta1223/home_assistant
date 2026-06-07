@@ -2,10 +2,10 @@ package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.models.Message
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
+import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
 import org.jetbrains.exposed.sql.Database

@@ -1,6 +1,6 @@
 package com.homeassistant.domain.memory
 
-import com.homeassistant.core.commands.UserId
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.domain.db.tables.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq

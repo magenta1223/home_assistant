@@ -13,9 +13,6 @@ dependencies {
     api(libs.exposed.dao)
     api(libs.sqlite.jdbc)
 
-    // Caffeine cache (session TTL)
-    api(libs.caffeine)
-
     // DJL for embeddings
     api(libs.djl.api)
     api(libs.djl.huggingface.tokenizers)

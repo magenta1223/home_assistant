@@ -1,11 +1,8 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.models.ChatRequest
-import com.homeassistant.core.nlp.CoreMessages
 import com.homeassistant.domain.kakao.KakaoExportText
 import com.homeassistant.domain.kakao.KakaoSourceFileName
-import com.homeassistant.nlp.pipeline.IChatPipeline
 import com.homeassistant.nlp.analysis.TopicCandidate
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -19,18 +16,11 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 fun Application.configureRoutes(
-    pipeline: IChatPipeline,
     kakaoImportAnalyze: KakaoImportAnalyzeUseCase? = null,
 ) {
     routing {
         get(AppConfig.ROUTE_HEALTH) {
-            call.respond(HttpStatusCode.OK, mapOf("status" to CoreMessages.HEALTH_STATUS))
-        }
-
-        post(AppConfig.ROUTE_CHAT) {
-            val req = call.receive<ChatRequest>()
-            val response = pipeline.process(req)
-            call.respond(HttpStatusCode.OK, response)
+            call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
         }
 
         post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {

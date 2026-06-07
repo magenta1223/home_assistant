@@ -1,0 +1,87 @@
+package com.homeassistant.app.routes
+
+import com.homeassistant.domain.kakao.ImportedMessageCount
+import com.homeassistant.domain.kakao.KakaoExportText
+import com.homeassistant.domain.kakao.KakaoSourceFileName
+import com.homeassistant.core.memory.CandidateStatus
+import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.nlp.pipeline.IChatPipeline
+import com.homeassistant.core.models.ChatRequest
+import com.homeassistant.core.models.ChatResponse
+import com.homeassistant.nlp.analysis.DomainTag
+import com.homeassistant.nlp.analysis.SourceName
+import com.homeassistant.nlp.analysis.SourceRecordRef
+import com.homeassistant.nlp.analysis.SourceType
+import com.homeassistant.nlp.analysis.TopicCandidate
+import com.homeassistant.nlp.analysis.TopicCandidateId
+import com.homeassistant.nlp.analysis.TopicSummary
+import com.homeassistant.nlp.analysis.TopicTitle
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.server.testing.testApplication
+import io.ktor.server.application.install
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+
+class KakaoImportRoutesTest {
+    @Test
+    fun `import analyze route reads request text and returns pending topic`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(NoopPipeline, FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertContains(response.bodyAsText(), "관계 표현")
+        assertContains(response.bodyAsText(), "PENDING")
+        assertEquals(KakaoSourceFileName("2026-06-07.txt"), FakeAnalyzer.sourceFileName)
+        assertEquals(KakaoExportText("[동훈] [오후 4:49] 따랑해"), FakeAnalyzer.text)
+    }
+}
+
+private object NoopPipeline : IChatPipeline {
+    override suspend fun process(req: ChatRequest): ChatResponse = ChatResponse("result", "noop")
+}
+
+private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
+    var sourceFileName = KakaoSourceFileName("")
+    var text = KakaoExportText("")
+
+    override suspend fun importAndAnalyze(
+        sourceFileName: KakaoSourceFileName,
+        text: KakaoExportText,
+    ): KakaoImportAnalyzeResult {
+        this.sourceFileName = sourceFileName
+        this.text = text
+        return KakaoImportAnalyzeResult(
+            importedMessageCount = ImportedMessageCount(1),
+            topics = listOf(
+                TopicCandidate(
+                    id = TopicCandidateId(7),
+                    sourceType = SourceType("kakao"),
+                    sourceName = SourceName(sourceFileName.value),
+                    title = TopicTitle("관계 표현"),
+                    summary = TopicSummary("애정 표현을 주고받았다."),
+                    memoryTypes = listOf(MemoryType.FACT),
+                    domains = listOf(DomainTag("relationship")),
+                    evidenceRefs = listOf(SourceRecordRef(1)),
+                    status = CandidateStatus.PENDING,
+                ),
+            ),
+        )
+    }
+}

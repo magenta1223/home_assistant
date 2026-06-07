@@ -10,7 +10,13 @@ import com.homeassistant.nlp.models.AiClientFactory
 import com.homeassistant.domain.DomainToolRegistry
 import com.homeassistant.domain.db.DatabaseFactory
 import com.homeassistant.domain.memory.DeterministicEmbeddingService
+import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoMessageRepository
 import com.homeassistant.domain.memory.QdrantVectorStore
+import com.homeassistant.nlp.analysis.TopicAnalysisRepository
+import com.homeassistant.nlp.analysis.TopicAnalysisService
+import com.homeassistant.nlp.backend.LmBackendFactory
+import com.homeassistant.app.routes.KakaoImportAnalyzeService
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -56,12 +62,18 @@ fun Application.module() {
     val qdrantUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL
     val qdrantCollection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION
 
+    val db = DatabaseFactory.init(dbPath)
     val registry = DomainToolRegistry(
-        DatabaseFactory.init(dbPath),
+        db,
         DeterministicEmbeddingService(embeddingModel),
         QdrantVectorStore(qdrantUrl, qdrantCollection),
     )
     val aiClient = AiClientFactory.create(NliPromptConfig(), tools = registry.tools())
     val pipeline = ChatPipeline(SessionManager(), aiClient, registry)
-    configureRoutes(pipeline)
+    val analysisBackend = LmBackendFactory.create(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "ollama")
+    val kakaoTopicAnalysis = KakaoImportAnalyzeService(
+        KakaoImportService(KakaoMessageRepository(db)),
+        TopicAnalysisService(TopicAnalysisRepository(db), analysisBackend),
+    )
+    configureRoutes(pipeline, kakaoTopicAnalysis)
 }

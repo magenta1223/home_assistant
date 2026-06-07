@@ -31,4 +31,5 @@ object AppConfig {
     const val JDBC_URL_PREFIX           = "jdbc:sqlite:"
     const val ROUTE_HEALTH              = "/health"
     const val ROUTE_CHAT                = "/api/chat"
+    const val ROUTE_KAKAO_IMPORT_ANALYZE = "/api/kakao/import/analyze"
 }

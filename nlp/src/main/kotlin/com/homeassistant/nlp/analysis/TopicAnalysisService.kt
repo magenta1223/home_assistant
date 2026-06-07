@@ -10,6 +10,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 
+/** Runs LLM topic analysis for any source document and stores valid topic candidates. */
 class TopicAnalysisService(
     private val repository: TopicAnalysisRepository,
     private val backend: LlmBackend,

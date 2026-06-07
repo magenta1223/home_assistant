@@ -8,6 +8,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 
+/** Stores and retrieves deduplicated KakaoTalk messages imported from export files. */
 class KakaoMessageRepository(private val db: Database) {
     fun importMessages(messages: List<ParsedKakaoMessage>): List<KakaoImportedMessage> = transaction(db) {
         messages.mapNotNull { message ->

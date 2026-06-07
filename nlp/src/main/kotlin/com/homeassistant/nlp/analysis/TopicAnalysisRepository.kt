@@ -9,6 +9,7 @@ import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 
+/** Persists source-agnostic topic candidates and their classifications/evidence. */
 class TopicAnalysisRepository(private val db: Database) {
     fun createTopic(
         document: SourceDocument,

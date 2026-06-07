@@ -2,6 +2,7 @@ package com.homeassistant.nlp.analysis
 
 import org.jetbrains.exposed.sql.Table
 
+/** Stores source-agnostic topic candidates produced by NLP analysis. */
 object TopicCandidateTable : Table("topic_candidates") {
     val id = integer("id").autoIncrement()
     val sourceType = text("source_type")
@@ -14,18 +15,21 @@ object TopicCandidateTable : Table("topic_candidates") {
     override val primaryKey = PrimaryKey(id)
 }
 
+/** Stores one or more MemoryType values per topic candidate. */
 object TopicMemoryTypeTable : Table("topic_memory_types") {
     val topicId = integer("topic_id").references(TopicCandidateTable.id)
     val memoryType = text("memory_type")
     override val primaryKey = PrimaryKey(topicId, memoryType)
 }
 
+/** Stores free-form domain tags attached to a topic candidate. */
 object TopicDomainTable : Table("topic_domains") {
     val topicId = integer("topic_id").references(TopicCandidateTable.id)
     val domain = text("domain")
     override val primaryKey = PrimaryKey(topicId, domain)
 }
 
+/** Stores source record evidence links for each topic candidate. */
 object TopicEvidenceTable : Table("topic_evidence") {
     val topicId = integer("topic_id").references(TopicCandidateTable.id)
     val sourceRecordId = text("source_record_id")

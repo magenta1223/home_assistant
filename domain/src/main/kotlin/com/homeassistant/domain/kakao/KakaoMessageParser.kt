@@ -2,6 +2,7 @@ package com.homeassistant.domain.kakao
 
 import java.security.MessageDigest
 
+/** Parses KakaoTalk text exports into message records while preserving multiline payloads. */
 object KakaoMessageParser {
     private val header = Regex("^\\[(.+)] \\[(오전|오후) (\\d{1,2}:\\d{2})] ?(.*)$")
 

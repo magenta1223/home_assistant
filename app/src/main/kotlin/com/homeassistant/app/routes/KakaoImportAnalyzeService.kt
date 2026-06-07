@@ -13,6 +13,7 @@ import com.homeassistant.nlp.analysis.SourceType
 import com.homeassistant.nlp.analysis.TopicAnalysisService
 import com.homeassistant.nlp.analysis.TopicCandidate
 
+/** Coordinates Kakao import with source-agnostic topic analysis for API callers. */
 interface KakaoImportAnalyzeUseCase {
     suspend fun importAndAnalyze(
         sourceFileName: KakaoSourceFileName,
@@ -20,6 +21,7 @@ interface KakaoImportAnalyzeUseCase {
     ): KakaoImportAnalyzeResult
 }
 
+/** API-level result for importing Kakao messages and analyzing them into topics. */
 data class KakaoImportAnalyzeResult(
     val importedMessageCount: ImportedMessageCount,
     val topics: List<TopicCandidate>,

@@ -1,6 +1,7 @@
 package com.homeassistant.nlp.backend.openrouter
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 
 
 // ── Request ────────────────────────────────────────────────────────────
@@ -15,6 +16,20 @@ data class OpenRouterRequest(
     val max_tokens: Int? = null,
     val temperature: Double? = null,
     val top_p: Double? = null,
+    val response_format: OpenRouterResponseFormat? = null,
+)
+
+@Serializable
+data class OpenRouterResponseFormat(
+    val type: String = "json_schema",
+    val json_schema: OpenRouterJsonSchemaResponseFormat,
+)
+
+@Serializable
+data class OpenRouterJsonSchemaResponseFormat(
+    val name: String,
+    val strict: Boolean = true,
+    val schema: JsonElement,
 )
 
 // ── Response ───────────────────────────────────────────────────────────

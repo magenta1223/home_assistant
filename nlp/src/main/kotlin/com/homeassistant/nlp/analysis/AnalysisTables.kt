@@ -36,3 +36,22 @@ object TopicEvidenceTable : Table("topic_evidence") {
     val sourceRecordRef = integer("source_record_ref")
     override val primaryKey = PrimaryKey(topicId, sourceRecordId)
 }
+
+/** Stores evidence-backed claims extracted under topic candidates. */
+object TopicClaimTable : Table("topic_claims") {
+    val id = integer("id").autoIncrement()
+    val topicId = integer("topic_id").references(TopicCandidateTable.id)
+    val text = text("text")
+    val subject = text("subject")
+    val memoryType = text("memory_type")
+    val certainty = text("certainty")
+    override val primaryKey = PrimaryKey(id)
+}
+
+/** Stores source record evidence links for each topic claim. */
+object TopicClaimEvidenceTable : Table("topic_claim_evidence") {
+    val claimId = integer("claim_id").references(TopicClaimTable.id)
+    val sourceRecordId = text("source_record_id")
+    val sourceRecordRef = integer("source_record_ref")
+    override val primaryKey = PrimaryKey(claimId, sourceRecordId)
+}

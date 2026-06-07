@@ -18,6 +18,7 @@ class TopicAnalysisRepository(private val db: Database) {
         memoryTypes: List<MemoryType>,
         domains: List<DomainTag>,
         evidence: List<SourceRecord>,
+        claims: List<NewTopicClaim>,
     ): TopicCandidate = transaction(db) {
         val existing = findExistingTopic(document, title, evidence)
         if (existing != null) return@transaction existing
@@ -46,6 +47,21 @@ class TopicAnalysisRepository(private val db: Database) {
             this[TopicEvidenceTable.sourceRecordId] = it.id.value
             this[TopicEvidenceTable.sourceRecordRef] = it.ref.value
         }
+        claims.distinctBy { it.text.value to it.evidence.map { record -> record.id.value }.toSet() }
+            .forEach { claim ->
+                val claimId = TopicClaimTable.insert {
+                    it[TopicClaimTable.topicId] = topicId
+                    it[TopicClaimTable.text] = claim.text.value
+                    it[TopicClaimTable.subject] = claim.subject.value
+                    it[TopicClaimTable.memoryType] = claim.memoryType.name
+                    it[TopicClaimTable.certainty] = claim.certainty.name
+                }[TopicClaimTable.id]
+                TopicClaimEvidenceTable.batchInsert(claim.evidence.distinctBy { it.id }) {
+                    this[TopicClaimEvidenceTable.claimId] = claimId
+                    this[TopicClaimEvidenceTable.sourceRecordId] = it.id.value
+                    this[TopicClaimEvidenceTable.sourceRecordRef] = it.ref.value
+                }
+            }
 
         getTopic(topicId)
     }
@@ -84,6 +100,21 @@ class TopicAnalysisRepository(private val db: Database) {
         val evidence = TopicEvidenceTable.selectAll()
             .where { TopicEvidenceTable.topicId eq topicId }
             .map { SourceRecordRef(it[TopicEvidenceTable.sourceRecordRef]) }
+        val claims = TopicClaimTable.selectAll()
+            .where { TopicClaimTable.topicId eq topicId }
+            .map { claimRow ->
+                val claimId = claimRow[TopicClaimTable.id]
+                TopicClaim(
+                    id = TopicClaimId(claimId),
+                    text = ClaimText(claimRow[TopicClaimTable.text]),
+                    subject = ClaimSubject(claimRow[TopicClaimTable.subject]),
+                    memoryType = MemoryType.valueOf(claimRow[TopicClaimTable.memoryType]),
+                    certainty = ClaimCertainty.valueOf(claimRow[TopicClaimTable.certainty]),
+                    evidenceRefs = TopicClaimEvidenceTable.selectAll()
+                        .where { TopicClaimEvidenceTable.claimId eq claimId }
+                        .map { SourceRecordRef(it[TopicClaimEvidenceTable.sourceRecordRef]) },
+                )
+            }
 
         return TopicCandidate(
             id = TopicCandidateId(topicId),
@@ -94,7 +125,16 @@ class TopicAnalysisRepository(private val db: Database) {
             memoryTypes = memoryTypes,
             domains = domains,
             evidenceRefs = evidence,
+            claims = claims,
             status = CandidateStatus.valueOf(row[TopicCandidateTable.status]),
         )
     }
 }
+
+data class NewTopicClaim(
+    val text: ClaimText,
+    val subject: ClaimSubject,
+    val memoryType: MemoryType,
+    val certainty: ClaimCertainty,
+    val evidence: List<SourceRecord>,
+)

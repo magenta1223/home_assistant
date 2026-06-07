@@ -2,6 +2,7 @@ package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
+import kotlinx.serialization.Serializable
 
 /** Identifies the upstream system that supplied records for generic analysis. */
 @JvmInline value class SourceType(val value: String)
@@ -18,14 +19,27 @@ import com.homeassistant.core.memory.MemoryType
 /** Persistent identifier for a stored topic candidate. */
 @JvmInline value class TopicCandidateId(val value: Int)
 
+/** Persistent identifier for a stored evidence-backed claim within a topic candidate. */
+@JvmInline value class TopicClaimId(val value: Int)
+
 /** Human-readable topic title produced by analysis. */
 @JvmInline value class TopicTitle(val value: String)
 
 /** Short topic summary produced by analysis. */
 @JvmInline value class TopicSummary(val value: String)
 
+/** Atomic evidence-backed statement extracted from a source document. */
+@JvmInline value class ClaimText(val value: String)
+
+/** Person, family member, place, object, or household entity the claim is about. */
+@JvmInline value class ClaimSubject(val value: String)
+
 /** Free-form normalized domain tag attached to an analyzed topic. */
 @JvmInline value class DomainTag(val value: String)
+
+/** How directly the source evidence supports a claim. */
+@Serializable
+enum class ClaimCertainty { OBSERVED, SAID, INFERRED, UNCERTAIN }
 
 /** One analyzable source item with prompt id, source reference, and rendered content. */
 data class SourceRecord(
@@ -41,6 +55,16 @@ data class SourceDocument(
     val records: List<SourceRecord>,
 )
 
+/** Pending evidence-backed claim extracted under a topic candidate. */
+data class TopicClaim(
+    val id: TopicClaimId,
+    val text: ClaimText,
+    val subject: ClaimSubject,
+    val memoryType: MemoryType,
+    val certainty: ClaimCertainty,
+    val evidenceRefs: List<SourceRecordRef>,
+)
+
 /** Pending source-agnostic topic extracted from a document. */
 data class TopicCandidate(
     val id: TopicCandidateId,
@@ -51,6 +75,7 @@ data class TopicCandidate(
     val memoryTypes: List<MemoryType>,
     val domains: List<DomainTag>,
     val evidenceRefs: List<SourceRecordRef>,
+    val claims: List<TopicClaim>,
     val status: CandidateStatus,
 )
 

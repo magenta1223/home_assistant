@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
@@ -15,9 +16,7 @@ subprojects {
     }
 
     tasks.withType<KotlinCompile>().configureEach {
-        kotlinOptions {
-            jvmTarget = "21"
-        }
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
     }
 
     tasks.withType<JavaCompile>().configureEach {

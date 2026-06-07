@@ -6,9 +6,14 @@ import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.nlp.analysis.DomainTag
+import com.homeassistant.nlp.analysis.ClaimCertainty
+import com.homeassistant.nlp.analysis.ClaimSubject
+import com.homeassistant.nlp.analysis.ClaimText
 import com.homeassistant.nlp.analysis.SourceName
 import com.homeassistant.nlp.analysis.SourceRecordRef
 import com.homeassistant.nlp.analysis.SourceType
+import com.homeassistant.nlp.analysis.TopicClaim
+import com.homeassistant.nlp.analysis.TopicClaimId
 import com.homeassistant.nlp.analysis.TopicCandidate
 import com.homeassistant.nlp.analysis.TopicCandidateId
 import com.homeassistant.nlp.analysis.TopicSummary
@@ -44,6 +49,8 @@ class KakaoImportRoutesTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertContains(response.bodyAsText(), "관계 표현")
+        assertContains(response.bodyAsText(), "동훈은 애정 표현을 했다.")
+        assertContains(response.bodyAsText(), "OBSERVED")
         assertContains(response.bodyAsText(), "PENDING")
         assertEquals(KakaoSourceFileName("2026-06-07.txt"), FakeAnalyzer.sourceFileName)
         assertEquals(KakaoExportText("[동훈] [오후 4:49] 따랑해"), FakeAnalyzer.text)
@@ -72,6 +79,16 @@ private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
                     memoryTypes = listOf(MemoryType.FACT),
                     domains = listOf(DomainTag("relationship")),
                     evidenceRefs = listOf(SourceRecordRef(1)),
+                    claims = listOf(
+                        TopicClaim(
+                            id = TopicClaimId(8),
+                            text = ClaimText("동훈은 애정 표현을 했다."),
+                            subject = ClaimSubject("동훈"),
+                            memoryType = MemoryType.FACT,
+                            certainty = ClaimCertainty.OBSERVED,
+                            evidenceRefs = listOf(SourceRecordRef(1)),
+                        ),
+                    ),
                     status = CandidateStatus.PENDING,
                 ),
             ),

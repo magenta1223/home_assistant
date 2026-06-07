@@ -70,7 +70,18 @@ private data class TopicCandidateResponse(
     val memoryTypes: List<String>,
     val domains: List<String>,
     val evidenceMessageIds: List<Int>,
+    val claims: List<TopicClaimResponse>,
     val status: String,
+)
+
+@Serializable
+private data class TopicClaimResponse(
+    val id: Int,
+    val text: String,
+    val subject: String,
+    val memoryType: String,
+    val certainty: String,
+    val evidenceMessageIds: List<Int>,
 )
 
 private fun KakaoImportAnalyzeResult.toResponse(): KakaoImportAnalyzeResponse =
@@ -87,5 +98,15 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
         memoryTypes = memoryTypes.map { it.name },
         domains = domains.map { it.value },
         evidenceMessageIds = evidenceRefs.map { it.value },
+        claims = claims.map {
+            TopicClaimResponse(
+                id = it.id.value,
+                text = it.text.value,
+                subject = it.subject.value,
+                memoryType = it.memoryType.name,
+                certainty = it.certainty.name,
+                evidenceMessageIds = it.evidenceRefs.map { ref -> ref.value },
+            )
+        },
         status = status.name,
     )

@@ -6,6 +6,7 @@ import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
+import com.homeassistant.core.nlp.LlmOutputSchema
 import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
 import org.jetbrains.exposed.sql.Database
@@ -26,14 +27,16 @@ class TopicAnalysisServiceTest {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(
-                TopicCandidateTable,
-                TopicMemoryTypeTable,
-                TopicDomainTable,
-                TopicEvidenceTable,
-            )
+                SchemaUtils.create(
+                    TopicCandidateTable,
+                    TopicMemoryTypeTable,
+                    TopicDomainTable,
+                    TopicEvidenceTable,
+                    TopicClaimTable,
+                    TopicClaimEvidenceTable,
+                )
+            }
         }
-    }
 
     @AfterTest
     fun teardown() {
@@ -53,7 +56,16 @@ class TopicAnalysisServiceTest {
                       "summary": "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
                       "memoryTypes": ["EVENT", "FACT"],
                       "domains": ["location", "home"],
-                      "evidenceRecordIds": ["r2", "r3"]
+                      "evidenceRecordIds": ["r2", "r3"],
+                      "claims": [
+                        {
+                          "text": "홍승민은 카인드커피로 오라고 말했다.",
+                          "subject": "홍승민",
+                          "memoryType": "EVENT",
+                          "certainty": "SAID",
+                          "evidenceRecordIds": ["r2", "r3"]
+                        }
+                      ]
                     }
                   ]
                 }
@@ -78,6 +90,9 @@ class TopicAnalysisServiceTest {
         assertEquals(setOf(MemoryType.EVENT, MemoryType.FACT), result.topics.single().memoryTypes.toSet())
         assertEquals(setOf(DomainTag("location"), DomainTag("home")), result.topics.single().domains.toSet())
         assertEquals(listOf(SourceRecordRef(2), SourceRecordRef(3)), result.topics.single().evidenceRefs)
+        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().claims.single().text.value)
+        assertEquals(ClaimCertainty.SAID, result.topics.single().claims.single().certainty)
+        assertEquals(listOf(SourceRecordRef(2), SourceRecordRef(3)), result.topics.single().claims.single().evidenceRefs)
         assertEquals(CandidateStatus.PENDING, result.topics.single().status)
     }
 
@@ -102,21 +117,151 @@ class TopicAnalysisServiceTest {
         assertContains(backend.system.value, "A-B-A")
         assertContains(backend.messages.single().content, "r1")
         assertContains(backend.messages.single().content, "r3")
+        assertContains(backend.outputSchema!!.value, "claims")
+        assertContains(backend.outputSchema!!.value, "certainty")
     }
+
+    @Test
+    fun `rejects invalid topic analysis responses`() = runBlocking {
+        val document = singleRecordDocument()
+
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor("""not json""").analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(memoryTypes = """["UNKNOWN"]""")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(evidenceRecordIds = """["missing"]""")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(title = "")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(summary = "")).analyze(document)
+        }
+    }
+
+    @Test
+    fun `rejects invalid topic claims`() = runBlocking {
+        val document = singleRecordDocument()
+
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claims = "[]")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claimText = "")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claimSubject = "")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claimMemoryType = "UNKNOWN")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claimCertainty = "GUESSED")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claimEvidenceRecordIds = """["missing"]""")).analyze(document)
+        }
+    }
+
+    @Test
+    fun `stores topic claims once for the same topic text and evidence set`() = runBlocking {
+        val service = serviceFor(topicJson())
+        val document = singleRecordDocument()
+
+        val first = service.analyze(document).topics.single()
+        val second = service.analyze(document).topics.single()
+
+        assertEquals(first.id, second.id)
+        assertEquals(1, second.claims.size)
+        assertEquals(first.claims.single().id, second.claims.single().id)
+    }
+
+    @Test
+    fun `generates topic analysis output schema from serializable dto`() {
+        val schema = TopicAnalysisOutputSchema.value
+
+        assertContains(schema.value, "topics")
+        assertContains(schema.value, "claims")
+        assertContains(schema.value, "memoryType")
+        assertContains(schema.value, "certainty")
+        assertContains(schema.value, "evidenceRecordIds")
+    }
+
+    private fun serviceFor(response: String): TopicAnalysisService =
+        TopicAnalysisService(TopicAnalysisRepository(db), StaticBackend(response))
+
+    private fun singleRecordDocument(): SourceDocument =
+        SourceDocument(
+            sourceType = SourceType("kakao"),
+            sourceName = SourceName("2026-06-07.txt"),
+            records = listOf(SourceRecord(SourceRecordId("r1"), SourceRecordRef(1), "동훈 | 오후 4:49 | 따랑해")),
+        )
+
+    private fun topicJson(
+        title: String = "관계 표현",
+        summary: String = "애정 표현을 주고받았다.",
+        memoryTypes: String = """["FACT"]""",
+        domains: String = """["relationship"]""",
+        evidenceRecordIds: String = """["r1"]""",
+        claimText: String = "동훈은 애정 표현을 했다.",
+        claimSubject: String = "동훈",
+        claimMemoryType: String = "FACT",
+        claimCertainty: String = "OBSERVED",
+        claimEvidenceRecordIds: String = """["r1"]""",
+        claims: String = """
+            [
+              {
+                "text": "$claimText",
+                "subject": "$claimSubject",
+                "memoryType": "$claimMemoryType",
+                "certainty": "$claimCertainty",
+                "evidenceRecordIds": $claimEvidenceRecordIds
+              }
+            ]
+        """.trimIndent(),
+    ): String = """
+        {
+          "topics": [
+            {
+              "title": "$title",
+              "summary": "$summary",
+              "memoryTypes": $memoryTypes,
+              "domains": $domains,
+              "evidenceRecordIds": $evidenceRecordIds,
+              "claims": $claims
+            }
+          ]
+        }
+    """.trimIndent()
 }
 
 private class StaticBackend(private val response: String) : LlmBackend {
-    override suspend fun complete(system: SystemPrompt, messages: List<Message>, tools: List<Tool>): LlmResponse =
+    override suspend fun complete(
+        system: SystemPrompt,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: LlmOutputSchema?,
+    ): LlmResponse =
         LlmResponse.Text(LlmRawResponse(response))
 }
 
 private class CapturingBackend(private val response: String) : LlmBackend {
     var system: SystemPrompt = SystemPrompt("")
     lateinit var messages: List<Message>
+    var outputSchema: LlmOutputSchema? = null
 
-    override suspend fun complete(system: SystemPrompt, messages: List<Message>, tools: List<Tool>): LlmResponse {
+    override suspend fun complete(
+        system: SystemPrompt,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: LlmOutputSchema?,
+    ): LlmResponse {
         this.system = system
         this.messages = messages
+        this.outputSchema = outputSchema
         return LlmResponse.Text(LlmRawResponse(response))
     }
 }

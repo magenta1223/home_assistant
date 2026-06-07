@@ -7,5 +7,6 @@ interface LlmBackend {
         system: SystemPrompt,
         messages: List<Message>,
         tools: List<Tool> = emptyList(),
+        outputSchema: LlmOutputSchema? = null,
     ): LlmResponse
 }

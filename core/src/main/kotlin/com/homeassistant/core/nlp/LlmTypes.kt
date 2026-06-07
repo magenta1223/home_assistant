@@ -4,6 +4,7 @@ import com.homeassistant.core.tools.ToolCallSpec
 
 @JvmInline value class SystemPrompt(val value: String)
 @JvmInline value class LlmRawResponse(val value: String)
+@JvmInline value class LlmOutputSchema(val value: String)
 
 sealed class LlmResponse {
     data class Text(val content: LlmRawResponse) : LlmResponse()

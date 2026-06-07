@@ -2,6 +2,7 @@ package com.homeassistant.nlp.backend.ollama
 
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
+import com.homeassistant.core.nlp.LlmOutputSchema
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
@@ -41,7 +42,12 @@ class OllamaBackend(
         }
     }
 
-    override suspend fun complete(system: SystemPrompt, messages: List<Message>, tools: List<Tool>): LlmResponse {
+    override suspend fun complete(
+        system: SystemPrompt,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: LlmOutputSchema?,
+    ): LlmResponse {
         log.info("Ollama call model=$model baseUrl=$baseUrl maxTokens=${config.maxTokens}")
         log.info("Ollama prompt system='${system.value.take(100)}' messages=${messages.size}")
 

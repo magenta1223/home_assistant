@@ -6,6 +6,7 @@ import com.anthropic.core.JsonValue
 import com.anthropic.models.messages.MessageCreateParams
 import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.nlp.LlmBackend
+import com.homeassistant.core.nlp.LlmOutputSchema
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
@@ -38,7 +39,12 @@ class AnthropicBackend(
         .apiKey(apiKey)
         .build()
 
-    override suspend fun complete(system: SystemPrompt, messages: List<Message>, tools: List<Tool>): LlmResponse {
+    override suspend fun complete(
+        system: SystemPrompt,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: LlmOutputSchema?,
+    ): LlmResponse {
         return withContext(Dispatchers.IO) {
             log.info("Anthropic call model=${config.model} maxTokens=${config.maxTokens}")
             log.info("Anthropic prompt system='${system.value.take(100)}' messages=${messages.size}")

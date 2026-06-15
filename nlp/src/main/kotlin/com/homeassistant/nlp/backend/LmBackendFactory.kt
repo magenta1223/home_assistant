@@ -24,8 +24,8 @@ object LmBackendFactory {
             config = OpenRouterConfig(),
         )
         AiProvider.ANTHROPIC -> AnthropicBackend(
-            apiKey = Env[AppConfig.ENV_VAR_API_KEY]
-                ?: error("${AppConfig.ENV_VAR_API_KEY} not set"),
+            apiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
+                ?: error("${AppConfig.ENV_VAR_OPENROUTER_API_KEY} not set"),
         )
     }
 }

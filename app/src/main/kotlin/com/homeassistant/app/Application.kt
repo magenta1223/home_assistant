@@ -10,6 +10,7 @@ import com.homeassistant.nlp.analysis.TopicAnalysisRepository
 import com.homeassistant.nlp.analysis.TopicAnalysisService
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.app.routes.KakaoImportAnalyzeService
+import com.homeassistant.nlp.backend.AiProvider
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -49,7 +50,7 @@ fun Application.module() {
     log.info("Database: $dbPath")
 
     val db = DatabaseFactory.init(dbPath)
-    val analysisBackend = LmBackendFactory.create(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "ollama")
+    val analysisBackend = LmBackendFactory.create(AiProvider.valueOf(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
     val kakaoTopicAnalysis = KakaoImportAnalyzeService(
         KakaoImportService(KakaoMessageRepository(db)),
         TopicAnalysisService(TopicAnalysisRepository(db), analysisBackend),

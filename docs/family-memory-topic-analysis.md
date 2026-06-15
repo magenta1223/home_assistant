@@ -39,6 +39,6 @@ Claim evidence is persisted separately from topic evidence so approval and futur
 
 The LLM output contract is generated from `@Serializable` DTOs with `kotlinx-schema`.
 
-`TopicAnalysisOutputSchema` generates JSON Schema from the topic analysis output DTO and passes it to OpenRouter as `response_format`. The prompt remains a short task description; required fields, nested shape, and enum values are enforced by the generated schema and by Kotlin DTO parsing.
+`TopicAnalysisOutputContract` generates JSON Schema from the topic analysis output DTO, uses that schema when rendering the topic-analysis prompt, and passes the same schema to OpenRouter as `response_format`. Required fields, nested shape, and enum values are enforced by the generated schema and by Kotlin DTO parsing.
 
 If a model ignores the schema or returns invalid values, `TopicAnalysisService` fails with `TopicAnalysisException`. It does not silently fall back or create partial memory candidates.

@@ -137,6 +137,19 @@ class TopicAnalysisServiceTest {
     }
 
     @Test
+    fun `prompt is generated from topic output schema`() = runBlocking {
+        val backend = CapturingBackend("""{"topics":[]}""")
+        val service = TopicAnalysisService(TopicAnalysisRepository(db), backend)
+
+        service.analyze(singleRecordDocument())
+
+        assertContains(backend.system.value, TopicAnalysisOutputContract.schema.value)
+        assertFalse(backend.system.value.contains("memoryKind는 SEMANTIC"))
+        assertFalse(backend.system.value.contains("SEMANTIC subtype"))
+        assertFalse(backend.system.value.contains("JSON만 반환하세요"))
+    }
+
+    @Test
     fun `rejects invalid topic analysis responses`() = runBlocking {
         val document = singleRecordDocument()
 
@@ -209,7 +222,7 @@ class TopicAnalysisServiceTest {
 
     @Test
     fun `generates topic analysis output schema from serializable dto`() {
-        val schema = TopicAnalysisOutputSchema.value
+        val schema = TopicAnalysisOutputContract.schema
 
         assertContains(schema.value, "topics")
         assertContains(schema.value, "claims")
@@ -218,6 +231,9 @@ class TopicAnalysisServiceTest {
         assertContains(schema.value, "memorySubtype")
         assertContains(schema.value, "certainty")
         assertContains(schema.value, "evidenceRecordIds")
+        assertContains(schema.value, "PROFILE")
+        assertContains(schema.value, "OBSERVATION")
+        assertContains(schema.value, "TROUBLESHOOTING")
     }
 
     private fun serviceFor(response: String): TopicAnalysisService =

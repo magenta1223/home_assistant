@@ -5,30 +5,25 @@ import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
-import com.homeassistant.core.nlp.SystemPrompt
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
 class TopicAnalysisService(
     private val repository: TopicAnalysisRepository,
     private val backend: LlmBackend,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
-
     suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
         if (document.records.isEmpty()) return TopicAnalysisResult(emptyList())
 
         val response = backend.complete(
-            system = SystemPrompt(TOPIC_SYSTEM_PROMPT),
+            system = TopicAnalysisPrompt.system(),
             messages = listOf(Message(MessageRole.USER, renderDocument(document))),
-            outputSchema = TopicAnalysisOutputSchema.value,
+            outputSchema = TopicAnalysisOutputContract.schema,
         )
         val raw = when (response) {
             is LlmResponse.Text -> response.content.value
             is LlmResponse.ToolCall -> throw TopicAnalysisException("Topic analyzer returned a tool call")
         }
-        val dto = decode(raw)
+        val dto = TopicAnalysisOutputContract.decode(raw)
         val topics = dto.topics.map { topic ->
             val classifications = parseClassifications(topic.classifications)
             val domains = parseDomains(topic.domains)
@@ -60,10 +55,10 @@ class TopicAnalysisService(
 
     private fun parseClassification(classification: TopicClassificationLlmResponse): MemoryClassification =
         try {
-            MemoryClassification.parse(classification.memoryKind.name, classification.memorySubtype)
+            MemoryClassification.parse(classification.memoryKind.name, classification.memorySubtype.name)
         } catch (error: IllegalArgumentException) {
             throw TopicAnalysisException(
-                "Invalid memory classification: ${classification.memoryKind.name}/${classification.memorySubtype}",
+                "Invalid memory classification: ${classification.memoryKind.name}/${classification.memorySubtype.name}",
             )
         }
 
@@ -97,40 +92,6 @@ class TopicAnalysisService(
             )
         }
 
-    private fun decode(raw: String): TopicAnalysisLlmResponse =
-        try {
-            json.decodeFromString<TopicAnalysisLlmResponse>(stripJsonCodeFence(raw))
-        } catch (error: SerializationException) {
-            throw TopicAnalysisException("Failed to parse topic analysis response: ${error.message}")
-        }
-
-    private fun stripJsonCodeFence(raw: String): String {
-        val trimmed = raw.trim()
-        if (!trimmed.startsWith("```")) return trimmed
-
-        val lines = trimmed.lines()
-        if (lines.size < 3 || lines.last().trim() != "```") return trimmed
-
-        return lines.drop(1).dropLast(1).joinToString("\n").trim()
-    }
-
     private fun renderDocument(document: SourceDocument): String =
         document.records.joinToString("\n") { "${it.id.value} | ${it.content}" }
-
-    companion object {
-        private const val TOPIC_SYSTEM_PROMPT = """
-주어진 source document 전체를 내용 기반으로 주제 분석하세요.
-시간 간격으로 나누지 마세요. 같은 주제가 A-B-A 순서로 중간에 끊겨도 하나의 topic으로 병합하세요.
-각 topic은 가족/집 second brain에 승인 후보로 올릴 수 있는 evidence-backed claim을 1개 이상 포함해야 합니다.
-evidenceRecordIds는 사용자 메시지에 제공된 r1, r2 같은 ID만 사용하세요.
-실제로 말하지 않은 사실을 확정하지 말고, 관찰/발화/추론/불확실성을 구분하세요.
-memoryKind는 SEMANTIC, EPISODIC, PROCEDURAL 중 하나만 사용하세요.
-memorySubtype은 memoryKind 하위 타입만 사용하세요.
-SEMANTIC subtype: PROFILE, PREFERENCE, RELATIONSHIP, STATE, LOCATION, REFERENCE, DECISION, CONSTRAINT.
-EPISODIC subtype: CONVERSATION, EVENT, TRANSACTION, APPOINTMENT, CHANGE, MILESTONE, OBSERVATION.
-PROCEDURAL subtype: ROUTINE, CHECKLIST, INSTRUCTION, RULE, RECIPE, TROUBLESHOOTING, TEMPLATE.
-domain은 housing, moving, travel, food, finance 같은 생활 영역 태그이며 memorySubtype과 분리하세요.
-JSON만 반환하세요.
-"""
-    }
 }

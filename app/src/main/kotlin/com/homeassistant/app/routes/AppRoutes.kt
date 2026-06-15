@@ -67,7 +67,7 @@ private data class TopicCandidateResponse(
     val id: Int,
     val title: String,
     val summary: String,
-    val memoryTypes: List<String>,
+    val classifications: List<MemoryClassificationResponse>,
     val domains: List<String>,
     val evidenceMessageIds: List<Int>,
     val claims: List<TopicClaimResponse>,
@@ -79,9 +79,15 @@ private data class TopicClaimResponse(
     val id: Int,
     val text: String,
     val subject: String,
-    val memoryType: String,
+    val classification: MemoryClassificationResponse,
     val certainty: String,
     val evidenceMessageIds: List<Int>,
+)
+
+@Serializable
+private data class MemoryClassificationResponse(
+    val memoryKind: String,
+    val memorySubtype: String,
 )
 
 private fun KakaoImportAnalyzeResult.toResponse(): KakaoImportAnalyzeResponse =
@@ -95,7 +101,7 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
         id = id.value,
         title = title.value,
         summary = summary.value,
-        memoryTypes = memoryTypes.map { it.name },
+        classifications = classifications.map { it.toResponse() },
         domains = domains.map { it.value },
         evidenceMessageIds = evidenceRefs.map { it.value },
         claims = claims.map {
@@ -103,10 +109,16 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
                 id = it.id.value,
                 text = it.text.value,
                 subject = it.subject.value,
-                memoryType = it.memoryType.name,
+                classification = it.classification.toResponse(),
                 certainty = it.certainty.name,
                 evidenceMessageIds = it.evidenceRefs.map { ref -> ref.value },
             )
         },
         status = status.name,
+    )
+
+private fun com.homeassistant.core.memory.MemoryClassification.toResponse(): MemoryClassificationResponse =
+    MemoryClassificationResponse(
+        memoryKind = kind.name,
+        memorySubtype = subtypeCode,
     )

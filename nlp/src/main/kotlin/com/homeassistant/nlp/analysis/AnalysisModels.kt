@@ -1,7 +1,7 @@
 package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.memory.MemoryClassification
 import kotlinx.serialization.Serializable
 
 /** Identifies the upstream system that supplied records for generic analysis. */
@@ -60,7 +60,7 @@ data class TopicClaim(
     val id: TopicClaimId,
     val text: ClaimText,
     val subject: ClaimSubject,
-    val memoryType: MemoryType,
+    val classification: MemoryClassification,
     val certainty: ClaimCertainty,
     val evidenceRefs: List<SourceRecordRef>,
 )
@@ -72,7 +72,7 @@ data class TopicCandidate(
     val sourceName: SourceName,
     val title: TopicTitle,
     val summary: TopicSummary,
-    val memoryTypes: List<MemoryType>,
+    val classifications: List<MemoryClassification>,
     val domains: List<DomainTag>,
     val evidenceRefs: List<SourceRecordRef>,
     val claims: List<TopicClaim>,

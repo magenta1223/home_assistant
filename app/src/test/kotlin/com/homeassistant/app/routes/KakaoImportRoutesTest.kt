@@ -4,7 +4,7 @@ import com.homeassistant.domain.kakao.ImportedMessageCount
 import com.homeassistant.domain.kakao.KakaoExportText
 import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.memory.MemoryClassification
 import com.homeassistant.nlp.analysis.DomainTag
 import com.homeassistant.nlp.analysis.ClaimCertainty
 import com.homeassistant.nlp.analysis.ClaimSubject
@@ -50,6 +50,8 @@ class KakaoImportRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertContains(response.bodyAsText(), "관계 표현")
         assertContains(response.bodyAsText(), "동훈은 애정 표현을 했다.")
+        assertContains(response.bodyAsText(), "SEMANTIC")
+        assertContains(response.bodyAsText(), "STATE")
         assertContains(response.bodyAsText(), "OBSERVED")
         assertContains(response.bodyAsText(), "PENDING")
         assertEquals(KakaoSourceFileName("2026-06-07.txt"), FakeAnalyzer.sourceFileName)
@@ -76,7 +78,7 @@ private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
                     sourceName = SourceName(sourceFileName.value),
                     title = TopicTitle("관계 표현"),
                     summary = TopicSummary("애정 표현을 주고받았다."),
-                    memoryTypes = listOf(MemoryType.FACT),
+                    classifications = listOf(MemoryClassification.parse("SEMANTIC", "STATE")),
                     domains = listOf(DomainTag("relationship")),
                     evidenceRefs = listOf(SourceRecordRef(1)),
                     claims = listOf(
@@ -84,7 +86,7 @@ private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
                             id = TopicClaimId(8),
                             text = ClaimText("동훈은 애정 표현을 했다."),
                             subject = ClaimSubject("동훈"),
-                            memoryType = MemoryType.FACT,
+                            classification = MemoryClassification.parse("SEMANTIC", "STATE"),
                             certainty = ClaimCertainty.OBSERVED,
                             evidenceRefs = listOf(SourceRecordRef(1)),
                         ),

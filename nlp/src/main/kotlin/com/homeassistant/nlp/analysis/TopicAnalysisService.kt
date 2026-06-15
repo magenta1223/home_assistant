@@ -1,6 +1,6 @@
 package com.homeassistant.nlp.analysis
 
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.memory.MemoryClassification
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
@@ -30,14 +30,14 @@ class TopicAnalysisService(
         }
         val dto = decode(raw)
         val topics = dto.topics.map { topic ->
-            val memoryTypes = topic.memoryTypes.map { MemoryType.valueOf(it.name) }.distinct()
+            val classifications = parseClassifications(topic.classifications)
             val domains = parseDomains(topic.domains)
             val evidence = parseEvidence(document, topic.evidenceRecordIds)
             val claims = parseClaims(document, topic.claims)
 
             if (topic.title.isBlank()) throw TopicAnalysisException("Topic title must not be blank")
             if (topic.summary.isBlank()) throw TopicAnalysisException("Topic summary must not be blank")
-            if (memoryTypes.isEmpty()) throw TopicAnalysisException("Topic must include at least one MemoryType")
+            if (classifications.isEmpty()) throw TopicAnalysisException("Topic must include at least one classification")
             if (domains.isEmpty()) throw TopicAnalysisException("Topic must include at least one domain")
             if (evidence.isEmpty()) throw TopicAnalysisException("Topic must include at least one evidence record")
             if (claims.isEmpty()) throw TopicAnalysisException("Topic must include at least one claim")
@@ -46,7 +46,7 @@ class TopicAnalysisService(
                 document = document,
                 title = TopicTitle(topic.title.trim()),
                 summary = TopicSummary(topic.summary.trim()),
-                memoryTypes = memoryTypes,
+                classifications = classifications,
                 domains = domains,
                 evidence = evidence,
                 claims = claims,
@@ -54,6 +54,18 @@ class TopicAnalysisService(
         }
         return TopicAnalysisResult(topics)
     }
+
+    private fun parseClassifications(classifications: List<TopicClassificationLlmResponse>): List<MemoryClassification> =
+        classifications.map { parseClassification(it) }.distinct()
+
+    private fun parseClassification(classification: TopicClassificationLlmResponse): MemoryClassification =
+        try {
+            MemoryClassification.parse(classification.memoryKind.name, classification.memorySubtype)
+        } catch (error: IllegalArgumentException) {
+            throw TopicAnalysisException(
+                "Invalid memory classification: ${classification.memoryKind.name}/${classification.memorySubtype}",
+            )
+        }
 
     private fun parseDomains(domains: List<String>): List<DomainTag> =
         domains.map { domain ->
@@ -79,7 +91,7 @@ class TopicAnalysisService(
             NewTopicClaim(
                 text = ClaimText(claim.text.trim()),
                 subject = ClaimSubject(claim.subject.trim()),
-                memoryType = MemoryType.valueOf(claim.memoryType.name),
+                classification = parseClassification(claim.classification),
                 certainty = claim.certainty,
                 evidence = evidence,
             )
@@ -87,10 +99,20 @@ class TopicAnalysisService(
 
     private fun decode(raw: String): TopicAnalysisLlmResponse =
         try {
-            json.decodeFromString<TopicAnalysisLlmResponse>(raw)
+            json.decodeFromString<TopicAnalysisLlmResponse>(stripJsonCodeFence(raw))
         } catch (error: SerializationException) {
             throw TopicAnalysisException("Failed to parse topic analysis response: ${error.message}")
         }
+
+    private fun stripJsonCodeFence(raw: String): String {
+        val trimmed = raw.trim()
+        if (!trimmed.startsWith("```")) return trimmed
+
+        val lines = trimmed.lines()
+        if (lines.size < 3 || lines.last().trim() != "```") return trimmed
+
+        return lines.drop(1).dropLast(1).joinToString("\n").trim()
+    }
 
     private fun renderDocument(document: SourceDocument): String =
         document.records.joinToString("\n") { "${it.id.value} | ${it.content}" }
@@ -102,6 +124,12 @@ class TopicAnalysisService(
 각 topic은 가족/집 second brain에 승인 후보로 올릴 수 있는 evidence-backed claim을 1개 이상 포함해야 합니다.
 evidenceRecordIds는 사용자 메시지에 제공된 r1, r2 같은 ID만 사용하세요.
 실제로 말하지 않은 사실을 확정하지 말고, 관찰/발화/추론/불확실성을 구분하세요.
+memoryKind는 SEMANTIC, EPISODIC, PROCEDURAL 중 하나만 사용하세요.
+memorySubtype은 memoryKind 하위 타입만 사용하세요.
+SEMANTIC subtype: PROFILE, PREFERENCE, RELATIONSHIP, STATE, LOCATION, REFERENCE, DECISION, CONSTRAINT.
+EPISODIC subtype: CONVERSATION, EVENT, TRANSACTION, APPOINTMENT, CHANGE, MILESTONE, OBSERVATION.
+PROCEDURAL subtype: ROUTINE, CHECKLIST, INSTRUCTION, RULE, RECIPE, TROUBLESHOOTING, TEMPLATE.
+domain은 housing, moving, travel, food, finance 같은 생활 영역 태그이며 memorySubtype과 분리하세요.
 JSON만 반환하세요.
 """
     }

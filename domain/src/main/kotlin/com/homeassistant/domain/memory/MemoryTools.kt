@@ -17,7 +17,8 @@ class MemoryTools(
     private data class CreateCandidateArgs(
         @SerialName("conversation_id") val conversationId: String,
         val domain: String,
-        @SerialName("memory_type") val memoryType: String,
+        @SerialName("memory_kind") val memoryKind: String,
+        @SerialName("memory_subtype") val memorySubtype: String,
         val content: String,
         val summary: String,
         val confidence: Double,
@@ -30,7 +31,8 @@ class MemoryTools(
     @Serializable
     private data class SearchArgs(
         val query: String,
-        @SerialName("memory_type") val memoryType: String? = null,
+        @SerialName("memory_kind") val memoryKind: String? = null,
+        @SerialName("memory_subtype") val memorySubtype: String? = null,
         val domain: String? = null,
         @SerialName("member_id") val memberId: String? = null,
         @SerialName("created_after") val createdAfter: Long? = null,
@@ -46,13 +48,17 @@ class MemoryTools(
                 properties = mapOf(
                     "conversation_id" to PropertySchema("string", "대화 ID"),
                     "domain" to PropertySchema("string", "생활 영역 이름"),
-                    "memory_type" to PropertySchema("string", "FACT, EVENT, COMMITMENT, PREFERENCE, DECISION 중 하나"),
+                    "memory_kind" to PropertySchema("string", "SEMANTIC, EPISODIC, PROCEDURAL 중 하나"),
+                    "memory_subtype" to PropertySchema(
+                        "string",
+                        "kind 하위 subtype. SEMANTIC: PROFILE, PREFERENCE, RELATIONSHIP, STATE, LOCATION, REFERENCE, DECISION, CONSTRAINT. EPISODIC: CONVERSATION, EVENT, TRANSACTION, APPOINTMENT, CHANGE, MILESTONE, OBSERVATION. PROCEDURAL: ROUTINE, CHECKLIST, INSTRUCTION, RULE, RECIPE, TROUBLESHOOTING, TEMPLATE",
+                    ),
                     "content" to PropertySchema("string", "원문에 가까운 기억 내용"),
                     "summary" to PropertySchema("string", "짧은 요약"),
                     "confidence" to PropertySchema("number", "0.0-1.0 신뢰도"),
                     "subject_member_id" to PropertySchema("string", "대상 구성원 ID"),
                 ),
-                required = listOf("conversation_id", "domain", "memory_type", "content", "summary", "confidence"),
+                required = listOf("conversation_id", "domain", "memory_kind", "memory_subtype", "content", "summary", "confidence"),
             ),
         ),
         Tool(
@@ -79,7 +85,8 @@ class MemoryTools(
             ToolSchema(
                 properties = mapOf(
                     "query" to PropertySchema("string", "검색 질의"),
-                    "memory_type" to PropertySchema("string", "기억 유형 필터"),
+                    "memory_kind" to PropertySchema("string", "기억 kind 필터"),
+                    "memory_subtype" to PropertySchema("string", "기억 subtype 필터"),
                     "domain" to PropertySchema("string", "생활 영역 필터"),
                     "member_id" to PropertySchema("string", "구성원 필터"),
                     "limit" to PropertySchema("integer", "최대 결과 수"),
@@ -108,7 +115,7 @@ class MemoryTools(
             userId = userId,
             conversationId = args.conversationId,
             domainName = args.domain,
-            memoryType = MemoryType.valueOf(args.memoryType.uppercase()),
+            classification = MemoryClassification.parse(args.memoryKind, args.memorySubtype),
             content = args.content,
             summary = args.summary,
             confidence = args.confidence,
@@ -122,7 +129,9 @@ class MemoryTools(
         val args = json.decodeFromString<Map<String, String>>(spec.arguments.value)
         val candidates = repo.listPending(userId, args.getValue("conversation_id"))
         return if (candidates.isEmpty()) ToolResult("대기 중인 기억 후보가 없습니다.")
-        else ToolResult(candidates.joinToString("\n") { "candidate_id=${it.id} [${it.domainName}/${it.memoryType}] ${it.summary}" })
+        else ToolResult(candidates.joinToString("\n") {
+            "candidate_id=${it.id} [${it.domainName}/${it.classification.kind}/${it.classification.subtypeCode}] ${it.summary}"
+        })
     }
 
     private fun handleApprove(spec: ToolCallSpec, userId: UserId): ToolResult {
@@ -135,7 +144,8 @@ class MemoryTools(
                 payload = mapOf(
                     "familyId" to memory.familyId,
                     "memoryId" to memory.id.toString(),
-                    "memoryType" to memory.memoryType.name,
+                    "memoryKind" to memory.classification.kind.name,
+                    "memorySubtype" to memory.classification.subtypeCode,
                     "domain" to memory.domainName,
                     "memberId" to (memory.subjectMemberId ?: ""),
                     "createdAt" to memory.createdAt.toString(),
@@ -154,7 +164,8 @@ class MemoryTools(
     private fun handleSearch(spec: ToolCallSpec): ToolResult {
         val args = json.decodeFromString<SearchArgs>(spec.arguments.value)
         val filter = MemorySearchFilter(
-            memoryType = args.memoryType?.let { MemoryType.valueOf(it.uppercase()) },
+            memoryKind = args.memoryKind?.let { MemoryKind.valueOf(it.uppercase()) },
+            memorySubtype = args.memorySubtype?.uppercase(),
             domain = args.domain?.uppercase(),
             memberId = args.memberId,
             createdAfter = args.createdAfter,
@@ -164,7 +175,7 @@ class MemoryTools(
         val byId = repo.listMemories(results.map { it.memoryId }).associateBy { it.id }
         val lines = results.mapNotNull { result ->
             byId[result.memoryId]?.let { memory ->
-                "memory_id=${memory.id} score=${"%.2f".format(result.score)} [${memory.domainName}/${memory.memoryType}] ${memory.summary}"
+                "memory_id=${memory.id} score=${"%.2f".format(result.score)} [${memory.domainName}/${memory.classification.kind}/${memory.classification.subtypeCode}] ${memory.summary}"
             }
         }
         return if (lines.isEmpty()) ToolResult("관련 기억을 찾지 못했습니다.") else ToolResult(lines.joinToString("\n"))

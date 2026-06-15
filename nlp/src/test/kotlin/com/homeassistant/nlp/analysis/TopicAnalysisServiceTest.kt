@@ -1,7 +1,7 @@
 package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.memory.MemoryClassification
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
@@ -29,7 +29,7 @@ class TopicAnalysisServiceTest {
         transaction(db) {
                 SchemaUtils.create(
                     TopicCandidateTable,
-                    TopicMemoryTypeTable,
+                    TopicClassificationTable,
                     TopicDomainTable,
                     TopicEvidenceTable,
                     TopicClaimTable,
@@ -54,14 +54,17 @@ class TopicAnalysisServiceTest {
                     {
                       "title": "카인드커피에서 만나기",
                       "summary": "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
-                      "memoryTypes": ["EVENT", "FACT"],
+                      "classifications": [
+                        { "memoryKind": "EPISODIC", "memorySubtype": "EVENT" },
+                        { "memoryKind": "SEMANTIC", "memorySubtype": "LOCATION" }
+                      ],
                       "domains": ["location", "home"],
                       "evidenceRecordIds": ["r2", "r3"],
                       "claims": [
                         {
                           "text": "홍승민은 카인드커피로 오라고 말했다.",
                           "subject": "홍승민",
-                          "memoryType": "EVENT",
+                          "classification": { "memoryKind": "EPISODIC", "memorySubtype": "EVENT" },
                           "certainty": "SAID",
                           "evidenceRecordIds": ["r2", "r3"]
                         }
@@ -87,10 +90,20 @@ class TopicAnalysisServiceTest {
 
         assertEquals(1, result.topics.size)
         assertEquals("카인드커피에서 만나기", result.topics.single().title.value)
-        assertEquals(setOf(MemoryType.EVENT, MemoryType.FACT), result.topics.single().memoryTypes.toSet())
+        assertEquals(
+            setOf(
+                MemoryClassification.parse("EPISODIC", "EVENT"),
+                MemoryClassification.parse("SEMANTIC", "LOCATION"),
+            ),
+            result.topics.single().classifications.toSet(),
+        )
         assertEquals(setOf(DomainTag("location"), DomainTag("home")), result.topics.single().domains.toSet())
         assertEquals(listOf(SourceRecordRef(2), SourceRecordRef(3)), result.topics.single().evidenceRefs)
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().claims.single().text.value)
+        assertEquals(
+            MemoryClassification.parse("EPISODIC", "EVENT"),
+            result.topics.single().claims.single().classification,
+        )
         assertEquals(ClaimCertainty.SAID, result.topics.single().claims.single().certainty)
         assertEquals(listOf(SourceRecordRef(2), SourceRecordRef(3)), result.topics.single().claims.single().evidenceRefs)
         assertEquals(CandidateStatus.PENDING, result.topics.single().status)
@@ -118,6 +131,8 @@ class TopicAnalysisServiceTest {
         assertContains(backend.messages.single().content, "r1")
         assertContains(backend.messages.single().content, "r3")
         assertContains(backend.outputSchema!!.value, "claims")
+        assertContains(backend.outputSchema!!.value, "memoryKind")
+        assertContains(backend.outputSchema!!.value, "memorySubtype")
         assertContains(backend.outputSchema!!.value, "certainty")
     }
 
@@ -129,7 +144,10 @@ class TopicAnalysisServiceTest {
             serviceFor("""not json""").analyze(document)
         }
         assertFailsWith<TopicAnalysisException> {
-            serviceFor(topicJson(memoryTypes = """["UNKNOWN"]""")).analyze(document)
+            serviceFor(topicJson(classifications = """[{ "memoryKind": "SEMANTIC", "memorySubtype": "UNKNOWN" }]""")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(classifications = """[{ "memoryKind": "EPISODIC", "memorySubtype": "REFERENCE" }]""")).analyze(document)
         }
         assertFailsWith<TopicAnalysisException> {
             serviceFor(topicJson(evidenceRecordIds = """["missing"]""")).analyze(document)
@@ -140,6 +158,13 @@ class TopicAnalysisServiceTest {
         assertFailsWith<TopicAnalysisException> {
             serviceFor(topicJson(summary = "")).analyze(document)
         }
+    }
+
+    @Test
+    fun `analyzes topic response wrapped in json code fence`() = runBlocking {
+        val result = serviceFor("```json\n${topicJson()}\n```").analyze(singleRecordDocument())
+
+        assertEquals("관계 표현", result.topics.single().title.value)
     }
 
     @Test
@@ -156,7 +181,10 @@ class TopicAnalysisServiceTest {
             serviceFor(topicJson(claimSubject = "")).analyze(document)
         }
         assertFailsWith<TopicAnalysisException> {
-            serviceFor(topicJson(claimMemoryType = "UNKNOWN")).analyze(document)
+            serviceFor(topicJson(claimMemorySubtype = "UNKNOWN")).analyze(document)
+        }
+        assertFailsWith<TopicAnalysisException> {
+            serviceFor(topicJson(claimMemoryKind = "PROCEDURAL", claimMemorySubtype = "REFERENCE")).analyze(document)
         }
         assertFailsWith<TopicAnalysisException> {
             serviceFor(topicJson(claimCertainty = "GUESSED")).analyze(document)
@@ -185,7 +213,9 @@ class TopicAnalysisServiceTest {
 
         assertContains(schema.value, "topics")
         assertContains(schema.value, "claims")
-        assertContains(schema.value, "memoryType")
+        assertContains(schema.value, "classifications")
+        assertContains(schema.value, "memoryKind")
+        assertContains(schema.value, "memorySubtype")
         assertContains(schema.value, "certainty")
         assertContains(schema.value, "evidenceRecordIds")
     }
@@ -203,12 +233,13 @@ class TopicAnalysisServiceTest {
     private fun topicJson(
         title: String = "관계 표현",
         summary: String = "애정 표현을 주고받았다.",
-        memoryTypes: String = """["FACT"]""",
+        classifications: String = """[{ "memoryKind": "SEMANTIC", "memorySubtype": "STATE" }]""",
         domains: String = """["relationship"]""",
         evidenceRecordIds: String = """["r1"]""",
         claimText: String = "동훈은 애정 표현을 했다.",
         claimSubject: String = "동훈",
-        claimMemoryType: String = "FACT",
+        claimMemoryKind: String = "SEMANTIC",
+        claimMemorySubtype: String = "STATE",
         claimCertainty: String = "OBSERVED",
         claimEvidenceRecordIds: String = """["r1"]""",
         claims: String = """
@@ -216,7 +247,10 @@ class TopicAnalysisServiceTest {
               {
                 "text": "$claimText",
                 "subject": "$claimSubject",
-                "memoryType": "$claimMemoryType",
+                "classification": {
+                  "memoryKind": "$claimMemoryKind",
+                  "memorySubtype": "$claimMemorySubtype"
+                },
                 "certainty": "$claimCertainty",
                 "evidenceRecordIds": $claimEvidenceRecordIds
               }
@@ -228,7 +262,7 @@ class TopicAnalysisServiceTest {
             {
               "title": "$title",
               "summary": "$summary",
-              "memoryTypes": $memoryTypes,
+              "classifications": $classifications,
               "domains": $domains,
               "evidenceRecordIds": $evidenceRecordIds,
               "claims": $claims

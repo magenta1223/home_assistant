@@ -14,10 +14,17 @@ internal data class TopicAnalysisLlmResponse(val topics: List<TopicLlmResponse>)
 internal data class TopicLlmResponse(
     val title: String,
     val summary: String,
-    val memoryTypes: List<TopicAnalysisMemoryType>,
+    val classifications: List<TopicClassificationLlmResponse>,
     val domains: List<String>,
     val evidenceRecordIds: List<String>,
     val claims: List<TopicClaimLlmResponse>,
+)
+
+@Serializable
+@SerialName("TopicClassification")
+internal data class TopicClassificationLlmResponse(
+    val memoryKind: TopicAnalysisMemoryKind,
+    val memorySubtype: String,
 )
 
 @Serializable
@@ -25,13 +32,13 @@ internal data class TopicLlmResponse(
 internal data class TopicClaimLlmResponse(
     val text: String,
     val subject: String,
-    val memoryType: TopicAnalysisMemoryType,
+    val classification: TopicClassificationLlmResponse,
     val certainty: ClaimCertainty,
     val evidenceRecordIds: List<String>,
 )
 
 @Serializable
-internal enum class TopicAnalysisMemoryType { FACT, EVENT, COMMITMENT, PREFERENCE, DECISION }
+internal enum class TopicAnalysisMemoryKind { SEMANTIC, EPISODIC, PROCEDURAL }
 
 internal object TopicAnalysisOutputSchema {
     val value: LlmOutputSchema = LlmOutputSchema(

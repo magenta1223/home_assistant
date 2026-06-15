@@ -1,7 +1,7 @@
 package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.memory.MemoryClassification
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.batchInsert
@@ -15,7 +15,7 @@ class TopicAnalysisRepository(private val db: Database) {
         document: SourceDocument,
         title: TopicTitle,
         summary: TopicSummary,
-        memoryTypes: List<MemoryType>,
+        classifications: List<MemoryClassification>,
         domains: List<DomainTag>,
         evidence: List<SourceRecord>,
         claims: List<NewTopicClaim>,
@@ -34,9 +34,10 @@ class TopicAnalysisRepository(private val db: Database) {
             it[updatedAt] = now
         }[TopicCandidateTable.id]
 
-        TopicMemoryTypeTable.batchInsert(memoryTypes.distinct()) {
-            this[TopicMemoryTypeTable.topicId] = topicId
-            this[TopicMemoryTypeTable.memoryType] = it.name
+        TopicClassificationTable.batchInsert(classifications.distinct()) {
+            this[TopicClassificationTable.topicId] = topicId
+            this[TopicClassificationTable.memoryKind] = it.kind.name
+            this[TopicClassificationTable.memorySubtype] = it.subtypeCode
         }
         TopicDomainTable.batchInsert(domains.distinct()) {
             this[TopicDomainTable.topicId] = topicId
@@ -53,7 +54,8 @@ class TopicAnalysisRepository(private val db: Database) {
                     it[TopicClaimTable.topicId] = topicId
                     it[TopicClaimTable.text] = claim.text.value
                     it[TopicClaimTable.subject] = claim.subject.value
-                    it[TopicClaimTable.memoryType] = claim.memoryType.name
+                    it[TopicClaimTable.memoryKind] = claim.classification.kind.name
+                    it[TopicClaimTable.memorySubtype] = claim.classification.subtypeCode
                     it[TopicClaimTable.certainty] = claim.certainty.name
                 }[TopicClaimTable.id]
                 TopicClaimEvidenceTable.batchInsert(claim.evidence.distinctBy { it.id }) {
@@ -91,9 +93,14 @@ class TopicAnalysisRepository(private val db: Database) {
         val row = TopicCandidateTable.selectAll()
             .where { TopicCandidateTable.id eq topicId }
             .single()
-        val memoryTypes = TopicMemoryTypeTable.selectAll()
-            .where { TopicMemoryTypeTable.topicId eq topicId }
-            .map { MemoryType.valueOf(it[TopicMemoryTypeTable.memoryType]) }
+        val classifications = TopicClassificationTable.selectAll()
+            .where { TopicClassificationTable.topicId eq topicId }
+            .map {
+                MemoryClassification.parse(
+                    it[TopicClassificationTable.memoryKind],
+                    it[TopicClassificationTable.memorySubtype],
+                )
+            }
         val domains = TopicDomainTable.selectAll()
             .where { TopicDomainTable.topicId eq topicId }
             .map { DomainTag(it[TopicDomainTable.domain]) }
@@ -108,7 +115,10 @@ class TopicAnalysisRepository(private val db: Database) {
                     id = TopicClaimId(claimId),
                     text = ClaimText(claimRow[TopicClaimTable.text]),
                     subject = ClaimSubject(claimRow[TopicClaimTable.subject]),
-                    memoryType = MemoryType.valueOf(claimRow[TopicClaimTable.memoryType]),
+                    classification = MemoryClassification.parse(
+                        claimRow[TopicClaimTable.memoryKind],
+                        claimRow[TopicClaimTable.memorySubtype],
+                    ),
                     certainty = ClaimCertainty.valueOf(claimRow[TopicClaimTable.certainty]),
                     evidenceRefs = TopicClaimEvidenceTable.selectAll()
                         .where { TopicClaimEvidenceTable.claimId eq claimId }
@@ -122,7 +132,7 @@ class TopicAnalysisRepository(private val db: Database) {
             sourceName = SourceName(row[TopicCandidateTable.sourceName]),
             title = TopicTitle(row[TopicCandidateTable.title]),
             summary = TopicSummary(row[TopicCandidateTable.summary]),
-            memoryTypes = memoryTypes,
+            classifications = classifications,
             domains = domains,
             evidenceRefs = evidence,
             claims = claims,
@@ -134,7 +144,7 @@ class TopicAnalysisRepository(private val db: Database) {
 data class NewTopicClaim(
     val text: ClaimText,
     val subject: ClaimSubject,
-    val memoryType: MemoryType,
+    val classification: MemoryClassification,
     val certainty: ClaimCertainty,
     val evidence: List<SourceRecord>,
 )

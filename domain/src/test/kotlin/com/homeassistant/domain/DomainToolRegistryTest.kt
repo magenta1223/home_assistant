@@ -1,6 +1,6 @@
 package com.homeassistant.domain
 
-import com.homeassistant.core.commands.UserId
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.core.tools.ToolName
@@ -70,7 +70,7 @@ class DomainToolRegistryTest {
         val result = registry.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_type":"FACT","content":"Min has piano","summary":"Min piano","confidence":0.8}""",
+                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_kind":"SEMANTIC","memory_subtype":"STATE","content":"Min has piano","summary":"Min piano","confidence":0.8}""",
             ),
             userId,
         )

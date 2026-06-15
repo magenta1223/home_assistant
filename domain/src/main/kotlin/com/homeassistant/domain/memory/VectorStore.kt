@@ -2,7 +2,8 @@ package com.homeassistant.domain.memory
 
 data class MemorySearchFilter(
     val familyId: String = DEFAULT_FAMILY_ID,
-    val memoryType: MemoryType? = null,
+    val memoryKind: MemoryKind? = null,
+    val memorySubtype: String? = null,
     val domain: String? = null,
     val memberId: String? = null,
     val createdAfter: Long? = null,

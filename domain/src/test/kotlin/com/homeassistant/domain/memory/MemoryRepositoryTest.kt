@@ -1,6 +1,6 @@
 package com.homeassistant.domain.memory
 
-import com.homeassistant.core.commands.UserId
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.domain.db.tables.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -44,7 +44,7 @@ class MemoryRepositoryTest {
             userId = UserId("dad"),
             conversationId = "conv-1",
             domainName = "SCHOOL",
-            memoryType = MemoryType.FACT,
+            classification = MemoryClassification.parse("SEMANTIC", "STATE"),
             content = "Min has piano class on Friday",
             summary = "Min piano Friday",
             confidence = 0.82,
@@ -65,7 +65,7 @@ class MemoryRepositoryTest {
             userId = UserId("mom"),
             conversationId = "conv-2",
             domainName = "AFTER_SCHOOL",
-            memoryType = MemoryType.COMMITMENT,
+            classification = MemoryClassification.parse("PROCEDURAL", "ROUTINE"),
             content = "Pick up Joon at 5pm",
             summary = "Joon pickup 5pm",
             confidence = 0.9,
@@ -87,7 +87,7 @@ class MemoryRepositoryTest {
             userId = UserId("dad"),
             conversationId = "conv-3",
             domainName = "HOME",
-            memoryType = MemoryType.DECISION,
+            classification = MemoryClassification.parse("SEMANTIC", "DECISION"),
             content = "Do not save this",
             summary = "Reject me",
             confidence = 0.5,

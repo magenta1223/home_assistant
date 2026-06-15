@@ -1,10 +1,12 @@
 package com.homeassistant.domain.memory
 
+typealias MemoryClassification = com.homeassistant.core.memory.MemoryClassification
+typealias MemoryKind = com.homeassistant.core.memory.MemoryKind
+typealias CandidateStatus = com.homeassistant.core.memory.CandidateStatus
+
 const val DEFAULT_FAMILY_ID = "default-family"
 private const val DEFAULT_FAMILY_NAME = "Default Family"
 
-enum class MemoryType { FACT, EVENT, COMMITMENT, PREFERENCE, DECISION }
-enum class CandidateStatus { PENDING, APPROVED, REJECTED }
 enum class AuditAction { CANDIDATE_CREATED, CANDIDATE_APPROVED, CANDIDATE_REJECTED, MEMORY_CREATED }
 
 data class MemoryCandidateRow(
@@ -13,7 +15,7 @@ data class MemoryCandidateRow(
     val conversationId: String,
     val domainId: Int,
     val domainName: String,
-    val memoryType: MemoryType,
+    val classification: MemoryClassification,
     val content: String,
     val summary: String,
     val subjectMemberId: String?,
@@ -31,7 +33,7 @@ data class MemoryRow(
     val familyId: String,
     val domainId: Int,
     val domainName: String,
-    val memoryType: MemoryType,
+    val classification: MemoryClassification,
     val content: String,
     val summary: String,
     val subjectMemberId: String?,

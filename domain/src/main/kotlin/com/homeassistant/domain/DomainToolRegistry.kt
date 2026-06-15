@@ -1,6 +1,6 @@
 package com.homeassistant.domain
 
-import com.homeassistant.core.commands.UserId
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.*
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.MemoryRepository

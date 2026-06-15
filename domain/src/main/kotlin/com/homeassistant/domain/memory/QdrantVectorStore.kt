@@ -40,7 +40,8 @@ class QdrantVectorStore(
             put("with_payload", true)
             val must = buildList {
                 add(match("familyId", filter.familyId))
-                filter.memoryType?.let { add(match("memoryType", it.name)) }
+                filter.memoryKind?.let { add(match("memoryKind", it.name)) }
+                filter.memorySubtype?.let { add(match("memorySubtype", it.uppercase())) }
                 filter.domain?.let { add(match("domain", it.uppercase())) }
                 filter.memberId?.let { add(match("memberId", it)) }
             }

@@ -1,16 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.serialization) apply false
     alias(libs.plugins.ktor) apply false
-}
-
-tasks.register<Exec>("runTestClient") {
-    group = "application"
-    description = "Run scripts/test-client/app.py (Flask test client)"
-    commandLine("python", "scripts/test-client/app.py")
-    workingDir(rootDir)
 }
 
 subprojects {
@@ -22,9 +16,7 @@ subprojects {
     }
 
     tasks.withType<KotlinCompile>().configureEach {
-        kotlinOptions {
-            jvmTarget = "21"
-        }
+        compilerOptions.jvmTarget.set(JvmTarget.JVM_21)
     }
 
     tasks.withType<JavaCompile>().configureEach {

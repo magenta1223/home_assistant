@@ -1,15 +1,11 @@
 package com.homeassistant.nlp.backend.openrouter
 
 import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmOutputSchema
-import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.nlp.MessageRole
-import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
-import com.homeassistant.nlp.backend.utils.withTools
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
+import com.homeassistant.nlp.backend.utils.withTools
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
 import io.ktor.client.plugins.contentnegotiation.*
@@ -38,31 +34,29 @@ class OpenRouterBackend(
     }
 
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse {
         log.info("OpenRouter call model=$model maxTokens=${config.maxTokens}")
-        log.info("OpenRouter prompt system='${system.value.take(100)}' messages=${messages.size}")
+        log.info("OpenRouter prompt system='${system.take(100)}' messages=${messages.size}")
 
         val request = OpenRouterRequest(
             model = model,
             messages = buildList {
-                add(OpenRouterMessage("system", system.withTools(tools).value))
+                add(OpenRouterMessage("system", system.withTools(tools)))
                 messages.forEach { add(OpenRouterMessage(it.role.value, it.content)) }
             },
             max_tokens = config.maxTokens.takeIf { it > 0 } ?: 512,
             temperature = config.temperature,
             top_p = config.topP,
-            response_format = outputSchema?.let {
-                OpenRouterResponseFormat(
-                    json_schema = OpenRouterJsonSchemaResponseFormat(
-                        name = "topic_analysis_output",
-                        schema = json.parseToJsonElement(it.value),
-                    ),
-                )
-            },
+            response_format = OpenRouterResponseFormat(
+                json_schema = OpenRouterJsonSchemaResponseFormat(
+                    name = "topic_analysis_output",
+                    schema = json.parseToJsonElement(outputSchema),
+                ),
+            ),
         )
 
         val start = System.currentTimeMillis()

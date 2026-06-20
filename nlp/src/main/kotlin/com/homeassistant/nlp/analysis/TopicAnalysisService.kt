@@ -30,7 +30,7 @@ class TopicAnalysisService(
     suspend fun preview(document: SourceDocument): TopicAnalysisResult {
         val topics = analyzeValidTopics(document).mapIndexed { topicIndex, topic ->
             TopicCandidate(
-                id = TopicCandidateId(topicIndex + 1),
+                id = topicIndex + 1,
                 sourceType = document.sourceType,
                 sourceName = document.sourceName,
                 title = topic.title,
@@ -40,7 +40,7 @@ class TopicAnalysisService(
                 evidenceRefs = topic.evidence.map { it.ref },
                 claims = topic.claims.mapIndexed { claimIndex, claim ->
                     TopicClaim(
-                        id = TopicClaimId(claimIndex + 1),
+                        id = claimIndex + 1,
                         text = claim.text,
                         subject = claim.subject,
                         memoryType = claim.memoryType,
@@ -62,7 +62,7 @@ class TopicAnalysisService(
             outputSchema = TopicAnalysisOutputContract.schema,
         )
         val raw = when (response) {
-            is LlmResponse.Text -> response.content.value
+            is LlmResponse.Text -> response.content
             is LlmResponse.ToolCall -> throw TopicAnalysisException("Topic analyzer returned a tool call")
         }
         val dto = TopicAnalysisOutputContract.decode(raw)
@@ -80,8 +80,8 @@ class TopicAnalysisService(
             if (claims.isEmpty()) throw TopicAnalysisException("Topic must include at least one claim")
 
             ValidatedTopic(
-                title = TopicTitle(topic.title.trim()),
-                summary = TopicSummary(topic.summary.trim()),
+                title = topic.title.trim(),
+                summary = topic.summary.trim(),
                 memoryTypes = memoryTypes,
                 domains = domains,
                 evidence = evidence,
@@ -91,7 +91,7 @@ class TopicAnalysisService(
         return topics
     }
 
-    private fun parseDomains(domains: List<String>): List<DomainTag> =
+    private fun parseDomains(domains: List<String>): List<String> =
         domains.map { domain ->
             try {
                 normalizeDomainTag(domain)
@@ -102,7 +102,7 @@ class TopicAnalysisService(
 
     private fun parseEvidence(document: SourceDocument, evidenceRecordIds: List<String>): List<SourceRecord> =
         evidenceRecordIds.map { recordId ->
-            document.records.firstOrNull { it.id.value == recordId }
+            document.records.firstOrNull { it.id == recordId }
                 ?: throw TopicAnalysisException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
@@ -113,8 +113,8 @@ class TopicAnalysisService(
             if (claim.subject.isBlank()) throw TopicAnalysisException("Claim subject must not be blank")
             if (evidence.isEmpty()) throw TopicAnalysisException("Claim must include at least one evidence record")
             NewTopicClaim(
-                text = ClaimText(claim.text.trim()),
-                subject = ClaimSubject(claim.subject.trim()),
+                text = claim.text.trim(),
+                subject = claim.subject.trim(),
                 memoryType = claim.memoryType,
                 certainty = claim.certainty,
                 evidence = evidence,
@@ -122,14 +122,14 @@ class TopicAnalysisService(
         }
 
     private fun renderDocument(document: SourceDocument): String =
-        document.records.joinToString("\n") { "${it.id.value} | ${it.content}" }
+        document.records.joinToString("\n") { "${it.id} | ${it.content}" }
 }
 
 private data class ValidatedTopic(
-    val title: TopicTitle,
-    val summary: TopicSummary,
+    val title: String,
+    val summary: String,
     val memoryTypes: List<MemoryType>,
-    val domains: List<DomainTag>,
+    val domains: List<String>,
     val evidence: List<SourceRecord>,
     val claims: List<NewTopicClaim>,
 )

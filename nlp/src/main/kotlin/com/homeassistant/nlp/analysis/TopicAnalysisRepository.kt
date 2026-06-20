@@ -16,10 +16,10 @@ class TopicAnalysisRepository(private val db: Database) {
     private val json = Json
     fun createTopic(
         document: SourceDocument,
-        title: TopicTitle,
-        summary: TopicSummary,
+        title: String,
+        summary: String,
         memoryTypes: List<MemoryType>,
-        domains: List<DomainTag>,
+        domains: List<String>,
         evidence: List<SourceRecord>,
         claims: List<NewTopicClaim>,
     ): TopicCandidate = transaction(db) {
@@ -28,10 +28,10 @@ class TopicAnalysisRepository(private val db: Database) {
 
         val now = System.currentTimeMillis()
         val topicId = TopicCandidateTable.insert {
-            it[sourceType] = document.sourceType.value
-            it[sourceName] = document.sourceName.value
-            it[TopicCandidateTable.title] = title.value
-            it[TopicCandidateTable.summary] = summary.value
+            it[sourceType] = document.sourceType
+            it[sourceName] = document.sourceName
+            it[TopicCandidateTable.title] = title
+            it[TopicCandidateTable.summary] = summary
             it[status] = CandidateStatus.PENDING.name
             it[createdAt] = now
             it[updatedAt] = now
@@ -43,26 +43,26 @@ class TopicAnalysisRepository(private val db: Database) {
         }
         TopicDomainTable.batchInsert(domains.distinct()) {
             this[TopicDomainTable.topicId] = topicId
-            this[TopicDomainTable.domain] = it.value
+            this[TopicDomainTable.domain] = it
         }
         TopicEvidenceTable.batchInsert(evidence.distinctBy { it.id }) {
             this[TopicEvidenceTable.topicId] = topicId
-            this[TopicEvidenceTable.sourceRecordId] = it.id.value
-            this[TopicEvidenceTable.sourceRecordRef] = it.ref.value
+            this[TopicEvidenceTable.sourceRecordId] = it.id
+            this[TopicEvidenceTable.sourceRecordRef] = it.ref
         }
-        claims.distinctBy { it.text.value to it.evidence.map { record -> record.id.value }.toSet() }
+        claims.distinctBy { it.text to it.evidence.map { record -> record.id }.toSet() }
             .forEach { claim ->
                 val claimId = TopicClaimTable.insert {
                     it[TopicClaimTable.topicId] = topicId
-                    it[TopicClaimTable.text] = claim.text.value
-                    it[TopicClaimTable.subject] = claim.subject.value
+                    it[TopicClaimTable.text] = claim.text
+                    it[TopicClaimTable.subject] = claim.subject
                     it[TopicClaimTable.memoryType] = claim.memoryType.code
                     it[TopicClaimTable.certainty] = claim.certainty.name
                 }[TopicClaimTable.id]
                 TopicClaimEvidenceTable.batchInsert(claim.evidence.distinctBy { it.id }) {
                     this[TopicClaimEvidenceTable.claimId] = claimId
-                    this[TopicClaimEvidenceTable.sourceRecordId] = it.id.value
-                    this[TopicClaimEvidenceTable.sourceRecordRef] = it.ref.value
+                    this[TopicClaimEvidenceTable.sourceRecordId] = it.id
+                    this[TopicClaimEvidenceTable.sourceRecordRef] = it.ref
                 }
             }
 
@@ -71,20 +71,20 @@ class TopicAnalysisRepository(private val db: Database) {
 
     private fun findExistingTopic(
         document: SourceDocument,
-        title: TopicTitle,
+        title: String,
         evidence: List<SourceRecord>,
     ): TopicCandidate? {
-        val evidenceIds = evidence.map { it.id.value }.toSet()
+        val evidenceIds = evidence.map { it.id }.toSet()
         val candidates = TopicCandidateTable.selectAll()
             .where {
-                (TopicCandidateTable.sourceType eq document.sourceType.value) and
-                    (TopicCandidateTable.sourceName eq document.sourceName.value) and
-                    (TopicCandidateTable.title eq title.value)
+                (TopicCandidateTable.sourceType eq document.sourceType) and
+                    (TopicCandidateTable.sourceName eq document.sourceName) and
+                    (TopicCandidateTable.title eq title)
             }
             .map { getTopic(it[TopicCandidateTable.id]) }
         return candidates.firstOrNull { candidate ->
             TopicEvidenceTable.selectAll()
-                .where { TopicEvidenceTable.topicId eq candidate.id.value }
+                .where { TopicEvidenceTable.topicId eq candidate.id }
                 .map { it[TopicEvidenceTable.sourceRecordId] }
                 .toSet() == evidenceIds
         }
@@ -101,32 +101,32 @@ class TopicAnalysisRepository(private val db: Database) {
             }
         val domains = TopicDomainTable.selectAll()
             .where { TopicDomainTable.topicId eq topicId }
-            .map { DomainTag(it[TopicDomainTable.domain]) }
+            .map { it[TopicDomainTable.domain] }
         val evidence = TopicEvidenceTable.selectAll()
             .where { TopicEvidenceTable.topicId eq topicId }
-            .map { SourceRecordRef(it[TopicEvidenceTable.sourceRecordRef]) }
+            .map { it[TopicEvidenceTable.sourceRecordRef] }
         val claims = TopicClaimTable.selectAll()
             .where { TopicClaimTable.topicId eq topicId }
             .map { claimRow ->
                 val claimId = claimRow[TopicClaimTable.id]
                 TopicClaim(
-                    id = TopicClaimId(claimId),
-                    text = ClaimText(claimRow[TopicClaimTable.text]),
-                    subject = ClaimSubject(claimRow[TopicClaimTable.subject]),
+                    id = claimId,
+                    text = claimRow[TopicClaimTable.text],
+                    subject = claimRow[TopicClaimTable.subject],
                     memoryType = decodeMemoryType(claimRow[TopicClaimTable.memoryType]),
                     certainty = ClaimCertainty.valueOf(claimRow[TopicClaimTable.certainty]),
                     evidenceRefs = TopicClaimEvidenceTable.selectAll()
                         .where { TopicClaimEvidenceTable.claimId eq claimId }
-                        .map { SourceRecordRef(it[TopicClaimEvidenceTable.sourceRecordRef]) },
+                        .map { it[TopicClaimEvidenceTable.sourceRecordRef] },
                 )
             }
 
         return TopicCandidate(
-            id = TopicCandidateId(topicId),
-            sourceType = SourceType(row[TopicCandidateTable.sourceType]),
-            sourceName = SourceName(row[TopicCandidateTable.sourceName]),
-            title = TopicTitle(row[TopicCandidateTable.title]),
-            summary = TopicSummary(row[TopicCandidateTable.summary]),
+            id = topicId,
+            sourceType = row[TopicCandidateTable.sourceType],
+            sourceName = row[TopicCandidateTable.sourceName],
+            title = row[TopicCandidateTable.title],
+            summary = row[TopicCandidateTable.summary],
             memoryTypes = memoryTypes,
             domains = domains,
             evidenceRefs = evidence,
@@ -140,8 +140,8 @@ class TopicAnalysisRepository(private val db: Database) {
 }
 
 data class NewTopicClaim(
-    val text: ClaimText,
-    val subject: ClaimSubject,
+    val text: String,
+    val subject: String,
     val memoryType: MemoryType,
     val certainty: ClaimCertainty,
     val evidence: List<SourceRecord>,

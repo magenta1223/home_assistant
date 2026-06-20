@@ -2,8 +2,6 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.domain.kakao.KakaoExportText
-import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.nlp.analysis.TopicCandidate
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -43,7 +41,7 @@ fun Application.configureRoutes(
                 return@post
             }
 
-            val result = kakaoImportAnalyze.importAndAnalyze(KakaoSourceFileName(sourceFileName), KakaoExportText(text))
+            val result = kakaoImportAnalyze.importAndAnalyze(sourceFileName, text)
             call.respond(HttpStatusCode.OK, result.toResponse())
         }
 
@@ -54,8 +52,8 @@ fun Application.configureRoutes(
             }
 
             val result = kakaoImportAnalyze.previewAnalysis(
-                KakaoSourceFileName(TEST_TOPIC_ANALYSIS_KAKAO_FILE_NAME),
-                KakaoExportText(TEST_TOPIC_ANALYSIS_KAKAO_TEXT),
+                TEST_TOPIC_ANALYSIS_KAKAO_FILE_NAME,
+                TEST_TOPIC_ANALYSIS_KAKAO_TEXT,
             )
             call.respond(HttpStatusCode.OK, result.toResponse())
         }
@@ -146,26 +144,26 @@ private data class TopicClaimResponse(
 
 private fun KakaoImportAnalyzeResult.toResponse(): KakaoImportAnalyzeResponse =
     KakaoImportAnalyzeResponse(
-        importedMessageCount = importedMessageCount.value,
+        importedMessageCount = importedMessageCount,
         topics = topics.map { it.toResponse() },
     )
 
 private fun TopicCandidate.toResponse(): TopicCandidateResponse =
     TopicCandidateResponse(
-        id = id.value,
-        title = title.value,
-        summary = summary.value,
+        id = id,
+        title = title,
+        summary = summary,
         memoryTypes = memoryTypes,
-        domains = domains.map { it.value },
-        evidenceMessageIds = evidenceRefs.map { it.value },
+        domains = domains,
+        evidenceMessageIds = evidenceRefs,
         claims = claims.map {
             TopicClaimResponse(
-                id = it.id.value,
-                text = it.text.value,
-                subject = it.subject.value,
+                id = it.id,
+                text = it.text,
+                subject = it.subject,
                 memoryType = it.memoryType,
                 certainty = it.certainty.name,
-                evidenceMessageIds = it.evidenceRefs.map { ref -> ref.value },
+                evidenceMessageIds = it.evidenceRefs,
             )
         },
         status = status.name,

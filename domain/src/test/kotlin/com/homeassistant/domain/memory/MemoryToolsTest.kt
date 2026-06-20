@@ -2,9 +2,7 @@ package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec
-import com.homeassistant.core.tools.ToolName
 import com.homeassistant.domain.db.tables.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -45,7 +43,7 @@ class MemoryToolsTest {
         keepAlive.close()
     }
 
-    private fun spec(name: String, args: String) = ToolCallSpec(ToolName(name), ToolArguments(args))
+    private fun spec(name: String, args: String) = ToolCallSpec(name, args)
     private val userId = UserId("dad")
 
     @Test

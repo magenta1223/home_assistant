@@ -31,18 +31,16 @@ class KakaoImportServiceTest {
     @Test
     fun `import stores only kakao messages and dedupes by fingerprint`() {
         val service = KakaoImportService(KakaoMessageRepository(db))
-        val text = KakaoExportText(
-            """
+        val text = """
             [동훈] [오후 4:49] 따랑해
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
-            """.trimIndent(),
-        )
+            """.trimIndent()
 
-        val result = service.import(KakaoSourceFileName("2026-06-07.txt"), text)
-        val repeated = service.import(KakaoSourceFileName("2026-06-07.txt"), text)
+        val result = service.import("2026-06-07.txt", text)
+        val repeated = service.import("2026-06-07.txt", text)
 
-        assertEquals(2, result.importedMessageCount.value)
+        assertEquals(2, result.importedMessageCount)
         assertEquals(2, result.messages.size)
-        assertEquals(0, repeated.importedMessageCount.value)
+        assertEquals(0, repeated.importedMessageCount)
     }
 }

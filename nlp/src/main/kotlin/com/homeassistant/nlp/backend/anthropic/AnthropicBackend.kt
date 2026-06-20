@@ -4,17 +4,12 @@ import com.anthropic.client.AnthropicClient
 import com.anthropic.client.okhttp.AnthropicOkHttpClient
 import com.anthropic.core.JsonValue
 import com.anthropic.models.messages.MessageCreateParams
-import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmOutputSchema
-import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.nlp.SystemPrompt
-import com.homeassistant.core.tools.ToolArguments
-import com.homeassistant.core.tools.ToolCallSpec
-import com.homeassistant.core.tools.ToolName
+import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.tools.Tool
+import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -40,19 +35,19 @@ class AnthropicBackend(
         .build()
 
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse {
         return withContext(Dispatchers.IO) {
             log.info("Anthropic call model=${config.model} maxTokens=${config.maxTokens}")
-            log.info("Anthropic prompt system='${system.value.take(100)}' messages=${messages.size}")
+            log.info("Anthropic prompt system='${system.take(100)}' messages=${messages.size}")
 
             val params = MessageCreateParams.builder()
                 .model(config.model)
                 .maxTokens(config.maxTokens.toLong())
-                .system(system.value)
+                .system(system)
                 .apply {
                     tools.forEach {
                         addTool(it.toClaudeCompatible())
@@ -86,7 +81,7 @@ class AnthropicBackend(
             val toolUse = invokeOptional(block, "toolUse") ?: return@forEach
             val name = invokeValue(toolUse, "name")?.toString() ?: return@forEach
             val input = invokeValue(toolUse, "input")?.toString() ?: "{}"
-            return LlmResponse.ToolCall(ToolCallSpec(ToolName(name), ToolArguments(input)))
+            return LlmResponse.ToolCall(ToolCallSpec(name, input))
         }
         return null
     }
@@ -105,8 +100,8 @@ class AnthropicBackend(
 
     private fun Tool.toClaudeCompatible(): AnthropicTool {
         return AnthropicTool.builder()
-            .name(name.value)
-            .description(description.value)
+            .name(name)
+            .description(description)
             .inputSchema(JsonValue.from(schema))
             .build()
     }

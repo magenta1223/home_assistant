@@ -1,23 +1,20 @@
 package com.homeassistant.nlp.backend.ollama
 
 import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmRawResponse
-import com.homeassistant.core.nlp.LlmOutputSchema
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
-import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
-import com.homeassistant.nlp.backend.utils.withTools
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
+import com.homeassistant.nlp.backend.utils.withTools
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
-import io.ktor.client.plugins.HttpTimeout
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.plugins.*
+import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.json
+import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
@@ -43,18 +40,18 @@ class OllamaBackend(
     }
 
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse {
         log.info("Ollama call model=$model baseUrl=$baseUrl maxTokens=${config.maxTokens}")
-        log.info("Ollama prompt system='${system.value.take(100)}' messages=${messages.size}")
+        log.info("Ollama prompt system='${system.take(100)}' messages=${messages.size}")
 
         val request = OllamaRequest(
             model = model,
             messages = buildList {
-                add(OllamaMessage(MessageRole.SYSTEM, system.withTools(tools).value))
+                add(OllamaMessage(MessageRole.SYSTEM, system.withTools(tools)))
                 messages.forEach { add(OllamaMessage(it.role, it.content)) }
             },
             stream = false,

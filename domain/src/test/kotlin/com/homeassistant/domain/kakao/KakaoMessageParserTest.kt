@@ -20,18 +20,18 @@ class KakaoMessageParserTest {
             2026년 3월 16일 오전 7:20, 홍승민 : 가는즁
         """.trimIndent()
 
-        val messages = KakaoMessageParser.parse(KakaoSourceFileName("home-second-brain-test.txt"), KakaoExportText(text))
+        val messages = KakaoMessageParser.parse("home-second-brain-test.txt", text)
 
         assertEquals(3, messages.size)
-        assertEquals(KakaoSenderName("동훈"), messages[0].sender)
+        assertEquals("동훈", messages[0].sender)
         assertEquals("2026년 3월 15일 오후 1:58", messages[0].displayTime)
-        assertEquals("우리은행 1002266102280", messages[0].text.value)
-        assertEquals(KakaoSenderName("홍승민"), messages[1].sender)
+        assertEquals("우리은행 1002266102280", messages[0].text)
+        assertEquals("홍승민", messages[1].sender)
         assertEquals(
             "수자인 부동산에 현 세입자 이사일 & 시간 정해졌는지 확인 (중도금 연락하면서)\n\n장박사 부동산에 집 나갔는지 확인",
-            messages[1].text.value,
+            messages[1].text,
         )
-        assertEquals("가는즁", messages[2].text.value)
+        assertEquals("가는즁", messages[2].text)
     }
 
     @Test
@@ -45,15 +45,15 @@ class KakaoMessageParserTest {
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
         """.trimIndent()
 
-        val messages = KakaoMessageParser.parse(KakaoSourceFileName("2026-06-07.txt"), KakaoExportText(text))
+        val messages = KakaoMessageParser.parse("2026-06-07.txt", text)
 
         assertEquals(3, messages.size)
-        assertEquals(KakaoSenderName("홍승민"), messages[1].sender)
-        assertEquals(2, messages[1].lineStart.value)
-        assertEquals(5, messages[1].lineEnd.value)
+        assertEquals("홍승민", messages[1].sender)
+        assertEquals(2, messages[1].lineStart)
+        assertEquals(5, messages[1].lineEnd)
         assertEquals(
             "[네이버지도]\n카인드커피\n경기 수원시 영통구 삼성로168번길 5 삼성중앙빌딩 1층 카인드커피\nhttps://naver.me/5MvUGczc",
-            messages[1].text.value,
+            messages[1].text,
         )
     }
 }

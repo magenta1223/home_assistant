@@ -1,9 +1,7 @@
 package com.homeassistant.domain
 
 import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec
-import com.homeassistant.core.tools.ToolName
 import com.homeassistant.domain.db.tables.*
 import com.homeassistant.domain.memory.*
 import kotlinx.coroutines.runBlocking
@@ -11,14 +9,8 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.DriverManager
-import java.util.UUID
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertContains
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
+import java.util.*
+import kotlin.test.*
 
 class DomainToolRegistryTest {
     private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
@@ -48,7 +40,7 @@ class DomainToolRegistryTest {
         keepAlive.close()
     }
 
-    private fun spec(name: String, args: String) = ToolCallSpec(ToolName(name), ToolArguments(args))
+    private fun spec(name: String, args: String) = ToolCallSpec(name, args)
     private val userId = UserId("test-user")
 
     @Test
@@ -61,7 +53,7 @@ class DomainToolRegistryTest {
                 "memory_candidate_reject",
                 "memory_search",
             ),
-            registry.tools().map { it.name.value },
+            registry.tools().map { it.name },
         )
     }
 

@@ -3,19 +3,16 @@ package com.homeassistant.nlp.analysis
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.nlp.LlmOutputSchema
-import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.DriverManager
-import java.util.UUID
+import java.util.*
 import kotlin.test.*
-import kotlinx.coroutines.runBlocking
 
 class TopicAnalysisServiceTest {
     private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
@@ -87,18 +84,18 @@ class TopicAnalysisServiceTest {
 
         val result = service.analyze(
             SourceDocument(
-                sourceType = SourceType("kakao"),
-                sourceName = SourceName("2026-06-07.txt"),
+                sourceType = "kakao",
+                sourceName = "2026-06-07.txt",
                 records = listOf(
-                    SourceRecord(SourceRecordId("r1"), SourceRecordRef(1), "동훈 | 오후 4:49 | 따랑해"),
-                    SourceRecord(SourceRecordId("r2"), SourceRecordRef(2), "홍승민 | 오후 5:38 | [네이버지도]\n카인드커피"),
-                    SourceRecord(SourceRecordId("r3"), SourceRecordRef(3), "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
+                    SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해"),
+                    SourceRecord("r2", 2, "홍승민 | 오후 5:38 | [네이버지도]\n카인드커피"),
+                    SourceRecord("r3", 3, "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
                 ),
             ),
         )
 
         assertEquals(1, result.topics.size)
-        assertEquals("카인드커피에서 만나기", result.topics.single().title.value)
+        assertEquals("카인드커피에서 만나기", result.topics.single().title)
         assertEquals(
             setOf(
                 MemoryType.EVENT,
@@ -106,15 +103,15 @@ class TopicAnalysisServiceTest {
             ),
             result.topics.single().memoryTypes.toSet(),
         )
-        assertEquals(setOf(DomainTag("location"), DomainTag("home")), result.topics.single().domains.toSet())
-        assertEquals(listOf(SourceRecordRef(2), SourceRecordRef(3)), result.topics.single().evidenceRefs)
-        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().claims.single().text.value)
+        assertEquals(setOf("location", "home"), result.topics.single().domains.toSet())
+        assertEquals(listOf(2, 3), result.topics.single().evidenceRefs)
+        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().claims.single().text)
         assertEquals(
             MemoryType.EVENT,
             result.topics.single().claims.single().memoryType,
         )
         assertEquals(ClaimCertainty.SAID, result.topics.single().claims.single().certainty)
-        assertEquals(listOf(SourceRecordRef(2), SourceRecordRef(3)), result.topics.single().claims.single().evidenceRefs)
+        assertEquals(listOf(2, 3), result.topics.single().claims.single().evidenceRefs)
         assertEquals(CandidateStatus.PENDING, result.topics.single().status)
     }
 
@@ -126,9 +123,9 @@ class TopicAnalysisServiceTest {
         val result = service.preview(singleRecordDocument())
 
         assertEquals(1, result.topics.size)
-        assertEquals("관계 표현", result.topics.single().title.value)
-        assertEquals(listOf(SourceRecordRef(1)), result.topics.single().evidenceRefs)
-        assertEquals("동훈은 애정 표현을 했다.", result.topics.single().claims.single().text.value)
+        assertEquals("관계 표현", result.topics.single().title)
+        assertEquals(listOf(1), result.topics.single().evidenceRefs)
+        assertEquals("동훈은 애정 표현을 했다.", result.topics.single().claims.single().text)
         assertEquals(ClaimCertainty.OBSERVED, result.topics.single().claims.single().certainty)
     }
 
@@ -139,24 +136,24 @@ class TopicAnalysisServiceTest {
 
         service.analyze(
             SourceDocument(
-                sourceType = SourceType("kakao"),
-                sourceName = SourceName("2026-06-07.txt"),
+                sourceType = "kakao",
+                sourceName = "2026-06-07.txt",
                 records = listOf(
-                    SourceRecord(SourceRecordId("r1"), SourceRecordRef(1), "병원 예약 내일이지?"),
-                    SourceRecord(SourceRecordId("r2"), SourceRecordRef(2), "카페도 들르자"),
-                    SourceRecord(SourceRecordId("r3"), SourceRecordRef(3), "병원 갈 때 아기수첩 챙길게"),
+                    SourceRecord("r1", 1, "병원 예약 내일이지?"),
+                    SourceRecord("r2", 2, "카페도 들르자"),
+                    SourceRecord("r3", 3, "병원 갈 때 아기수첩 챙길게"),
                 ),
             ),
         )
 
-        assertContains(backend.system.value, "시간 간격으로 나누지 마세요")
-        assertContains(backend.system.value, "A-B-A")
+        assertContains(backend.system, "시간 간격으로 나누지 마세요")
+        assertContains(backend.system, "A-B-A")
         assertContains(backend.messages.single().content, "r1")
         assertContains(backend.messages.single().content, "r3")
-        assertContains(backend.outputSchema!!.value, "claims")
-        assertContains(backend.outputSchema!!.value, "memoryTypes")
-        assertContains(backend.outputSchema!!.value, "memoryType")
-        assertContains(backend.outputSchema!!.value, "certainty")
+        assertContains(backend.outputSchema, "claims")
+        assertContains(backend.outputSchema, "memoryTypes")
+        assertContains(backend.outputSchema, "memoryType")
+        assertContains(backend.outputSchema, "certainty")
     }
 
     @Test
@@ -166,10 +163,10 @@ class TopicAnalysisServiceTest {
 
         service.analyze(singleRecordDocument())
 
-        assertContains(backend.system.value, TopicAnalysisOutputContract.schema.value)
-        assertFalse(backend.system.value.contains("memoryKind"))
-        assertFalse(backend.system.value.contains("memorySubtype"))
-        assertFalse(backend.system.value.contains("JSON만 반환하세요"))
+        assertContains(backend.system, TopicAnalysisOutputContract.schema)
+        assertFalse(backend.system.contains("memoryKind"))
+        assertFalse(backend.system.contains("memorySubtype"))
+        assertFalse(backend.system.contains("JSON만 반환하세요"))
     }
 
     @Test
@@ -198,7 +195,7 @@ class TopicAnalysisServiceTest {
     fun `analyzes topic response wrapped in json code fence`() = runBlocking {
         val result = serviceFor("```json\n${topicJson()}\n```").analyze(singleRecordDocument())
 
-        assertEquals("관계 표현", result.topics.single().title.value)
+        assertEquals("관계 표현", result.topics.single().title)
     }
 
     @Test
@@ -222,7 +219,7 @@ class TopicAnalysisServiceTest {
     fun `analyzes topic response wrapped in json code fence with trailing text`() = runBlocking {
         val result = serviceFor("```json\n${topicJson()}\n```\n분석 완료").analyze(singleRecordDocument())
 
-        assertEquals("관계 표현", result.topics.single().title.value)
+        assertEquals("관계 표현", result.topics.single().title)
     }
 
     @Test
@@ -252,7 +249,7 @@ class TopicAnalysisServiceTest {
             """.trimIndent(),
         ).analyze(singleRecordDocument())
 
-        assertEquals("관계 표현", result.topics.single().title.value)
+        assertEquals("관계 표현", result.topics.single().title)
     }
 
     @Test
@@ -296,14 +293,14 @@ class TopicAnalysisServiceTest {
     fun `generates topic analysis output schema from serializable dto`() {
         val schema = TopicAnalysisOutputContract.schema
 
-        assertContains(schema.value, "topics")
-        assertContains(schema.value, "claims")
-        assertContains(schema.value, "memoryTypes")
-        assertContains(schema.value, "memoryType")
-        assertFalse(schema.value.contains("memoryKind"))
-        assertFalse(schema.value.contains("memorySubtype"))
-        assertContains(schema.value, "certainty")
-        assertContains(schema.value, "evidenceRecordIds")
+        assertContains(schema, "topics")
+        assertContains(schema, "claims")
+        assertContains(schema, "memoryTypes")
+        assertContains(schema, "memoryType")
+        assertFalse(schema.contains("memoryKind"))
+        assertFalse(schema.contains("memorySubtype"))
+        assertContains(schema, "certainty")
+        assertContains(schema, "evidenceRecordIds")
     }
 
     private fun serviceFor(response: String): TopicAnalysisService =
@@ -311,9 +308,9 @@ class TopicAnalysisServiceTest {
 
     private fun singleRecordDocument(): SourceDocument =
         SourceDocument(
-            sourceType = SourceType("kakao"),
-            sourceName = SourceName("2026-06-07.txt"),
-            records = listOf(SourceRecord(SourceRecordId("r1"), SourceRecordRef(1), "동훈 | 오후 4:49 | 따랑해")),
+            sourceType = "kakao",
+            sourceName = "2026-06-07.txt",
+            records = listOf(SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해")),
         )
 
     private fun memoryColumnNames(table: String): List<String> = transaction(db) {
@@ -364,28 +361,28 @@ class TopicAnalysisServiceTest {
 
 private class StaticBackend(private val response: String) : LlmBackend {
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse =
-        LlmResponse.Text(LlmRawResponse(response))
+        LlmResponse.Text(response)
 }
 
 private class CapturingBackend(private val response: String) : LlmBackend {
-    var system: SystemPrompt = SystemPrompt("")
+    var system = ""
     lateinit var messages: List<Message>
-    var outputSchema: LlmOutputSchema? = null
+    var outputSchema: String = ""
 
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse {
         this.system = system
         this.messages = messages
         this.outputSchema = outputSchema
-        return LlmResponse.Text(LlmRawResponse(response))
+        return LlmResponse.Text(response)
     }
 }

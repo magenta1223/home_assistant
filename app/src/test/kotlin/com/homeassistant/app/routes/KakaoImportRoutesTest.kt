@@ -1,23 +1,10 @@
 package com.homeassistant.app.routes
 
-import com.homeassistant.domain.kakao.ImportedMessageCount
-import com.homeassistant.domain.kakao.KakaoExportText
-import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.nlp.analysis.DomainTag
 import com.homeassistant.nlp.analysis.ClaimCertainty
-import com.homeassistant.nlp.analysis.ClaimSubject
-import com.homeassistant.nlp.analysis.ClaimText
-import com.homeassistant.nlp.analysis.SourceName
-import com.homeassistant.nlp.analysis.SourceRecordRef
-import com.homeassistant.nlp.analysis.SourceType
 import com.homeassistant.nlp.analysis.TopicClaim
-import com.homeassistant.nlp.analysis.TopicClaimId
 import com.homeassistant.nlp.analysis.TopicCandidate
-import com.homeassistant.nlp.analysis.TopicCandidateId
-import com.homeassistant.nlp.analysis.TopicSummary
-import com.homeassistant.nlp.analysis.TopicTitle
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.get
@@ -55,8 +42,8 @@ class KakaoImportRoutesTest {
         assertContains(response.bodyAsText(), "STATE")
         assertContains(response.bodyAsText(), "OBSERVED")
         assertContains(response.bodyAsText(), "PENDING")
-        assertEquals(KakaoSourceFileName("2026-06-07.txt"), FakeAnalyzer.sourceFileName)
-        assertEquals(KakaoExportText("[동훈] [오후 4:49] 따랑해"), FakeAnalyzer.text)
+        assertEquals("2026-06-07.txt", FakeAnalyzer.sourceFileName)
+        assertEquals("[동훈] [오후 4:49] 따랑해", FakeAnalyzer.text)
     }
 
     @Test
@@ -71,9 +58,9 @@ class KakaoImportRoutesTest {
         val response = client.get("/api/test/topic-analysis/kakao-small-set")
 
         assertEquals(HttpStatusCode.OK, response.status)
-        assertContains(FakeAnalyzer.sourceFileName.value, "topic-analysis-small-kakao")
-        assertContains(FakeAnalyzer.text.value, "2026년 3월 15일 오후 1:58, 동훈 : 우리은행 1002266102280")
-        assertContains(FakeAnalyzer.text.value, "관리사무소 질문 리스트")
+        assertContains(FakeAnalyzer.sourceFileName, "topic-analysis-small-kakao")
+        assertContains(FakeAnalyzer.text, "2026년 3월 15일 오후 1:58, 동훈 : 우리은행 1002266102280")
+        assertContains(FakeAnalyzer.text, "관리사무소 질문 리스트")
         assertContains(response.bodyAsText(), "관계 표현")
         assertContains(response.bodyAsText(), "importedMessageCount")
         assertContains(response.bodyAsText(), "PENDING")
@@ -81,35 +68,35 @@ class KakaoImportRoutesTest {
 }
 
 private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
-    var sourceFileName = KakaoSourceFileName("")
-    var text = KakaoExportText("")
+    var sourceFileName = ""
+    var text = ""
 
     override suspend fun importAndAnalyze(
-        sourceFileName: KakaoSourceFileName,
-        text: KakaoExportText,
+        sourceFileName: String,
+        text: String,
     ): KakaoImportAnalyzeResult {
         this.sourceFileName = sourceFileName
         this.text = text
         return KakaoImportAnalyzeResult(
-            importedMessageCount = ImportedMessageCount(1),
+            importedMessageCount = 1,
             topics = listOf(
                 TopicCandidate(
-                    id = TopicCandidateId(7),
-                    sourceType = SourceType("kakao"),
-                    sourceName = SourceName(sourceFileName.value),
-                    title = TopicTitle("관계 표현"),
-                    summary = TopicSummary("애정 표현을 주고받았다."),
+                    id = 7,
+                    sourceType = "kakao",
+                    sourceName = sourceFileName,
+                    title = "관계 표현",
+                    summary = "애정 표현을 주고받았다.",
                     memoryTypes = listOf(MemoryType.STATE),
-                    domains = listOf(DomainTag("relationship")),
-                    evidenceRefs = listOf(SourceRecordRef(1)),
+                    domains = listOf("relationship"),
+                    evidenceRefs = listOf(1),
                     claims = listOf(
                         TopicClaim(
-                            id = TopicClaimId(8),
-                            text = ClaimText("동훈은 애정 표현을 했다."),
-                            subject = ClaimSubject("동훈"),
+                            id = 8,
+                            text = "동훈은 애정 표현을 했다.",
+                            subject = "동훈",
                             memoryType = MemoryType.STATE,
                             certainty = ClaimCertainty.OBSERVED,
-                            evidenceRefs = listOf(SourceRecordRef(1)),
+                            evidenceRefs = listOf(1),
                         ),
                     ),
                     status = CandidateStatus.PENDING,
@@ -119,8 +106,8 @@ private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
     }
 
     override suspend fun previewAnalysis(
-        sourceFileName: KakaoSourceFileName,
-        text: KakaoExportText,
+        sourceFileName: String,
+        text: String,
     ): KakaoImportAnalyzeResult {
         this.sourceFileName = sourceFileName
         this.text = text

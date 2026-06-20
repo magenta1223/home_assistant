@@ -4,9 +4,9 @@ import com.homeassistant.core.tools.Tool
 
 interface LlmBackend {
     suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool> = emptyList(),
-        outputSchema: LlmOutputSchema? = null,
+        outputSchema: String,
     ): LlmResponse
 }

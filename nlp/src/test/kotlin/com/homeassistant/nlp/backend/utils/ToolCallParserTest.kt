@@ -13,8 +13,8 @@ class ToolCallParserTest {
         )
 
         val toolCall = assertIs<LlmResponse.ToolCall>(parsed)
-        assertEquals("memory_candidate_create", toolCall.spec.name.value)
-        assertEquals("""{"domain":"SCHOOL","memory_type":"STATE","content":"A","summary":"B","confidence":0.8}""", toolCall.spec.arguments.value)
+        assertEquals("memory_candidate_create", toolCall.spec.name)
+        assertEquals("""{"domain":"SCHOOL","memory_type":"STATE","content":"A","summary":"B","confidence":0.8}""", toolCall.spec.arguments)
     }
 
     @Test

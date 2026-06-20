@@ -8,8 +8,8 @@ object KakaoMessageParser {
     private val exportedHeader = Regex("^(\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}), (.+?) : ?(.*)$")
     private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
 
-    fun parse(sourceFileName: KakaoSourceFileName, text: KakaoExportText): List<ParsedKakaoMessage> {
-        val lines = text.value.lines()
+    fun parse(sourceFileName: String, text: String): List<ParsedKakaoMessage> {
+        val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
         lines.forEachIndexed { index, rawLine ->
             val lineNumber = index + 1
@@ -34,7 +34,7 @@ object KakaoMessageParser {
     }
 
     private class MessageBuilder(
-        private val sourceFileName: KakaoSourceFileName,
+        private val sourceFileName: String,
         private val sender: String,
         private val displayTime: String,
         initialContent: String,
@@ -50,15 +50,15 @@ object KakaoMessageParser {
 
         fun build(): ParsedKakaoMessage {
             val content = contentLines.joinToString("\n").trimEnd()
-            val fingerprintText = listOf(sourceFileName.value, sender, displayTime, content).joinToString("\u001F")
+            val fingerprintText = listOf(sourceFileName, sender, displayTime, content).joinToString("\u001F")
             return ParsedKakaoMessage(
                 sourceFileName = sourceFileName,
-                sender = KakaoSenderName(sender),
+                sender = sender,
                 displayTime = displayTime,
-                text = KakaoMessageText(content),
-                lineStart = KakaoLineNumber(lineStart),
-                lineEnd = KakaoLineNumber(lineEnd),
-                fingerprint = KakaoMessageFingerprint(sha256(fingerprintText)),
+                text = content,
+                lineStart = lineStart,
+                lineEnd = lineEnd,
+                fingerprint = sha256(fingerprintText),
             )
         }
     }

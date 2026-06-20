@@ -3,19 +3,16 @@ package com.homeassistant.nlp.analysis
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.nlp.LlmOutputSchema
-import com.homeassistant.core.nlp.SystemPrompt
 import com.homeassistant.core.tools.Tool
+import kotlinx.coroutines.runBlocking
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.DriverManager
-import java.util.UUID
+import java.util.*
 import kotlin.test.*
-import kotlinx.coroutines.runBlocking
 
 class TopicAnalysisServiceTest {
     private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
@@ -149,14 +146,14 @@ class TopicAnalysisServiceTest {
             ),
         )
 
-        assertContains(backend.system.value, "시간 간격으로 나누지 마세요")
-        assertContains(backend.system.value, "A-B-A")
+        assertContains(backend.system, "시간 간격으로 나누지 마세요")
+        assertContains(backend.system, "A-B-A")
         assertContains(backend.messages.single().content, "r1")
         assertContains(backend.messages.single().content, "r3")
-        assertContains(backend.outputSchema!!.value, "claims")
-        assertContains(backend.outputSchema!!.value, "memoryTypes")
-        assertContains(backend.outputSchema!!.value, "memoryType")
-        assertContains(backend.outputSchema!!.value, "certainty")
+        assertContains(backend.outputSchema, "claims")
+        assertContains(backend.outputSchema, "memoryTypes")
+        assertContains(backend.outputSchema, "memoryType")
+        assertContains(backend.outputSchema, "certainty")
     }
 
     @Test
@@ -166,10 +163,10 @@ class TopicAnalysisServiceTest {
 
         service.analyze(singleRecordDocument())
 
-        assertContains(backend.system.value, TopicAnalysisOutputContract.schema.value)
-        assertFalse(backend.system.value.contains("memoryKind"))
-        assertFalse(backend.system.value.contains("memorySubtype"))
-        assertFalse(backend.system.value.contains("JSON만 반환하세요"))
+        assertContains(backend.system, TopicAnalysisOutputContract.schema)
+        assertFalse(backend.system.contains("memoryKind"))
+        assertFalse(backend.system.contains("memorySubtype"))
+        assertFalse(backend.system.contains("JSON만 반환하세요"))
     }
 
     @Test
@@ -296,14 +293,14 @@ class TopicAnalysisServiceTest {
     fun `generates topic analysis output schema from serializable dto`() {
         val schema = TopicAnalysisOutputContract.schema
 
-        assertContains(schema.value, "topics")
-        assertContains(schema.value, "claims")
-        assertContains(schema.value, "memoryTypes")
-        assertContains(schema.value, "memoryType")
-        assertFalse(schema.value.contains("memoryKind"))
-        assertFalse(schema.value.contains("memorySubtype"))
-        assertContains(schema.value, "certainty")
-        assertContains(schema.value, "evidenceRecordIds")
+        assertContains(schema, "topics")
+        assertContains(schema, "claims")
+        assertContains(schema, "memoryTypes")
+        assertContains(schema, "memoryType")
+        assertFalse(schema.contains("memoryKind"))
+        assertFalse(schema.contains("memorySubtype"))
+        assertContains(schema, "certainty")
+        assertContains(schema, "evidenceRecordIds")
     }
 
     private fun serviceFor(response: String): TopicAnalysisService =
@@ -364,28 +361,28 @@ class TopicAnalysisServiceTest {
 
 private class StaticBackend(private val response: String) : LlmBackend {
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse =
-        LlmResponse.Text(LlmRawResponse(response))
+        LlmResponse.Text(response)
 }
 
 private class CapturingBackend(private val response: String) : LlmBackend {
-    var system: SystemPrompt = SystemPrompt("")
+    var system = ""
     lateinit var messages: List<Message>
-    var outputSchema: LlmOutputSchema? = null
+    var outputSchema: String = ""
 
     override suspend fun complete(
-        system: SystemPrompt,
+        system: String,
         messages: List<Message>,
         tools: List<Tool>,
-        outputSchema: LlmOutputSchema?,
+        outputSchema: String,
     ): LlmResponse {
         this.system = system
         this.messages = messages
         this.outputSchema = outputSchema
-        return LlmResponse.Text(LlmRawResponse(response))
+        return LlmResponse.Text(response)
     }
 }

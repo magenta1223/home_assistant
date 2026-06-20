@@ -62,7 +62,7 @@ class TopicAnalysisService(
             outputSchema = TopicAnalysisOutputContract.schema,
         )
         val raw = when (response) {
-            is LlmResponse.Text -> response.content.value
+            is LlmResponse.Text -> response.content
             is LlmResponse.ToolCall -> throw TopicAnalysisException("Topic analyzer returned a tool call")
         }
         val dto = TopicAnalysisOutputContract.decode(raw)

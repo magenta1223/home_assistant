@@ -40,8 +40,8 @@ class MemoryTools(
 
     val tools: List<Tool> = listOf(
         Tool(
-            ToolName("memory_candidate_create"),
-            ToolDescription("사용자 승인이 필요한 장기 기억 후보를 생성합니다"),
+            "memory_candidate_create",
+            "사용자 승인이 필요한 장기 기억 후보를 생성합니다",
             ToolSchema(
                 properties = mapOf(
                     "conversation_id" to PropertySchema("string", "대화 ID"),
@@ -59,26 +59,26 @@ class MemoryTools(
             ),
         ),
         Tool(
-            ToolName("memory_candidate_list_pending"),
-            ToolDescription("현재 대화와 사용자 기준 pending 기억 후보를 조회합니다"),
+            "memory_candidate_list_pending",
+            "현재 대화와 사용자 기준 pending 기억 후보를 조회합니다",
             ToolSchema(
                 properties = mapOf("conversation_id" to PropertySchema("string", "대화 ID")),
                 required = listOf("conversation_id"),
             ),
         ),
         Tool(
-            ToolName("memory_candidate_approve"),
-            ToolDescription("기억 후보를 승인하고 장기 기억으로 저장합니다"),
+            "memory_candidate_approve",
+            "기억 후보를 승인하고 장기 기억으로 저장합니다",
             ToolSchema(properties = mapOf("candidate_id" to PropertySchema("integer", "후보 ID")), required = listOf("candidate_id")),
         ),
         Tool(
-            ToolName("memory_candidate_reject"),
-            ToolDescription("기억 후보를 거절합니다"),
+            "memory_candidate_reject",
+            "기억 후보를 거절합니다",
             ToolSchema(properties = mapOf("candidate_id" to PropertySchema("integer", "후보 ID")), required = listOf("candidate_id")),
         ),
         Tool(
-            ToolName("memory_search"),
-            ToolDescription("장기 기억을 의미 검색합니다"),
+            "memory_search",
+            "장기 기억을 의미 검색합니다",
             ToolSchema(
                 properties = mapOf(
                     "query" to PropertySchema("string", "검색 질의"),
@@ -93,20 +93,20 @@ class MemoryTools(
     )
 
     fun execute(spec: ToolCallSpec, userId: UserId): ToolResult = try {
-        when (spec.name.value) {
+        when (spec.name) {
             "memory_candidate_create" -> handleCreate(spec, userId)
             "memory_candidate_list_pending" -> handleListPending(spec, userId)
             "memory_candidate_approve" -> handleApprove(spec, userId)
             "memory_candidate_reject" -> handleReject(spec, userId)
             "memory_search" -> handleSearch(spec)
-            else -> error("Unhandled tool: ${spec.name.value}")
+            else -> error("Unhandled tool: ${spec.name}")
         }
     } catch (e: Exception) {
         ToolResult("ERROR: ${e.message}")
     }
 
     private fun handleCreate(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<CreateCandidateArgs>(spec.arguments.value)
+        val args = json.decodeFromString<CreateCandidateArgs>(spec.arguments)
         val id = repo.createCandidate(
             userId = userId,
             conversationId = args.conversationId,
@@ -122,7 +122,7 @@ class MemoryTools(
     }
 
     private fun handleListPending(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<Map<String, String>>(spec.arguments.value)
+        val args = json.decodeFromString<Map<String, String>>(spec.arguments)
         val candidates = repo.listPending(userId, args.getValue("conversation_id"))
         return if (candidates.isEmpty()) ToolResult("대기 중인 기억 후보가 없습니다.")
         else ToolResult(candidates.joinToString("\n") {
@@ -131,7 +131,7 @@ class MemoryTools(
     }
 
     private fun handleApprove(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<CandidateIdArgs>(spec.arguments.value)
+        val args = json.decodeFromString<CandidateIdArgs>(spec.arguments)
         val memory = repo.approveCandidate(userId, args.candidateId)
         vectorStore.upsert(
             VectorPoint(
@@ -151,13 +151,13 @@ class MemoryTools(
     }
 
     private fun handleReject(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<CandidateIdArgs>(spec.arguments.value)
+        val args = json.decodeFromString<CandidateIdArgs>(spec.arguments)
         repo.rejectCandidate(userId, args.candidateId)
         return ToolResult("기억 후보가 거절되었습니다. candidate_id=${args.candidateId}")
     }
 
     private fun handleSearch(spec: ToolCallSpec): ToolResult {
-        val args = json.decodeFromString<SearchArgs>(spec.arguments.value)
+        val args = json.decodeFromString<SearchArgs>(spec.arguments)
         val filter = MemorySearchFilter(
             memoryType = args.memoryType,
             domain = args.domain?.uppercase(),

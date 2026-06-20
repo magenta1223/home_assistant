@@ -1,6 +1,7 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.kakao.KakaoExportText
 import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.nlp.analysis.TopicCandidate
@@ -126,7 +127,7 @@ private data class TopicCandidateResponse(
     val id: Int,
     val title: String,
     val summary: String,
-    val classifications: List<MemoryClassificationResponse>,
+    val memoryTypes: List<MemoryType>,
     val domains: List<String>,
     val evidenceMessageIds: List<Int>,
     val claims: List<TopicClaimResponse>,
@@ -138,15 +139,9 @@ private data class TopicClaimResponse(
     val id: Int,
     val text: String,
     val subject: String,
-    val classification: MemoryClassificationResponse,
+    val memoryType: MemoryType,
     val certainty: String,
     val evidenceMessageIds: List<Int>,
-)
-
-@Serializable
-private data class MemoryClassificationResponse(
-    val memoryKind: String,
-    val memorySubtype: String,
 )
 
 private fun KakaoImportAnalyzeResult.toResponse(): KakaoImportAnalyzeResponse =
@@ -160,7 +155,7 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
         id = id.value,
         title = title.value,
         summary = summary.value,
-        classifications = classifications.map { it.toResponse() },
+        memoryTypes = memoryTypes,
         domains = domains.map { it.value },
         evidenceMessageIds = evidenceRefs.map { it.value },
         claims = claims.map {
@@ -168,16 +163,10 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
                 id = it.id.value,
                 text = it.text.value,
                 subject = it.subject.value,
-                classification = it.classification.toResponse(),
+                memoryType = it.memoryType,
                 certainty = it.certainty.name,
                 evidenceMessageIds = it.evidenceRefs.map { ref -> ref.value },
             )
         },
         status = status.name,
-    )
-
-private fun com.homeassistant.core.memory.MemoryClassification.toResponse(): MemoryClassificationResponse =
-    MemoryClassificationResponse(
-        memoryKind = kind.name,
-        memorySubtype = subtypeCode,
     )

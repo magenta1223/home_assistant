@@ -1,9 +1,6 @@
 package com.homeassistant.nlp.analysis
 
-import com.homeassistant.core.memory.EpisodicMemorySubtype
-import com.homeassistant.core.memory.MemoryKindCodes
-import com.homeassistant.core.memory.ProceduralMemorySubtype
-import com.homeassistant.core.memory.SemanticMemorySubtype
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmOutputSchema
 import com.homeassistant.core.nlp.SystemPrompt
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
@@ -12,7 +9,6 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @SerialName("TopicAnalysisOutput")
@@ -23,51 +19,27 @@ internal data class TopicAnalysisLlmResponse(val topics: List<TopicLlmResponse>)
 internal data class TopicLlmResponse(
     val title: String,
     val summary: String,
-    val classifications: List<TopicClassificationLlmResponse>,
+    val memoryTypes: List<MemoryType>,
     val domains: List<String>,
     val evidenceRecordIds: List<String>,
     val claims: List<TopicClaimLlmResponse>,
 )
-
-@OptIn(ExperimentalSerializationApi::class)
-@Serializable
-@JsonClassDiscriminator("memoryKind")
-internal sealed interface TopicClassificationLlmResponse
-
-@Serializable
-@SerialName(MemoryKindCodes.SEMANTIC)
-internal data class SemanticTopicClassificationLlmResponse(
-    @SerialName("memorySubtype") val memorySubtype: SemanticMemorySubtype,
-) : TopicClassificationLlmResponse
-
-@Serializable
-@SerialName(MemoryKindCodes.EPISODIC)
-internal data class EpisodicTopicClassificationLlmResponse(
-    @SerialName("memorySubtype") val memorySubtype: EpisodicMemorySubtype,
-) : TopicClassificationLlmResponse
-
-@Serializable
-@SerialName(MemoryKindCodes.PROCEDURAL)
-internal data class ProceduralTopicClassificationLlmResponse(
-    @SerialName("memorySubtype") val memorySubtype: ProceduralMemorySubtype,
-) : TopicClassificationLlmResponse
 
 @Serializable
 @SerialName("TopicClaim")
 internal data class TopicClaimLlmResponse(
     val text: String,
     val subject: String,
-    val classification: TopicClassificationLlmResponse,
+    val memoryType: MemoryType,
     val certainty: ClaimCertainty,
     val evidenceRecordIds: List<String>,
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 internal object TopicAnalysisOutputContract {
-    @OptIn(ExperimentalSerializationApi::class)
     private val json = Json {
         ignoreUnknownKeys = true
         allowTrailingComma = true
-        classDiscriminator = "memoryKind"
     }
 
     val schema: LlmOutputSchema = LlmOutputSchema(
@@ -103,7 +75,8 @@ internal object TopicAnalysisPrompt {
             각 topic은 가족/집 second brain에 승인 후보로 올릴 수 있는 evidence-backed claim을 1개 이상 포함해야 합니다.
             evidenceRecordIds는 사용자 메시지에 제공된 r1, r2 같은 ID만 사용하세요.
             실제로 말하지 않은 사실을 확정하지 말고, 관찰/발화/추론/불확실성을 구분하세요.
-            domain은 housing, moving, travel, food, finance 같은 생활 영역 태그이며 memorySubtype과 분리하세요.
+            memoryType은 ${MemoryType.entries.joinToString(", ") { it.code }} 중 하나만 사용하세요.
+            domain은 housing, moving, travel, food, finance 같은 생활 영역 태그이며 memoryType과 분리하세요.
             응답은 아래 JSON Schema를 준수하는 JSON object 하나여야 합니다.
 
             ${schema.value}

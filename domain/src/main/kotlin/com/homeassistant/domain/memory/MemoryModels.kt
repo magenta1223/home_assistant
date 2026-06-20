@@ -1,7 +1,6 @@
 package com.homeassistant.domain.memory
 
-typealias MemoryClassification = com.homeassistant.core.memory.MemoryClassification
-typealias MemoryKind = com.homeassistant.core.memory.MemoryKind
+typealias MemoryType = com.homeassistant.core.memory.MemoryType
 typealias CandidateStatus = com.homeassistant.core.memory.CandidateStatus
 
 const val DEFAULT_FAMILY_ID = "default-family"
@@ -15,7 +14,7 @@ data class MemoryCandidateRow(
     val conversationId: String,
     val domainId: Int,
     val domainName: String,
-    val classification: MemoryClassification,
+    val memoryType: MemoryType,
     val content: String,
     val summary: String,
     val subjectMemberId: String?,
@@ -33,7 +32,7 @@ data class MemoryRow(
     val familyId: String,
     val domainId: Int,
     val domainName: String,
-    val classification: MemoryClassification,
+    val memoryType: MemoryType,
     val content: String,
     val summary: String,
     val subjectMemberId: String?,

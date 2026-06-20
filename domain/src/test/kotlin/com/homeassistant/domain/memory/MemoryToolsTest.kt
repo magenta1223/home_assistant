@@ -1,6 +1,7 @@
 package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.tools.ToolArguments
 import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.core.tools.ToolName
@@ -52,7 +53,7 @@ class MemoryToolsTest {
         val result = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_kind":"SEMANTIC","memory_subtype":"STATE","content":"Min has piano Friday","summary":"Min piano","confidence":0.8}""",
+                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_type":"STATE","content":"Min has piano Friday","summary":"Min piano","confidence":0.8}""",
             ),
             userId,
         )
@@ -62,7 +63,7 @@ class MemoryToolsTest {
     }
 
     @Test
-    fun `memory_candidate_create rejects legacy memory type`() {
+    fun `memory_candidate_create rejects unknown memory type`() {
         val result = tools.execute(
             spec(
                 "memory_candidate_create",
@@ -76,11 +77,11 @@ class MemoryToolsTest {
     }
 
     @Test
-    fun `memory_candidate_create rejects subtype from another kind`() {
+    fun `memory_candidate_create rejects missing memory type`() {
         val result = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"HOME","memory_kind":"EPISODIC","memory_subtype":"REFERENCE","content":"Passport in drawer","summary":"Passport location","confidence":0.8}""",
+                """{"conversation_id":"conv-1","domain":"HOME","content":"Passport in drawer","summary":"Passport location","confidence":0.8}""",
             ),
             userId,
         )
@@ -94,7 +95,7 @@ class MemoryToolsTest {
         val created = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"HOME","memory_kind":"SEMANTIC","memory_subtype":"PREFERENCE","content":"Dad prefers decaf after dinner","summary":"Dad decaf","confidence":0.7}""",
+                """{"conversation_id":"conv-1","domain":"HOME","memory_type":"PREFERENCE","content":"Dad prefers decaf after dinner","summary":"Dad decaf","confidence":0.7}""",
             ),
             userId,
         )
@@ -114,7 +115,7 @@ class MemoryToolsTest {
                 userId,
                 "conv-1",
                 "TRAVEL",
-                MemoryClassification.parse("EPISODIC", "EVENT"),
+                MemoryType.EVENT,
                 "Trip to Busan in July",
                 "Busan July",
                 0.9,

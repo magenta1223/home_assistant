@@ -15,12 +15,11 @@ object TopicCandidateTable : Table("topic_candidates") {
     override val primaryKey = PrimaryKey(id)
 }
 
-/** Stores one or more kind-scoped memory classifications per topic candidate. */
+/** Stores one or more memory types per topic candidate. */
 object TopicClassificationTable : Table("topic_classifications") {
     val topicId = integer("topic_id").references(TopicCandidateTable.id)
-    val memoryKind = text("memory_kind")
-    val memorySubtype = text("memory_subtype")
-    override val primaryKey = PrimaryKey(topicId, memoryKind, memorySubtype)
+    val memoryType = text("memory_type")
+    override val primaryKey = PrimaryKey(topicId, memoryType)
 }
 
 /** Stores free-form domain tags attached to a topic candidate. */
@@ -44,8 +43,7 @@ object TopicClaimTable : Table("topic_claims") {
     val topicId = integer("topic_id").references(TopicCandidateTable.id)
     val text = text("text")
     val subject = text("subject")
-    val memoryKind = text("memory_kind")
-    val memorySubtype = text("memory_subtype")
+    val memoryType = text("memory_type")
     val certainty = text("certainty")
     override val primaryKey = PrimaryKey(id)
 }

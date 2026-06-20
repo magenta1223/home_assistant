@@ -1,8 +1,7 @@
 package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryClassification
-import com.homeassistant.core.memory.MemoryKind
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
@@ -19,7 +18,7 @@ class TopicAnalysisService(
                 document = document,
                 title = topic.title,
                 summary = topic.summary,
-                classifications = topic.classifications,
+                memoryTypes = topic.memoryTypes,
                 domains = topic.domains,
                 evidence = topic.evidence,
                 claims = topic.claims,
@@ -36,7 +35,7 @@ class TopicAnalysisService(
                 sourceName = document.sourceName,
                 title = topic.title,
                 summary = topic.summary,
-                classifications = topic.classifications,
+                memoryTypes = topic.memoryTypes,
                 domains = topic.domains,
                 evidenceRefs = topic.evidence.map { it.ref },
                 claims = topic.claims.mapIndexed { claimIndex, claim ->
@@ -44,7 +43,7 @@ class TopicAnalysisService(
                         id = TopicClaimId(claimIndex + 1),
                         text = claim.text,
                         subject = claim.subject,
-                        classification = claim.classification,
+                        memoryType = claim.memoryType,
                         certainty = claim.certainty,
                         evidenceRefs = claim.evidence.map { it.ref },
                     )
@@ -68,14 +67,14 @@ class TopicAnalysisService(
         }
         val dto = TopicAnalysisOutputContract.decode(raw)
         val topics = dto.topics.map { topic ->
-            val classifications = parseClassifications(topic.classifications)
+            val memoryTypes = topic.memoryTypes.distinct()
             val domains = parseDomains(topic.domains)
             val evidence = parseEvidence(document, topic.evidenceRecordIds)
             val claims = parseClaims(document, topic.claims)
 
             if (topic.title.isBlank()) throw TopicAnalysisException("Topic title must not be blank")
             if (topic.summary.isBlank()) throw TopicAnalysisException("Topic summary must not be blank")
-            if (classifications.isEmpty()) throw TopicAnalysisException("Topic must include at least one classification")
+            if (memoryTypes.isEmpty()) throw TopicAnalysisException("Topic must include at least one memory type")
             if (domains.isEmpty()) throw TopicAnalysisException("Topic must include at least one domain")
             if (evidence.isEmpty()) throw TopicAnalysisException("Topic must include at least one evidence record")
             if (claims.isEmpty()) throw TopicAnalysisException("Topic must include at least one claim")
@@ -83,7 +82,7 @@ class TopicAnalysisService(
             ValidatedTopic(
                 title = TopicTitle(topic.title.trim()),
                 summary = TopicSummary(topic.summary.trim()),
-                classifications = classifications,
+                memoryTypes = memoryTypes,
                 domains = domains,
                 evidence = evidence,
                 claims = claims,
@@ -91,23 +90,6 @@ class TopicAnalysisService(
         }
         return topics
     }
-
-    private fun parseClassifications(classifications: List<TopicClassificationLlmResponse>): List<MemoryClassification> =
-        classifications.map { parseClassification(it) }.distinct()
-
-    private fun parseClassification(classification: TopicClassificationLlmResponse): MemoryClassification =
-        try {
-            when (classification) {
-                is SemanticTopicClassificationLlmResponse ->
-                    MemoryClassification(MemoryKind.SEMANTIC, classification.memorySubtype)
-                is EpisodicTopicClassificationLlmResponse ->
-                    MemoryClassification(MemoryKind.EPISODIC, classification.memorySubtype)
-                is ProceduralTopicClassificationLlmResponse ->
-                    MemoryClassification(MemoryKind.PROCEDURAL, classification.memorySubtype)
-            }
-        } catch (error: IllegalArgumentException) {
-            throw TopicAnalysisException("Invalid memory classification")
-        }
 
     private fun parseDomains(domains: List<String>): List<DomainTag> =
         domains.map { domain ->
@@ -133,7 +115,7 @@ class TopicAnalysisService(
             NewTopicClaim(
                 text = ClaimText(claim.text.trim()),
                 subject = ClaimSubject(claim.subject.trim()),
-                classification = parseClassification(claim.classification),
+                memoryType = claim.memoryType,
                 certainty = claim.certainty,
                 evidence = evidence,
             )
@@ -146,7 +128,7 @@ class TopicAnalysisService(
 private data class ValidatedTopic(
     val title: TopicTitle,
     val summary: TopicSummary,
-    val classifications: List<MemoryClassification>,
+    val memoryTypes: List<MemoryType>,
     val domains: List<DomainTag>,
     val evidence: List<SourceRecord>,
     val claims: List<NewTopicClaim>,

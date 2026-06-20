@@ -1,12 +1,16 @@
 package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.db.tables.*
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class MemoryRepository(private val db: Database) {
+    private val json = Json
 
     init {
         transaction(db) {
@@ -19,7 +23,7 @@ class MemoryRepository(private val db: Database) {
         userId: UserId,
         conversationId: String,
         domainName: String,
-        classification: MemoryClassification,
+        memoryType: MemoryType,
         content: String,
         summary: String,
         confidence: Double,
@@ -35,8 +39,7 @@ class MemoryRepository(private val db: Database) {
             it[familyId] = DEFAULT_FAMILY_ID
             it[MemoryCandidateTable.conversationId] = conversationId
             it[MemoryCandidateTable.domainId] = domainId
-            it[MemoryCandidateTable.memoryKind] = classification.kind.name
-            it[MemoryCandidateTable.memorySubtype] = classification.subtypeCode
+            it[MemoryCandidateTable.memoryType] = memoryType.code
             it[MemoryCandidateTable.content] = content
             it[MemoryCandidateTable.summary] = summary
             it[MemoryCandidateTable.subjectMemberId] = subjectMemberId
@@ -88,8 +91,7 @@ class MemoryRepository(private val db: Database) {
         val memoryId = MemoryTable.insert {
             it[familyId] = candidate[MemoryCandidateTable.familyId]
             it[domainId] = candidate[MemoryCandidateTable.domainId]
-            it[memoryKind] = candidate[MemoryCandidateTable.memoryKind]
-            it[memorySubtype] = candidate[MemoryCandidateTable.memorySubtype]
+            it[memoryType] = candidate[MemoryCandidateTable.memoryType]
             it[content] = candidate[MemoryCandidateTable.content]
             it[summary] = candidate[MemoryCandidateTable.summary]
             it[subjectMemberId] = candidate[MemoryCandidateTable.subjectMemberId]
@@ -193,10 +195,7 @@ class MemoryRepository(private val db: Database) {
             conversationId = this[MemoryCandidateTable.conversationId],
             domainId = this[MemoryCandidateTable.domainId],
             domainName = domain[DomainTable.name],
-            classification = MemoryClassification.parse(
-                this[MemoryCandidateTable.memoryKind],
-                this[MemoryCandidateTable.memorySubtype],
-            ),
+            memoryType = decodeMemoryType(this[MemoryCandidateTable.memoryType]),
             content = this[MemoryCandidateTable.content],
             summary = this[MemoryCandidateTable.summary],
             subjectMemberId = this[MemoryCandidateTable.subjectMemberId],
@@ -217,10 +216,7 @@ class MemoryRepository(private val db: Database) {
             familyId = this[MemoryTable.familyId],
             domainId = this[MemoryTable.domainId],
             domainName = domain[DomainTable.name],
-            classification = MemoryClassification.parse(
-                this[MemoryTable.memoryKind],
-                this[MemoryTable.memorySubtype],
-            ),
+            memoryType = decodeMemoryType(this[MemoryTable.memoryType]),
             content = this[MemoryTable.content],
             summary = this[MemoryTable.summary],
             subjectMemberId = this[MemoryTable.subjectMemberId],
@@ -233,4 +229,7 @@ class MemoryRepository(private val db: Database) {
             updatedAt = this[MemoryTable.updatedAt],
         )
     }
+
+    private fun decodeMemoryType(value: String): MemoryType =
+        json.decodeFromString<MemoryType>(json.encodeToString(value))
 }

@@ -1,6 +1,7 @@
 package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.db.tables.*
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -39,12 +40,24 @@ class MemoryRepositoryTest {
     }
 
     @Test
+    fun `memory tables store memory type in a single column`() {
+        assertEquals(
+            setOf("memory_type"),
+            memoryColumnNames("memory_candidates").filter { it.startsWith("memory_") }.toSet(),
+        )
+        assertEquals(
+            setOf("memory_type"),
+            memoryColumnNames("memories").filter { it.startsWith("memory_") }.toSet(),
+        )
+    }
+
+    @Test
     fun `candidate creation records default family createdBy and pending status`() {
         val id = repo.createCandidate(
             userId = UserId("dad"),
             conversationId = "conv-1",
             domainName = "SCHOOL",
-            classification = MemoryClassification.parse("SEMANTIC", "STATE"),
+            memoryType = MemoryType.STATE,
             content = "Min has piano class on Friday",
             summary = "Min piano Friday",
             confidence = 0.82,
@@ -65,7 +78,7 @@ class MemoryRepositoryTest {
             userId = UserId("mom"),
             conversationId = "conv-2",
             domainName = "AFTER_SCHOOL",
-            classification = MemoryClassification.parse("PROCEDURAL", "ROUTINE"),
+            memoryType = MemoryType.ROUTINE,
             content = "Pick up Joon at 5pm",
             summary = "Joon pickup 5pm",
             confidence = 0.9,
@@ -87,7 +100,7 @@ class MemoryRepositoryTest {
             userId = UserId("dad"),
             conversationId = "conv-3",
             domainName = "HOME",
-            classification = MemoryClassification.parse("SEMANTIC", "DECISION"),
+            memoryType = MemoryType.DECISION,
             content = "Do not save this",
             summary = "Reject me",
             confidence = 0.5,
@@ -98,5 +111,13 @@ class MemoryRepositoryTest {
 
         assertEquals(CandidateStatus.REJECTED, repo.getCandidate(candidateId)?.status)
         assertTrue(repo.listMemories().isEmpty())
+    }
+
+    private fun memoryColumnNames(table: String): List<String> = transaction(db) {
+        val names = mutableListOf<String>()
+        exec("PRAGMA table_info($table)") { result ->
+            while (result.next()) names += result.getString("name")
+        }
+        names
     }
 }

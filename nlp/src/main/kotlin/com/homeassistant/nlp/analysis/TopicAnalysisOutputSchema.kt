@@ -1,12 +1,18 @@
 package com.homeassistant.nlp.analysis
 
+import com.homeassistant.core.memory.EpisodicMemorySubtype
+import com.homeassistant.core.memory.MemoryKindCodes
+import com.homeassistant.core.memory.ProceduralMemorySubtype
+import com.homeassistant.core.memory.SemanticMemorySubtype
 import com.homeassistant.core.nlp.LlmOutputSchema
 import com.homeassistant.core.nlp.SystemPrompt
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @SerialName("TopicAnalysisOutput")
@@ -23,12 +29,28 @@ internal data class TopicLlmResponse(
     val claims: List<TopicClaimLlmResponse>,
 )
 
+@OptIn(ExperimentalSerializationApi::class)
 @Serializable
-@SerialName("TopicClassification")
-internal data class TopicClassificationLlmResponse(
-    val memoryKind: TopicAnalysisMemoryKind,
-    val memorySubtype: TopicAnalysisMemorySubtype,
-)
+@JsonClassDiscriminator("memoryKind")
+internal sealed interface TopicClassificationLlmResponse
+
+@Serializable
+@SerialName(MemoryKindCodes.SEMANTIC)
+internal data class SemanticTopicClassificationLlmResponse(
+    @SerialName("memorySubtype") val memorySubtype: SemanticMemorySubtype,
+) : TopicClassificationLlmResponse
+
+@Serializable
+@SerialName(MemoryKindCodes.EPISODIC)
+internal data class EpisodicTopicClassificationLlmResponse(
+    @SerialName("memorySubtype") val memorySubtype: EpisodicMemorySubtype,
+) : TopicClassificationLlmResponse
+
+@Serializable
+@SerialName(MemoryKindCodes.PROCEDURAL)
+internal data class ProceduralTopicClassificationLlmResponse(
+    @SerialName("memorySubtype") val memorySubtype: ProceduralMemorySubtype,
+) : TopicClassificationLlmResponse
 
 @Serializable
 @SerialName("TopicClaim")
@@ -40,40 +62,16 @@ internal data class TopicClaimLlmResponse(
     val evidenceRecordIds: List<String>,
 )
 
-@Serializable
-internal enum class TopicAnalysisMemoryKind { SEMANTIC, EPISODIC, PROCEDURAL }
-
-@Serializable
-internal enum class TopicAnalysisMemorySubtype {
-    PROFILE,
-    PREFERENCE,
-    RELATIONSHIP,
-    STATE,
-    LOCATION,
-    REFERENCE,
-    DECISION,
-    CONSTRAINT,
-    CONVERSATION,
-    EVENT,
-    TRANSACTION,
-    APPOINTMENT,
-    CHANGE,
-    MILESTONE,
-    OBSERVATION,
-    ROUTINE,
-    CHECKLIST,
-    INSTRUCTION,
-    RULE,
-    RECIPE,
-    TROUBLESHOOTING,
-    TEMPLATE,
-}
-
 internal object TopicAnalysisOutputContract {
-    private val json = Json { ignoreUnknownKeys = true }
+    @OptIn(ExperimentalSerializationApi::class)
+    private val json = Json {
+        ignoreUnknownKeys = true
+        allowTrailingComma = true
+        classDiscriminator = "memoryKind"
+    }
 
     val schema: LlmOutputSchema = LlmOutputSchema(
-        SerializationClassJsonSchemaGenerator.Default
+        SerializationClassJsonSchemaGenerator(json = json)
             .generateSchemaString(TopicAnalysisLlmResponse.serializer().descriptor),
     )
 
@@ -89,9 +87,10 @@ internal object TopicAnalysisOutputContract {
         if (!trimmed.startsWith("```")) return trimmed
 
         val lines = trimmed.lines()
-        if (lines.size < 3 || lines.last().trim() != "```") return trimmed
+        if (lines.size < 2) return trimmed
 
-        return lines.drop(1).dropLast(1).joinToString("\n").trim()
+        val bodyLines = lines.drop(1).takeWhile { it.trim() != "```" }
+        return bodyLines.joinToString("\n").trim()
     }
 }
 

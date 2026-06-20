@@ -50,7 +50,7 @@ fun Application.module() {
     log.info("Database: $dbPath")
 
     val db = DatabaseFactory.init(dbPath)
-    val analysisBackend = LmBackendFactory.create(AiProvider.valueOf(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
+    val analysisBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
     val kakaoTopicAnalysis = KakaoImportAnalyzeService(
         KakaoImportService(KakaoMessageRepository(db)),
         TopicAnalysisService(TopicAnalysisRepository(db), analysisBackend),

@@ -5,6 +5,36 @@ import kotlin.test.assertEquals
 
 class KakaoMessageParserTest {
     @Test
+    fun `parser reads exported date sender lines and skips date separators`() {
+        val text = """
+            홍승민 님과 카카오톡 대화
+            저장한 날짜 : 2026년 6월 15일 오전 6:43
+
+
+            2026년 3월 15일 오후 1:58
+            2026년 3월 15일 오후 1:58, 동훈 : 우리은행 1002266102280
+            2026년 3월 15일 오후 5:48, 홍승민 : 수자인 부동산에 현 세입자 이사일 & 시간 정해졌는지 확인 (중도금 연락하면서)
+
+            장박사 부동산에 집 나갔는지 확인
+            2026년 3월 16일 오전 7:20
+            2026년 3월 16일 오전 7:20, 홍승민 : 가는즁
+        """.trimIndent()
+
+        val messages = KakaoMessageParser.parse(KakaoSourceFileName("home-second-brain-test.txt"), KakaoExportText(text))
+
+        assertEquals(3, messages.size)
+        assertEquals(KakaoSenderName("동훈"), messages[0].sender)
+        assertEquals("2026년 3월 15일 오후 1:58", messages[0].displayTime)
+        assertEquals("우리은행 1002266102280", messages[0].text.value)
+        assertEquals(KakaoSenderName("홍승민"), messages[1].sender)
+        assertEquals(
+            "수자인 부동산에 현 세입자 이사일 & 시간 정해졌는지 확인 (중도금 연락하면서)\n\n장박사 부동산에 집 나갔는지 확인",
+            messages[1].text.value,
+        )
+        assertEquals("가는즁", messages[2].text.value)
+    }
+
+    @Test
     fun `parser keeps multiline map payload with the preceding message`() {
         val text = """
             [동훈] [오후 4:49] 따랑해

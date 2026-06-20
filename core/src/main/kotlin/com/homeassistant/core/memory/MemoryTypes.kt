@@ -1,7 +1,16 @@
 package com.homeassistant.core.memory
 
+import kotlinx.serialization.Serializable
+
 /** Top-level cognitive category for a long-lived household memory. */
+@Serializable
 enum class MemoryKind { SEMANTIC, EPISODIC, PROCEDURAL }
+
+object MemoryKindCodes {
+    const val SEMANTIC = "SEMANTIC"
+    const val EPISODIC = "EPISODIC"
+    const val PROCEDURAL = "PROCEDURAL"
+}
 
 /** Kind-scoped subtype. Do not model subtypes as independent of MemoryKind. */
 sealed interface MemorySubtype {
@@ -9,6 +18,7 @@ sealed interface MemorySubtype {
     val code: String
 }
 
+@Serializable
 enum class SemanticMemorySubtype : MemorySubtype {
     PROFILE,
     PREFERENCE,
@@ -23,6 +33,7 @@ enum class SemanticMemorySubtype : MemorySubtype {
     override val code: String = name
 }
 
+@Serializable
 enum class EpisodicMemorySubtype : MemorySubtype {
     CONVERSATION,
     EVENT,
@@ -36,6 +47,7 @@ enum class EpisodicMemorySubtype : MemorySubtype {
     override val code: String = name
 }
 
+@Serializable
 enum class ProceduralMemorySubtype : MemorySubtype {
     ROUTINE,
     CHECKLIST,

@@ -17,9 +17,10 @@ object AppConfig {
     const val DEFAULT_QDRANT_URL            = "http://localhost:6333"
     const val DEFAULT_QDRANT_COLLECTION     = "family_memories"
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
-    const val DEFAULT_LLM_MAX_TOKENS    = 512
+    const val DEFAULT_LLM_MAX_TOKENS    = 2048
     const val JDBC_DRIVER               = "org.sqlite.JDBC"
     const val JDBC_URL_PREFIX           = "jdbc:sqlite:"
     const val ROUTE_HEALTH              = "/health"
     const val ROUTE_KAKAO_IMPORT_ANALYZE = "/api/kakao/import/analyze"
+    const val ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET = "/api/test/topic-analysis/kakao-small-set"
 }

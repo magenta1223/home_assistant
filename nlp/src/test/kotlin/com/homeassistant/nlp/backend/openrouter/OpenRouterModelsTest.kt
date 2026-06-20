@@ -3,9 +3,15 @@ package com.homeassistant.nlp.backend.openrouter
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 
 class OpenRouterModelsTest {
     private val json = Json { explicitNulls = false }
+
+    @Test
+    fun `default max tokens is large enough for topic analysis json`() {
+        assertEquals(2048, OpenRouterConfig().maxTokens)
+    }
 
     @Test
     fun `request serializes response format schema`() {

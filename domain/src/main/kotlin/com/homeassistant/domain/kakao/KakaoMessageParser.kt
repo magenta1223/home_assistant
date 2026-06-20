@@ -4,22 +4,29 @@ import java.security.MessageDigest
 
 /** Parses KakaoTalk text exports into message records while preserving multiline payloads. */
 object KakaoMessageParser {
-    private val header = Regex("^\\[(.+)] \\[(오전|오후) (\\d{1,2}:\\d{2})] ?(.*)$")
+    private val bracketHeader = Regex("^\\[(.+)] \\[(오전|오후) (\\d{1,2}:\\d{2})] ?(.*)$")
+    private val exportedHeader = Regex("^(\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}), (.+?) : ?(.*)$")
+    private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
 
     fun parse(sourceFileName: KakaoSourceFileName, text: KakaoExportText): List<ParsedKakaoMessage> {
         val lines = text.value.lines()
         val messages = mutableListOf<MessageBuilder>()
         lines.forEachIndexed { index, rawLine ->
             val lineNumber = index + 1
-            val match = header.matchEntire(rawLine)
-            if (match == null) {
+            val line = rawLine.trimStart('\uFEFF')
+            val bracketMatch = bracketHeader.matchEntire(line)
+            val exportedMatch = exportedHeader.matchEntire(line)
+            if (bracketMatch == null && exportedMatch == null) {
+                if (exportedDateSeparator.matches(line)) return@forEachIndexed
                 if (messages.isNotEmpty()) messages.last().append(rawLine, lineNumber)
                 return@forEachIndexed
             }
 
-            val sender = match.groupValues[1]
-            val displayTime = "${match.groupValues[2]} ${match.groupValues[3]}"
-            val content = match.groupValues[4]
+            val sender = bracketMatch?.groupValues?.get(1) ?: exportedMatch!!.groupValues[2]
+            val displayTime = bracketMatch
+                ?.let { "${it.groupValues[2]} ${it.groupValues[3]}" }
+                ?: exportedMatch!!.groupValues[1]
+            val content = bracketMatch?.groupValues?.get(4) ?: exportedMatch!!.groupValues[3]
             messages += MessageBuilder(sourceFileName, sender, displayTime, content, lineNumber)
         }
 

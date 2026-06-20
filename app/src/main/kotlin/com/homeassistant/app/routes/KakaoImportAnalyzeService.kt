@@ -3,6 +3,7 @@ package com.homeassistant.app.routes
 import com.homeassistant.domain.kakao.ImportedMessageCount
 import com.homeassistant.domain.kakao.KakaoExportText
 import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.domain.kakao.KakaoSourceFileName
 import com.homeassistant.nlp.analysis.SourceDocument
 import com.homeassistant.nlp.analysis.SourceName
@@ -16,6 +17,11 @@ import com.homeassistant.nlp.analysis.TopicCandidate
 /** Coordinates Kakao import with source-agnostic topic analysis for API callers. */
 interface KakaoImportAnalyzeUseCase {
     suspend fun importAndAnalyze(
+        sourceFileName: KakaoSourceFileName,
+        text: KakaoExportText,
+    ): KakaoImportAnalyzeResult
+
+    suspend fun previewAnalysis(
         sourceFileName: KakaoSourceFileName,
         text: KakaoExportText,
     ): KakaoImportAnalyzeResult
@@ -50,6 +56,29 @@ class KakaoImportAnalyzeService(
         return KakaoImportAnalyzeResult(
             importedMessageCount = imported.importedMessageCount,
             topics = topicAnalysisService.analyze(document).topics,
+        )
+    }
+
+    override suspend fun previewAnalysis(
+        sourceFileName: KakaoSourceFileName,
+        text: KakaoExportText,
+    ): KakaoImportAnalyzeResult {
+        val messages = KakaoMessageParser.parse(sourceFileName, text)
+        val document = SourceDocument(
+            sourceType = SourceType("kakao"),
+            sourceName = SourceName(sourceFileName.value),
+            records = messages.mapIndexed { index, message ->
+                val recordNumber = index + 1
+                SourceRecord(
+                    id = SourceRecordId("r$recordNumber"),
+                    ref = SourceRecordRef(recordNumber),
+                    content = "${message.sender.value} | ${message.displayTime} | ${message.text.value}",
+                )
+            },
+        )
+        return KakaoImportAnalyzeResult(
+            importedMessageCount = ImportedMessageCount(messages.size),
+            topics = topicAnalysisService.preview(document).topics,
         )
     }
 }

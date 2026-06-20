@@ -1,6 +1,8 @@
 package com.homeassistant.nlp.analysis
 
+import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryClassification
+import com.homeassistant.core.memory.MemoryKind
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
@@ -12,8 +14,49 @@ class TopicAnalysisService(
     private val backend: LlmBackend,
 ) {
     suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
-        if (document.records.isEmpty()) return TopicAnalysisResult(emptyList())
+        val topics = analyzeValidTopics(document).map { topic ->
+            repository.createTopic(
+                document = document,
+                title = topic.title,
+                summary = topic.summary,
+                classifications = topic.classifications,
+                domains = topic.domains,
+                evidence = topic.evidence,
+                claims = topic.claims,
+            )
+        }
+        return TopicAnalysisResult(topics)
+    }
 
+    suspend fun preview(document: SourceDocument): TopicAnalysisResult {
+        val topics = analyzeValidTopics(document).mapIndexed { topicIndex, topic ->
+            TopicCandidate(
+                id = TopicCandidateId(topicIndex + 1),
+                sourceType = document.sourceType,
+                sourceName = document.sourceName,
+                title = topic.title,
+                summary = topic.summary,
+                classifications = topic.classifications,
+                domains = topic.domains,
+                evidenceRefs = topic.evidence.map { it.ref },
+                claims = topic.claims.mapIndexed { claimIndex, claim ->
+                    TopicClaim(
+                        id = TopicClaimId(claimIndex + 1),
+                        text = claim.text,
+                        subject = claim.subject,
+                        classification = claim.classification,
+                        certainty = claim.certainty,
+                        evidenceRefs = claim.evidence.map { it.ref },
+                    )
+                },
+                status = CandidateStatus.PENDING,
+            )
+        }
+        return TopicAnalysisResult(topics)
+    }
+
+    private suspend fun analyzeValidTopics(document: SourceDocument): List<ValidatedTopic> {
+        if (document.records.isEmpty()) return emptyList()
         val response = backend.complete(
             system = TopicAnalysisPrompt.system(),
             messages = listOf(Message(MessageRole.USER, renderDocument(document))),
@@ -37,8 +80,7 @@ class TopicAnalysisService(
             if (evidence.isEmpty()) throw TopicAnalysisException("Topic must include at least one evidence record")
             if (claims.isEmpty()) throw TopicAnalysisException("Topic must include at least one claim")
 
-            repository.createTopic(
-                document = document,
+            ValidatedTopic(
                 title = TopicTitle(topic.title.trim()),
                 summary = TopicSummary(topic.summary.trim()),
                 classifications = classifications,
@@ -47,7 +89,7 @@ class TopicAnalysisService(
                 claims = claims,
             )
         }
-        return TopicAnalysisResult(topics)
+        return topics
     }
 
     private fun parseClassifications(classifications: List<TopicClassificationLlmResponse>): List<MemoryClassification> =
@@ -55,11 +97,16 @@ class TopicAnalysisService(
 
     private fun parseClassification(classification: TopicClassificationLlmResponse): MemoryClassification =
         try {
-            MemoryClassification.parse(classification.memoryKind.name, classification.memorySubtype.name)
+            when (classification) {
+                is SemanticTopicClassificationLlmResponse ->
+                    MemoryClassification(MemoryKind.SEMANTIC, classification.memorySubtype)
+                is EpisodicTopicClassificationLlmResponse ->
+                    MemoryClassification(MemoryKind.EPISODIC, classification.memorySubtype)
+                is ProceduralTopicClassificationLlmResponse ->
+                    MemoryClassification(MemoryKind.PROCEDURAL, classification.memorySubtype)
+            }
         } catch (error: IllegalArgumentException) {
-            throw TopicAnalysisException(
-                "Invalid memory classification: ${classification.memoryKind.name}/${classification.memorySubtype.name}",
-            )
+            throw TopicAnalysisException("Invalid memory classification")
         }
 
     private fun parseDomains(domains: List<String>): List<DomainTag> =
@@ -95,3 +142,12 @@ class TopicAnalysisService(
     private fun renderDocument(document: SourceDocument): String =
         document.records.joinToString("\n") { "${it.id.value} | ${it.content}" }
 }
+
+private data class ValidatedTopic(
+    val title: TopicTitle,
+    val summary: TopicSummary,
+    val classifications: List<MemoryClassification>,
+    val domains: List<DomainTag>,
+    val evidence: List<SourceRecord>,
+    val claims: List<NewTopicClaim>,
+)

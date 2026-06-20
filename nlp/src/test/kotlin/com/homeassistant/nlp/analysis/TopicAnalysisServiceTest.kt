@@ -2,6 +2,9 @@ package com.homeassistant.nlp.analysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryClassification
+import com.homeassistant.core.memory.EpisodicMemorySubtype
+import com.homeassistant.core.memory.ProceduralMemorySubtype
+import com.homeassistant.core.memory.SemanticMemorySubtype
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmRawResponse
 import com.homeassistant.core.nlp.LlmResponse
@@ -110,6 +113,20 @@ class TopicAnalysisServiceTest {
     }
 
     @Test
+    fun `previews topic analysis without storing topics`() = runBlocking {
+        val emptySchemaDb = Database.connect("jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared", driver = "org.sqlite.JDBC")
+        val service = TopicAnalysisService(TopicAnalysisRepository(emptySchemaDb), StaticBackend(topicJson()))
+
+        val result = service.preview(singleRecordDocument())
+
+        assertEquals(1, result.topics.size)
+        assertEquals("관계 표현", result.topics.single().title.value)
+        assertEquals(listOf(SourceRecordRef(1)), result.topics.single().evidenceRefs)
+        assertEquals("동훈은 애정 표현을 했다.", result.topics.single().claims.single().text.value)
+        assertEquals(ClaimCertainty.OBSERVED, result.topics.single().claims.single().certainty)
+    }
+
+    @Test
     fun `prompt tells model not to split topics by time or interrupted order`() = runBlocking {
         val backend = CapturingBackend("""{"topics":[]}""")
         val service = TopicAnalysisService(TopicAnalysisRepository(db), backend)
@@ -181,6 +198,70 @@ class TopicAnalysisServiceTest {
     }
 
     @Test
+    fun `topic output contract rejects subtype outside its memory kind`() {
+        assertFailsWith<TopicAnalysisException> {
+            TopicAnalysisOutputContract.decode(
+                topicJson(classifications = """[{ "memoryKind": "SEMANTIC", "memorySubtype": "OBSERVATION" }]"""),
+            )
+        }
+        assertFailsWith<TopicAnalysisException> {
+            TopicAnalysisOutputContract.decode(
+                topicJson(claimMemoryKind = "PROCEDURAL", claimMemorySubtype = "REFERENCE"),
+            )
+        }
+    }
+
+    @Test
+    fun `topic output contract decodes each core subtype catalog under its memory kind`() {
+        TopicAnalysisOutputContract.decode(
+            topicJson(classifications = """[{ "memoryKind": "SEMANTIC", "memorySubtype": "STATE" }]"""),
+        )
+        TopicAnalysisOutputContract.decode(
+            topicJson(classifications = """[{ "memoryKind": "EPISODIC", "memorySubtype": "OBSERVATION" }]"""),
+        )
+        TopicAnalysisOutputContract.decode(
+            topicJson(classifications = """[{ "memoryKind": "PROCEDURAL", "memorySubtype": "CHECKLIST" }]"""),
+        )
+    }
+
+    @Test
+    fun `analyzes topic response wrapped in json code fence with trailing text`() = runBlocking {
+        val result = serviceFor("```json\n${topicJson()}\n```\n분석 완료").analyze(singleRecordDocument())
+
+        assertEquals("관계 표현", result.topics.single().title.value)
+    }
+
+    @Test
+    fun `analyzes topic response with trailing comma`() = runBlocking {
+        val result = serviceFor(
+            """
+            {
+              "topics": [
+                {
+                  "title": "관계 표현",
+                  "summary": "애정 표현을 주고받았다.",
+                  "classifications": [{ "memoryKind": "SEMANTIC", "memorySubtype": "STATE" }],
+                  "domains": ["relationship"],
+                  "evidenceRecordIds": ["r1"],
+                  "claims": [
+                    {
+                      "text": "동훈은 애정 표현을 했다.",
+                      "subject": "동훈",
+                      "classification": { "memoryKind": "SEMANTIC", "memorySubtype": "STATE" },
+                      "certainty": "OBSERVED",
+                      "evidenceRecordIds": ["r1"],
+                    }
+                  ],
+                }
+              ],
+            }
+            """.trimIndent(),
+        ).analyze(singleRecordDocument())
+
+        assertEquals("관계 표현", result.topics.single().title.value)
+    }
+
+    @Test
     fun `rejects invalid topic claims`() = runBlocking {
         val document = singleRecordDocument()
 
@@ -231,9 +312,9 @@ class TopicAnalysisServiceTest {
         assertContains(schema.value, "memorySubtype")
         assertContains(schema.value, "certainty")
         assertContains(schema.value, "evidenceRecordIds")
-        assertContains(schema.value, "PROFILE")
-        assertContains(schema.value, "OBSERVATION")
-        assertContains(schema.value, "TROUBLESHOOTING")
+        SemanticMemorySubtype.entries.forEach { assertContains(schema.value, it.name) }
+        EpisodicMemorySubtype.entries.forEach { assertContains(schema.value, it.name) }
+        ProceduralMemorySubtype.entries.forEach { assertContains(schema.value, it.name) }
     }
 
     private fun serviceFor(response: String): TopicAnalysisService =

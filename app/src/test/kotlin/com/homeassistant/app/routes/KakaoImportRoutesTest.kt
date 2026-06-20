@@ -20,6 +20,7 @@ import com.homeassistant.nlp.analysis.TopicSummary
 import com.homeassistant.nlp.analysis.TopicTitle
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
+import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -56,6 +57,26 @@ class KakaoImportRoutesTest {
         assertContains(response.bodyAsText(), "PENDING")
         assertEquals(KakaoSourceFileName("2026-06-07.txt"), FakeAnalyzer.sourceFileName)
         assertEquals(KakaoExportText("[동훈] [오후 4:49] 따랑해"), FakeAnalyzer.text)
+    }
+
+    @Test
+    fun `test topic analysis route analyzes bundled small kakao conversation`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.get("/api/test/topic-analysis/kakao-small-set")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertContains(FakeAnalyzer.sourceFileName.value, "topic-analysis-small-kakao")
+        assertContains(FakeAnalyzer.text.value, "2026년 3월 15일 오후 1:58, 동훈 : 우리은행 1002266102280")
+        assertContains(FakeAnalyzer.text.value, "관리사무소 질문 리스트")
+        assertContains(response.bodyAsText(), "관계 표현")
+        assertContains(response.bodyAsText(), "importedMessageCount")
+        assertContains(response.bodyAsText(), "PENDING")
     }
 }
 
@@ -95,5 +116,14 @@ private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
                 ),
             ),
         )
+    }
+
+    override suspend fun previewAnalysis(
+        sourceFileName: KakaoSourceFileName,
+        text: KakaoExportText,
+    ): KakaoImportAnalyzeResult {
+        this.sourceFileName = sourceFileName
+        this.text = text
+        return importAndAnalyze(sourceFileName, text)
     }
 }

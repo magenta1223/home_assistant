@@ -1,6 +1,16 @@
 package com.homeassistant.domain.kakao
 
-/** Parsed KakaoTalk message before it is stored. */
+/**
+ * Parsed KakaoTalk message before it is stored.
+ *
+ * @property sourceFileName Name of the Kakao export file that produced the message.
+ * @property sender Display name of the sender in the export.
+ * @property displayTime Timestamp text as written in the export.
+ * @property text Message body, including preserved multiline content.
+ * @property lineStart First source line included in this parsed message.
+ * @property lineEnd Last source line included in this parsed message.
+ * @property fingerprint Deduplication key derived from the parsed message.
+ */
 data class ParsedKakaoMessage(
     val sourceFileName: String,
     val sender: String,
@@ -11,7 +21,18 @@ data class ParsedKakaoMessage(
     val fingerprint: String,
 )
 
-/** KakaoTalk message row stored in the local import database. */
+/**
+ * KakaoTalk message row stored in the local import database.
+ *
+ * @property id Database id assigned to the imported message.
+ * @property sourceFileName Name of the Kakao export file that produced the message.
+ * @property sender Display name of the sender in the export.
+ * @property displayTime Timestamp text as written in the export.
+ * @property text Message body, including preserved multiline content.
+ * @property lineStart First source line included in this message.
+ * @property lineEnd Last source line included in this message.
+ * @property fingerprint Deduplication key derived from the message.
+ */
 data class KakaoMessage(
     val id: Int,
     val sourceFileName: String,

@@ -1,5 +1,15 @@
 package com.homeassistant.domain.memory
 
+/**
+ * Filters applied to vector memory search.
+ *
+ * @property familyId Family scope to search within.
+ * @property memoryType Optional memory category filter.
+ * @property domain Optional domain name filter.
+ * @property memberId Optional subject member filter.
+ * @property createdAfter Optional lower creation timestamp bound in epoch milliseconds.
+ * @property createdBefore Optional upper creation timestamp bound in epoch milliseconds.
+ */
 data class MemorySearchFilter(
     val familyId: String = DEFAULT_FAMILY_ID,
     val memoryType: MemoryType? = null,
@@ -9,12 +19,25 @@ data class MemorySearchFilter(
     val createdBefore: Long? = null,
 )
 
+/**
+ * Vector-store point representing one confirmed memory.
+ *
+ * @property memoryId Confirmed memory id used as the vector point id.
+ * @property vector Embedding vector for the memory text.
+ * @property payload String metadata stored with the vector point.
+ */
 data class VectorPoint(
     val memoryId: Int,
     val vector: List<Float>,
     val payload: Map<String, String>,
 )
 
+/**
+ * Vector search hit mapped back to a memory id.
+ *
+ * @property memoryId Confirmed memory id matched by the vector search.
+ * @property score Similarity score returned by the vector store.
+ */
 data class VectorSearchResult(val memoryId: Int, val score: Double)
 
 interface VectorStore {

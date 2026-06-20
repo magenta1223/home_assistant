@@ -85,8 +85,35 @@ class QdrantVectorStore(
         }
     }
 
+    /**
+     * Qdrant upsert request body.
+     *
+     * @property points Vector points to insert or replace.
+     */
     @Serializable private data class QdrantUpsertRequest(val points: List<QdrantPoint>)
+
+    /**
+     * Qdrant vector point payload.
+     *
+     * @property id Point id stored in Qdrant.
+     * @property vector Embedding vector stored for the point.
+     * @property payload String metadata stored with the point.
+     */
     @Serializable private data class QdrantPoint(val id: Int, val vector: List<Float>, val payload: Map<String, String>)
+
+    /**
+     * Qdrant search response body.
+     *
+     * @property result Search hits returned by Qdrant.
+     */
     @Serializable private data class QdrantSearchResponse(val result: List<QdrantHit> = emptyList())
+
+    /**
+     * Qdrant search hit.
+     *
+     * @property id Point id returned by Qdrant.
+     * @property score Similarity score returned by Qdrant.
+     * @property payload String metadata returned with the hit.
+     */
     @Serializable private data class QdrantHit(val id: Int, val score: Double, val payload: Map<String, String> = emptyMap())
 }

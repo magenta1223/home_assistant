@@ -125,6 +125,16 @@ class TopicAnalysisService(
         document.records.joinToString("\n") { "${it.id} | ${it.content}" }
 }
 
+/**
+ * Topic analysis payload after schema decoding and domain validation.
+ *
+ * @property title Trimmed topic title.
+ * @property summary Trimmed topic summary.
+ * @property memoryTypes Distinct memory categories assigned to the topic.
+ * @property domains Normalized domain tags attached to the topic.
+ * @property evidence Source records that support the topic.
+ * @property claims Validated claims grouped under the topic.
+ */
 private data class ValidatedTopic(
     val title: String,
     val summary: String,

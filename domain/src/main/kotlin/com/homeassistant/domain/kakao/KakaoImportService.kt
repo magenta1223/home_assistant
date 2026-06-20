@@ -10,7 +10,12 @@ class KakaoImportService(private val repository: KakaoMessageRepository) {
     }
 }
 
-/** Result of importing a KakaoTalk export file. */
+/**
+ * Result of importing a KakaoTalk export file.
+ *
+ * @property importedMessageCount Number of newly imported messages.
+ * @property messages Stored messages for the source file after import.
+ */
 data class KakaoImportResult(
     val importedMessageCount: Int,
     val messages: List<KakaoMessage>,

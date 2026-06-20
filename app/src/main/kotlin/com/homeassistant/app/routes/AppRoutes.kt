@@ -107,6 +107,13 @@ private val TEST_TOPIC_ANALYSIS_KAKAO_TEXT = """
 2026년 3월 16일 오전 9:24, 홍승민 : 잘해써용
 """.trimIndent()
 
+/**
+ * Request body accepted by the Kakao import-and-analyze endpoint.
+ *
+ * @property fileName Optional source file name used when raw text is provided.
+ * @property filePath Optional local path to read when text is not provided.
+ * @property text Optional raw Kakao export text.
+ */
 @Serializable
 private data class KakaoImportAnalyzeRequest(
     val fileName: String? = null,
@@ -114,12 +121,30 @@ private data class KakaoImportAnalyzeRequest(
     val text: String? = null,
 )
 
+/**
+ * Response body returned by the Kakao import-and-analyze endpoint.
+ *
+ * @property importedMessageCount Number of newly imported or previewed Kakao messages.
+ * @property topics Topic candidates produced from the imported source document.
+ */
 @Serializable
 private data class KakaoImportAnalyzeResponse(
     val importedMessageCount: Int,
     val topics: List<TopicCandidateResponse>,
 )
 
+/**
+ * API response representation of a topic candidate.
+ *
+ * @property id Candidate id assigned by storage or preview generation.
+ * @property title Short topic title.
+ * @property summary Review-facing topic summary.
+ * @property memoryTypes Memory categories represented by the topic.
+ * @property domains Normalized domain tags attached to the topic.
+ * @property evidenceMessageIds Source message ids that support the topic.
+ * @property claims Evidence-backed claims grouped under the topic.
+ * @property status Review state for the topic candidate.
+ */
 @Serializable
 private data class TopicCandidateResponse(
     val id: Int,
@@ -132,6 +157,16 @@ private data class TopicCandidateResponse(
     val status: String,
 )
 
+/**
+ * API response representation of an evidence-backed topic claim.
+ *
+ * @property id Claim id assigned by storage or preview generation.
+ * @property text Claim text suitable for memory review.
+ * @property subject Person, place, or concept the claim is about.
+ * @property memoryType Memory category assigned to the claim.
+ * @property certainty How directly source evidence supports the claim.
+ * @property evidenceMessageIds Source message ids that support the claim.
+ */
 @Serializable
 private data class TopicClaimResponse(
     val id: Int,

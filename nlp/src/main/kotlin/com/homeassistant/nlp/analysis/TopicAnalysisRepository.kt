@@ -138,7 +138,15 @@ class TopicAnalysisRepository(private val db: Database) {
     private fun decodeMemoryType(value: String): MemoryType =
         json.decodeFromString<MemoryType>(json.encodeToString(value))
 }
-
+/**
+ * New claim payload ready to be persisted under a topic candidate.
+ *
+ * @property text Claim text suitable for memory review.
+ * @property subject Person, place, or concept the claim is about.
+ * @property memoryType Memory category assigned to the claim.
+ * @property certainty How directly source evidence supports the claim.
+ * @property evidence Source records that support the claim.
+ */
 data class NewTopicClaim(
     val text: String,
     val subject: String,

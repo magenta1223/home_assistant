@@ -20,7 +20,12 @@ interface KakaoImportAnalyzeUseCase {
     ): KakaoImportAnalyzeResult
 }
 
-/** API-level result for importing Kakao messages and analyzing them into topics. */
+/**
+ * API-level result for importing Kakao messages and analyzing them into topics.
+ *
+ * @property importedMessageCount Number of newly imported or previewed Kakao messages.
+ * @property topics Topic candidates produced from the imported source document.
+ */
 data class KakaoImportAnalyzeResult(
     val importedMessageCount: Int,
     val topics: List<TopicCandidate>,

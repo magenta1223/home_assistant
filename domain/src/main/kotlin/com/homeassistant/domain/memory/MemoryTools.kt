@@ -13,6 +13,18 @@ class MemoryTools(
 ) {
     private val json = Json { ignoreUnknownKeys = true }
 
+    /**
+     * Arguments for creating a reviewable memory candidate.
+     *
+     * @property conversationId Source conversation id associated with the candidate.
+     * @property domain Domain name assigned to the candidate.
+     * @property memoryType Memory category assigned to the candidate.
+     * @property content Full candidate memory content.
+     * @property summary Short review-facing summary.
+     * @property confidence Confidence score assigned by the caller.
+     * @property subjectMemberId Optional family member the memory is about.
+     * @property sourceConversationMessageId Optional source message id that produced the candidate.
+     */
     @Serializable
     private data class CreateCandidateArgs(
         @SerialName("conversation_id") val conversationId: String,
@@ -25,8 +37,24 @@ class MemoryTools(
         @SerialName("source_conversation_message_id") val sourceConversationMessageId: Int? = null,
     )
 
+    /**
+     * Arguments for tools that target a single memory candidate.
+     *
+     * @property candidateId Candidate id to approve or reject.
+     */
     @Serializable private data class CandidateIdArgs(@SerialName("candidate_id") val candidateId: Int)
 
+    /**
+     * Arguments for semantic memory search.
+     *
+     * @property query Natural-language search query.
+     * @property memoryType Optional memory category filter.
+     * @property domain Optional domain name filter.
+     * @property memberId Optional subject member filter.
+     * @property createdAfter Optional lower creation timestamp bound in epoch milliseconds.
+     * @property createdBefore Optional upper creation timestamp bound in epoch milliseconds.
+     * @property limit Maximum number of vector matches to request.
+     */
     @Serializable
     private data class SearchArgs(
         val query: String,

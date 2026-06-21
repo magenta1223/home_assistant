@@ -10,6 +10,7 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.app.routes.KakaoImportAnalyzeService
+import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.nlp.backend.AiProvider
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -18,7 +19,6 @@ import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
 import io.ktor.server.plugins.calllogging.CallLogging
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
-import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.io.PrintStream
@@ -34,10 +34,7 @@ fun main() {
 
 fun Application.module() {
     install(ContentNegotiation) {
-        json(Json {
-            ignoreUnknownKeys = true
-            isLenient = true
-        })
+        json(JsonSerializer.json)
     }
 
     install(CallLogging) {

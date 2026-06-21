@@ -2,15 +2,15 @@ package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.db.tables.*
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class MemoryRepository(private val db: Database) {
-    private val json = Json
+    private val json = JsonSerializer.json
 
     init {
         transaction(db) {

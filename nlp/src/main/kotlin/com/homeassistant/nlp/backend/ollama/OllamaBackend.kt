@@ -5,6 +5,8 @@ import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.tools.Tool
+import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import com.homeassistant.nlp.backend.utils.withTools
 import io.ktor.client.*
@@ -15,7 +17,6 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(OllamaBackend::class.java)
@@ -26,13 +27,9 @@ class OllamaBackend(
     private val config: OllamaConfig = OllamaConfig(),
 ) : LlmBackend {
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        explicitNulls = false
-    }
 
     private val httpClient = HttpClient(CIO) {
-        install(ContentNegotiation) { json(json) }
+        install(ContentNegotiation) { json(JsonSerializer.json) }
         install(HttpTimeout) {
             requestTimeoutMillis = 120_000
             socketTimeoutMillis = 120_000
@@ -77,7 +74,10 @@ class OllamaBackend(
         val responseText = response.bodyAsText()
         log.info("Response Body: $responseText")
 
-        val text = json.decodeFromString<OllamaResponse>(responseText).message.content
+        val text = responseText
+            .decodeFromString<OllamaResponse>()
+            .message
+            .content
         log.info("Ollama response ${System.currentTimeMillis() - start}ms chars=${text.length}")
         return parseToolCallOrText(text)
     }

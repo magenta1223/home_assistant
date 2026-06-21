@@ -1,14 +1,14 @@
 package com.homeassistant.nlp.backend.openrouter
 
+import com.homeassistant.core.utils.JsonSerializer.encodeToString
+import com.homeassistant.core.utils.JsonSerializer.parseToJsonElement
 import com.homeassistant.nlp.backend.ollama.OllamaOptions
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 class OpenRouterModelsTest {
-    private val json = Json { explicitNulls = false }
 
     @Test
     fun `default max tokens is large enough for topic analysis json`() {
@@ -23,32 +23,39 @@ class OpenRouterModelsTest {
             response_format = OpenRouterResponseFormat(
                 json_schema = OpenRouterJsonSchemaResponseFormat(
                     name = "topic_analysis_output",
-                    schema = Json.parseToJsonElement("""{"type":"object"}"""),
+                    schema = """{"type":"object"}""".parseToJsonElement(),
                 ),
             ),
         )
 
-        val encoded = json.encodeToString(request)
+        val encoded = request.encodeToString()
 
         assertContains(encoded, "response_format")
         assertContains(encoded, "json_schema")
         assertContains(encoded, "topic_analysis_output")
-        assertContains(encoded, """"schema":{"type":"object"}""")
+        assertContains(encoded.compactJson(), """"schema":{"type":"object"}""")
     }
 
     @Test
     fun `ollama options serialize with kotlin property names`() {
-        val encoded = json.encodeToString(
-            OllamaOptions(topK = 40, topP = 0.9, numPredict = 256, numCtx = 4096, repeatPenalty = 1.1),
-        )
+        val encoded = OllamaOptions(
+            topK = 40,
+            topP = 0.9,
+            numPredict = 256,
+            numCtx = 4096,
+            repeatPenalty = 1.1
+        ).encodeToString()
 
-        assertContains(encoded, """"topK":40""")
-        assertContains(encoded, """"topP":0.9""")
-        assertContains(encoded, """"numPredict":256""")
-        assertContains(encoded, """"numCtx":4096""")
-        assertContains(encoded, """"repeatPenalty":1.1""")
+        val compact = encoded.compactJson()
+        assertContains(compact, """"topK":40""")
+        assertContains(compact, """"topP":0.9""")
+        assertContains(compact, """"numPredict":256""")
+        assertContains(compact, """"numCtx":4096""")
+        assertContains(compact, """"repeatPenalty":1.1""")
         assertFalse(encoded.contains("top_k"))
         assertFalse(encoded.contains("num_predict"))
         assertFalse(encoded.contains("repeat_penalty"))
     }
+
+    private fun String.compactJson(): String = filterNot { it.isWhitespace() }
 }

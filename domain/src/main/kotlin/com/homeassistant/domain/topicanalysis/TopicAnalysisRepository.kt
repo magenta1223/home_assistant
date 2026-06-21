@@ -2,20 +2,15 @@ package com.homeassistant.domain.topicanalysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.core.utils.JsonSerializer.encodeToString
 import com.homeassistant.domain.db.tables.TopicCandidateTable
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.and
-import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
 /** Persists source-agnostic topic candidates and their memory types/evidence. */
 class TopicAnalysisRepository(private val db: Database) {
-    private val json = Json
 
     fun createTopic(candidate: NewTopicCandidate): TopicCandidate = transaction(db) {
         val existing = findExistingTopic(candidate)
@@ -30,10 +25,10 @@ class TopicAnalysisRepository(private val db: Database) {
             it[TopicCandidateTable.title] = candidate.title
             it[TopicCandidateTable.summary] = candidate.summary
             it[status] = CandidateStatus.PENDING.name
-            it[memoryTypesJson] = json.encodeToString(candidate.memoryTypes.distinct())
-            it[domainsJson] = json.encodeToString(candidate.domains.distinct())
-            it[evidenceJson] = json.encodeToString(distinctEvidenceRefs)
-            it[claimsJson] = json.encodeToString(distinctClaims.toPersistedClaims())
+            it[memoryTypesJson] = candidate.memoryTypes.distinct().encodeToString()
+            it[domainsJson] = candidate.domains.distinct().encodeToString()
+            it[evidenceJson] = distinctEvidenceRefs.encodeToString()
+            it[claimsJson] = distinctClaims.toPersistedClaims().encodeToString()
             it[createdAt] = now
             it[updatedAt] = now
         }[TopicCandidateTable.id]
@@ -50,7 +45,9 @@ class TopicAnalysisRepository(private val db: Database) {
                     (TopicCandidateTable.title eq candidate.title)
             }
         return candidates.firstOrNull { row ->
-            decodeEvidenceRefs(row[TopicCandidateTable.evidenceJson]).toSet() == evidenceRefs
+            row[TopicCandidateTable.evidenceJson]
+                .decodeFromString<List<Int>>()
+                .toSet() == evidenceRefs
         }?.let { getTopic(it[TopicCandidateTable.id]) }
     }
 
@@ -65,16 +62,17 @@ class TopicAnalysisRepository(private val db: Database) {
             sourceName = row[TopicCandidateTable.sourceName],
             title = row[TopicCandidateTable.title],
             summary = row[TopicCandidateTable.summary],
-            memoryTypes = json.decodeFromString(row[TopicCandidateTable.memoryTypesJson]),
-            domains = json.decodeFromString(row[TopicCandidateTable.domainsJson]),
-            evidenceRefs = decodeEvidenceRefs(row[TopicCandidateTable.evidenceJson]),
+            memoryTypes = row[TopicCandidateTable.memoryTypesJson].decodeFromString(),
+            domains = row[TopicCandidateTable.domainsJson].decodeFromString(),
+            evidenceRefs = row[TopicCandidateTable.evidenceJson].decodeFromString(),
             claims = decodeClaims(row),
             status = CandidateStatus.valueOf(row[TopicCandidateTable.status]),
         )
     }
 
     private fun decodeClaims(row: ResultRow): List<TopicClaim> =
-        json.decodeFromString<List<PersistedTopicClaim>>(row[TopicCandidateTable.claimsJson])
+        row[TopicCandidateTable.claimsJson]
+            .decodeFromString<List<PersistedTopicClaim>>()
             .mapIndexed { index, claim ->
                 TopicClaim(
                     id = index + 1,
@@ -86,8 +84,7 @@ class TopicAnalysisRepository(private val db: Database) {
                 )
             }
 
-    private fun decodeEvidenceRefs(value: String): List<Int> =
-        json.decodeFromString(value)
+
 
     private fun List<NewTopicCandidateClaim>.toPersistedClaims(): List<PersistedTopicClaim> =
         map { claim ->

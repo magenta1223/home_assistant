@@ -1,7 +1,8 @@
 package com.homeassistant.domain.memory
 
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.core.utils.JsonSerializer.encodeToString
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.*
 import java.net.URI
 import java.net.http.HttpClient
@@ -13,23 +14,20 @@ class QdrantVectorStore(
     private val collection: String,
 ) : VectorStore {
     private val client = HttpClient.newHttpClient()
-    private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
     @Volatile private var collectionReady = false
 
     override fun upsert(point: VectorPoint) {
         ensureCollection(point.vector.size)
-        val body = json.encodeToString(
-            QdrantUpsertRequest(
-                points = listOf(
-                    QdrantPoint(
-                        id = point.memoryId,
-                        vector = point.vector,
-                        payload = point.payload,
-                    ),
+        val body = QdrantUpsertRequest(
+            points = listOf(
+                QdrantPoint(
+                    id = point.memoryId,
+                    vector = point.vector,
+                    payload = point.payload,
                 ),
-            ),
+            )
         )
-        request("PUT", "/collections/$collection/points?wait=true", body)
+        request("PUT", "/collections/$collection/points?wait=true", body.encodeToString())
     }
 
     override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> {
@@ -47,10 +45,13 @@ class QdrantVectorStore(
             if (must.isNotEmpty()) put("filter", buildJsonObject { put("must", JsonArray(must)) })
         }.toString()
         val response = request("POST", "/collections/$collection/points/search", body)
-        return json.decodeFromString<QdrantSearchResponse>(response).result.mapNotNull { hit ->
-            val memoryId = hit.payload["memoryId"]?.toIntOrNull() ?: hit.id
-            VectorSearchResult(memoryId, hit.score)
-        }
+        return response
+            .decodeFromString<QdrantSearchResponse>()
+            .result
+            .map { hit ->
+                val memoryId = hit.payload["memoryId"]?.toIntOrNull() ?: hit.id
+                VectorSearchResult(memoryId, hit.score)
+            }
     }
 
     private fun match(key: String, value: String): JsonObject = buildJsonObject {

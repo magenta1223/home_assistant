@@ -13,7 +13,6 @@ import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 import kotlin.jvm.optionals.getOrNull
 import com.anthropic.models.messages.Tool as AnthropicTool
@@ -24,11 +23,6 @@ class AnthropicBackend(
     apiKey: String,
     private val config: AnthropicConfig = AnthropicConfig(),
 ) : LlmBackend {
-
-    private val json = Json {
-        prettyPrint = true
-        isLenient = true
-    }
 
     private val client: AnthropicClient = AnthropicOkHttpClient.builder()
         .apiKey(apiKey)

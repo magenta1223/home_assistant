@@ -4,6 +4,9 @@ import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
+import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.core.utils.JsonSerializer.parseToJsonElement
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import com.homeassistant.nlp.backend.utils.withTools
 import io.ktor.client.*
@@ -13,7 +16,6 @@ import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(OpenRouterBackend::class.java)
@@ -24,13 +26,9 @@ class OpenRouterBackend(
     private val config: OpenRouterConfig = OpenRouterConfig(),
 ) : LlmBackend {
 
-    private val json = Json {
-        ignoreUnknownKeys = true
-        explicitNulls = false
-    }
 
     private val httpClient = HttpClient(CIO) {
-        install(ContentNegotiation) { json(json) }
+        install(ContentNegotiation) { json(JsonSerializer.json) }
     }
 
     override suspend fun complete(
@@ -54,7 +52,7 @@ class OpenRouterBackend(
             response_format = OpenRouterResponseFormat(
                 json_schema = OpenRouterJsonSchemaResponseFormat(
                     name = "topic_analysis_output",
-                    schema = json.parseToJsonElement(outputSchema),
+                    schema = outputSchema.parseToJsonElement(),
                 ),
             ),
         )
@@ -66,8 +64,13 @@ class OpenRouterBackend(
             setBody(request)
         }
 
-        val text = json.decodeFromString<OpenRouterResponse>(response.bodyAsText())
-            .choices.firstOrNull()?.message?.content
+        val text = response
+            .bodyAsText()
+            .decodeFromString<OpenRouterResponse>()
+            .choices
+            .firstOrNull()
+            ?.message
+            ?.content
             ?: error("OpenRouter response had no content")
         log.info("OpenRouter response ${System.currentTimeMillis() - start}ms chars=${text.length}")
         return parseToolCallOrText(text)

@@ -1,27 +1,28 @@
 package com.homeassistant.core.memory
 
+import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.core.utils.JsonSerializer.encodeToString
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class MemoryTypeTest {
-    private val json = Json
 
     @Test
     fun `serializes memory type as its code`() {
-        assertEquals(""""STATE"""", json.encodeToString(MemoryType.STATE))
-        assertEquals(""""EVENT"""", json.encodeToString(MemoryType.EVENT))
-        assertEquals(""""CHECKLIST"""", json.encodeToString(MemoryType.CHECKLIST))
+        assertEquals(""""STATE"""", MemoryType.STATE.encodeToString())
+        assertEquals(""""EVENT"""", MemoryType.EVENT.encodeToString())
+        assertEquals(""""CHECKLIST"""", MemoryType.CHECKLIST.encodeToString())
     }
 
     @Test
     fun `deserializes memory type code to concrete implementation`() {
-        assertEquals(MemoryType.STATE, json.decodeFromString<MemoryType>(""""STATE""""))
-        assertEquals(MemoryType.EVENT, json.decodeFromString<MemoryType>(""""EVENT""""))
-        assertEquals(MemoryType.CHECKLIST, json.decodeFromString<MemoryType>(""""CHECKLIST""""))
+        assertEquals(MemoryType.STATE, """"STATE"""".decodeFromString())
+        assertEquals(MemoryType.EVENT, """"EVENT"""".decodeFromString())
+        assertEquals(MemoryType.CHECKLIST, """"CHECKLIST"""".decodeFromString())
     }
 
     @Test
@@ -37,7 +38,7 @@ class MemoryTypeTest {
     @Test
     fun `deserialization rejects unknown memory type`() {
         assertFailsWith<SerializationException> {
-            json.decodeFromString<MemoryType>(""""UNKNOWN"""")
+            """"UNKNOWN"""".decodeFromString<MemoryType>()
         }
     }
 }

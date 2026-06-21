@@ -1,12 +1,13 @@
 package com.homeassistant.nlp.topicanalysis
 
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 /**
  * Root object expected from the topic-analysis LLM response.
@@ -56,18 +57,14 @@ internal data class TopicClaimLlmResponse(
 
 @OptIn(ExperimentalSerializationApi::class)
 internal object TopicAnalysisOutputContract {
-    private val json = Json {
-        ignoreUnknownKeys = true
-        allowTrailingComma = true
-    }
 
-    val schema = SerializationClassJsonSchemaGenerator(json = json)
+    val schema = SerializationClassJsonSchemaGenerator(json = JsonSerializer.json)
             .generateSchemaString(TopicAnalysisLlmResponse.serializer().descriptor)
 
 
     fun decode(raw: String): TopicAnalysisLlmResponse =
         try {
-            json.decodeFromString<TopicAnalysisLlmResponse>(stripJsonCodeFence(raw))
+            stripJsonCodeFence(raw).decodeFromString()
         } catch (error: SerializationException) {
             throw TopicAnalysisException("Failed to parse topic analysis response: ${error.message}")
         }

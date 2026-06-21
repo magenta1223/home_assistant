@@ -2,15 +2,15 @@ package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.*
+import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
 
 class MemoryTools(
     private val repo: MemoryRepository,
     private val embeddingService: EmbeddingService,
     private val vectorStore: VectorStore,
 ) {
-    private val json = Json { ignoreUnknownKeys = true }
 
     /**
      * Arguments for creating a reviewable memory candidate.
@@ -133,7 +133,7 @@ class MemoryTools(
     }
 
     private fun handleCreate(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<CreateCandidateArgs>(spec.arguments)
+        val args: CreateCandidateArgs = spec.arguments.decodeFromString()
         val id = repo.createCandidate(
             userId = userId,
             conversationId = args.conversationId,
@@ -149,7 +149,7 @@ class MemoryTools(
     }
 
     private fun handleListPending(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<Map<String, String>>(spec.arguments)
+        val args: Map<String, String> = spec.arguments.decodeFromString()
         val candidates = repo.listPending(userId, args.getValue("conversationId"))
         return if (candidates.isEmpty()) ToolResult("대기 중인 기억 후보가 없습니다.")
         else ToolResult(candidates.joinToString("\n") {
@@ -158,7 +158,7 @@ class MemoryTools(
     }
 
     private fun handleApprove(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<CandidateIdArgs>(spec.arguments)
+        val args: CandidateIdArgs = spec.arguments.decodeFromString()
         val memory = repo.approveCandidate(userId, args.candidateId)
         vectorStore.upsert(
             VectorPoint(
@@ -178,13 +178,13 @@ class MemoryTools(
     }
 
     private fun handleReject(spec: ToolCallSpec, userId: UserId): ToolResult {
-        val args = json.decodeFromString<CandidateIdArgs>(spec.arguments)
+        val args: CandidateIdArgs = spec.arguments.decodeFromString()
         repo.rejectCandidate(userId, args.candidateId)
         return ToolResult("기억 후보가 거절되었습니다. candidate_id=${args.candidateId}")
     }
 
     private fun handleSearch(spec: ToolCallSpec): ToolResult {
-        val args = json.decodeFromString<SearchArgs>(spec.arguments)
+        val args: SearchArgs = spec.arguments.decodeFromString()
         val filter = MemorySearchFilter(
             memoryType = args.memoryType,
             domain = args.domain?.uppercase(),

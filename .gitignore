@@ -9,3 +9,6 @@ node_modules/
 bin/
 build/
 gradle/
+out/
+
+*.log

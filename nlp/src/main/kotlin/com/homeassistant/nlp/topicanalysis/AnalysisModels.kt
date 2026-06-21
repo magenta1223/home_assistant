@@ -1,6 +1,5 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.nlp.topicanalysis
 
-import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import kotlinx.serialization.Serializable
 
@@ -35,49 +34,39 @@ data class SourceDocument(
 )
 
 /**
- * Pending evidence-backed claim extracted under a topic candidate.
+ * New claim payload ready to be persisted under a topic candidate.
  *
- * @property id Candidate-local or persisted claim id.
  * @property text Claim text suitable for memory review.
  * @property subject Person, place, or concept the claim is about.
  * @property memoryType Memory category assigned to the claim.
  * @property certainty How directly source evidence supports the claim.
- * @property evidenceRefs Source references that support the claim.
+ * @property evidence Source records that support the claim.
  */
-data class TopicClaim(
-    val id: Int,
+data class NewTopicClaim(
     val text: String,
     val subject: String,
     val memoryType: MemoryType,
     val certainty: ClaimCertainty,
-    val evidenceRefs: List<Int>,
+    val evidence: List<SourceRecord>,
 )
 
 /**
- * Pending source-agnostic topic extracted from a document.
+ * Source-agnostic topic extracted from a document before persistence.
  *
- * @property id Candidate id assigned by storage or preview generation.
- * @property sourceType Import source category the topic came from.
- * @property sourceName Human-readable source name or file name.
  * @property title Short topic title.
  * @property summary Review-facing topic summary.
  * @property memoryTypes Memory categories represented by the topic.
  * @property domains Normalized domain tags attached to the topic.
- * @property evidenceRefs Source references that support the topic.
+ * @property evidence Source records that support the topic.
  * @property claims Evidence-backed claims grouped under the topic.
- * @property status Review state for the topic candidate.
  */
-data class TopicCandidate(
-    val id: Int,
-    val sourceType: String,
-    val sourceName: String,
+data class TopicDraft(
     val title: String,
     val summary: String,
     val memoryTypes: List<MemoryType>,
     val domains: List<String>,
-    val evidenceRefs: List<Int>,
-    val claims: List<TopicClaim>,
-    val status: CandidateStatus,
+    val evidence: List<SourceRecord>,
+    val claims: List<NewTopicClaim>,
 )
 
 /**
@@ -85,7 +74,7 @@ data class TopicCandidate(
  *
  * @property topics Topic candidates extracted from the source document.
  */
-data class TopicAnalysisResult(val topics: List<TopicCandidate>)
+data class TopicAnalysisResult(val topics: List<TopicDraft>)
 
 /** Raised when an LLM response or topic candidate violates the analysis contract. */
 class TopicAnalysisException(message: String) : RuntimeException(message)

@@ -1,4 +1,4 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.nlp.topicanalysis
 
 import com.homeassistant.core.memory.MemoryType
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator

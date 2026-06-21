@@ -1,11 +1,15 @@
 package com.homeassistant.app.routes
 
+import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageParser
-import com.homeassistant.nlp.analysis.SourceDocument
-import com.homeassistant.nlp.analysis.SourceRecord
-import com.homeassistant.nlp.analysis.TopicAnalysisService
-import com.homeassistant.nlp.analysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaim
+import com.homeassistant.nlp.topicanalysis.SourceDocument
+import com.homeassistant.nlp.topicanalysis.SourceRecord
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
+import com.homeassistant.nlp.topicanalysis.TopicDraft
 
 /** Coordinates Kakao import with source-agnostic topic analysis for API callers. */
 interface KakaoImportAnalyzeUseCase {
@@ -34,6 +38,7 @@ data class KakaoImportAnalyzeResult(
 class KakaoImportAnalyzeService(
     private val importService: KakaoImportService,
     private val topicAnalysisService: TopicAnalysisService,
+    private val topicRepository: TopicAnalysisRepository,
 ) : KakaoImportAnalyzeUseCase {
     override suspend fun importAndAnalyze(
         sourceFileName: String,
@@ -53,7 +58,17 @@ class KakaoImportAnalyzeService(
         )
         return KakaoImportAnalyzeResult(
             importedMessageCount = imported.importedMessageCount,
-            topics = topicAnalysisService.analyze(document).topics,
+            topics = topicAnalysisService.analyze(document).topics.map { topic ->
+                topicRepository.createTopic(
+                    document = document,
+                    title = topic.title,
+                    summary = topic.summary,
+                    memoryTypes = topic.memoryTypes,
+                    domains = topic.domains,
+                    evidence = topic.evidence,
+                    claims = topic.claims,
+                )
+            },
         )
     }
 
@@ -76,7 +91,32 @@ class KakaoImportAnalyzeService(
         )
         return KakaoImportAnalyzeResult(
             importedMessageCount = messages.size,
-            topics = topicAnalysisService.preview(document).topics,
+            topics = topicAnalysisService.analyze(document).topics.mapIndexed { index, topic ->
+                topic.toPreviewCandidate(document, index + 1)
+            },
         )
     }
+
+    private fun TopicDraft.toPreviewCandidate(document: SourceDocument, topicId: Int): TopicCandidate =
+        TopicCandidate(
+            id = topicId,
+            sourceType = document.sourceType,
+            sourceName = document.sourceName,
+            title = title,
+            summary = summary,
+            memoryTypes = memoryTypes,
+            domains = domains,
+            evidenceRefs = evidence.map { it.ref },
+            claims = claims.mapIndexed { claimIndex, claim ->
+                TopicClaim(
+                    id = claimIndex + 1,
+                    text = claim.text,
+                    subject = claim.subject,
+                    memoryType = claim.memoryType,
+                    certainty = claim.certainty,
+                    evidenceRefs = claim.evidence.map { it.ref },
+                )
+            },
+            status = CandidateStatus.PENDING,
+        )
 }

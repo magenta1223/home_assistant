@@ -2,7 +2,7 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.nlp.analysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicCandidate
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
 import io.ktor.server.request.receive

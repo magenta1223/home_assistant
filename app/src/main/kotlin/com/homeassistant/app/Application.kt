@@ -6,8 +6,8 @@ import com.homeassistant.core.constants.Env
 import com.homeassistant.domain.db.DatabaseFactory
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageRepository
-import com.homeassistant.nlp.analysis.TopicAnalysisRepository
-import com.homeassistant.nlp.analysis.TopicAnalysisService
+import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.app.routes.KakaoImportAnalyzeService
 import com.homeassistant.nlp.backend.AiProvider
@@ -53,7 +53,8 @@ fun Application.module() {
     val analysisBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
     val kakaoTopicAnalysis = KakaoImportAnalyzeService(
         KakaoImportService(KakaoMessageRepository(db)),
-        TopicAnalysisService(TopicAnalysisRepository(db), analysisBackend),
+        TopicAnalysisService(analysisBackend),
+        TopicAnalysisRepository(db),
     )
     configureRoutes(kakaoTopicAnalysis)
 }

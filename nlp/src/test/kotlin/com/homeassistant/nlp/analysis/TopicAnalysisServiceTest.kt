@@ -1,61 +1,23 @@
 package com.homeassistant.nlp.analysis
 
-import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
+import com.homeassistant.nlp.topicanalysis.ClaimCertainty
+import com.homeassistant.nlp.topicanalysis.SourceDocument
+import com.homeassistant.nlp.topicanalysis.SourceRecord
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisException
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisOutputContract
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.DriverManager
-import java.util.*
 import kotlin.test.*
 
 class TopicAnalysisServiceTest {
-    private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
-    private lateinit var keepAlive: java.sql.Connection
-    private lateinit var db: Database
-
-    @BeforeTest
-    fun setup() {
-        keepAlive = DriverManager.getConnection(dbUrl)
-        db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
-        transaction(db) {
-                SchemaUtils.create(
-                    TopicCandidateTable,
-                    TopicClassificationTable,
-                    TopicDomainTable,
-                    TopicEvidenceTable,
-                    TopicClaimTable,
-                    TopicClaimEvidenceTable,
-                )
-            }
-        }
-
-    @AfterTest
-    fun teardown() {
-        keepAlive.close()
-    }
-
-    @Test
-    fun `topic analysis tables store memory type in a single column`() {
-        assertEquals(
-            setOf("memory_type"),
-            memoryColumnNames("topic_classifications").filter { it.startsWith("memory_") }.toSet(),
-        )
-        assertEquals(
-            setOf("memory_type"),
-            memoryColumnNames("topic_claims").filter { it.startsWith("memory_") }.toSet(),
-        )
-    }
-
     @Test
     fun `analyzes datasource agnostic records into pending topics with evidence`() = runBlocking {
         val service = TopicAnalysisService(
-            TopicAnalysisRepository(db),
             StaticBackend(
                 """
                 {
@@ -104,35 +66,20 @@ class TopicAnalysisServiceTest {
             result.topics.single().memoryTypes.toSet(),
         )
         assertEquals(setOf("location", "home"), result.topics.single().domains.toSet())
-        assertEquals(listOf(2, 3), result.topics.single().evidenceRefs)
+        assertEquals(listOf(2, 3), result.topics.single().evidence.map { it.ref })
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().claims.single().text)
         assertEquals(
             MemoryType.EVENT,
             result.topics.single().claims.single().memoryType,
         )
         assertEquals(ClaimCertainty.SAID, result.topics.single().claims.single().certainty)
-        assertEquals(listOf(2, 3), result.topics.single().claims.single().evidenceRefs)
-        assertEquals(CandidateStatus.PENDING, result.topics.single().status)
-    }
-
-    @Test
-    fun `previews topic analysis without storing topics`() = runBlocking {
-        val emptySchemaDb = Database.connect("jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared", driver = "org.sqlite.JDBC")
-        val service = TopicAnalysisService(TopicAnalysisRepository(emptySchemaDb), StaticBackend(topicJson()))
-
-        val result = service.preview(singleRecordDocument())
-
-        assertEquals(1, result.topics.size)
-        assertEquals("관계 표현", result.topics.single().title)
-        assertEquals(listOf(1), result.topics.single().evidenceRefs)
-        assertEquals("동훈은 애정 표현을 했다.", result.topics.single().claims.single().text)
-        assertEquals(ClaimCertainty.OBSERVED, result.topics.single().claims.single().certainty)
+        assertEquals(listOf(2, 3), result.topics.single().claims.single().evidence.map { it.ref })
     }
 
     @Test
     fun `prompt tells model not to split topics by time or interrupted order`() = runBlocking {
         val backend = CapturingBackend("""{"topics":[]}""")
-        val service = TopicAnalysisService(TopicAnalysisRepository(db), backend)
+        val service = TopicAnalysisService(backend)
 
         service.analyze(
             SourceDocument(
@@ -159,7 +106,7 @@ class TopicAnalysisServiceTest {
     @Test
     fun `prompt is generated from topic output schema`() = runBlocking {
         val backend = CapturingBackend("""{"topics":[]}""")
-        val service = TopicAnalysisService(TopicAnalysisRepository(db), backend)
+        val service = TopicAnalysisService(backend)
 
         service.analyze(singleRecordDocument())
 
@@ -277,19 +224,6 @@ class TopicAnalysisServiceTest {
     }
 
     @Test
-    fun `stores topic claims once for the same topic text and evidence set`() = runBlocking {
-        val service = serviceFor(topicJson())
-        val document = singleRecordDocument()
-
-        val first = service.analyze(document).topics.single()
-        val second = service.analyze(document).topics.single()
-
-        assertEquals(first.id, second.id)
-        assertEquals(1, second.claims.size)
-        assertEquals(first.claims.single().id, second.claims.single().id)
-    }
-
-    @Test
     fun `generates topic analysis output schema from serializable dto`() {
         val schema = TopicAnalysisOutputContract.schema
 
@@ -304,7 +238,7 @@ class TopicAnalysisServiceTest {
     }
 
     private fun serviceFor(response: String): TopicAnalysisService =
-        TopicAnalysisService(TopicAnalysisRepository(db), StaticBackend(response))
+        TopicAnalysisService(StaticBackend(response))
 
     private fun singleRecordDocument(): SourceDocument =
         SourceDocument(
@@ -312,14 +246,6 @@ class TopicAnalysisServiceTest {
             sourceName = "2026-06-07.txt",
             records = listOf(SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해")),
         )
-
-    private fun memoryColumnNames(table: String): List<String> = transaction(db) {
-        val names = mutableListOf<String>()
-        exec("PRAGMA table_info($table)") { result ->
-            while (result.next()) names += result.getString("name")
-        }
-        names
-    }
 
     private fun topicJson(
         title: String = "관계 표현",

@@ -2,9 +2,9 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.nlp.analysis.ClaimCertainty
-import com.homeassistant.nlp.analysis.TopicClaim
-import com.homeassistant.nlp.analysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaim
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.nlp.topicanalysis.ClaimCertainty
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.request.get

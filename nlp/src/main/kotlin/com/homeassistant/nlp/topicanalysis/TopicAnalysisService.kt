@@ -1,6 +1,5 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.nlp.topicanalysis
 
-import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
@@ -9,46 +8,17 @@ import com.homeassistant.core.nlp.MessageRole
 
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
 class TopicAnalysisService(
-    private val repository: TopicAnalysisRepository,
     private val backend: LlmBackend,
 ) {
     suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
         val topics = analyzeValidTopics(document).map { topic ->
-            repository.createTopic(
-                document = document,
+            TopicDraft(
                 title = topic.title,
                 summary = topic.summary,
                 memoryTypes = topic.memoryTypes,
                 domains = topic.domains,
                 evidence = topic.evidence,
                 claims = topic.claims,
-            )
-        }
-        return TopicAnalysisResult(topics)
-    }
-
-    suspend fun preview(document: SourceDocument): TopicAnalysisResult {
-        val topics = analyzeValidTopics(document).mapIndexed { topicIndex, topic ->
-            TopicCandidate(
-                id = topicIndex + 1,
-                sourceType = document.sourceType,
-                sourceName = document.sourceName,
-                title = topic.title,
-                summary = topic.summary,
-                memoryTypes = topic.memoryTypes,
-                domains = topic.domains,
-                evidenceRefs = topic.evidence.map { it.ref },
-                claims = topic.claims.mapIndexed { claimIndex, claim ->
-                    TopicClaim(
-                        id = claimIndex + 1,
-                        text = claim.text,
-                        subject = claim.subject,
-                        memoryType = claim.memoryType,
-                        certainty = claim.certainty,
-                        evidenceRefs = claim.evidence.map { it.ref },
-                    )
-                },
-                status = CandidateStatus.PENDING,
             )
         }
         return TopicAnalysisResult(topics)

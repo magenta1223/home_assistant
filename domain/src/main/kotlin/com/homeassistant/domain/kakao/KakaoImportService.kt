@@ -1,7 +1,9 @@
 package com.homeassistant.domain.kakao
 
+import com.homeassistant.datamodel.kakao.KakaoMessage
+
 /** Imports a KakaoTalk export file into the Kakao message store. */
-class KakaoImportService(private val repository: KakaoMessageRepository) {
+class KakaoImportService(private val repository: KakaoMessageStore) {
     fun import(sourceFileName: String, text: String): KakaoImportResult {
         val parsed = KakaoMessageParser.parse(sourceFileName, text)
         val imported = repository.importMessages(parsed)

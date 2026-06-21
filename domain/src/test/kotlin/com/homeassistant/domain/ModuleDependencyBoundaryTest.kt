@@ -16,23 +16,32 @@ class ModuleDependencyBoundaryTest {
             domainBuild.contains("project(\":nlp\")"),
             "domain module must not declare a project dependency on nlp",
         )
+        assertFalse(
+            domainBuild.contains("project(\":repository\")"),
+            "domain module must not declare a project dependency on repository",
+        )
     }
 
     @Test
-    fun `domain source does not import nlp packages`() {
+    fun `domain source does not import framework or outer packages`() {
         val domainSource = projectRoot.resolve("domain/src/main/kotlin")
         val offendingImports = domainSource.walk()
             .filter { it.toString().endsWith(".kt") }
             .flatMap { file ->
                 file.readText().lineSequence()
-                    .filter { it.startsWith("import com.homeassistant.nlp.") }
+                    .filter {
+                        it.startsWith("import com.homeassistant.nlp.") ||
+                            it.startsWith("import com.homeassistant.repository.") ||
+                            it.startsWith("import com.homeassistant.app.") ||
+                            it.startsWith("import org.jetbrains.exposed.")
+                    }
                     .map { "${projectRoot.relativize(file)}: $it" }
             }
             .toList()
 
         assertFalse(
             offendingImports.isNotEmpty(),
-            "domain source must not import nlp packages:\n${offendingImports.joinToString("\n")}",
+            "domain source must not import repository, nlp, app, or Exposed packages:\n${offendingImports.joinToString("\n")}",
         )
     }
 }

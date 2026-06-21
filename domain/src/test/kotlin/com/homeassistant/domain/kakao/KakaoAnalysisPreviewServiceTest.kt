@@ -1,28 +1,5 @@
 package com.homeassistant.domain.kakao
 
-import com.homeassistant.domain.db.tables.KakaoImportedMessageTable
-import com.homeassistant.domain.db.tables.TopicAnalysisPreviewTable
-import com.homeassistant.domain.db.tables.TopicCandidateTable
-import com.homeassistant.core.source.SourceDocument
-import com.homeassistant.domain.topicanalysis.NewTopicCandidate
-import com.homeassistant.domain.topicanalysis.NewTopicClaim
-import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
-import com.homeassistant.domain.topicanalysis.TopicAnalysisResult
-import com.homeassistant.domain.topicanalysis.TopicDraft
-import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.DriverManager
-import java.util.UUID
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
-import kotlin.test.Test
-import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
-import kotlin.test.assertNotEquals
-import kotlin.test.assertNotNull
-
 //class KakaoAnalysisPreviewServiceTest {
 //    private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
 //    private lateinit var keepAlive: java.sql.Connection

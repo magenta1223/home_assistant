@@ -2,15 +2,15 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewNotFoundException
-import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewResult
-import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewUseCase
-import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisSaveResult
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
-import com.homeassistant.domain.topicanalysis.NewTopicCandidate
-import com.homeassistant.domain.topicanalysis.NewTopicCandidateClaim
-import com.homeassistant.domain.topicanalysis.TopicClaim
-import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
+import com.homeassistant.datamodel.topicanalysis.Topic
+import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.datamodel.topicanalysis.TopicClaim
+import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -51,7 +51,6 @@ class KakaoImportRoutesTest {
         assertContains(response.bodyAsText(), "evidenceRefs")
         assertContains(response.bodyAsText(), "STATE")
         assertContains(response.bodyAsText(), "OBSERVED")
-        assertContains(response.bodyAsText(), "PENDING")
         assertEquals("2026-06-07.txt", FakeAnalyzer.sourceFileName)
         assertEquals("[동훈] [오후 4:49] 따랑해", FakeAnalyzer.text)
         assertEquals(1, FakeAnalyzer.previewCalls)
@@ -133,12 +132,11 @@ class KakaoImportRoutesTest {
         assertContains(FakeAnalyzer.text, "2026년 3월 15일 오후 1:58, 동훈 : 우리은행 1002266102280")
         assertContains(FakeAnalyzer.text, "관리사무소 질문 리스트")
         assertContains(response.bodyAsText(), "관계 표현")
-        assertContains(response.bodyAsText(), "importedMessageCount")
-        assertContains(response.bodyAsText(), "PENDING")
+        assertContains(response.bodyAsText(), "importedRecordCount")
     }
 }
 
-private object FakeAnalyzer : KakaoAnalysisPreviewUseCase {
+private object FakeAnalyzer : TopicAnalysisUseCase {
     var sourceFileName = ""
     var text = ""
     var previewId = ""
@@ -153,29 +151,28 @@ private object FakeAnalyzer : KakaoAnalysisPreviewUseCase {
         saveCalls = 0
     }
 
-    override suspend fun previewAnalysis(
-        sourceFileName: String,
-        text: String,
-    ): KakaoAnalysisPreviewResult {
-        this.sourceFileName = sourceFileName
-        this.text = text
+    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult {
+        this.sourceFileName = request.sourceName
+        this.text = request.text
         previewCalls += 1
-        return KakaoAnalysisPreviewResult(
+        return TopicAnalysisResult(
             previewId = "preview-1",
-            importedMessageCount = 1,
-            topics = listOf(newTopic(sourceFileName, 1)),
+            sourceType = request.sourceType,
+            sourceName = request.sourceName,
+            importedRecordCount = 1,
+            topics = listOf(newTopic(request.sourceName, 1)),
         )
     }
 
-    override suspend fun savePreview(previewId: String): KakaoAnalysisSaveResult {
+    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
         this.previewId = previewId
         saveCalls += 1
-        if (previewId == "missing") throw KakaoAnalysisPreviewNotFoundException(previewId)
-        return KakaoAnalysisSaveResult(topics = listOf(topic("2026-06-07.txt", 11)))
+        if (previewId == "missing") throw IllegalArgumentException(previewId)
+        return TopicAnalysisSaveResult(previewId = previewId, topics = listOf(topic("2026-06-07.txt", 11)))
     }
 
     private fun newTopic(sourceFileName: String, evidenceRef: Int) =
-        NewTopicCandidate(
+        TopicCandidate(
             sourceType = "kakao",
             sourceName = sourceFileName,
             title = "관계 표현",
@@ -184,7 +181,7 @@ private object FakeAnalyzer : KakaoAnalysisPreviewUseCase {
             domains = listOf("relationship"),
             evidenceRefs = listOf(evidenceRef),
             claims = listOf(
-                NewTopicCandidateClaim(
+                TopicClaimCandidate(
                     text = "동훈은 애정 표현을 했다.",
                     subject = "동훈",
                     memoryType = MemoryType.STATE,
@@ -195,7 +192,7 @@ private object FakeAnalyzer : KakaoAnalysisPreviewUseCase {
         )
 
     private fun topic(sourceFileName: String, evidenceRef: Int) =
-        TopicCandidate(
+        Topic(
             id = 7,
             sourceType = "kakao",
             sourceName = sourceFileName,

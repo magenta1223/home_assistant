@@ -12,19 +12,21 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `gradle project dependencies follow module direction`() {
-        val actual = listOf("core", "domain", "nlp", "app").associateWith { module ->
+        val actual = listOf("core", "datamodel", "domain", "repository", "nlp", "app").associateWith { module ->
             projectDependencies(module)
         }
 
         assertEquals(emptySet(), actual.getValue("core"))
-        assertEquals(setOf("core"), actual.getValue("domain"))
-        assertEquals(setOf("core", "domain"), actual.getValue("nlp"))
-        assertEquals(setOf("core", "domain", "nlp"), actual.getValue("app"))
+        assertEquals(setOf("core"), actual.getValue("datamodel"))
+        assertEquals(setOf("core", "datamodel"), actual.getValue("domain"))
+        assertEquals(setOf("core", "datamodel", "domain"), actual.getValue("repository"))
+        assertEquals(setOf("core", "datamodel", "domain"), actual.getValue("nlp"))
+        assertEquals(setOf("core", "datamodel", "domain", "nlp", "repository"), actual.getValue("app"))
     }
 
     @Test
     fun `source imports follow module direction`() {
-        val violations = listOf("core", "domain", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "datamodel", "domain", "repository", "nlp", "app").flatMap { module ->
             forbiddenImports(module).map { forbidden ->
                 importsFor(module, forbidden)
             }.flatten()
@@ -33,6 +35,30 @@ class ModuleDependencyBoundaryTest {
         assertTrue(
             violations.isEmpty(),
             "Module imports violate dependency direction:\n${violations.joinToString("\n")}",
+        )
+    }
+
+    @Test
+    fun `repository internals are not imported outside repository module`() {
+        val violations = listOf("core", "datamodel", "domain", "nlp", "app").flatMap { module ->
+            repositoryInternalImportsFor(module)
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Repository internals must not be imported outside repository module:\n${violations.joinToString("\n")}",
+        )
+    }
+
+    @Test
+    fun `exposed is only imported inside repository module`() {
+        val violations = listOf("core", "datamodel", "domain", "nlp", "app").flatMap { module ->
+            exposedImportsFor(module)
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Exposed database APIs must not be imported outside repository module:\n${violations.joinToString("\n")}",
         )
     }
 
@@ -48,9 +74,11 @@ class ModuleDependencyBoundaryTest {
 
     private fun forbiddenImports(module: String): Set<String> =
         when (module) {
-            "core" -> setOf("domain", "nlp", "app")
-            "domain" -> setOf("nlp", "app")
-            "nlp" -> setOf("app")
+            "core" -> setOf("datamodel", "domain", "repository", "nlp", "app")
+            "datamodel" -> setOf("domain", "repository", "nlp", "app")
+            "domain" -> setOf("repository", "nlp", "app")
+            "repository" -> setOf("nlp", "app")
+            "nlp" -> setOf("repository", "app")
             "app" -> emptySet()
             else -> error("Unknown module $module")
         }
@@ -64,6 +92,40 @@ class ModuleDependencyBoundaryTest {
             .flatMap { file ->
                 file.readText().lineSequence()
                     .filter { it.startsWith("import com.homeassistant.$forbiddenModule.") }
+                    .map { "${projectRoot.relativize(file)}: $it" }
+            }
+            .toList()
+    }
+
+    private fun repositoryInternalImportsFor(module: String): List<String> {
+        val sourceRoot = projectRoot.resolve("$module/src/main/kotlin")
+        if (!sourceRoot.toFile().exists()) return emptyList()
+
+        val allowedRepositoryImports = setOf(
+            "import com.homeassistant.repository.RepositoryFactory",
+            "import com.homeassistant.repository.RepositoryStores",
+        )
+
+        return sourceRoot.walk()
+            .filter { it.toString().endsWith(".kt") }
+            .flatMap { file ->
+                file.readText().lineSequence()
+                    .filter { it.startsWith("import com.homeassistant.repository.") }
+                    .filterNot { it in allowedRepositoryImports }
+                    .map { "${projectRoot.relativize(file)}: $it" }
+            }
+            .toList()
+    }
+
+    private fun exposedImportsFor(module: String): List<String> {
+        val sourceRoot = projectRoot.resolve("$module/src/main/kotlin")
+        if (!sourceRoot.toFile().exists()) return emptyList()
+
+        return sourceRoot.walk()
+            .filter { it.toString().endsWith(".kt") }
+            .flatMap { file ->
+                file.readText().lineSequence()
+                    .filter { it.startsWith("import org.jetbrains.exposed.") }
                     .map { "${projectRoot.relativize(file)}: $it" }
             }
             .toList()

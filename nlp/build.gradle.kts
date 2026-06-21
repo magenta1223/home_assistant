@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     api(project(":core"))
+    api(project(":datamodel"))
     api(project(":domain"))
 
     // Anthropic Java SDK

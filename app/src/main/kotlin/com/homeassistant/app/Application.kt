@@ -4,14 +4,11 @@ import com.homeassistant.app.routes.configureRoutes
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.utils.JsonSerializer
-import com.homeassistant.domain.db.DatabaseFactory
-import com.homeassistant.domain.kakao.KakaoAnalysisPreviewRepository
 import com.homeassistant.domain.kakao.KakaoImportService
-import com.homeassistant.domain.kakao.KakaoMessageRepository
-import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
 import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
-import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewService
+import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
+import com.homeassistant.repository.repo.RepositoryFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -49,13 +46,13 @@ fun Application.module() {
 
     log.info("Database: $dbPath")
 
-    val db = DatabaseFactory.init(dbPath)
+    val repositories = RepositoryFactory.create(dbPath)
     val llmBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
-    val kakaoTopicAnalysis = KakaoAnalysisPreviewService(
+    val kakaoTopicAnalysis = KakaoMessageTopicAnalysisService(
         backend = llmBackend,
-        importService = KakaoImportService(KakaoMessageRepository(db)),
-        TopicAnalysisRepository(db),
-        KakaoAnalysisPreviewRepository(db),
+        importService = KakaoImportService(repositories.kakaoMessages),
+        topicRepository = repositories.topicAnalysis,
+        previewRepository = repositories.kakaoAnalysisPreviews,
     )
     configureRoutes(kakaoTopicAnalysis)
 }

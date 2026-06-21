@@ -1,0 +1,105 @@
+package com.homeassistant.nlp.topicanalysis.impl
+
+import com.homeassistant.core.nlp.LlmBackend
+import com.homeassistant.core.source.SourceDocument
+import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
+import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoMessageParser
+import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
+import com.homeassistant.domain.topicanalysis.TopicDraft
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+
+class KakaoMessageTopicAnalysisService(
+    backend: LlmBackend,
+    private val importService: KakaoImportService,
+    private val topicRepository: TopicAnalysisStore,
+    private val previewRepository: TopicAnalysisPreviewStore,
+): TopicAnalysisUseCase() {
+    override val topicAnalyzer = LlmTopicAnalyzer(backend)
+
+    override suspend fun analyze(
+        request: TopicAnalysisRequest
+    ): TopicAnalysisResult {
+        val sourceName = request.sourceName
+        val messages = KakaoMessageParser.parse(sourceName, request.text)
+        val document = SourceDocument(
+            sourceType = "kakao",
+            sourceName = sourceName,
+            records = messages.mapIndexed { index, message ->
+                val recordNumber = index + 1
+                SourceRecord(
+                    id = "r$recordNumber",
+                    ref = recordNumber,
+                    content = "${message.sender} | ${message.displayTime} | ${message.text}",
+                )
+            },
+        )
+        val topics = topicAnalyzer.analyze(document).topics.map { topic ->
+            topic.toNewTopicCandidate(document)
+        }
+        val preview = previewRepository.createPreview(sourceName, request.text, topics)
+        return TopicAnalysisResult(
+            previewId = preview.previewId,
+            sourceType = request.sourceType,
+            sourceName = request.sourceName,
+            importedRecordCount = messages.count(),
+            topics = topics
+        )
+    }
+
+
+    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
+        val preview = previewRepository.findPreview(previewId)
+            ?: throw Exception("PREVIEW_NOT_FOUND: $previewId")
+        val parsed = KakaoMessageParser.parse(preview.sourceFileName, preview.text)
+        val imported = importService.import(preview.sourceFileName, preview.text)
+        val refToStoredId = parsed.mapIndexed { index, message ->
+            index + 1 to imported.messages.first { it.fingerprint == message.fingerprint }.id
+        }.toMap()
+
+        return TopicAnalysisSaveResult(
+            previewId = previewId,
+            topics = preview.topics.map { topic ->
+                topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
+            },
+        )
+    }
+
+    private fun TopicDraft.toNewTopicCandidate(document: SourceDocument): TopicCandidate =
+        TopicCandidate(
+            sourceType = document.sourceType,
+            sourceName = document.sourceName,
+            title = title,
+            summary = summary,
+            memoryTypes = memoryTypes,
+            domains = domains,
+            evidenceRefs = evidence.map { it.ref },
+            claims = claims.map { claim ->
+                TopicClaimCandidate(
+                    text = claim.text,
+                    subject = claim.subject,
+                    memoryType = claim.memoryType,
+                    certainty = claim.certainty,
+                    evidenceRefs = claim.evidence.map { it.ref },
+                )
+            },
+        )
+
+    private fun TopicCandidate.remapEvidenceRefs(refToStoredId: Map<Int, Int>): TopicCandidate =
+        copy(
+            sourceType = sourceType,
+            sourceName = sourceName,
+            evidenceRefs = evidenceRefs.map { refToStoredId.getValue(it) },
+            claims = claims.map { claim ->
+                claim.copy(
+                    evidenceRefs = claim.evidenceRefs.map { refToStoredId.getValue(it) },
+                )
+            },
+        )
+}

@@ -1,7 +1,7 @@
 package com.homeassistant.nlp.topicanalysis.api
 
-import com.homeassistant.domain.topicanalysis.NewTopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.datamodel.topicanalysis.Topic
+import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -18,7 +18,7 @@ data class TopicAnalysisResult(
     val sourceType: String,
     val sourceName: String,
     val importedRecordCount: Int,
-    val topics: List<NewTopicCandidate>,
+    val topics: List<TopicCandidate>,
 )
 
 @Serializable
@@ -29,6 +29,6 @@ data class TopicAnalysisSaveRequest(
 @Serializable
 data class TopicAnalysisSaveResult(
     val previewId: String,
-    val topics: List<TopicCandidate>,
+    val topics: List<Topic>,
 )
 

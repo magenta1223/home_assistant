@@ -1,43 +1,24 @@
 package com.homeassistant.domain
 
 import com.homeassistant.core.identity.UserId
+import com.homeassistant.core.memory.CandidateStatus
+import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.tools.ToolCallSpec
-import com.homeassistant.domain.db.tables.*
+import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
+import com.homeassistant.datamodel.memory.MemoryCandidateRow
+import com.homeassistant.datamodel.memory.MemoryRow
 import com.homeassistant.domain.memory.*
-import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.DriverManager
-import java.util.*
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 import kotlin.test.*
 
 class DomainToolRegistryTest {
-    private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
-    private lateinit var keepAlive: java.sql.Connection
     private lateinit var registry: DomainToolRegistry
 
     @BeforeTest
     fun setup() {
-        keepAlive = DriverManager.getConnection(dbUrl)
-        val db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
-        transaction(db) {
-            SchemaUtils.create(
-                FamilyTable,
-                FamilyMemberTable,
-                DomainTable,
-                ConversationMessageTable,
-                MemoryCandidateTable,
-                MemoryTable,
-                AuditLogTable,
-            )
-        }
-        registry = DomainToolRegistry(db, DeterministicEmbeddingService("test-model"), RecordingVectorStore())
-    }
-
-    @AfterTest
-    fun teardown() {
-        keepAlive.close()
+        registry = DomainToolRegistry(FakeMemoryStore(), DeterministicEmbeddingService("test-model"), RecordingVectorStore())
     }
 
     private fun spec(name: String, args: String) = ToolCallSpec(name, args)
@@ -58,7 +39,7 @@ class DomainToolRegistryTest {
     }
 
     @Test
-    fun `execute memory_candidate_create succeeds`() = runBlocking {
+    fun `execute memory_candidate_create succeeds`() = runSuspend {
         val result = registry.execute(
             spec(
                 "memory_candidate_create",
@@ -71,7 +52,7 @@ class DomainToolRegistryTest {
     }
 
     @Test
-    fun `execute unknown tool throws`() = runBlocking {
+    fun `execute unknown tool throws`() = runSuspend {
         assertFailsWith<IllegalStateException> {
             registry.execute(spec("unknown_tool", "{}"), userId)
         }
@@ -81,4 +62,50 @@ class DomainToolRegistryTest {
         override fun upsert(point: VectorPoint) = Unit
         override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> = emptyList()
     }
+
+    private class FakeMemoryStore : MemoryStore {
+        private var nextId = 1
+
+        override fun createCandidate(
+            userId: UserId,
+            conversationId: String,
+            domainName: String,
+            memoryType: MemoryType,
+            content: String,
+            summary: String,
+            confidence: Double,
+            sourceConversationMessageId: Int?,
+            subjectMemberId: String?,
+            visibility: String,
+        ): Int = nextId++
+
+        override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow> = emptyList()
+        override fun getCandidate(id: Int): MemoryCandidateRow? = null
+        override fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow =
+            MemoryRow(candidateId, DEFAULT_FAMILY_ID, 1, "GENERAL", MemoryType.STATE, "", "", null, userId.value, "FAMILY", 1.0, null, candidateId, 0, 0)
+
+        override fun rejectCandidate(userId: UserId, candidateId: Int) = Unit
+        override fun getMemory(id: Int): MemoryRow? = null
+        override fun listMemories(ids: List<Int>?): List<MemoryRow> = emptyList()
+    }
+}
+
+private fun <T> runSuspend(block: suspend () -> T): T {
+    var value: T? = null
+    var failure: Throwable? = null
+    block.startCoroutine(
+        object : Continuation<T> {
+            override val context = EmptyCoroutineContext
+
+            override fun resumeWith(result: Result<T>) {
+                result.fold(
+                    onSuccess = { value = it },
+                    onFailure = { failure = it },
+                )
+            }
+        },
+    )
+    failure?.let { throw it }
+    @Suppress("UNCHECKED_CAST")
+    return value as T
 }

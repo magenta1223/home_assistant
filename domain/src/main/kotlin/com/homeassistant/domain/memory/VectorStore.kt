@@ -1,5 +1,8 @@
 package com.homeassistant.domain.memory
 
+import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
+
 /**
  * Filters applied to vector memory search.
  *

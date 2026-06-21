@@ -4,7 +4,7 @@ import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
-import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewService
+import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -15,7 +15,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 
 fun Application.configureRoutes(
-    kakaoImportAnalyze: KakaoAnalysisPreviewService,
+    kakaoImportAnalyze: KakaoMessageTopicAnalysisService,
 ) {
     routing {
         get(AppConfig.ROUTE_HEALTH) {

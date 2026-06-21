@@ -1,46 +1,24 @@
 package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
+import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.tools.ToolCallSpec
-import com.homeassistant.domain.db.tables.*
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.DriverManager
-import java.util.UUID
+import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
+import com.homeassistant.datamodel.memory.MemoryCandidateRow
+import com.homeassistant.datamodel.memory.MemoryRow
 import kotlin.test.*
 
 class MemoryToolsTest {
-    private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
-    private lateinit var keepAlive: java.sql.Connection
-    private lateinit var repo: MemoryRepository
+    private lateinit var repo: FakeMemoryStore
     private lateinit var vectorStore: RecordingVectorStore
     private lateinit var tools: MemoryTools
 
     @BeforeTest
     fun setup() {
-        keepAlive = DriverManager.getConnection(dbUrl)
-        val db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
-        transaction(db) {
-            SchemaUtils.create(
-                FamilyTable,
-                FamilyMemberTable,
-                DomainTable,
-                ConversationMessageTable,
-                MemoryCandidateTable,
-                MemoryTable,
-                AuditLogTable,
-            )
-        }
-        repo = MemoryRepository(db)
+        repo = FakeMemoryStore()
         vectorStore = RecordingVectorStore()
         tools = MemoryTools(repo, DeterministicEmbeddingService("test-model"), vectorStore)
-    }
-
-    @AfterTest
-    fun teardown() {
-        keepAlive.close()
     }
 
     private fun spec(name: String, args: String) = ToolCallSpec(name, args)
@@ -137,5 +115,89 @@ class MemoryToolsTest {
         }
 
         override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> = results
+    }
+
+    private class FakeMemoryStore : MemoryStore {
+        private val candidates = mutableMapOf<Int, MemoryCandidateRow>()
+        private val memories = mutableMapOf<Int, MemoryRow>()
+        private var nextCandidateId = 1
+        private var nextMemoryId = 1
+
+        override fun createCandidate(
+            userId: UserId,
+            conversationId: String,
+            domainName: String,
+            memoryType: MemoryType,
+            content: String,
+            summary: String,
+            confidence: Double,
+            sourceConversationMessageId: Int?,
+            subjectMemberId: String?,
+            visibility: String,
+        ): Int {
+            val id = nextCandidateId++
+            val now = System.currentTimeMillis()
+            candidates[id] = MemoryCandidateRow(
+                id = id,
+                familyId = DEFAULT_FAMILY_ID,
+                conversationId = conversationId,
+                domainId = domainName.hashCode(),
+                domainName = domainName.uppercase(),
+                memoryType = memoryType,
+                content = content,
+                summary = summary,
+                subjectMemberId = subjectMemberId,
+                createdBy = userId.value,
+                visibility = visibility,
+                confidence = confidence,
+                sourceConversationMessageId = sourceConversationMessageId,
+                status = CandidateStatus.PENDING,
+                createdAt = now,
+                updatedAt = now,
+            )
+            return id
+        }
+
+        override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow> =
+            candidates.values.filter {
+                it.createdBy == userId.value &&
+                    it.conversationId == conversationId &&
+                    it.status == CandidateStatus.PENDING
+            }
+
+        override fun getCandidate(id: Int): MemoryCandidateRow? = candidates[id]
+
+        override fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow {
+            val candidate = candidates.getValue(candidateId)
+            val now = System.currentTimeMillis()
+            candidates[candidateId] = candidate.copy(status = CandidateStatus.APPROVED, updatedAt = now)
+            return MemoryRow(
+                id = nextMemoryId++,
+                familyId = candidate.familyId,
+                domainId = candidate.domainId,
+                domainName = candidate.domainName,
+                memoryType = candidate.memoryType,
+                content = candidate.content,
+                summary = candidate.summary,
+                subjectMemberId = candidate.subjectMemberId,
+                createdBy = candidate.createdBy,
+                visibility = candidate.visibility,
+                confidence = candidate.confidence,
+                sourceConversationMessageId = candidate.sourceConversationMessageId,
+                sourceCandidateId = candidateId,
+                createdAt = now,
+                updatedAt = now,
+            ).also { memories[it.id] = it }
+        }
+
+        override fun rejectCandidate(userId: UserId, candidateId: Int) {
+            val candidate = candidates.getValue(candidateId)
+            candidates[candidateId] = candidate.copy(status = CandidateStatus.REJECTED)
+        }
+
+        override fun getMemory(id: Int): MemoryRow? = memories[id]
+
+        override fun listMemories(ids: List<Int>?): List<MemoryRow> =
+            ids?.mapNotNull { memories[it] } ?: memories.values.toList()
     }
 }

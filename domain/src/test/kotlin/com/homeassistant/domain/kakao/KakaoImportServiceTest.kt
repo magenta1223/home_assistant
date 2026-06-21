@@ -1,36 +1,14 @@
 package com.homeassistant.domain.kakao
 
-import com.homeassistant.domain.db.tables.KakaoImportedMessageTable
-import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.SchemaUtils
-import org.jetbrains.exposed.sql.transactions.transaction
-import java.sql.DriverManager
-import java.util.UUID
-import kotlin.test.AfterTest
-import kotlin.test.BeforeTest
+import com.homeassistant.datamodel.kakao.KakaoMessage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class KakaoImportServiceTest {
-    private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
-    private lateinit var keepAlive: java.sql.Connection
-    private lateinit var db: Database
-
-    @BeforeTest
-    fun setup() {
-        keepAlive = DriverManager.getConnection(dbUrl)
-        db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
-        transaction(db) { SchemaUtils.create(KakaoImportedMessageTable) }
-    }
-
-    @AfterTest
-    fun teardown() {
-        keepAlive.close()
-    }
-
     @Test
     fun `import stores only kakao messages and dedupes by fingerprint`() {
-        val service = KakaoImportService(KakaoMessageRepository(db))
+        val store = FakeKakaoMessageStore()
+        val service = KakaoImportService(store)
         val text = """
             [동훈] [오후 4:49] 따랑해
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
@@ -42,5 +20,28 @@ class KakaoImportServiceTest {
         assertEquals(2, result.importedMessageCount)
         assertEquals(2, result.messages.size)
         assertEquals(0, repeated.importedMessageCount)
+    }
+
+    private class FakeKakaoMessageStore : KakaoMessageStore {
+        private val messages = mutableListOf<KakaoMessage>()
+        private var nextId = 1
+
+        override fun importMessages(messages: List<ParsedKakaoMessage>): List<KakaoMessage> =
+            messages.mapNotNull { message ->
+                if (this.messages.any { it.fingerprint == message.fingerprint }) return@mapNotNull null
+                KakaoMessage(
+                    id = nextId++,
+                    sourceFileName = message.sourceFileName,
+                    sender = message.sender,
+                    displayTime = message.displayTime,
+                    text = message.text,
+                    lineStart = message.lineStart,
+                    lineEnd = message.lineEnd,
+                    fingerprint = message.fingerprint,
+                ).also { this.messages += it }
+            }
+
+        override fun listMessages(sourceFileName: String): List<KakaoMessage> =
+            messages.filter { it.sourceFileName == sourceFileName }
     }
 }

@@ -7,12 +7,6 @@ dependencies {
     // Serialization
     api(libs.kotlinx.serialization.json)
 
-    // Exposed ORM + SQLite
-    api(libs.exposed.core)
-    api(libs.exposed.jdbc)
-    api(libs.exposed.dao)
-    api(libs.sqlite.jdbc)
-
     // DJL for embeddings
     api(libs.djl.api)
     api(libs.djl.huggingface.tokenizers)

@@ -7,7 +7,7 @@ import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
 import com.homeassistant.core.tools.Tool
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import com.homeassistant.nlp.topicanalysis.impl.LlmTopicAnalyzer
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisLlmResponse

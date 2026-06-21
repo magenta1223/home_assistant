@@ -3,18 +3,17 @@ package com.homeassistant.domain
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.*
 import com.homeassistant.domain.memory.EmbeddingService
-import com.homeassistant.domain.memory.MemoryRepository
+import com.homeassistant.domain.memory.MemoryStore
 import com.homeassistant.domain.memory.MemoryTools
 import com.homeassistant.domain.memory.VectorStore
-import org.jetbrains.exposed.sql.Database
 
 class DomainToolRegistry(
-    db: Database,
+    memoryStore: MemoryStore,
     embeddingService: EmbeddingService,
     vectorStore: VectorStore,
 ) : IToolExecutor {
 
-    private val memoryTools = MemoryTools(MemoryRepository(db), embeddingService, vectorStore)
+    private val memoryTools = MemoryTools(memoryStore, embeddingService, vectorStore)
 
     private val dispatch: Set<String> = memoryTools.tools.map { it.name }.toSet()
 

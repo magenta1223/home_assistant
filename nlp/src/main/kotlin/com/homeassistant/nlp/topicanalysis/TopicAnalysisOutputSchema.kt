@@ -3,7 +3,7 @@ package com.homeassistant.nlp.topicanalysis
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi

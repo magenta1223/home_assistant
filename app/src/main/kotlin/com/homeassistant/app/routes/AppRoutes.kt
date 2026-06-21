@@ -1,23 +1,21 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.NewTopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.Application
-import io.ktor.server.request.receive
-import io.ktor.server.response.respond
-import io.ktor.server.routing.get
-import io.ktor.server.routing.post
-import io.ktor.server.routing.routing
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
+import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewService
+import io.ktor.http.*
+import io.ktor.server.application.*
+import io.ktor.server.request.*
+import io.ktor.server.response.*
+import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 import java.nio.file.Files
 import java.nio.file.Path
 
 fun Application.configureRoutes(
-    kakaoImportAnalyze: KakaoImportAnalyzeUseCase? = null,
+    kakaoImportAnalyze: KakaoAnalysisPreviewService,
 ) {
     routing {
         get(AppConfig.ROUTE_HEALTH) {
@@ -25,10 +23,6 @@ fun Application.configureRoutes(
         }
 
         post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {
-            if (kakaoImportAnalyze == null) {
-                call.respond(HttpStatusCode.NotFound, mapOf("error" to "kakao topic analysis is not configured"))
-                return@post
-            }
 
             val req = call.receive<KakaoImportAnalyzeRequest>()
             val sourceFileName = req.fileName ?: req.filePath?.let { Path.of(it).fileName.toString() }
@@ -43,41 +37,42 @@ fun Application.configureRoutes(
                 return@post
             }
 
-            val result = kakaoImportAnalyze.previewAnalysis(sourceFileName, text)
-            call.respond(HttpStatusCode.OK, result.toResponse())
+            val result = kakaoImportAnalyze.analyze(
+                TopicAnalysisRequest(
+                    sourceType = "kakao",
+                    sourceName = sourceFileName,
+                    text = text
+                )
+            )
+            call.respond(HttpStatusCode.OK, result)
         }
 
         post(AppConfig.ROUTE_KAKAO_IMPORT_SAVE) {
-            if (kakaoImportAnalyze == null) {
-                call.respond(HttpStatusCode.NotFound, mapOf("error" to "kakao topic analysis is not configured"))
-                return@post
-            }
 
-            val req = call.receive<KakaoImportSaveRequest>()
+            val req = call.receive<TopicAnalysisSaveRequest>()
             if (req.previewId.isBlank()) {
                 call.respond(HttpStatusCode.BadRequest, mapOf("error" to "previewId is required"))
                 return@post
             }
 
             try {
-                val result = kakaoImportAnalyze.savePreview(req.previewId)
-                call.respond(HttpStatusCode.OK, result.toResponse())
-            } catch (_: KakaoAnalysisPreviewNotFoundException) {
+                val result = kakaoImportAnalyze.saveAnalysis(req.previewId)
+                call.respond(HttpStatusCode.OK, result)
+            } catch (e: Exception) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
             }
         }
 
         get(AppConfig.ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET) {
-            if (kakaoImportAnalyze == null) {
-                call.respond(HttpStatusCode.NotFound, mapOf("error" to "kakao topic analysis is not configured"))
-                return@get
-            }
 
-            val result = kakaoImportAnalyze.previewAnalysis(
-                TEST_TOPIC_ANALYSIS_KAKAO_FILE_NAME,
-                TEST_TOPIC_ANALYSIS_KAKAO_TEXT,
+            val result = kakaoImportAnalyze.analyze(
+                TopicAnalysisRequest(
+                    sourceType = "kakao",
+                    sourceName = TEST_TOPIC_ANALYSIS_KAKAO_FILE_NAME,
+                    text = TEST_TOPIC_ANALYSIS_KAKAO_TEXT
+                )
             )
-            call.respond(HttpStatusCode.OK, result.toResponse())
+            call.respond(HttpStatusCode.OK, result)
         }
     }
 }
@@ -143,29 +138,7 @@ private data class KakaoImportAnalyzeRequest(
     val text: String? = null,
 )
 
-@Serializable
-private data class KakaoImportSaveRequest(
-    val previewId: String,
-)
 
-/**
- * Response body returned by the Kakao import preview endpoint.
- *
- * @property previewId Identifier used to save this analysis preview later.
- * @property importedMessageCount Number of parsed Kakao messages in the preview.
- * @property topics Topic candidates produced from the previewed source document.
- */
-@Serializable
-private data class KakaoImportAnalyzeResponse(
-    val previewId: String,
-    val importedMessageCount: Int,
-    val topics: List<TopicCandidateResponse>,
-)
-
-@Serializable
-private data class KakaoImportSaveResponse(
-    val topics: List<TopicCandidateResponse>,
-)
 
 /**
  * API response representation of a topic candidate.
@@ -211,56 +184,4 @@ private data class TopicClaimResponse(
     val evidenceRefs: List<Int>,
 )
 
-private fun KakaoImportAnalyzeResult.toResponse(): KakaoImportAnalyzeResponse =
-    KakaoImportAnalyzeResponse(
-        previewId = previewId,
-        importedMessageCount = importedMessageCount,
-        topics = topics.mapIndexed { index, topic -> topic.toPreviewResponse(index + 1) },
-    )
 
-private fun KakaoImportSaveResult.toResponse(): KakaoImportSaveResponse =
-    KakaoImportSaveResponse(
-        topics = topics.map { it.toResponse() },
-    )
-
-private fun TopicCandidate.toResponse(): TopicCandidateResponse =
-    TopicCandidateResponse(
-        id = id,
-        title = title,
-        summary = summary,
-        memoryTypes = memoryTypes,
-        domains = domains,
-        evidenceRefs = evidenceRefs,
-        claims = claims.map {
-            TopicClaimResponse(
-                id = it.id,
-                text = it.text,
-                subject = it.subject,
-                memoryType = it.memoryType,
-                certainty = it.certainty.name,
-                evidenceRefs = it.evidenceRefs,
-            )
-        },
-        status = status.name,
-    )
-
-private fun NewTopicCandidate.toPreviewResponse(topicId: Int): TopicCandidateResponse =
-    TopicCandidateResponse(
-        id = topicId,
-        title = title,
-        summary = summary,
-        memoryTypes = memoryTypes,
-        domains = domains,
-        evidenceRefs = evidenceRefs,
-        claims = claims.mapIndexed { index, claim ->
-            TopicClaimResponse(
-                id = index + 1,
-                text = claim.text,
-                subject = claim.subject,
-                memoryType = claim.memoryType,
-                certainty = claim.certainty.name,
-                evidenceRefs = claim.evidenceRefs,
-            )
-        },
-        status = CandidateStatus.PENDING.name,
-    )

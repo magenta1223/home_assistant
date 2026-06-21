@@ -2,6 +2,10 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewNotFoundException
+import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewResult
+import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewUseCase
+import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisSaveResult
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.NewTopicCandidate
 import com.homeassistant.domain.topicanalysis.NewTopicCandidateClaim
@@ -134,7 +138,7 @@ class KakaoImportRoutesTest {
     }
 }
 
-private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
+private object FakeAnalyzer : KakaoAnalysisPreviewUseCase {
     var sourceFileName = ""
     var text = ""
     var previewId = ""
@@ -152,22 +156,22 @@ private object FakeAnalyzer : KakaoImportAnalyzeUseCase {
     override suspend fun previewAnalysis(
         sourceFileName: String,
         text: String,
-    ): KakaoImportAnalyzeResult {
+    ): KakaoAnalysisPreviewResult {
         this.sourceFileName = sourceFileName
         this.text = text
         previewCalls += 1
-        return KakaoImportAnalyzeResult(
+        return KakaoAnalysisPreviewResult(
             previewId = "preview-1",
             importedMessageCount = 1,
             topics = listOf(newTopic(sourceFileName, 1)),
         )
     }
 
-    override suspend fun savePreview(previewId: String): KakaoImportSaveResult {
+    override suspend fun savePreview(previewId: String): KakaoAnalysisSaveResult {
         this.previewId = previewId
         saveCalls += 1
         if (previewId == "missing") throw KakaoAnalysisPreviewNotFoundException(previewId)
-        return KakaoImportSaveResult(topics = listOf(topic("2026-06-07.txt", 11)))
+        return KakaoAnalysisSaveResult(topics = listOf(topic("2026-06-07.txt", 11)))
     }
 
     private fun newTopic(sourceFileName: String, evidenceRef: Int) =

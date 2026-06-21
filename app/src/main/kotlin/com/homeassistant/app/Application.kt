@@ -3,16 +3,15 @@ package com.homeassistant.app
 import com.homeassistant.app.routes.configureRoutes
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
+import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.db.DatabaseFactory
 import com.homeassistant.domain.kakao.KakaoAnalysisPreviewRepository
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageRepository
 import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
-import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
-import com.homeassistant.nlp.backend.LmBackendFactory
-import com.homeassistant.app.routes.KakaoImportAnalyzeService
-import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.nlp.backend.AiProvider
+import com.homeassistant.nlp.backend.LmBackendFactory
+import com.homeassistant.nlp.topicanalysis.impl.KakaoAnalysisPreviewService
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
@@ -42,16 +41,19 @@ fun Application.module() {
         level = Level.INFO
     }
 
-    val dbPath = environment.config.propertyOrNull(AppConfig.CONFIG_KEY_DB_PATH)?.getString()
+    val dbPath = environment
+        .config
+        .propertyOrNull(AppConfig.CONFIG_KEY_DB_PATH)
+        ?.getString()
         ?: AppConfig.DEFAULT_DB_PATH
 
     log.info("Database: $dbPath")
 
     val db = DatabaseFactory.init(dbPath)
-    val analysisBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
-    val kakaoTopicAnalysis = KakaoImportAnalyzeService(
-        KakaoImportService(KakaoMessageRepository(db)),
-        TopicAnalysisService(analysisBackend),
+    val llmBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
+    val kakaoTopicAnalysis = KakaoAnalysisPreviewService(
+        backend = llmBackend,
+        importService = KakaoImportService(KakaoMessageRepository(db)),
         TopicAnalysisRepository(db),
         KakaoAnalysisPreviewRepository(db),
     )

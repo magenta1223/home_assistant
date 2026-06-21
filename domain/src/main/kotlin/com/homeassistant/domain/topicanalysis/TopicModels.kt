@@ -18,6 +18,7 @@ enum class ClaimCertainty { OBSERVED, SAID, INFERRED, UNCERTAIN }
  * @property certainty How directly source evidence supports the claim.
  * @property evidenceRefs Source references that support the claim.
  */
+@Serializable
 data class TopicClaim(
     val id: Int,
     val text: String,
@@ -41,6 +42,7 @@ data class TopicClaim(
  * @property claims Evidence-backed claims grouped under the topic.
  * @property status Review state for the topic candidate.
  */
+@Serializable
 data class TopicCandidate(
     val id: Int,
     val sourceType: String,

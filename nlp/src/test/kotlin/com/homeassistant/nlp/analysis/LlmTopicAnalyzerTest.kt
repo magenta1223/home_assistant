@@ -4,23 +4,23 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
+import com.homeassistant.core.source.SourceDocument
+import com.homeassistant.core.source.SourceRecord
 import com.homeassistant.core.tools.Tool
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
-import com.homeassistant.nlp.topicanalysis.SourceDocument
-import com.homeassistant.nlp.topicanalysis.SourceRecord
-import com.homeassistant.nlp.topicanalysis.TopicAnalysisException
+import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import com.homeassistant.nlp.topicanalysis.impl.LlmTopicAnalyzer
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisLlmResponse
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisOutputContract
-import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
 import com.homeassistant.nlp.topicanalysis.TopicClaimLlmResponse
 import com.homeassistant.nlp.topicanalysis.TopicLlmResponse
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*
 
-class TopicAnalysisServiceTest {
+class LlmTopicAnalyzerTest {
     @Test
     fun `analyzes datasource agnostic records into pending topics with evidence`() = runBlocking {
-        val service = TopicAnalysisService(
+        val service = LlmTopicAnalyzer(
             StaticBackend(
                 """
                 {
@@ -82,7 +82,7 @@ class TopicAnalysisServiceTest {
     @Test
     fun `prompt tells model not to split topics by time or interrupted order`() = runBlocking {
         val backend = CapturingBackend("""{"topics":[]}""")
-        val service = TopicAnalysisService(backend)
+        val service = LlmTopicAnalyzer(backend)
 
         service.analyze(
             SourceDocument(
@@ -109,7 +109,7 @@ class TopicAnalysisServiceTest {
     @Test
     fun `prompt is generated from topic output schema`() = runBlocking {
         val backend = CapturingBackend("""{"topics":[]}""")
-        val service = TopicAnalysisService(backend)
+        val service = LlmTopicAnalyzer(backend)
 
         service.analyze(singleRecordDocument())
 
@@ -256,8 +256,8 @@ class TopicAnalysisServiceTest {
         )
     }
 
-    private fun serviceFor(response: String): TopicAnalysisService =
-        TopicAnalysisService(StaticBackend(response))
+    private fun serviceFor(response: String): LlmTopicAnalyzer =
+        LlmTopicAnalyzer(StaticBackend(response))
 
     private fun singleRecordDocument(): SourceDocument =
         SourceDocument(

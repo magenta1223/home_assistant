@@ -8,7 +8,7 @@ object KakaoMessageParser {
     private val exportedHeader = Regex("^(\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}), (.+?) : ?(.*)$")
     private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
 
-    fun parse(sourceFileName: String, text: String): List<ParsedKakaoMessage> {
+    fun parse(sourceName: String, text: String): List<ParsedKakaoMessage> {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
         lines.forEachIndexed { index, rawLine ->
@@ -27,7 +27,7 @@ object KakaoMessageParser {
                 ?.let { "${it.groupValues[2]} ${it.groupValues[3]}" }
                 ?: exportedMatch!!.groupValues[1]
             val content = bracketMatch?.groupValues?.get(4) ?: exportedMatch!!.groupValues[3]
-            messages += MessageBuilder(sourceFileName, sender, displayTime, content, lineNumber)
+            messages += MessageBuilder(sourceName, sender, displayTime, content, lineNumber)
         }
 
         return messages.map { it.build() }

@@ -1,36 +1,10 @@
-package com.homeassistant.nlp.topicanalysis
+package com.homeassistant.domain.topicanalysis
 
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.core.source.SourceRecord
 
 /**
- * One analyzable source item with prompt id, source reference, and rendered content.
- *
- * @property id Prompt-local record id used for evidence references.
- * @property ref Stable source reference returned to callers and stored as evidence.
- * @property content Rendered source content sent to the topic analyzer.
- */
-data class SourceRecord(
-    val id: String,
-    val ref: Int,
-    val content: String,
-)
-
-/**
- * Source-agnostic document passed to topic analysis.
- *
- * @property sourceType Import source category, such as kakao.
- * @property sourceName Human-readable source name or file name.
- * @property records Ordered source records available for analysis.
- */
-data class SourceDocument(
-    val sourceType: String,
-    val sourceName: String,
-    val records: List<SourceRecord>,
-)
-
-/**
- * New claim payload ready to be persisted under a topic candidate.
+ * New claim payload before persistence under a topic candidate.
  *
  * @property text Claim text suitable for memory review.
  * @property subject Person, place, or concept the claim is about.

@@ -1,16 +1,23 @@
-package com.homeassistant.nlp.topicanalysis
+package com.homeassistant.nlp.topicanalysis.impl
 
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
+import com.homeassistant.core.source.SourceDocument
+import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.domain.topicanalysis.*
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisOutputContract
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisPrompt
+import com.homeassistant.nlp.topicanalysis.TopicClaimLlmResponse
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalyzer
 
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
-class TopicAnalysisService(
+class LlmTopicAnalyzer(
     private val backend: LlmBackend,
-) {
-    suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
+) : TopicAnalyzer {
+    override suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
         val topics = analyzeValidTopics(document).map { topic ->
             TopicDraft(
                 title = topic.title,

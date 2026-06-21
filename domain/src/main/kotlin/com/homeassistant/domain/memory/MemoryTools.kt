@@ -2,7 +2,6 @@ package com.homeassistant.domain.memory
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.*
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
@@ -27,14 +26,14 @@ class MemoryTools(
      */
     @Serializable
     private data class CreateCandidateArgs(
-        @SerialName("conversation_id") val conversationId: String,
+        val conversationId: String,
         val domain: String,
-        @SerialName("memory_type") val memoryType: MemoryType,
+        val memoryType: MemoryType,
         val content: String,
         val summary: String,
         val confidence: Double,
-        @SerialName("subject_member_id") val subjectMemberId: String? = null,
-        @SerialName("source_conversation_message_id") val sourceConversationMessageId: Int? = null,
+        val subjectMemberId: String? = null,
+        val sourceConversationMessageId: Int? = null,
     )
 
     /**
@@ -42,7 +41,7 @@ class MemoryTools(
      *
      * @property candidateId Candidate id to approve or reject.
      */
-    @Serializable private data class CandidateIdArgs(@SerialName("candidate_id") val candidateId: Int)
+    @Serializable private data class CandidateIdArgs(val candidateId: Int)
 
     /**
      * Arguments for semantic memory search.
@@ -58,11 +57,11 @@ class MemoryTools(
     @Serializable
     private data class SearchArgs(
         val query: String,
-        @SerialName("memory_type") val memoryType: MemoryType? = null,
+        val memoryType: MemoryType? = null,
         val domain: String? = null,
-        @SerialName("member_id") val memberId: String? = null,
-        @SerialName("created_after") val createdAfter: Long? = null,
-        @SerialName("created_before") val createdBefore: Long? = null,
+        val memberId: String? = null,
+        val createdAfter: Long? = null,
+        val createdBefore: Long? = null,
         val limit: Int = 5,
     )
 
@@ -72,37 +71,37 @@ class MemoryTools(
             "사용자 승인이 필요한 장기 기억 후보를 생성합니다",
             ToolSchema(
                 properties = mapOf(
-                    "conversation_id" to PropertySchema("string", "대화 ID"),
+                    "conversationId" to PropertySchema("string", "대화 ID"),
                     "domain" to PropertySchema("string", "생활 영역 이름"),
-                    "memory_type" to PropertySchema(
+                    "memoryType" to PropertySchema(
                         "string",
                         "기억 타입. PROFILE, PREFERENCE, RELATIONSHIP, STATE, LOCATION, REFERENCE, DECISION, CONSTRAINT, CONVERSATION, EVENT, TRANSACTION, APPOINTMENT, CHANGE, MILESTONE, OBSERVATION, ROUTINE, CHECKLIST, INSTRUCTION, RULE, RECIPE, TROUBLESHOOTING, TEMPLATE 중 하나",
                     ),
                     "content" to PropertySchema("string", "원문에 가까운 기억 내용"),
                     "summary" to PropertySchema("string", "짧은 요약"),
                     "confidence" to PropertySchema("number", "0.0-1.0 신뢰도"),
-                    "subject_member_id" to PropertySchema("string", "대상 구성원 ID"),
+                    "subjectMemberId" to PropertySchema("string", "대상 구성원 ID"),
                 ),
-                required = listOf("conversation_id", "domain", "memory_type", "content", "summary", "confidence"),
+                required = listOf("conversationId", "domain", "memoryType", "content", "summary", "confidence"),
             ),
         ),
         Tool(
             "memory_candidate_list_pending",
             "현재 대화와 사용자 기준 pending 기억 후보를 조회합니다",
             ToolSchema(
-                properties = mapOf("conversation_id" to PropertySchema("string", "대화 ID")),
-                required = listOf("conversation_id"),
+                properties = mapOf("conversationId" to PropertySchema("string", "대화 ID")),
+                required = listOf("conversationId"),
             ),
         ),
         Tool(
             "memory_candidate_approve",
             "기억 후보를 승인하고 장기 기억으로 저장합니다",
-            ToolSchema(properties = mapOf("candidate_id" to PropertySchema("integer", "후보 ID")), required = listOf("candidate_id")),
+            ToolSchema(properties = mapOf("candidateId" to PropertySchema("integer", "후보 ID")), required = listOf("candidateId")),
         ),
         Tool(
             "memory_candidate_reject",
             "기억 후보를 거절합니다",
-            ToolSchema(properties = mapOf("candidate_id" to PropertySchema("integer", "후보 ID")), required = listOf("candidate_id")),
+            ToolSchema(properties = mapOf("candidateId" to PropertySchema("integer", "후보 ID")), required = listOf("candidateId")),
         ),
         Tool(
             "memory_search",
@@ -110,9 +109,9 @@ class MemoryTools(
             ToolSchema(
                 properties = mapOf(
                     "query" to PropertySchema("string", "검색 질의"),
-                    "memory_type" to PropertySchema("string", "기억 타입 필터"),
+                    "memoryType" to PropertySchema("string", "기억 타입 필터"),
                     "domain" to PropertySchema("string", "생활 영역 필터"),
-                    "member_id" to PropertySchema("string", "구성원 필터"),
+                    "memberId" to PropertySchema("string", "구성원 필터"),
                     "limit" to PropertySchema("integer", "최대 결과 수"),
                 ),
                 required = listOf("query"),
@@ -151,7 +150,7 @@ class MemoryTools(
 
     private fun handleListPending(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args = json.decodeFromString<Map<String, String>>(spec.arguments)
-        val candidates = repo.listPending(userId, args.getValue("conversation_id"))
+        val candidates = repo.listPending(userId, args.getValue("conversationId"))
         return if (candidates.isEmpty()) ToolResult("대기 중인 기억 후보가 없습니다.")
         else ToolResult(candidates.joinToString("\n") {
             "candidate_id=${it.id} [${it.domainName}/${it.memoryType.code}] ${it.summary}"

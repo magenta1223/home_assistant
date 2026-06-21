@@ -62,7 +62,7 @@ class DomainToolRegistryTest {
         val result = registry.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_type":"STATE","content":"Min has piano","summary":"Min piano","confidence":0.8}""",
+                """{"conversationId":"conv-1","domain":"SCHOOL","memoryType":"STATE","content":"Min has piano","summary":"Min piano","confidence":0.8}""",
             ),
             userId,
         )

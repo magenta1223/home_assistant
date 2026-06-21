@@ -4,7 +4,6 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -15,7 +14,6 @@ import kotlinx.serialization.json.Json
  * @property topics Topics extracted from the supplied source document.
  */
 @Serializable
-@SerialName("TopicAnalysisOutput")
 internal data class TopicAnalysisLlmResponse(val topics: List<TopicLlmResponse>)
 
 /**
@@ -29,7 +27,6 @@ internal data class TopicAnalysisLlmResponse(val topics: List<TopicLlmResponse>)
  * @property claims Evidence-backed claims grouped under the topic.
  */
 @Serializable
-@SerialName("Topic")
 internal data class TopicLlmResponse(
     val title: String,
     val summary: String,
@@ -49,7 +46,6 @@ internal data class TopicLlmResponse(
  * @property evidenceRecordIds Prompt-local source record ids supporting the claim.
  */
 @Serializable
-@SerialName("TopicClaim")
 internal data class TopicClaimLlmResponse(
     val text: String,
     val subject: String,

@@ -9,8 +9,11 @@ import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.nlp.topicanalysis.SourceDocument
 import com.homeassistant.nlp.topicanalysis.SourceRecord
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisException
+import com.homeassistant.nlp.topicanalysis.TopicAnalysisLlmResponse
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisOutputContract
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisService
+import com.homeassistant.nlp.topicanalysis.TopicClaimLlmResponse
+import com.homeassistant.nlp.topicanalysis.TopicLlmResponse
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*
 
@@ -235,6 +238,22 @@ class TopicAnalysisServiceTest {
         assertFalse(schema.contains("memorySubtype"))
         assertContains(schema, "certainty")
         assertContains(schema, "evidenceRecordIds")
+    }
+
+    @Test
+    fun `topic analysis dto names come from class names without serial name overrides`() {
+        assertEquals(
+            "com.homeassistant.nlp.topicanalysis.TopicAnalysisLlmResponse",
+            TopicAnalysisLlmResponse.serializer().descriptor.serialName,
+        )
+        assertEquals(
+            "com.homeassistant.nlp.topicanalysis.TopicLlmResponse",
+            TopicLlmResponse.serializer().descriptor.serialName,
+        )
+        assertEquals(
+            "com.homeassistant.nlp.topicanalysis.TopicClaimLlmResponse",
+            TopicClaimLlmResponse.serializer().descriptor.serialName,
+        )
     }
 
     private fun serviceFor(response: String): TopicAnalysisService =

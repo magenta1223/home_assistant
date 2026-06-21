@@ -218,7 +218,7 @@ fun SystemPrompt.withTools(tools: List<Tool>): SystemPrompt {
 // For prompt-injection backends
 @Serializable
 data class PromptInjectionResponseDto(
-    @SerialName("tool_call") val toolCall: PromptInjectionToolCallDto? = null,
+    val toolCall: PromptInjectionToolCallDto? = null,
     val type: String? = null,
     val text: String? = null,
 )

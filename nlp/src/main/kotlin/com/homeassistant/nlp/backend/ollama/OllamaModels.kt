@@ -1,7 +1,6 @@
 package com.homeassistant.nlp.backend.ollama
 
 import com.homeassistant.core.nlp.MessageRole
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 
@@ -29,12 +28,12 @@ data class OllamaMessage(val role: MessageRole, val content: String)
 @Serializable
 data class OllamaOptions(
     val temperature: Double? = null,
-    @SerialName("top_k")          val topK: Int? = null,
-    @SerialName("top_p")          val topP: Double? = null,
-    @SerialName("num_predict")    val numPredict: Int? = null,
-    @SerialName("num_ctx")        val numCtx: Int? = null,
+    val topK: Int? = null,
+    val topP: Double? = null,
+    val numPredict: Int? = null,
+    val numCtx: Int? = null,
     val seed: Int? = null,
-    @SerialName("repeat_penalty") val repeatPenalty: Double? = null,
+    val repeatPenalty: Double? = null,
 )
 
 /**

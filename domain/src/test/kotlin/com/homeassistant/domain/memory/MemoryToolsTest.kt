@@ -51,7 +51,7 @@ class MemoryToolsTest {
         val result = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_type":"STATE","content":"Min has piano Friday","summary":"Min piano","confidence":0.8}""",
+                """{"conversationId":"conv-1","domain":"SCHOOL","memoryType":"STATE","content":"Min has piano Friday","summary":"Min piano","confidence":0.8}""",
             ),
             userId,
         )
@@ -65,7 +65,7 @@ class MemoryToolsTest {
         val result = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"SCHOOL","memory_type":"FACT","content":"Min has piano Friday","summary":"Min piano","confidence":0.8}""",
+                """{"conversationId":"conv-1","domain":"SCHOOL","memoryType":"FACT","content":"Min has piano Friday","summary":"Min piano","confidence":0.8}""",
             ),
             userId,
         )
@@ -79,7 +79,7 @@ class MemoryToolsTest {
         val result = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"HOME","content":"Passport in drawer","summary":"Passport location","confidence":0.8}""",
+                """{"conversationId":"conv-1","domain":"HOME","content":"Passport in drawer","summary":"Passport location","confidence":0.8}""",
             ),
             userId,
         )
@@ -93,13 +93,13 @@ class MemoryToolsTest {
         val created = tools.execute(
             spec(
                 "memory_candidate_create",
-                """{"conversation_id":"conv-1","domain":"HOME","memory_type":"PREFERENCE","content":"Dad prefers decaf after dinner","summary":"Dad decaf","confidence":0.7}""",
+                """{"conversationId":"conv-1","domain":"HOME","memoryType":"PREFERENCE","content":"Dad prefers decaf after dinner","summary":"Dad decaf","confidence":0.7}""",
             ),
             userId,
         )
         val candidateId = created.value.substringAfter("candidate_id=").substringBefore(" ").trim().toInt()
 
-        val result = tools.execute(spec("memory_candidate_approve", """{"candidate_id":$candidateId}"""), userId)
+        val result = tools.execute(spec("memory_candidate_approve", """{"candidateId":$candidateId}"""), userId)
 
         assertContains(result.value, "memory_id=")
         assertEquals(1, vectorStore.upserts.size)

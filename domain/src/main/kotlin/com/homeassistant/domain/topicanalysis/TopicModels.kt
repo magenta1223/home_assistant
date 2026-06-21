@@ -54,6 +54,7 @@ data class TopicCandidate(
     val status: CandidateStatus,
 )
 
+@Serializable
 data class NewTopicCandidateClaim(
     val text: String,
     val subject: String,
@@ -62,6 +63,7 @@ data class NewTopicCandidateClaim(
     val evidenceRefs: List<Int>,
 )
 
+@Serializable
 data class NewTopicCandidate(
     val sourceType: String,
     val sourceName: String,

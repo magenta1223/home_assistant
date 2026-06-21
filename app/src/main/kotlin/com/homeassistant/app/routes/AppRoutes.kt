@@ -1,7 +1,9 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
+import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.topicanalysis.NewTopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
@@ -41,8 +43,28 @@ fun Application.configureRoutes(
                 return@post
             }
 
-            val result = kakaoImportAnalyze.importAndAnalyze(sourceFileName, text)
+            val result = kakaoImportAnalyze.previewAnalysis(sourceFileName, text)
             call.respond(HttpStatusCode.OK, result.toResponse())
+        }
+
+        post(AppConfig.ROUTE_KAKAO_IMPORT_SAVE) {
+            if (kakaoImportAnalyze == null) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "kakao topic analysis is not configured"))
+                return@post
+            }
+
+            val req = call.receive<KakaoImportSaveRequest>()
+            if (req.previewId.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "previewId is required"))
+                return@post
+            }
+
+            try {
+                val result = kakaoImportAnalyze.savePreview(req.previewId)
+                call.respond(HttpStatusCode.OK, result.toResponse())
+            } catch (_: KakaoAnalysisPreviewNotFoundException) {
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
+            }
         }
 
         get(AppConfig.ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET) {
@@ -108,7 +130,7 @@ private val TEST_TOPIC_ANALYSIS_KAKAO_TEXT = """
 """.trimIndent()
 
 /**
- * Request body accepted by the Kakao import-and-analyze endpoint.
+ * Request body accepted by the Kakao import preview endpoint.
  *
  * @property fileName Optional source file name used when raw text is provided.
  * @property filePath Optional local path to read when text is not provided.
@@ -121,15 +143,27 @@ private data class KakaoImportAnalyzeRequest(
     val text: String? = null,
 )
 
+@Serializable
+private data class KakaoImportSaveRequest(
+    val previewId: String,
+)
+
 /**
- * Response body returned by the Kakao import-and-analyze endpoint.
+ * Response body returned by the Kakao import preview endpoint.
  *
- * @property importedMessageCount Number of newly imported or previewed Kakao messages.
- * @property topics Topic candidates produced from the imported source document.
+ * @property previewId Identifier used to save this analysis preview later.
+ * @property importedMessageCount Number of parsed Kakao messages in the preview.
+ * @property topics Topic candidates produced from the previewed source document.
  */
 @Serializable
 private data class KakaoImportAnalyzeResponse(
+    val previewId: String,
     val importedMessageCount: Int,
+    val topics: List<TopicCandidateResponse>,
+)
+
+@Serializable
+private data class KakaoImportSaveResponse(
     val topics: List<TopicCandidateResponse>,
 )
 
@@ -141,7 +175,7 @@ private data class KakaoImportAnalyzeResponse(
  * @property summary Review-facing topic summary.
  * @property memoryTypes Memory categories represented by the topic.
  * @property domains Normalized domain tags attached to the topic.
- * @property evidenceMessageIds Source message ids that support the topic.
+ * @property evidenceRefs Source references that support the topic.
  * @property claims Evidence-backed claims grouped under the topic.
  * @property status Review state for the topic candidate.
  */
@@ -152,7 +186,7 @@ private data class TopicCandidateResponse(
     val summary: String,
     val memoryTypes: List<MemoryType>,
     val domains: List<String>,
-    val evidenceMessageIds: List<Int>,
+    val evidenceRefs: List<Int>,
     val claims: List<TopicClaimResponse>,
     val status: String,
 )
@@ -165,7 +199,7 @@ private data class TopicCandidateResponse(
  * @property subject Person, place, or concept the claim is about.
  * @property memoryType Memory category assigned to the claim.
  * @property certainty How directly source evidence supports the claim.
- * @property evidenceMessageIds Source message ids that support the claim.
+ * @property evidenceRefs Source references that support the claim.
  */
 @Serializable
 private data class TopicClaimResponse(
@@ -174,12 +208,18 @@ private data class TopicClaimResponse(
     val subject: String,
     val memoryType: MemoryType,
     val certainty: String,
-    val evidenceMessageIds: List<Int>,
+    val evidenceRefs: List<Int>,
 )
 
 private fun KakaoImportAnalyzeResult.toResponse(): KakaoImportAnalyzeResponse =
     KakaoImportAnalyzeResponse(
+        previewId = previewId,
         importedMessageCount = importedMessageCount,
+        topics = topics.mapIndexed { index, topic -> topic.toPreviewResponse(index + 1) },
+    )
+
+private fun KakaoImportSaveResult.toResponse(): KakaoImportSaveResponse =
+    KakaoImportSaveResponse(
         topics = topics.map { it.toResponse() },
     )
 
@@ -190,7 +230,7 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
         summary = summary,
         memoryTypes = memoryTypes,
         domains = domains,
-        evidenceMessageIds = evidenceRefs,
+        evidenceRefs = evidenceRefs,
         claims = claims.map {
             TopicClaimResponse(
                 id = it.id,
@@ -198,8 +238,29 @@ private fun TopicCandidate.toResponse(): TopicCandidateResponse =
                 subject = it.subject,
                 memoryType = it.memoryType,
                 certainty = it.certainty.name,
-                evidenceMessageIds = it.evidenceRefs,
+                evidenceRefs = it.evidenceRefs,
             )
         },
         status = status.name,
+    )
+
+private fun NewTopicCandidate.toPreviewResponse(topicId: Int): TopicCandidateResponse =
+    TopicCandidateResponse(
+        id = topicId,
+        title = title,
+        summary = summary,
+        memoryTypes = memoryTypes,
+        domains = domains,
+        evidenceRefs = evidenceRefs,
+        claims = claims.mapIndexed { index, claim ->
+            TopicClaimResponse(
+                id = index + 1,
+                text = claim.text,
+                subject = claim.subject,
+                memoryType = claim.memoryType,
+                certainty = claim.certainty.name,
+                evidenceRefs = claim.evidenceRefs,
+            )
+        },
+        status = CandidateStatus.PENDING.name,
     )

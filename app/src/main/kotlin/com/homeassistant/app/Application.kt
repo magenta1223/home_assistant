@@ -4,6 +4,7 @@ import com.homeassistant.app.routes.configureRoutes
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.domain.db.DatabaseFactory
+import com.homeassistant.domain.kakao.KakaoAnalysisPreviewRepository
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageRepository
 import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
@@ -52,6 +53,7 @@ fun Application.module() {
         KakaoImportService(KakaoMessageRepository(db)),
         TopicAnalysisService(analysisBackend),
         TopicAnalysisRepository(db),
+        KakaoAnalysisPreviewRepository(db),
     )
     configureRoutes(kakaoTopicAnalysis)
 }

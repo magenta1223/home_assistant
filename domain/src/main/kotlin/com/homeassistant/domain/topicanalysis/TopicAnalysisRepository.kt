@@ -3,10 +3,6 @@ package com.homeassistant.domain.topicanalysis
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.db.tables.TopicCandidateTable
-import com.homeassistant.nlp.topicanalysis.ClaimCertainty
-import com.homeassistant.nlp.topicanalysis.NewTopicClaim
-import com.homeassistant.nlp.topicanalysis.SourceDocument
-import com.homeassistant.nlp.topicanalysis.SourceRecord
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -21,29 +17,21 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class TopicAnalysisRepository(private val db: Database) {
     private val json = Json
 
-    fun createTopic(
-        document: SourceDocument,
-        title: String,
-        summary: String,
-        memoryTypes: List<MemoryType>,
-        domains: List<String>,
-        evidence: List<SourceRecord>,
-        claims: List<NewTopicClaim>,
-    ): TopicCandidate = transaction(db) {
-        val existing = findExistingTopic(document, title, evidence)
+    fun createTopic(candidate: NewTopicCandidate): TopicCandidate = transaction(db) {
+        val existing = findExistingTopic(candidate)
         if (existing != null) return@transaction existing
 
         val now = System.currentTimeMillis()
-        val distinctEvidence = evidence.distinctBy { it.id }
-        val distinctClaims = claims.distinctBy { it.text to it.evidence.map { record -> record.id }.toSet() }
+        val distinctEvidence = candidate.evidence.distinctBy { it.id }
+        val distinctClaims = candidate.claims.distinctBy { it.text to it.evidence.map { evidence -> evidence.id }.toSet() }
         val topicId = TopicCandidateTable.insert {
-            it[sourceType] = document.sourceType
-            it[sourceName] = document.sourceName
-            it[TopicCandidateTable.title] = title
-            it[TopicCandidateTable.summary] = summary
+            it[sourceType] = candidate.sourceType
+            it[sourceName] = candidate.sourceName
+            it[TopicCandidateTable.title] = candidate.title
+            it[TopicCandidateTable.summary] = candidate.summary
             it[status] = CandidateStatus.PENDING.name
-            it[memoryTypesJson] = json.encodeToString(memoryTypes.distinct())
-            it[domainsJson] = json.encodeToString(domains.distinct())
+            it[memoryTypesJson] = json.encodeToString(candidate.memoryTypes.distinct())
+            it[domainsJson] = json.encodeToString(candidate.domains.distinct())
             it[evidenceJson] = json.encodeToString(distinctEvidence.toPersistedEvidence())
             it[claimsJson] = json.encodeToString(distinctClaims.toPersistedClaims())
             it[createdAt] = now
@@ -53,17 +41,13 @@ class TopicAnalysisRepository(private val db: Database) {
         getTopic(topicId)
     }
 
-    private fun findExistingTopic(
-        document: SourceDocument,
-        title: String,
-        evidence: List<SourceRecord>,
-    ): TopicCandidate? {
-        val evidenceIds = evidence.map { it.id }.toSet()
+    private fun findExistingTopic(candidate: NewTopicCandidate): TopicCandidate? {
+        val evidenceIds = candidate.evidence.map { it.id }.toSet()
         val candidates = TopicCandidateTable.selectAll()
             .where {
-                (TopicCandidateTable.sourceType eq document.sourceType) and
-                    (TopicCandidateTable.sourceName eq document.sourceName) and
-                    (TopicCandidateTable.title eq title)
+                (TopicCandidateTable.sourceType eq candidate.sourceType) and
+                    (TopicCandidateTable.sourceName eq candidate.sourceName) and
+                    (TopicCandidateTable.title eq candidate.title)
             }
         return candidates.firstOrNull { row ->
             decodeEvidence(row[TopicCandidateTable.evidenceJson]).map { it.id }.toSet() == evidenceIds
@@ -105,10 +89,10 @@ class TopicAnalysisRepository(private val db: Database) {
     private fun decodeEvidence(value: String): List<PersistedEvidence> =
         json.decodeFromString(value)
 
-    private fun List<SourceRecord>.toPersistedEvidence(): List<PersistedEvidence> =
+    private fun List<NewTopicCandidateEvidence>.toPersistedEvidence(): List<PersistedEvidence> =
         map { PersistedEvidence(id = it.id, ref = it.ref) }
 
-    private fun List<NewTopicClaim>.toPersistedClaims(): List<PersistedTopicClaim> =
+    private fun List<NewTopicCandidateClaim>.toPersistedClaims(): List<PersistedTopicClaim> =
         map { claim ->
             PersistedTopicClaim(
                 text = claim.text,

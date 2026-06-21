@@ -1,11 +1,7 @@
 package com.homeassistant.nlp.topicanalysis
 
 import com.homeassistant.core.memory.MemoryType
-import kotlinx.serialization.Serializable
-
-/** How directly the source evidence supports a claim. */
-@Serializable
-enum class ClaimCertainty { OBSERVED, SAID, INFERRED, UNCERTAIN }
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
 
 /**
  * One analyzable source item with prompt id, source reference, and rendered content.

@@ -1,6 +1,7 @@
 package com.homeassistant.nlp.topicanalysis
 
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName

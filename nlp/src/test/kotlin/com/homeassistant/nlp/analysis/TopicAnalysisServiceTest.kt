@@ -5,7 +5,7 @@ import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
-import com.homeassistant.nlp.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.nlp.topicanalysis.SourceDocument
 import com.homeassistant.nlp.topicanalysis.SourceRecord
 import com.homeassistant.nlp.topicanalysis.TopicAnalysisException

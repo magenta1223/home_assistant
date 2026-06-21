@@ -5,6 +5,7 @@ plugins {
 
 dependencies {
     api(project(":core"))
+    api(project(":domain"))
 
     // Anthropic Java SDK
     implementation(libs.anthropic.java)

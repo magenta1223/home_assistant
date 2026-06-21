@@ -3,10 +3,6 @@ package com.homeassistant.domain.topicanalysis
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.db.tables.TopicCandidateTable
-import com.homeassistant.nlp.topicanalysis.ClaimCertainty
-import com.homeassistant.nlp.topicanalysis.NewTopicClaim
-import com.homeassistant.nlp.topicanalysis.SourceDocument
-import com.homeassistant.nlp.topicanalysis.SourceRecord
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -49,19 +45,22 @@ class TopicAnalysisRepositoryTest {
     @Test
     fun `stores topic candidate lists in one topic candidate row`() {
         val topic = repository.createTopic(
-            document = document(),
-            title = "카인드커피에서 만나기",
-            summary = "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
-            memoryTypes = listOf(MemoryType.EVENT, MemoryType.LOCATION, MemoryType.EVENT),
-            domains = listOf("location", "home", "location"),
-            evidence = listOf(record2(), record3(), record2()),
-            claims = listOf(
-                NewTopicClaim(
-                    text = "홍승민은 카인드커피로 오라고 말했다.",
-                    subject = "홍승민",
-                    memoryType = MemoryType.EVENT,
-                    certainty = ClaimCertainty.SAID,
-                    evidence = listOf(record2(), record3(), record2()),
+            NewTopicCandidate(
+                sourceType = "kakao",
+                sourceName = "2026-06-07.txt",
+                title = "카인드커피에서 만나기",
+                summary = "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
+                memoryTypes = listOf(MemoryType.EVENT, MemoryType.LOCATION, MemoryType.EVENT),
+                domains = listOf("location", "home", "location"),
+                evidence = listOf(evidence2(), evidence3(), evidence2()),
+                claims = listOf(
+                    NewTopicCandidateClaim(
+                        text = "홍승민은 카인드커피로 오라고 말했다.",
+                        subject = "홍승민",
+                        memoryType = MemoryType.EVENT,
+                        certainty = ClaimCertainty.SAID,
+                        evidence = listOf(evidence2(), evidence3(), evidence2()),
+                    ),
                 ),
             ),
         )
@@ -85,35 +84,31 @@ class TopicAnalysisRepositoryTest {
 
     private fun createSimpleTopic() =
         repository.createTopic(
-            document = document(),
-            title = "관계 표현",
-            summary = "애정 표현을 주고받았다.",
-            memoryTypes = listOf(MemoryType.STATE),
-            domains = listOf("relationship"),
-            evidence = listOf(record1()),
-            claims = listOf(
-                NewTopicClaim(
-                    text = "동훈은 애정 표현을 했다.",
-                    subject = "동훈",
-                    memoryType = MemoryType.STATE,
-                    certainty = ClaimCertainty.OBSERVED,
-                    evidence = listOf(record1()),
+            NewTopicCandidate(
+                sourceType = "kakao",
+                sourceName = "2026-06-07.txt",
+                title = "관계 표현",
+                summary = "애정 표현을 주고받았다.",
+                memoryTypes = listOf(MemoryType.STATE),
+                domains = listOf("relationship"),
+                evidence = listOf(evidence1()),
+                claims = listOf(
+                    NewTopicCandidateClaim(
+                        text = "동훈은 애정 표현을 했다.",
+                        subject = "동훈",
+                        memoryType = MemoryType.STATE,
+                        certainty = ClaimCertainty.OBSERVED,
+                        evidence = listOf(evidence1()),
+                    ),
                 ),
             ),
         )
 
-    private fun document(): SourceDocument =
-        SourceDocument(
-            sourceType = "kakao",
-            sourceName = "2026-06-07.txt",
-            records = listOf(record1(), record2(), record3()),
-        )
+    private fun evidence1(): NewTopicCandidateEvidence = NewTopicCandidateEvidence("r1", 1)
 
-    private fun record1(): SourceRecord = SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해")
+    private fun evidence2(): NewTopicCandidateEvidence = NewTopicCandidateEvidence("r2", 2)
 
-    private fun record2(): SourceRecord = SourceRecord("r2", 2, "홍승민 | 오후 5:38 | [네이버지도]\n카인드커피")
-
-    private fun record3(): SourceRecord = SourceRecord("r3", 3, "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ")
+    private fun evidence3(): NewTopicCandidateEvidence = NewTopicCandidateEvidence("r3", 3)
 
     private fun columnNames(table: String): List<String> = transaction(db) {
         val names = mutableListOf<String>()

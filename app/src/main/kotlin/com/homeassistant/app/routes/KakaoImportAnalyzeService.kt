@@ -3,6 +3,9 @@ package com.homeassistant.app.routes
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageParser
+import com.homeassistant.domain.topicanalysis.NewTopicCandidate
+import com.homeassistant.domain.topicanalysis.NewTopicCandidateClaim
+import com.homeassistant.domain.topicanalysis.NewTopicCandidateEvidence
 import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaim
@@ -59,15 +62,7 @@ class KakaoImportAnalyzeService(
         return KakaoImportAnalyzeResult(
             importedMessageCount = imported.importedMessageCount,
             topics = topicAnalysisService.analyze(document).topics.map { topic ->
-                topicRepository.createTopic(
-                    document = document,
-                    title = topic.title,
-                    summary = topic.summary,
-                    memoryTypes = topic.memoryTypes,
-                    domains = topic.domains,
-                    evidence = topic.evidence,
-                    claims = topic.claims,
-                )
+                topicRepository.createTopic(topic.toNewTopicCandidate(document))
             },
         )
     }
@@ -118,5 +113,25 @@ class KakaoImportAnalyzeService(
                 )
             },
             status = CandidateStatus.PENDING,
+        )
+
+    private fun TopicDraft.toNewTopicCandidate(document: SourceDocument): NewTopicCandidate =
+        NewTopicCandidate(
+            sourceType = document.sourceType,
+            sourceName = document.sourceName,
+            title = title,
+            summary = summary,
+            memoryTypes = memoryTypes,
+            domains = domains,
+            evidence = evidence.map { NewTopicCandidateEvidence(id = it.id, ref = it.ref) },
+            claims = claims.map { claim ->
+                NewTopicCandidateClaim(
+                    text = claim.text,
+                    subject = claim.subject,
+                    memoryType = claim.memoryType,
+                    certainty = claim.certainty,
+                    evidence = claim.evidence.map { NewTopicCandidateEvidence(id = it.id, ref = it.ref) },
+                )
+            },
         )
 }

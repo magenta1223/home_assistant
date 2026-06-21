@@ -93,16 +93,7 @@ Ktor + Netty server. Current routes:
 
 `Application.kt` wires the database, selected LLM backend, Kakao import service, topic analysis service, and routes.
 
-## Key Design Patterns
-
-- Source-first analysis: analyze imported records as source documents before creating durable memories.
-- Evidence-backed memory: topic candidates must preserve source references so accepted memories are traceable.
-- Tool registration from one source: `DomainToolRegistry` derives execution dispatch from registered tool groups.
-- LLM backend reuse: source analysis uses `LlmBackend` directly; avoid wrapping it in chat-specific client layers.
-- Kotlin serialization as boundary authority: for domain values crossing JSON, LLM schema, tool, API, or DB string boundaries, prefer `kotlinx.serialization` serializers and Kotlin schema generation over manual parsing, hand-built conversion maps, or duplicated schema definitions. Keep custom parsing localized inside serializers when unavoidable.
-
 ## Coding Principles
-
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
 

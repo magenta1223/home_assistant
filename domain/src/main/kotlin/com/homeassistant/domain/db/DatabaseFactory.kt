@@ -18,7 +18,7 @@ object DatabaseFactory {
                 MemoryTable,
                 AuditLogTable,
                 KakaoImportedMessageTable,
-                KakaoAnalysisPreviewTable,
+                TopicAnalysisPreviewTable,
                 TopicCandidateTable,
             )
         }

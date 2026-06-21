@@ -2,7 +2,7 @@ package com.homeassistant.domain.kakao
 
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.core.utils.JsonSerializer.encodeToString
-import com.homeassistant.domain.db.tables.KakaoAnalysisPreviewTable
+import com.homeassistant.domain.db.tables.TopicAnalysisPreviewTable
 import com.homeassistant.domain.topicanalysis.NewTopicCandidate
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
@@ -19,10 +19,10 @@ class KakaoAnalysisPreviewRepository(private val db: Database) {
         topics: List<NewTopicCandidate>,
     ): KakaoAnalysisPreview = transaction(db) {
         val previewId = UUID.randomUUID().toString()
-        KakaoAnalysisPreviewTable.insert {
-            it[KakaoAnalysisPreviewTable.previewId] = previewId
-            it[KakaoAnalysisPreviewTable.sourceFileName] = sourceFileName
-            it[KakaoAnalysisPreviewTable.text] = text
+        TopicAnalysisPreviewTable.insert {
+            it[TopicAnalysisPreviewTable.previewId] = previewId
+            it[TopicAnalysisPreviewTable.sourceFileName] = sourceFileName
+            it[TopicAnalysisPreviewTable.text] = text
             it[topicsJson] = topics.encodeToString()
             it[createdAt] = System.currentTimeMillis()
         }
@@ -30,18 +30,18 @@ class KakaoAnalysisPreviewRepository(private val db: Database) {
     }
 
     fun findPreview(previewId: String): KakaoAnalysisPreview? = transaction(db) {
-        KakaoAnalysisPreviewTable.selectAll()
-            .where { KakaoAnalysisPreviewTable.previewId eq previewId }
+        TopicAnalysisPreviewTable.selectAll()
+            .where { TopicAnalysisPreviewTable.previewId eq previewId }
             .singleOrNull()
             ?.toPreview()
     }
 
     private fun ResultRow.toPreview(): KakaoAnalysisPreview =
         KakaoAnalysisPreview(
-            previewId = this[KakaoAnalysisPreviewTable.previewId],
-            sourceFileName = this[KakaoAnalysisPreviewTable.sourceFileName],
-            text = this[KakaoAnalysisPreviewTable.text],
-            topics = this[KakaoAnalysisPreviewTable.topicsJson].decodeFromString(),
+            previewId = this[TopicAnalysisPreviewTable.previewId],
+            sourceFileName = this[TopicAnalysisPreviewTable.sourceFileName],
+            text = this[TopicAnalysisPreviewTable.text],
+            topics = this[TopicAnalysisPreviewTable.topicsJson].decodeFromString(),
         )
 }
 

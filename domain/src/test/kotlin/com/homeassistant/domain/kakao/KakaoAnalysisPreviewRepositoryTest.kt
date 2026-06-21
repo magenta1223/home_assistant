@@ -1,7 +1,7 @@
 package com.homeassistant.domain.kakao
 
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.domain.db.tables.KakaoAnalysisPreviewTable
+import com.homeassistant.domain.db.tables.TopicAnalysisPreviewTable
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.NewTopicCandidate
 import com.homeassistant.domain.topicanalysis.NewTopicCandidateClaim
@@ -26,7 +26,7 @@ class KakaoAnalysisPreviewRepositoryTest {
     fun setup() {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
-        transaction(db) { SchemaUtils.create(KakaoAnalysisPreviewTable) }
+        transaction(db) { SchemaUtils.create(TopicAnalysisPreviewTable) }
         repository = KakaoAnalysisPreviewRepository(db)
     }
 

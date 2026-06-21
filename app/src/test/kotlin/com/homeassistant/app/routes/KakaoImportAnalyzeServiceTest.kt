@@ -4,7 +4,7 @@ import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
-import com.homeassistant.domain.db.tables.KakaoAnalysisPreviewTable
+import com.homeassistant.domain.db.tables.TopicAnalysisPreviewTable
 import com.homeassistant.domain.db.tables.KakaoImportedMessageTable
 import com.homeassistant.domain.db.tables.TopicCandidateTable
 import com.homeassistant.domain.kakao.KakaoAnalysisPreviewRepository
@@ -38,7 +38,7 @@ class KakaoImportAnalyzeServiceTest {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(KakaoImportedMessageTable, TopicCandidateTable, KakaoAnalysisPreviewTable)
+            SchemaUtils.create(KakaoImportedMessageTable, TopicCandidateTable, TopicAnalysisPreviewTable)
         }
         backend = StaticBackend(topicResponse)
         service = KakaoImportAnalyzeService(

@@ -99,7 +99,22 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-## 1. Think Before Coding
+## 1. Strictly Adhere Standard & Modern SW Programming
+
+Follow standard and modern software engineering principles before inventing local solutions.
+
+- **KISS (Keep It Simple, Stupid):** prefer simple, explicit, maintainable code over clever or surprising code.
+- **YAGNI (You Aren't Gonna Need It):** do not add speculative features, flexibility, abstractions, configuration, or indirection.
+- **DRY (Don't Repeat Yourself):** remove meaningful duplication of knowledge, rules, and behavior; do not force abstraction over coincidental similarity.
+- **SOLID:** keep responsibilities focused, interfaces small, dependencies stable, and behavior extensible without invasive changes.
+- **SoC / High Cohesion, Low Coupling:** keep related behavior together, separate unrelated concerns, and minimize unnecessary dependencies.
+- **Encapsulation / Information Hiding:** expose the smallest useful surface area and keep internal representation details private.
+- **Least Astonishment:** names, fields, behavior, and module placement should match what a competent reader would expect.
+- **Domain-Driven Design:** model domain concepts explicitly; names, fields, identity, lifecycle, and invariants should match the concept being represented.
+- **Clean Architecture / Hexagonal Architecture:** keep business rules independent from frameworks, databases, UI, and external services; convert deliberately at boundaries.
+- **Test Pyramid / Regression Testing:** prefer focused automated tests and add checks that would fail if the same bug or boundary mistake is reintroduced.
+
+## 2. Think Before Coding
 
 **Don't assume. Don't hide confusion. Surface tradeoffs.**
 
@@ -109,7 +124,7 @@ Before implementing:
 - If a simpler approach exists, say so. Push back when warranted.
 - If something is unclear, stop. Name what's confusing. Ask.
 
-## 2. Simplicity First
+## 3. Simplicity First
 
 **Minimum code that solves the problem. Nothing speculative.**
 
@@ -121,7 +136,7 @@ Before implementing:
 
 Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
 
-## 3. Surgical Changes
+## 4. Surgical Changes
 
 **Touch only what you must. Clean up only your own mess.**
 
@@ -137,7 +152,7 @@ When your changes create orphans:
 
 The test: Every changed line should trace directly to the user's request.
 
-## 4. Goal-Driven Execution
+## 5. Goal-Driven Execution
 
 **Define success criteria. Loop until verified.**
 

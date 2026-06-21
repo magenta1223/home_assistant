@@ -5,7 +5,6 @@ import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.domain.topicanalysis.NewTopicCandidate
 import com.homeassistant.domain.topicanalysis.NewTopicCandidateClaim
-import com.homeassistant.domain.topicanalysis.NewTopicCandidateEvidence
 import com.homeassistant.domain.topicanalysis.TopicAnalysisRepository
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaim
@@ -123,14 +122,14 @@ class KakaoImportAnalyzeService(
             summary = summary,
             memoryTypes = memoryTypes,
             domains = domains,
-            evidence = evidence.map { NewTopicCandidateEvidence(id = it.id, ref = it.ref) },
+            evidenceRefs = evidence.map { it.ref },
             claims = claims.map { claim ->
                 NewTopicCandidateClaim(
                     text = claim.text,
                     subject = claim.subject,
                     memoryType = claim.memoryType,
                     certainty = claim.certainty,
-                    evidence = claim.evidence.map { NewTopicCandidateEvidence(id = it.id, ref = it.ref) },
+                    evidenceRefs = claim.evidence.map { it.ref },
                 )
             },
         )

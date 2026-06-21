@@ -52,14 +52,14 @@ class TopicAnalysisRepositoryTest {
                 summary = "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
                 memoryTypes = listOf(MemoryType.EVENT, MemoryType.LOCATION, MemoryType.EVENT),
                 domains = listOf("location", "home", "location"),
-                evidence = listOf(evidence2(), evidence3(), evidence2()),
+                evidenceRefs = listOf(2, 3, 2),
                 claims = listOf(
                     NewTopicCandidateClaim(
                         text = "홍승민은 카인드커피로 오라고 말했다.",
                         subject = "홍승민",
                         memoryType = MemoryType.EVENT,
                         certainty = ClaimCertainty.SAID,
-                        evidence = listOf(evidence2(), evidence3(), evidence2()),
+                        evidenceRefs = listOf(2, 3, 2),
                     ),
                 ),
             ),
@@ -91,24 +91,18 @@ class TopicAnalysisRepositoryTest {
                 summary = "애정 표현을 주고받았다.",
                 memoryTypes = listOf(MemoryType.STATE),
                 domains = listOf("relationship"),
-                evidence = listOf(evidence1()),
+                evidenceRefs = listOf(1),
                 claims = listOf(
                     NewTopicCandidateClaim(
                         text = "동훈은 애정 표현을 했다.",
                         subject = "동훈",
                         memoryType = MemoryType.STATE,
                         certainty = ClaimCertainty.OBSERVED,
-                        evidence = listOf(evidence1()),
+                        evidenceRefs = listOf(1),
                     ),
                 ),
             ),
         )
-
-    private fun evidence1(): NewTopicCandidateEvidence = NewTopicCandidateEvidence("r1", 1)
-
-    private fun evidence2(): NewTopicCandidateEvidence = NewTopicCandidateEvidence("r2", 2)
-
-    private fun evidence3(): NewTopicCandidateEvidence = NewTopicCandidateEvidence("r3", 3)
 
     private fun columnNames(table: String): List<String> = transaction(db) {
         val names = mutableListOf<String>()

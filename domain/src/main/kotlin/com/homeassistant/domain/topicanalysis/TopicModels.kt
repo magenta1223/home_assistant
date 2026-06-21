@@ -54,17 +54,12 @@ data class TopicCandidate(
     val status: CandidateStatus,
 )
 
-data class NewTopicCandidateEvidence(
-    val id: String,
-    val ref: Int,
-)
-
 data class NewTopicCandidateClaim(
     val text: String,
     val subject: String,
     val memoryType: MemoryType,
     val certainty: ClaimCertainty,
-    val evidence: List<NewTopicCandidateEvidence>,
+    val evidenceRefs: List<Int>,
 )
 
 data class NewTopicCandidate(
@@ -74,6 +69,6 @@ data class NewTopicCandidate(
     val summary: String,
     val memoryTypes: List<MemoryType>,
     val domains: List<String>,
-    val evidence: List<NewTopicCandidateEvidence>,
+    val evidenceRefs: List<Int>,
     val claims: List<NewTopicCandidateClaim>,
 )

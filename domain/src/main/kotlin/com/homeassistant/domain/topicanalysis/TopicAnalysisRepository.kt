@@ -22,8 +22,8 @@ class TopicAnalysisRepository(private val db: Database) {
         if (existing != null) return@transaction existing
 
         val now = System.currentTimeMillis()
-        val distinctEvidence = candidate.evidence.distinctBy { it.id }
-        val distinctClaims = candidate.claims.distinctBy { it.text to it.evidence.map { evidence -> evidence.id }.toSet() }
+        val distinctEvidenceRefs = candidate.evidenceRefs.distinct()
+        val distinctClaims = candidate.claims.distinctBy { it.text to it.evidenceRefs.toSet() }
         val topicId = TopicCandidateTable.insert {
             it[sourceType] = candidate.sourceType
             it[sourceName] = candidate.sourceName
@@ -32,7 +32,7 @@ class TopicAnalysisRepository(private val db: Database) {
             it[status] = CandidateStatus.PENDING.name
             it[memoryTypesJson] = json.encodeToString(candidate.memoryTypes.distinct())
             it[domainsJson] = json.encodeToString(candidate.domains.distinct())
-            it[evidenceJson] = json.encodeToString(distinctEvidence.toPersistedEvidence())
+            it[evidenceJson] = json.encodeToString(distinctEvidenceRefs)
             it[claimsJson] = json.encodeToString(distinctClaims.toPersistedClaims())
             it[createdAt] = now
             it[updatedAt] = now
@@ -42,7 +42,7 @@ class TopicAnalysisRepository(private val db: Database) {
     }
 
     private fun findExistingTopic(candidate: NewTopicCandidate): TopicCandidate? {
-        val evidenceIds = candidate.evidence.map { it.id }.toSet()
+        val evidenceRefs = candidate.evidenceRefs.toSet()
         val candidates = TopicCandidateTable.selectAll()
             .where {
                 (TopicCandidateTable.sourceType eq candidate.sourceType) and
@@ -50,7 +50,7 @@ class TopicAnalysisRepository(private val db: Database) {
                     (TopicCandidateTable.title eq candidate.title)
             }
         return candidates.firstOrNull { row ->
-            decodeEvidence(row[TopicCandidateTable.evidenceJson]).map { it.id }.toSet() == evidenceIds
+            decodeEvidenceRefs(row[TopicCandidateTable.evidenceJson]).toSet() == evidenceRefs
         }?.let { getTopic(it[TopicCandidateTable.id]) }
     }
 
@@ -67,7 +67,7 @@ class TopicAnalysisRepository(private val db: Database) {
             summary = row[TopicCandidateTable.summary],
             memoryTypes = json.decodeFromString(row[TopicCandidateTable.memoryTypesJson]),
             domains = json.decodeFromString(row[TopicCandidateTable.domainsJson]),
-            evidenceRefs = decodeEvidence(row[TopicCandidateTable.evidenceJson]).map { it.ref },
+            evidenceRefs = decodeEvidenceRefs(row[TopicCandidateTable.evidenceJson]),
             claims = decodeClaims(row),
             status = CandidateStatus.valueOf(row[TopicCandidateTable.status]),
         )
@@ -82,15 +82,12 @@ class TopicAnalysisRepository(private val db: Database) {
                     subject = claim.subject,
                     memoryType = claim.memoryType,
                     certainty = claim.certainty,
-                    evidenceRefs = claim.evidence.map { it.ref },
+                    evidenceRefs = claim.evidenceRefs,
                 )
             }
 
-    private fun decodeEvidence(value: String): List<PersistedEvidence> =
+    private fun decodeEvidenceRefs(value: String): List<Int> =
         json.decodeFromString(value)
-
-    private fun List<NewTopicCandidateEvidence>.toPersistedEvidence(): List<PersistedEvidence> =
-        map { PersistedEvidence(id = it.id, ref = it.ref) }
 
     private fun List<NewTopicCandidateClaim>.toPersistedClaims(): List<PersistedTopicClaim> =
         map { claim ->
@@ -99,16 +96,10 @@ class TopicAnalysisRepository(private val db: Database) {
                 subject = claim.subject,
                 memoryType = claim.memoryType,
                 certainty = claim.certainty,
-                evidence = claim.evidence.distinctBy { it.id }.toPersistedEvidence(),
+                evidenceRefs = claim.evidenceRefs.distinct(),
             )
         }
 }
-
-@Serializable
-private data class PersistedEvidence(
-    val id: String,
-    val ref: Int,
-)
 
 @Serializable
 private data class PersistedTopicClaim(
@@ -116,5 +107,5 @@ private data class PersistedTopicClaim(
     val subject: String,
     val memoryType: MemoryType,
     val certainty: ClaimCertainty,
-    val evidence: List<PersistedEvidence>,
+    val evidenceRefs: List<Int>,
 )

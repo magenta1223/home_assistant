@@ -10,10 +10,10 @@ import com.homeassistant.core.tools.Tool
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import com.homeassistant.nlp.topicanalysis.impl.LlmTopicAnalyzer
-import com.homeassistant.nlp.topicanalysis.TopicAnalysisLlmResponse
-import com.homeassistant.nlp.topicanalysis.TopicAnalysisOutputContract
-import com.homeassistant.nlp.topicanalysis.TopicClaimLlmResponse
-import com.homeassistant.nlp.topicanalysis.TopicLlmResponse
+import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse
+import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisOutputContract
+import com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse
+import com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*
 

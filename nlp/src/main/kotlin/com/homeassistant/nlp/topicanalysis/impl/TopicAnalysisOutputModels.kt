@@ -1,4 +1,4 @@
-package com.homeassistant.nlp.topicanalysis
+package com.homeassistant.nlp.topicanalysis.impl
 
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.utils.JsonSerializer

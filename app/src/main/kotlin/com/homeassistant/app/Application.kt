@@ -1,6 +1,12 @@
 package com.homeassistant.app
 
 import com.homeassistant.app.routes.configureRoutes
+import com.homeassistant.app.slack.InMemorySlackTopicReviewSessionStore
+import com.homeassistant.app.slack.SlackConfig
+import com.homeassistant.app.slack.SlackConfirmationHandlers
+import com.homeassistant.app.slack.SlackKakaoAnalysisWorkflow
+import com.homeassistant.app.slack.SlackSocketRuntime
+import com.homeassistant.app.slack.SlackWebApiClient
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.utils.JsonSerializer
@@ -11,6 +17,7 @@ import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import com.homeassistant.repository.repo.RepositoryFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationStopped
 import io.ktor.server.application.install
 import io.ktor.server.engine.embeddedServer
 import io.ktor.server.netty.Netty
@@ -54,5 +61,30 @@ fun Application.module() {
         topicRepository = repositories.topicAnalysis,
         previewRepository = repositories.kakaoAnalysisPreviews,
     )
+
+    val slackConfig = SlackConfig.fromEnv()
+    if (slackConfig == null) {
+        log.info("Slack Socket Mode disabled: SLACK_APP_TOKEN or SLACK_BOT_TOKEN is missing")
+    } else {
+        val slackClient = SlackWebApiClient(slackConfig.botToken)
+        val reviewSessions = InMemorySlackTopicReviewSessionStore()
+        val slackRuntime = SlackSocketRuntime(
+            config = slackConfig,
+            workflow = SlackKakaoAnalysisWorkflow(
+                slackClient = slackClient,
+                topicAnalysis = kakaoTopicAnalysis,
+                reviewSessions = reviewSessions,
+                maxFileSizeBytes = slackConfig.maxFileSizeBytes,
+            ),
+            confirmationHandlers = SlackConfirmationHandlers(kakaoTopicAnalysis, reviewSessions),
+            reviewSessions = reviewSessions,
+            slackClient = slackClient,
+        )
+        slackRuntime.startAsync()
+        monitor.subscribe(ApplicationStopped) {
+            slackRuntime.close()
+        }
+    }
+
     configureRoutes(kakaoTopicAnalysis)
 }

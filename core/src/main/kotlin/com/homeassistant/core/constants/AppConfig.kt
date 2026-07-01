@@ -11,11 +11,15 @@ object AppConfig {
     const val ENV_VAR_QDRANT_URL            = "QDRANT_URL"
     const val ENV_VAR_QDRANT_COLLECTION     = "QDRANT_COLLECTION"
     const val ENV_VAR_EMBEDDING_MODEL       = "EMBEDDING_MODEL"
+    const val ENV_VAR_SLACK_APP_TOKEN       = "SLACK_APP_TOKEN"
+    const val ENV_VAR_SLACK_BOT_TOKEN       = "SLACK_BOT_TOKEN"
+    const val ENV_VAR_SLACK_MAX_FILE_SIZE_BYTES = "SLACK_MAX_FILE_SIZE_BYTES"
     const val DEFAULT_OPENROUTER_MODEL      = "google/gemini-2.5-flash-lite"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://localhost:11434"
     const val DEFAULT_OLLAMA_MODEL          = "llama3.2"
     const val DEFAULT_QDRANT_URL            = "http://localhost:6333"
     const val DEFAULT_QDRANT_COLLECTION     = "family_memories"
+    const val DEFAULT_SLACK_MAX_FILE_SIZE_BYTES = 10_485_760L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val DEFAULT_LLM_MAX_TOKENS    = 2048
     const val JDBC_DRIVER               = "org.sqlite.JDBC"

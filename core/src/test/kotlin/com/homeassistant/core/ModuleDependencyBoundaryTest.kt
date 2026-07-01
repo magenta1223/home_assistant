@@ -104,6 +104,8 @@ class ModuleDependencyBoundaryTest {
         val allowedRepositoryImports = setOf(
             "import com.homeassistant.repository.RepositoryFactory",
             "import com.homeassistant.repository.RepositoryStores",
+            "import com.homeassistant.repository.repo.RepositoryFactory",
+            "import com.homeassistant.repository.repo.RepositoryStores",
         )
 
         return sourceRoot.walk()

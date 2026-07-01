@@ -136,7 +136,7 @@ class KakaoImportRoutesTest {
     }
 }
 
-private object FakeAnalyzer : TopicAnalysisUseCase {
+private object FakeAnalyzer : TopicAnalysisUseCase() {
     var sourceFileName = ""
     var text = ""
     var previewId = ""

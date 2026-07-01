@@ -32,3 +32,9 @@ data class TopicAnalysisSaveResult(
     val topics: List<Topic>,
 )
 
+@Serializable
+data class TopicAnalysisSelectionSaveRequest(
+    val previewId: String,
+    val selectedTopicIndices: Set<Int>,
+)
+

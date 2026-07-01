@@ -243,15 +243,15 @@ class LlmTopicAnalyzerTest {
     @Test
     fun `topic analysis dto names come from class names without serial name overrides`() {
         assertEquals(
-            "com.homeassistant.nlp.topicanalysis.TopicAnalysisLlmResponse",
+            "com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse",
             TopicAnalysisLlmResponse.serializer().descriptor.serialName,
         )
         assertEquals(
-            "com.homeassistant.nlp.topicanalysis.TopicLlmResponse",
+            "com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse",
             TopicLlmResponse.serializer().descriptor.serialName,
         )
         assertEquals(
-            "com.homeassistant.nlp.topicanalysis.TopicClaimLlmResponse",
+            "com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse",
             TopicClaimLlmResponse.serializer().descriptor.serialName,
         )
     }

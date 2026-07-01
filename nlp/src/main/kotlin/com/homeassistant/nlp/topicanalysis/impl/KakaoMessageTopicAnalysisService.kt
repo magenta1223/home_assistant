@@ -13,6 +13,7 @@ import com.homeassistant.domain.topicanalysis.TopicDraft
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 
 class KakaoMessageTopicAnalysisService(
@@ -21,7 +22,7 @@ class KakaoMessageTopicAnalysisService(
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
 ): TopicAnalysisUseCase() {
-    override val topicAnalyzer = LlmTopicAnalyzer(backend)
+    private val topicAnalyzer = LlmTopicAnalyzer(backend)
 
     override suspend fun analyze(
         request: TopicAnalysisRequest
@@ -57,15 +58,49 @@ class KakaoMessageTopicAnalysisService(
     override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
         val preview = previewRepository.findPreview(previewId)
             ?: throw Exception("PREVIEW_NOT_FOUND: $previewId")
-        val parsed = KakaoMessageParser.parse(preview.sourceFileName, preview.text)
-        val imported = importService.import(preview.sourceFileName, preview.text)
+
+        return savePreviewTopics(
+            previewId = previewId,
+            sourceFileName = preview.sourceFileName,
+            text = preview.text,
+            topics = preview.topics,
+        )
+    }
+
+    override suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
+        val preview = previewRepository.findPreview(request.previewId)
+            ?: throw Exception("PREVIEW_NOT_FOUND: ${request.previewId}")
+        val selectedTopics = request.selectedTopicIndices
+            .sorted()
+            .mapNotNull { index -> preview.topics.getOrNull(index) }
+
+        return savePreviewTopics(
+            previewId = request.previewId,
+            sourceFileName = preview.sourceFileName,
+            text = preview.text,
+            topics = selectedTopics,
+        )
+    }
+
+    private fun savePreviewTopics(
+        previewId: String,
+        sourceFileName: String,
+        text: String,
+        topics: List<TopicCandidate>,
+    ): TopicAnalysisSaveResult {
+        if (topics.isEmpty()) {
+            return TopicAnalysisSaveResult(previewId = previewId, topics = emptyList())
+        }
+
+        val parsed = KakaoMessageParser.parse(sourceFileName, text)
+        val imported = importService.import(sourceFileName, text)
         val refToStoredId = parsed.mapIndexed { index, message ->
             index + 1 to imported.messages.first { it.fingerprint == message.fingerprint }.id
         }.toMap()
 
         return TopicAnalysisSaveResult(
             previewId = previewId,
-            topics = preview.topics.map { topic ->
+            topics = topics.map { topic ->
                 topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
             },
         )

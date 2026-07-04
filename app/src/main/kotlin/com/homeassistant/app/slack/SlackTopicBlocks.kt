@@ -11,12 +11,17 @@ object SlackTopicBlocks {
     fun analysisMessage(
         previewId: String,
         sourceName: String,
+        importedRecordCount: Int,
         topics: List<TopicCandidate>,
     ): Map<String, Any> =
         mapOf(
             "text" to "Kakao 대화 분석 후보 ${topics.size}개",
             "blocks" to listOf(
-                section("*Kakao 대화 분석 후보 ${topics.size}개*\n${plain(sourceName, 140)}"),
+                section(
+                    "*Kakao 대화 분석 후보 ${topics.size}개*\n" +
+                        "${plain(sourceName, 140)}\n" +
+                        "파싱 메시지 ${importedRecordCount}건",
+                ),
                 divider(),
             ) + topics.take(5).mapIndexed { index, topic -> topicSummary(index, topic) } +
                 listOf(

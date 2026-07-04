@@ -21,7 +21,11 @@ class SlackKakaoAnalysisWorkflow(
                 threadTs = upload.messageTs,
             )
 
-            val text = slackClient.downloadText(upload.downloadUrl, maxFileSizeBytes)
+            val downloadUrl = upload.fileId
+                ?.let { slackClient.fileDownloadUrl(it) }
+                ?: upload.downloadUrl
+                ?: error("Slack file download URL is missing")
+            val text = slackClient.downloadText(downloadUrl, maxFileSizeBytes)
             val result = topicAnalysis.analyze(
                 TopicAnalysisRequest(
                     sourceType = "kakao",
@@ -29,6 +33,16 @@ class SlackKakaoAnalysisWorkflow(
                     text = text,
                 ),
             )
+            if (result.importedRecordCount == 0) {
+                log.warn("Slack Kakao analysis parsed zero messages for file ${upload.fileName}")
+                slackClient.postEphemeral(
+                    channelId = upload.channelId,
+                    userId = upload.slackUserId,
+                    text = "Kakao 대화 메시지를 읽지 못했습니다. 대화 내보내기 파일이 텍스트 형식인지 확인해주세요.\n" +
+                        "읽은 첫 줄: `${text.firstNonBlankLinePreview()}`",
+                )
+                return
+            }
 
             reviewSessions.put(
                 SlackTopicReviewSession(
@@ -44,6 +58,7 @@ class SlackKakaoAnalysisWorkflow(
             val message = SlackTopicBlocks.analysisMessage(
                 previewId = result.previewId,
                 sourceName = result.sourceName,
+                importedRecordCount = result.importedRecordCount,
                 topics = result.topics,
             )
             @Suppress("UNCHECKED_CAST")
@@ -58,7 +73,8 @@ class SlackKakaoAnalysisWorkflow(
             slackClient.postEphemeral(
                 channelId = upload.channelId,
                 userId = upload.slackUserId,
-                text = "Kakao 대화 분석에 실패했습니다. 파일 형식과 크기를 확인해주세요.",
+                text = "Kakao 대화 분석에 실패했습니다. 파일 형식, 크기, Slack 권한을 확인해주세요.\n" +
+                    "원인: `${e.safeMessage()}`",
             )
         }
     }
@@ -68,4 +84,18 @@ class SlackKakaoAnalysisWorkflow(
             "type" to "section",
             "text" to mapOf("type" to "mrkdwn", "text" to text),
         )
+
+    private fun String.firstNonBlankLinePreview(): String =
+        lineSequence()
+            .firstOrNull { it.isNotBlank() }
+            ?.replace("`", "'")
+            ?.replace(Regex("\\s+"), " ")
+            ?.take(120)
+            ?: "(empty)"
+
+    private fun Exception.safeMessage(): String =
+        (message ?: javaClass.simpleName)
+            .replace("`", "'")
+            .replace(Regex("\\s+"), " ")
+            .take(160)
 }

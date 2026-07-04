@@ -1,6 +1,8 @@
 package com.homeassistant.app.slack
 
 interface SlackClient {
+    fun fileDownloadUrl(fileId: String): String?
+
     fun downloadText(url: String, maxBytes: Long): String
 
     fun postMessage(

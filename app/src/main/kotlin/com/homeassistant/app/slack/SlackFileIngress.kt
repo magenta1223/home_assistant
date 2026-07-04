@@ -6,8 +6,9 @@ data class SlackKakaoFileUpload(
     val slackUserId: String,
     val channelId: String,
     val messageTs: String,
+    val fileId: String?,
     val fileName: String,
-    val downloadUrl: String,
+    val downloadUrl: String?,
 )
 
 object SlackFileIngress {
@@ -28,6 +29,7 @@ object SlackFileIngress {
                 slackUserId = userId,
                 channelId = channelId,
                 messageTs = messageTs,
+                fileId = file.id,
                 fileName = fileName,
                 downloadUrl = url,
             )

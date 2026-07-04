@@ -15,6 +15,7 @@ class SlackTopicBlocksTest {
         val message = SlackTopicBlocks.analysisMessage(
             previewId = "preview-1",
             sourceName = "family-kakao.txt",
+            importedRecordCount = 2,
             topics = listOf(topic("이사 준비", "관리사무소 질문을 모았다.")),
         )
 
@@ -35,6 +36,7 @@ class SlackTopicBlocksTest {
         val message = SlackTopicBlocks.analysisMessage(
             previewId = "preview-1",
             sourceName = "family-kakao.txt",
+            importedRecordCount = 2,
             topics = listOf(topic("가".repeat(300), "나".repeat(2000))),
         )
 

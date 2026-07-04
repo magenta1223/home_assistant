@@ -59,6 +59,7 @@ class SlackKakaoAnalysisWorkflowTest {
             slackUserId = "U1",
             channelId = "D1",
             messageTs = "1710000000.000100",
+            fileId = null,
             fileName = "kakao.txt",
             downloadUrl = "https://slack/files/kakao.txt",
         )
@@ -69,6 +70,9 @@ private class FakeSlackClient(
 ) : SlackClient {
     val messages = mutableListOf<PostedMessage>()
     val ephemeralMessages = mutableListOf<EphemeralMessage>()
+
+    override fun fileDownloadUrl(fileId: String): String? =
+        null
 
     override fun downloadText(url: String, maxBytes: Long): String =
         downloadedText

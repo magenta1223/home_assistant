@@ -120,6 +120,94 @@ class LlmTopicAnalyzerTest {
     }
 
     @Test
+    fun `long documents are analyzed by chunk then merged`() = runBlocking {
+        val backend = RecordingBackend(
+            listOf(
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", claimEvidenceRecordIds = """["r1"]"""),
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", claimEvidenceRecordIds = """["r201"]"""),
+                topicJson(
+                    title = "가족 병원 일정",
+                    evidenceRecordIds = """["r1", "r201"]""",
+                    claimEvidenceRecordIds = """["r1", "r201"]""",
+                ),
+            ),
+        )
+        val service = LlmTopicAnalyzer(backend)
+
+        val result = service.analyze(documentWithRecords(201))
+
+        assertEquals(3, backend.calls.size)
+        assertContains(backend.calls[0].messageContent, "r1")
+        assertContains(backend.calls[0].messageContent, "r200")
+        assertFalse(backend.calls[0].messageContent.contains("r201"))
+        assertContains(backend.calls[1].messageContent, "r201")
+        assertFalse(backend.calls[1].messageContent.contains("r200"))
+        assertContains(backend.calls[2].messageContent, "가족 병원 일정")
+        assertContains(backend.calls[2].messageContent, "r1")
+        assertContains(backend.calls[2].messageContent, "r201")
+        assertEquals(1, result.topics.size)
+        assertEquals(listOf(1, 201), result.topics.single().evidence.map { it.ref })
+    }
+
+    @Test
+    fun `chunk prompt includes topic evidence and claim limits`() = runBlocking {
+        val backend = RecordingBackend(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
+        val service = LlmTopicAnalyzer(backend)
+
+        service.analyze(documentWithRecords(201))
+
+        assertContains(backend.calls.first().system, "최대 5개")
+        assertContains(backend.calls.first().system, "evidenceRecordIds는 topic당 최대 5개")
+        assertContains(backend.calls.first().system, "claims는 topic당 최대 3개")
+    }
+
+    @Test
+    fun `merge prompt asks to merge interrupted topics and limits final topics`() = runBlocking {
+        val backend = RecordingBackend(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
+        val service = LlmTopicAnalyzer(backend)
+
+        service.analyze(documentWithRecords(201))
+
+        val mergeSystem = backend.calls.last().system
+        assertContains(mergeSystem, "시간상 떨어져")
+        assertContains(mergeSystem, "같은 주제")
+        assertContains(mergeSystem, "병합")
+        assertContains(mergeSystem, "최종 최대 20개")
+    }
+
+    @Test
+    fun `merge evidence ids are validated against original source records`() = runBlocking {
+        val backend = RecordingBackend(
+            listOf(
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", claimEvidenceRecordIds = """["r1"]"""),
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", claimEvidenceRecordIds = """["r201"]"""),
+                topicJson(
+                    title = "가족 병원 일정",
+                    evidenceRecordIds = """["missing"]""",
+                    claimEvidenceRecordIds = """["missing"]""",
+                ),
+            ),
+        )
+        val service = LlmTopicAnalyzer(backend)
+
+        assertFailsWith<TopicAnalysisException> {
+            service.analyze(documentWithRecords(201))
+        }
+    }
+
+    @Test
+    fun `short documents use single analysis without merge`() = runBlocking {
+        val backend = RecordingBackend(listOf("""{"topics":[]}"""))
+        val service = LlmTopicAnalyzer(backend)
+
+        service.analyze(documentWithRecords(200))
+
+        assertEquals(1, backend.calls.size)
+        assertContains(backend.calls.single().messageContent, "r1")
+        assertContains(backend.calls.single().messageContent, "r200")
+    }
+
+    @Test
     fun `rejects invalid topic analysis responses`() = runBlocking {
 
         val document = singleRecordDocument()
@@ -266,6 +354,15 @@ class LlmTopicAnalyzerTest {
             records = listOf(SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해")),
         )
 
+    private fun documentWithRecords(count: Int): SourceDocument =
+        SourceDocument(
+            sourceType = "kakao",
+            sourceName = "2026-06-07.txt",
+            records = (1..count).map { index ->
+                SourceRecord("r$index", index, "동훈 | 오후 4:49 | 기록 $index")
+            },
+        )
+
     private fun topicJson(
         title: String = "관계 표현",
         summary: String = "애정 표현을 주고받았다.",
@@ -329,5 +426,30 @@ private class CapturingBackend(private val response: String) : LlmBackend {
         this.messages = messages
         this.outputSchema = outputSchema
         return LlmResponse.Text(response)
+    }
+}
+
+private data class BackendCall(
+    val system: String,
+    val messageContent: String,
+    val outputSchema: String,
+)
+
+private class RecordingBackend(responses: List<String>) : LlmBackend {
+    private val responses = ArrayDeque(responses)
+    val calls = mutableListOf<BackendCall>()
+
+    override suspend fun complete(
+        system: String,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: String,
+    ): LlmResponse {
+        calls += BackendCall(
+            system = system,
+            messageContent = messages.single().content,
+            outputSchema = outputSchema,
+        )
+        return LlmResponse.Text(responses.removeFirst())
     }
 }

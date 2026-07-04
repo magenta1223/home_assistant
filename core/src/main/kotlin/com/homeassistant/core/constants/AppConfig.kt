@@ -21,7 +21,7 @@ object AppConfig {
     const val DEFAULT_QDRANT_COLLECTION     = "family_memories"
     const val DEFAULT_SLACK_MAX_FILE_SIZE_BYTES = 10_485_760L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
-    const val DEFAULT_LLM_MAX_TOKENS    = 2048
+    const val DEFAULT_LLM_MAX_TOKENS    = 8192
     const val JDBC_DRIVER               = "org.sqlite.JDBC"
     const val JDBC_URL_PREFIX           = "jdbc:sqlite:"
     const val ROUTE_HEALTH              = "/health"

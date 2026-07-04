@@ -7,6 +7,7 @@ import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.core.utils.JsonSerializer.encodeToString
 import com.homeassistant.domain.topicanalysis.NewTopicClaim
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import com.homeassistant.domain.topicanalysis.TopicAnalysisResult
@@ -34,9 +35,37 @@ class LlmTopicAnalyzer(
 
     private suspend fun analyzeValidTopics(document: SourceDocument): List<ValidatedTopic> {
         if (document.records.isEmpty()) return emptyList()
-        val response = backend.complete(
+        if (document.records.size <= CHUNK_SIZE) return analyzeChunk(document)
+
+        val chunkTopics = chunkDocument(document).flatMap { chunk -> analyzeChunk(chunk) }
+        return mergeTopics(document, chunkTopics)
+    }
+
+    private suspend fun analyzeChunk(document: SourceDocument): List<ValidatedTopic> =
+        requestTopics(
+            document = document,
             system = TopicAnalysisPrompt.system(),
-            messages = listOf(Message(MessageRole.USER, renderDocument(document))),
+            userMessage = renderDocument(document),
+        )
+
+    private suspend fun mergeTopics(
+        document: SourceDocument,
+        chunkTopics: List<ValidatedTopic>,
+    ): List<ValidatedTopic> =
+        requestTopics(
+            document = document,
+            system = TopicAnalysisPrompt.mergeSystem(),
+            userMessage = renderTopicCandidates(chunkTopics),
+        )
+
+    private suspend fun requestTopics(
+        document: SourceDocument,
+        system: String,
+        userMessage: String,
+    ): List<ValidatedTopic> {
+        val response = backend.complete(
+            system = system,
+            messages = listOf(Message(MessageRole.USER, userMessage)),
             outputSchema = TopicAnalysisOutputContract.schema,
         )
         val raw = when (response) {
@@ -68,6 +97,11 @@ class LlmTopicAnalyzer(
         }
         return topics
     }
+
+    private fun chunkDocument(document: SourceDocument): List<SourceDocument> =
+        document.records.chunked(CHUNK_SIZE).map { records ->
+            document.copy(records = records)
+        }
 
     private fun parseDomains(domains: List<String>): List<String> =
         domains.map { domain ->
@@ -101,6 +135,34 @@ class LlmTopicAnalyzer(
 
     private fun renderDocument(document: SourceDocument): String =
         document.records.joinToString("\n") { "${it.id} | ${it.content}" }
+
+    private fun renderTopicCandidates(topics: List<ValidatedTopic>): String {
+        val payload = TopicAnalysisLlmResponse(
+            topics = topics.map { topic ->
+                TopicLlmResponse(
+                    title = topic.title,
+                    summary = topic.summary,
+                    memoryTypes = topic.memoryTypes,
+                    domains = topic.domains,
+                    evidenceRecordIds = topic.evidence.map { it.id },
+                    claims = topic.claims.map { claim ->
+                        TopicClaimLlmResponse(
+                            text = claim.text,
+                            subject = claim.subject,
+                            memoryType = claim.memoryType,
+                            certainty = claim.certainty,
+                            evidenceRecordIds = claim.evidence.map { it.id },
+                        )
+                    },
+                )
+            },
+        )
+        return payload.encodeToString()
+    }
+
+    private companion object {
+        const val CHUNK_SIZE = 200
+    }
 }
 
 /**

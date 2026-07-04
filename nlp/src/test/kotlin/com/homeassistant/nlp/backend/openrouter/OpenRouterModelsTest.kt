@@ -12,7 +12,7 @@ class OpenRouterModelsTest {
 
     @Test
     fun `default max tokens is large enough for topic analysis json`() {
-        assertEquals(2048, OpenRouterConfig().maxTokens)
+        assertEquals(8192, OpenRouterConfig().maxTokens)
     }
 
     @Test

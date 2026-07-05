@@ -11,6 +11,8 @@ import com.homeassistant.nlp.backend.openrouter.OpenRouterApiException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRunResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.file.Files
@@ -35,7 +37,10 @@ class TopicAnalysisModelEvalService(
     suspend fun run(sourceName: String, text: String): TopicAnalysisModelEvalRunResult {
         return withContext(Dispatchers.IO) {
             Files.createDirectories(outputDirectory)
-            val entries = models.map { model -> runModel(model, sourceName, text) }
+            val document = kakaoDocument(sourceName, text)
+            val entries = models
+                .map { model -> async { runModel(model, document) } }
+                .awaitAll()
             val outputFile = outputDirectory.resolve("eval-${timestamp()}.txt")
             Files.writeString(outputFile, renderReport(sourceName, entries))
             TopicAnalysisModelEvalRunResult(
@@ -56,12 +61,10 @@ class TopicAnalysisModelEvalService(
 
     private suspend fun runModel(
         model: String,
-        sourceName: String,
-        text: String,
+        document: SourceDocument,
     ): ModelEvalEntry {
         val backend = RecordingBackend(backendFactory(model))
         val analyzer = LlmTopicAnalyzer(backend, chunkSize = Int.MAX_VALUE)
-        val document = kakaoDocument(sourceName, text)
         val errorMessage = try {
             analyzer.analyze(document)
             null

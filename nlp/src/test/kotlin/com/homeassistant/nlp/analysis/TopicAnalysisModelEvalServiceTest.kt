@@ -6,6 +6,7 @@ import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
 import com.homeassistant.nlp.backend.openrouter.OpenRouterApiException
 import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisModelEvalService
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import kotlin.io.path.readText
@@ -107,6 +108,27 @@ class TopicAnalysisModelEvalServiceTest {
         assertContains(backend.userMessages.single(), "r1 | 동훈 | 2026년 6월 15일 오전 6:10")
         assertContains(backend.userMessages.single(), "r201 | 동훈 | 2026년 6월 15일 오전 9:30")
     }
+
+    @Test
+    fun `runs model evaluations concurrently`() = runBlocking {
+        val service = TopicAnalysisModelEvalService(
+            models = listOf("model/a", "model/b", "model/c"),
+            outputDirectory = Files.createTempDirectory("topic-analysis-model-eval-concurrent-test"),
+            backendFactory = { DelayingBackend(200) },
+        )
+
+        val startedAt = System.currentTimeMillis()
+        service.run(
+            sourceName = "sample-kakao.txt",
+            text = """
+                2026년 6월 15일 오전 6:43
+                2026년 6월 15일 오전 6:43, 동훈 : 병원 예약 내일이지?
+            """.trimIndent(),
+        )
+        val elapsedMs = System.currentTimeMillis() - startedAt
+
+        assertTrue(elapsedMs < 500, "expected concurrent model calls, elapsed=${elapsedMs}ms")
+    }
 }
 
 private class EvalStaticBackend(
@@ -146,6 +168,20 @@ private class CapturingEvalBackend(
         calls += 1
         userMessages += messages.single().content
         return LlmResponse.Text(response)
+    }
+}
+
+private class DelayingBackend(
+    private val delayMillis: Long,
+) : LlmBackend {
+    override suspend fun complete(
+        system: String,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: String,
+    ): LlmResponse {
+        delay(delayMillis)
+        return LlmResponse.Text("""{"topics":[]}""")
     }
 }
 

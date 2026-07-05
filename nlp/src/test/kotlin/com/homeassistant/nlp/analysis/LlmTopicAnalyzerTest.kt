@@ -329,6 +329,29 @@ class LlmTopicAnalyzerTest {
     }
 
     @Test
+    fun `topic analysis output schema includes field descriptions`() {
+        val schema = TopicAnalysisOutputContract.schema
+
+        assertContains(schema, "Topic candidates extracted from the source document")
+        assertContains(schema, "Short review-facing title for one grouped household memory topic")
+        assertContains(schema, "Concise summary of why the grouped records belong together")
+        assertContains(schema, "Allowed MemoryType enum values represented by this topic")
+        assertContains(schema, "Free-form household domain tags such as housing, moving, travel, food, or finance")
+        assertContains(schema, "Source record ids that support this topic")
+        assertContains(schema, "Evidence-backed atomic claims under this topic")
+        assertContains(schema, "Atomic memory statement supported by the cited evidence")
+        assertContains(schema, "Person, place, object, family member, or household entity the claim is about")
+        assertContains(schema, "Allowed MemoryType enum value for this single claim")
+        assertContains(schema, "How directly the source evidence supports this claim")
+        assertContains(schema, "Source record ids that support this claim")
+    }
+
+    @Test
+    fun `prints topic analysis output schema`() {
+        println(TopicAnalysisOutputContract.schema)
+    }
+
+    @Test
     fun `topic analysis dto names come from class names without serial name overrides`() {
         assertEquals(
             "com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse",

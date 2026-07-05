@@ -13,6 +13,7 @@ object JsonSerializer {
         isLenient = true
         allowTrailingComma = true
         explicitNulls = false
+        encodeDefaults = true
     }
 
     inline fun <reified T> T.encodeToString(): String {

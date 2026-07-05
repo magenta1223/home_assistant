@@ -5,6 +5,7 @@ import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import kotlinx.schema.generator.json.SerialDescription
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
@@ -16,7 +17,10 @@ import kotlinx.serialization.Serializable
  * @property topics Topics extracted from the supplied source document.
  */
 @Serializable
-internal data class TopicAnalysisLlmResponse(val topics: List<TopicLlmResponse>)
+internal data class TopicAnalysisLlmResponse(
+    @property:SerialDescription("Topic candidates extracted from the source document. Return an empty array when there are no evidence-backed household memory topics.")
+    val topics: List<TopicLlmResponse>,
+)
 
 /**
  * LLM-facing topic candidate before repository validation and persistence.
@@ -30,11 +34,17 @@ internal data class TopicAnalysisLlmResponse(val topics: List<TopicLlmResponse>)
  */
 @Serializable
 internal data class TopicLlmResponse(
+    @property:SerialDescription("Short review-facing title for one grouped household memory topic.")
     val title: String,
+    @property:SerialDescription("Concise summary of why the grouped records belong together and what household memory they may support.")
     val summary: String,
+    @property:SerialDescription("Allowed MemoryType enum values represented by this topic. Use only enum values from the schema, never new labels such as PLAN, FACT, TODO, TASK, or COMMITMENT.")
     val memoryTypes: List<MemoryType>,
+    @property:SerialDescription("Free-form household domain tags such as housing, moving, travel, food, or finance. Domains are topical areas, not MemoryType values.")
     val domains: List<String>,
+    @property:SerialDescription("Source record ids that support this topic. Use only ids provided in the input, such as r1 or r2.")
     val evidenceRecordIds: List<String>,
+    @property:SerialDescription("Evidence-backed atomic claims under this topic. Each claim must cite supporting source record ids.")
     val claims: List<TopicClaimLlmResponse>,
 )
 
@@ -49,10 +59,15 @@ internal data class TopicLlmResponse(
  */
 @Serializable
 internal data class TopicClaimLlmResponse(
+    @property:SerialDescription("Atomic memory statement supported by the cited evidence. Do not invent facts that are not observed, said, inferred, or uncertain from the source records.")
     val text: String,
+    @property:SerialDescription("Person, place, object, family member, or household entity the claim is about.")
     val subject: String,
+    @property:SerialDescription("Allowed MemoryType enum value for this single claim. Use only enum values from the schema, never new labels such as PLAN, FACT, TODO, TASK, or COMMITMENT.")
     val memoryType: MemoryType,
+    @property:SerialDescription("How directly the source evidence supports this claim: OBSERVED for direct evidence, SAID for stated content, INFERRED for cautious inference, or UNCERTAIN when unclear.")
     val certainty: ClaimCertainty,
+    @property:SerialDescription("Source record ids that support this claim. Use only ids provided in the input, such as r1 or r2.")
     val evidenceRecordIds: List<String>,
 )
 

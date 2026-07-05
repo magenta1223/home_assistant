@@ -38,3 +38,18 @@ data class TopicAnalysisSelectionSaveRequest(
     val selectedTopicIndices: Set<Int>,
 )
 
+@Serializable
+data class TopicAnalysisModelEvalRunResult(
+    val outputPath: String,
+    val sourceName: String,
+    val results: List<TopicAnalysisModelEvalResult>,
+)
+
+@Serializable
+data class TopicAnalysisModelEvalResult(
+    val model: String,
+    val parseSucceeded: Boolean,
+    val errorMessage: String?,
+    val rawResponseCount: Int,
+)
+

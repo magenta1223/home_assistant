@@ -4,6 +4,7 @@ import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -16,6 +17,7 @@ import java.nio.file.Path
 
 fun Application.configureRoutes(
     kakaoImportAnalyze: TopicAnalysisUseCase,
+    modelEval: TopicAnalysisModelEvalUseCase? = null,
 ) {
     routing {
         get(AppConfig.ROUTE_HEALTH) {
@@ -73,6 +75,15 @@ fun Application.configureRoutes(
                 )
             )
             call.respond(HttpStatusCode.OK, result)
+        }
+
+        post(AppConfig.ROUTE_TEST_TOPIC_ANALYSIS_OPENROUTER_MODEL_EVAL) {
+            if (modelEval == null) {
+                call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "model eval is not configured"))
+                return@post
+            }
+
+            call.respond(HttpStatusCode.OK, modelEval.runBundledKakaoAsset())
         }
     }
 }

@@ -13,7 +13,10 @@ import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
+import com.homeassistant.nlp.backend.openrouter.OpenRouterBackend
+import com.homeassistant.nlp.backend.openrouter.OpenRouterConfig
 import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
+import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisModelEvalService
 import com.homeassistant.repository.repo.RepositoryFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -61,6 +64,18 @@ fun Application.module() {
         topicRepository = repositories.topicAnalysis,
         previewRepository = repositories.kakaoAnalysisPreviews,
     )
+    val openRouterApiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
+    val topicAnalysisModelEval = openRouterApiKey?.let { apiKey ->
+        TopicAnalysisModelEvalService(
+            backendFactory = { model ->
+                OpenRouterBackend(
+                    apiKey = apiKey,
+                    model = model,
+                    config = OpenRouterConfig(),
+                )
+            },
+        )
+    }
 
     val slackConfig = SlackConfig.fromEnv()
     if (slackConfig == null) {
@@ -86,5 +101,5 @@ fun Application.module() {
         }
     }
 
-    configureRoutes(kakaoTopicAnalysis)
+    configureRoutes(kakaoTopicAnalysis, topicAnalysisModelEval)
 }

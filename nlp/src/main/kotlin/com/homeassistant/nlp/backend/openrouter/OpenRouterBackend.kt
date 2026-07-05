@@ -5,7 +5,6 @@ import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
 import com.homeassistant.core.utils.JsonSerializer
-import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.core.utils.JsonSerializer.parseToJsonElement
 import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import com.homeassistant.nlp.backend.utils.withTools
@@ -69,9 +68,9 @@ class OpenRouterBackend(
             setBody(request)
         }
 
-        val text = response
-            .bodyAsText()
-            .decodeFromString<OpenRouterResponse>()
+        val body = response.bodyAsText()
+        val text = OpenRouterResponseParser
+            .parse(response.status.value, body)
             .choices
             .firstOrNull()
             ?.message

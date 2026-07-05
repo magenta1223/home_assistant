@@ -7,6 +7,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertFailsWith
 
 class OpenRouterModelsTest {
 
@@ -34,6 +35,20 @@ class OpenRouterModelsTest {
         assertContains(encoded, "json_schema")
         assertContains(encoded, "topic_analysis_output")
         assertContains(encoded.compactJson(), """"schema":{"type":"object"}""")
+    }
+
+    @Test
+    fun `response parser preserves openrouter error body`() {
+        val error = assertFailsWith<OpenRouterApiException> {
+            OpenRouterResponseParser.parse(
+                statusCode = 400,
+                body = """{"error":{"message":"response_format is not supported by this model"}}""",
+            )
+        }
+
+        assertContains(error.message ?: "", "OpenRouter API error 400")
+        assertContains(error.message ?: "", "response_format is not supported")
+        assertContains(error.responseBody, "response_format is not supported")
     }
 
     @Test

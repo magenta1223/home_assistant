@@ -1,5 +1,6 @@
 package com.homeassistant.nlp.backend.openrouter
 
+import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 
@@ -78,3 +79,17 @@ data class OpenRouterChoice(val message: OpenRouterMessage)
  */
 @Serializable
 data class OpenRouterResponse(val choices: List<OpenRouterChoice>)
+
+class OpenRouterApiException(
+    val statusCode: Int,
+    val responseBody: String,
+) : RuntimeException("OpenRouter API error $statusCode: $responseBody")
+
+object OpenRouterResponseParser {
+    fun parse(statusCode: Int, body: String): OpenRouterResponse {
+        if (statusCode !in 200..299) {
+            throw OpenRouterApiException(statusCode, body)
+        }
+        return body.decodeFromString()
+    }
+}

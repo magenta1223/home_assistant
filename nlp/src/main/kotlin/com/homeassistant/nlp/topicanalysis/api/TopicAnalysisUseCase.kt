@@ -9,3 +9,7 @@ abstract class TopicAnalysisUseCase {
         saveAnalysis(request.previewId)
 }
 
+abstract class TopicAnalysisModelEvalUseCase {
+    abstract suspend fun runBundledKakaoAsset(): TopicAnalysisModelEvalRunResult
+}
+

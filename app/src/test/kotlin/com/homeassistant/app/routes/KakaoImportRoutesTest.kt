@@ -10,6 +10,9 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRunResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -134,6 +137,25 @@ class KakaoImportRoutesTest {
         assertContains(response.bodyAsText(), "관계 표현")
         assertContains(response.bodyAsText(), "importedRecordCount")
     }
+
+    @Test
+    fun `model eval route runs bundled kakao asset and returns output file path`() = testApplication {
+        FakeModelEval.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer, FakeModelEval)
+        }
+
+        val response = client.post("/api/test/topic-analysis/openrouter-model-eval")
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(1, FakeModelEval.calls)
+        assertContains(response.bodyAsText(), "topic-analysis-model-evals")
+        assertContains(response.bodyAsText(), "deepseek/deepseek-v4-flash")
+        assertContains(response.bodyAsText(), "parseSucceeded")
+    }
 }
 
 private object FakeAnalyzer : TopicAnalysisUseCase() {
@@ -213,4 +235,28 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
             ),
             status = CandidateStatus.PENDING,
         )
+}
+
+private object FakeModelEval : TopicAnalysisModelEvalUseCase() {
+    var calls = 0
+
+    fun reset() {
+        calls = 0
+    }
+
+    override suspend fun runBundledKakaoAsset(): TopicAnalysisModelEvalRunResult {
+        calls += 1
+        return TopicAnalysisModelEvalRunResult(
+            outputPath = "build/topic-analysis-model-evals/eval-test.txt",
+            sourceName = "KakaoTalkChats.txt",
+            results = listOf(
+                TopicAnalysisModelEvalResult(
+                    model = "deepseek/deepseek-v4-flash",
+                    parseSucceeded = true,
+                    errorMessage = null,
+                    rawResponseCount = 1,
+                ),
+            ),
+        )
+    }
 }

@@ -12,3 +12,6 @@ gradle/
 out/
 
 *.log
+
+# NLP assets are local payloads.
+nlp/src/main/resources/assets/**

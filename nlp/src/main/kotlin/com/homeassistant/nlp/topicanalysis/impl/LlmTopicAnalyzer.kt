@@ -18,6 +18,7 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalyzer
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
 class LlmTopicAnalyzer(
     private val backend: LlmBackend,
+    private val chunkSize: Int = CHUNK_SIZE,
 ) : TopicAnalyzer {
     override suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
         val topics = analyzeValidTopics(document).map { topic ->
@@ -35,7 +36,7 @@ class LlmTopicAnalyzer(
 
     private suspend fun analyzeValidTopics(document: SourceDocument): List<ValidatedTopic> {
         if (document.records.isEmpty()) return emptyList()
-        if (document.records.size <= CHUNK_SIZE) return analyzeChunk(document)
+        if (document.records.size <= chunkSize) return analyzeChunk(document)
 
         val chunkTopics = chunkDocument(document).flatMap { chunk -> analyzeChunk(chunk) }
         return mergeTopics(document, chunkTopics)
@@ -99,7 +100,7 @@ class LlmTopicAnalyzer(
     }
 
     private fun chunkDocument(document: SourceDocument): List<SourceDocument> =
-        document.records.chunked(CHUNK_SIZE).map { records ->
+        document.records.chunked(chunkSize).map { records ->
             document.copy(records = records)
         }
 

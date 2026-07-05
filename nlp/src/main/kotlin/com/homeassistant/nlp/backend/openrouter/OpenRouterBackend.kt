@@ -11,6 +11,7 @@ import com.homeassistant.nlp.backend.utils.parseToolCallOrText
 import com.homeassistant.nlp.backend.utils.withTools
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
@@ -29,6 +30,10 @@ class OpenRouterBackend(
 
     private val httpClient = HttpClient(CIO) {
         install(ContentNegotiation) { json(JsonSerializer.json) }
+        install(HttpTimeout) {
+            requestTimeoutMillis = 180_000
+            socketTimeoutMillis = 180_000
+        }
     }
 
     override suspend fun complete(

@@ -52,6 +52,34 @@ class OpenRouterModelsTest {
     }
 
     @Test
+    fun `response parser reads token usage`() {
+        val response = OpenRouterResponseParser.parse(
+            statusCode = 200,
+            body = """
+                {
+                  "choices": [
+                    {
+                      "message": {
+                        "role": "assistant",
+                        "content": "{\"topics\":[]}"
+                      }
+                    }
+                  ],
+                  "usage": {
+                    "prompt_tokens": 120,
+                    "completion_tokens": 34,
+                    "total_tokens": 154
+                  }
+                }
+            """.trimIndent(),
+        )
+
+        assertEquals(120, response.usage?.prompt_tokens)
+        assertEquals(34, response.usage?.completion_tokens)
+        assertEquals(154, response.usage?.total_tokens)
+    }
+
+    @Test
     fun `ollama options serialize with kotlin property names`() {
         val encoded = OllamaOptions(
             topK = 40,

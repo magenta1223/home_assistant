@@ -76,9 +76,31 @@ data class OpenRouterChoice(val message: OpenRouterMessage)
  * OpenRouter chat completion response body.
  *
  * @property choices Completion choices returned by OpenRouter.
+ * @property usage Token usage reported by OpenRouter when available.
  */
 @Serializable
-data class OpenRouterResponse(val choices: List<OpenRouterChoice>)
+data class OpenRouterResponse(
+    val choices: List<OpenRouterChoice>,
+    val usage: OpenRouterUsage? = null,
+)
+
+/**
+ * Token usage reported by OpenRouter.
+ *
+ * @property prompt_tokens Tokens billed for the request prompt.
+ * @property completion_tokens Tokens billed for the model completion.
+ * @property total_tokens Total billed prompt and completion tokens.
+ */
+@Serializable
+data class OpenRouterUsage(
+    val prompt_tokens: Int? = null,
+    val completion_tokens: Int? = null,
+    val total_tokens: Int? = null,
+)
+
+interface OpenRouterRawResponseHolder {
+    val lastResponseBody: String?
+}
 
 class OpenRouterApiException(
     val statusCode: Int,

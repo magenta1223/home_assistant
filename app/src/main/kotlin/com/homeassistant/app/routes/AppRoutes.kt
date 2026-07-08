@@ -2,6 +2,7 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
@@ -83,7 +84,8 @@ fun Application.configureRoutes(
                 return@post
             }
 
-            call.respond(HttpStatusCode.OK, modelEval.runBundledKakaoAsset())
+            val req = runCatching { call.receive<TopicAnalysisModelEvalRequest>() }.getOrNull()
+            call.respond(HttpStatusCode.OK, modelEval.runBundledKakaoAsset(req?.models))
         }
     }
 }

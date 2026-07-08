@@ -3,13 +3,22 @@ package com.homeassistant.nlp.topicanalysis.impl
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.core.utils.JsonSerializer.encodeToString
+import com.homeassistant.core.utils.JsonSerializer.parseToJsonElement
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import kotlinx.schema.Schema
+import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.SerialDescription
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 /**
  * Root object expected from the topic-analysis LLM response.
@@ -57,6 +66,7 @@ internal data class TopicLlmResponse(
  * @property certainty How directly source evidence supports the claim.
  * @property evidenceRecordIds Prompt-local source record ids supporting the claim.
  */
+@Schema
 @Serializable
 internal data class TopicClaimLlmResponse(
     @property:SerialDescription("Atomic memory statement supported by the cited evidence. Do not invent facts that are not observed, said, inferred, or uncertain from the source records.")
@@ -74,9 +84,48 @@ internal data class TopicClaimLlmResponse(
 @OptIn(ExperimentalSerializationApi::class)
 internal object TopicAnalysisOutputContract {
 
-    val schema = SerializationClassJsonSchemaGenerator(json = JsonSerializer.json)
-            .generateSchemaString(TopicAnalysisLlmResponse.serializer().descriptor)
+    val schema = SerializationClassJsonSchemaGenerator(
+        json = JsonSerializer.json,
+        jsonSchemaConfig = JsonSchemaConfig.Strict
+    )
+        .generateSchemaString(TopicAnalysisLlmResponse.serializer().descriptor)
+        .inlineLocalDefinitions()
 
+    private fun String.inlineLocalDefinitions(): String {
+        val root = parseToJsonElement().jsonObject
+        val definitions = root["${'$'}defs"]?.jsonObject.orEmpty()
+        return root.inlineLocalReferences(definitions).encodeToString()
+    }
+
+    private fun JsonElement.inlineLocalReferences(definitions: Map<String, JsonElement>): JsonElement {
+        return when (this) {
+            is JsonObject -> {
+                val ref = this["${'$'}ref"]?.jsonPrimitive?.contentOrNull
+                if (ref != null) {
+                    val referenced = definitions[ref.localDefinitionName()]
+                    if (referenced != null) {
+                        return JsonObject(
+                            referenced.inlineLocalReferences(definitions).jsonObject +
+                                this.filterKeys { it != "${'$'}ref" && it != "${'$'}defs" }
+                                    .mapValues { (_, value) -> value.inlineLocalReferences(definitions) },
+                        )
+                    }
+                }
+
+                JsonObject(
+                    filterKeys { it != "${'$'}defs" }
+                        .mapValues { (_, value) -> value.inlineLocalReferences(definitions) },
+                )
+            }
+            else -> this
+        }
+    }
+
+    private fun String.localDefinitionName(): String? =
+        takeIf { it.startsWith("#/${'$'}defs/") }
+            ?.removePrefix("#/${'$'}defs/")
+            ?.replace("~1", "/")
+            ?.replace("~0", "~")
 
     fun decode(raw: String): TopicAnalysisLlmResponse =
         try {

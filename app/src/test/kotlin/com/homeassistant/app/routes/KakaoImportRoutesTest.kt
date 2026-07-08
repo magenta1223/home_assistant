@@ -156,6 +156,25 @@ class KakaoImportRoutesTest {
         assertContains(response.bodyAsText(), "deepseek/deepseek-v4-flash")
         assertContains(response.bodyAsText(), "parseSucceeded")
     }
+
+    @Test
+    fun `model eval route passes requested model list`() = testApplication {
+        FakeModelEval.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer, FakeModelEval)
+        }
+
+        val response = client.post("/api/test/topic-analysis/openrouter-model-eval") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"models":["z-ai/glm-5.2","qwen/qwen3.7-max"]}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(listOf("z-ai/glm-5.2", "qwen/qwen3.7-max"), FakeModelEval.requestedModels)
+    }
 }
 
 private object FakeAnalyzer : TopicAnalysisUseCase() {
@@ -239,13 +258,16 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
 
 private object FakeModelEval : TopicAnalysisModelEvalUseCase() {
     var calls = 0
+    var requestedModels: List<String>? = null
 
     fun reset() {
         calls = 0
+        requestedModels = null
     }
 
-    override suspend fun runBundledKakaoAsset(): TopicAnalysisModelEvalRunResult {
+    override suspend fun runBundledKakaoAsset(models: List<String>?): TopicAnalysisModelEvalRunResult {
         calls += 1
+        requestedModels = models
         return TopicAnalysisModelEvalRunResult(
             outputPath = "build/topic-analysis-model-evals/eval-test.txt",
             sourceName = "KakaoTalkChats.txt",

@@ -14,7 +14,7 @@ object AppConfig {
     const val ENV_VAR_SLACK_APP_TOKEN       = "SLACK_APP_TOKEN"
     const val ENV_VAR_SLACK_BOT_TOKEN       = "SLACK_BOT_TOKEN"
     const val ENV_VAR_SLACK_MAX_FILE_SIZE_BYTES = "SLACK_MAX_FILE_SIZE_BYTES"
-    const val DEFAULT_OPENROUTER_MODEL      = "google/gemini-2.5-flash-lite"
+    const val DEFAULT_OPENROUTER_MODEL      = "openai/gpt-5.5"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://localhost:11434"
     const val DEFAULT_OLLAMA_MODEL          = "llama3.2"
     const val DEFAULT_QDRANT_URL            = "http://localhost:6333"

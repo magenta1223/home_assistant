@@ -46,10 +46,18 @@ data class TopicAnalysisModelEvalRunResult(
 )
 
 @Serializable
+data class TopicAnalysisModelEvalRequest(
+    val models: List<String>? = null,
+)
+
+@Serializable
 data class TopicAnalysisModelEvalResult(
     val model: String,
     val parseSucceeded: Boolean,
     val errorMessage: String?,
     val rawResponseCount: Int,
+    val promptTokens: Int? = null,
+    val completionTokens: Int? = null,
+    val totalTokens: Int? = null,
 )
 

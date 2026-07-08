@@ -347,6 +347,19 @@ class LlmTopicAnalyzerTest {
     }
 
     @Test
+    fun `topic analysis output schema inlines referenced definitions`() {
+        val schema = TopicAnalysisOutputContract.schema
+
+        assertFalse(schema.contains("\"${'$'}ref\""))
+        assertFalse(schema.contains("\"${'$'}defs\""))
+        assertContains(schema, "\"memoryType\"")
+        assertContains(schema, "\"enum\"")
+        assertContains(schema, "\"STATE\"")
+        assertContains(schema, "Allowed MemoryType enum value for this single claim")
+        assertContains(schema, "How directly the source evidence supports this claim")
+    }
+
+    @Test
     fun `prints topic analysis output schema`() {
         println(TopicAnalysisOutputContract.schema)
     }

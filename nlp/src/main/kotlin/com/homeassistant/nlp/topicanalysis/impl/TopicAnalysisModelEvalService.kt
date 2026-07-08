@@ -8,6 +8,9 @@ import com.homeassistant.core.source.SourceRecord
 import com.homeassistant.core.tools.Tool
 import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.nlp.backend.openrouter.OpenRouterApiException
+import com.homeassistant.nlp.backend.openrouter.OpenRouterRawResponseHolder
+import com.homeassistant.nlp.backend.openrouter.OpenRouterResponseParser
+import com.homeassistant.nlp.backend.openrouter.OpenRouterUsage
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRunResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
@@ -26,19 +29,24 @@ class TopicAnalysisModelEvalService(
     private val outputDirectory: Path = Path.of("build", "topic-analysis-model-evals"),
     private val backendFactory: (String) -> LlmBackend,
 ) : TopicAnalysisModelEvalUseCase() {
-    override suspend fun runBundledKakaoAsset(): TopicAnalysisModelEvalRunResult {
+    override suspend fun runBundledKakaoAsset(models: List<String>?): TopicAnalysisModelEvalRunResult {
         val sourceName = "KakaoTalkChats.txt"
         val text = javaClass.classLoader.getResource("assets/$sourceName")
             ?.readText(Charsets.UTF_8)
             ?: error("Bundled asset not found: assets/$sourceName")
-        return run(sourceName, text)
+        return run(sourceName, text, models)
     }
 
-    suspend fun run(sourceName: String, text: String): TopicAnalysisModelEvalRunResult {
+    suspend fun run(
+        sourceName: String,
+        text: String,
+        models: List<String>? = null,
+    ): TopicAnalysisModelEvalRunResult {
         return withContext(Dispatchers.IO) {
             Files.createDirectories(outputDirectory)
             val document = kakaoDocument(sourceName, text)
-            val entries = models
+            val evalModels = models?.takeIf { it.isNotEmpty() } ?: this@TopicAnalysisModelEvalService.models
+            val entries = evalModels
                 .map { model -> async { runModel(model, document) } }
                 .awaitAll()
             val outputFile = outputDirectory.resolve("eval-${timestamp()}.txt")
@@ -52,6 +60,9 @@ class TopicAnalysisModelEvalService(
                         parseSucceeded = entry.parseSucceeded,
                         errorMessage = entry.errorMessage,
                         rawResponseCount = entry.rawResponses.size,
+                        promptTokens = entry.usage?.prompt_tokens,
+                        completionTokens = entry.usage?.completion_tokens,
+                        totalTokens = entry.usage?.total_tokens,
                     )
                 },
             )
@@ -80,6 +91,7 @@ class TopicAnalysisModelEvalService(
             parseSucceeded = errorMessage == null,
             errorMessage = errorMessage,
             rawResponses = backend.rawResponses.toList(),
+            usage = backend.usage,
         )
     }
 
@@ -110,6 +122,9 @@ class TopicAnalysisModelEvalService(
                 appendLine("model=${entry.model}")
                 appendLine("parseSucceeded=${entry.parseSucceeded}")
                 appendLine("errorMessage=${entry.errorMessage ?: ""}")
+                appendLine("promptTokens=${entry.usage?.prompt_tokens ?: ""}")
+                appendLine("completionTokens=${entry.usage?.completion_tokens ?: ""}")
+                appendLine("totalTokens=${entry.usage?.total_tokens ?: ""}")
                 appendLine("rawResponseCount=${entry.rawResponses.size}")
                 entry.rawResponses.forEachIndexed { index, raw ->
                     appendLine()
@@ -130,12 +145,15 @@ class TopicAnalysisModelEvalService(
         val parseSucceeded: Boolean,
         val errorMessage: String?,
         val rawResponses: List<String>,
+        val usage: OpenRouterUsage?,
     )
 
     private class RecordingBackend(
         private val delegate: LlmBackend,
     ) : LlmBackend {
         val rawResponses = mutableListOf<String>()
+        var usage: OpenRouterUsage? = null
+            private set
 
         override suspend fun complete(
             system: String,
@@ -148,6 +166,11 @@ class TopicAnalysisModelEvalService(
                 is LlmResponse.Text -> response.content
                 is LlmResponse.ToolCall -> "TOOL_CALL: ${response.spec}"
             }
+            usage = (delegate as? OpenRouterRawResponseHolder)
+                ?.lastResponseBody
+                ?.let { body ->
+                    runCatching { OpenRouterResponseParser.parse(200, body).usage }.getOrNull()
+                }
             return response
         }
     }

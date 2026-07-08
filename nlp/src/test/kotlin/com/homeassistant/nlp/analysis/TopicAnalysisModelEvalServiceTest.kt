@@ -5,6 +5,7 @@ import com.homeassistant.core.nlp.LlmResponse
 import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.tools.Tool
 import com.homeassistant.nlp.backend.openrouter.OpenRouterApiException
+import com.homeassistant.nlp.backend.openrouter.OpenRouterRawResponseHolder
 import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisModelEvalService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -60,6 +61,20 @@ class TopicAnalysisModelEvalServiceTest {
     }
 
     @Test
+    fun `run bundled asset can override configured models`() = runBlocking {
+        val outputDir = Files.createTempDirectory("topic-analysis-model-eval-override-test")
+        val service = TopicAnalysisModelEvalService(
+            models = listOf("model/default"),
+            outputDirectory = outputDir,
+            backendFactory = { validTopicResponse().let(::EvalStaticBackend) },
+        )
+
+        val result = service.runBundledKakaoAsset(models = listOf("model/override-a", "model/override-b"))
+
+        assertEquals(listOf("model/override-a", "model/override-b"), result.results.map { it.model })
+    }
+
+    @Test
     fun `writes openrouter api error body as raw response`() = runBlocking {
         val outputDir = Files.createTempDirectory("topic-analysis-model-eval-api-error-test")
         val service = TopicAnalysisModelEvalService(
@@ -88,6 +103,55 @@ class TopicAnalysisModelEvalServiceTest {
         val report = outputDir.resolve(result.outputPath.substringAfterLast('/')).readText()
         assertContains(report, "OpenRouter API error 400")
         assertContains(report, "response_format is not supported by this model")
+    }
+
+    @Test
+    fun `writes openrouter token usage when backend exposes raw api response`() = runBlocking {
+        val outputDir = Files.createTempDirectory("topic-analysis-model-eval-usage-test")
+        val service = TopicAnalysisModelEvalService(
+            models = listOf("model/usage"),
+            outputDirectory = outputDir,
+            backendFactory = {
+                UsageReportingBackend(
+                    response = validTopicResponse(),
+                    lastResponseBody = """
+                        {
+                          "choices": [
+                            {
+                              "message": {
+                                "role": "assistant",
+                                "content": "{\"topics\":[]}"
+                              }
+                            }
+                          ],
+                          "usage": {
+                            "prompt_tokens": 120,
+                            "completion_tokens": 34,
+                            "total_tokens": 154
+                          }
+                        }
+                    """.trimIndent(),
+                )
+            },
+        )
+
+        val result = service.run(
+            sourceName = "sample-kakao.txt",
+            text = """
+                2026년 6월 15일 오전 6:43
+                2026년 6월 15일 오전 6:43, 동훈 : 병원 예약 내일이지?
+            """.trimIndent(),
+        )
+
+        val entry = result.results.single()
+        assertEquals(120, entry.promptTokens)
+        assertEquals(34, entry.completionTokens)
+        assertEquals(154, entry.totalTokens)
+
+        val report = outputDir.resolve(result.outputPath.substringAfterLast('/')).readText()
+        assertContains(report, "promptTokens=120")
+        assertContains(report, "completionTokens=34")
+        assertContains(report, "totalTokens=154")
     }
 
     @Test
@@ -169,6 +233,18 @@ private class CapturingEvalBackend(
         userMessages += messages.single().content
         return LlmResponse.Text(response)
     }
+}
+
+private class UsageReportingBackend(
+    private val response: String,
+    override val lastResponseBody: String,
+) : LlmBackend, OpenRouterRawResponseHolder {
+    override suspend fun complete(
+        system: String,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: String,
+    ): LlmResponse = LlmResponse.Text(response)
 }
 
 private class DelayingBackend(

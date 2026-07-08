@@ -10,6 +10,6 @@ abstract class TopicAnalysisUseCase {
 }
 
 abstract class TopicAnalysisModelEvalUseCase {
-    abstract suspend fun runBundledKakaoAsset(): TopicAnalysisModelEvalRunResult
+    abstract suspend fun runBundledKakaoAsset(models: List<String>? = null): TopicAnalysisModelEvalRunResult
 }
 

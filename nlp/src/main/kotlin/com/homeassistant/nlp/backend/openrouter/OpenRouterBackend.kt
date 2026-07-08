@@ -24,7 +24,10 @@ class OpenRouterBackend(
     private val apiKey: String,
     private val model: String,
     private val config: OpenRouterConfig = OpenRouterConfig(),
-) : LlmBackend {
+) : LlmBackend, OpenRouterRawResponseHolder {
+
+    override var lastResponseBody: String? = null
+        private set
 
 
     private val httpClient = HttpClient(CIO) {
@@ -69,6 +72,7 @@ class OpenRouterBackend(
         }
 
         val body = response.bodyAsText()
+        lastResponseBody = body
         val text = OpenRouterResponseParser
             .parse(response.status.value, body)
             .choices

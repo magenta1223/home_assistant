@@ -14,7 +14,9 @@ import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse
 import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisOutputContract
 import com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse
 import com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.*
 
 class LlmTopicAnalyzerTest {
@@ -147,6 +149,49 @@ class LlmTopicAnalyzerTest {
         assertContains(backend.calls[2].messageContent, "r201")
         assertEquals(1, result.topics.size)
         assertEquals(listOf(1, 201), result.topics.single().evidence.map { it.ref })
+    }
+
+    @Test
+    fun `long document chunks are analyzed concurrently before merge`() = runBlocking {
+        val activeChunkCalls = AtomicInteger(0)
+        val maxActiveChunkCalls = AtomicInteger(0)
+        val backend = object : LlmBackend {
+            override suspend fun complete(
+                system: String,
+                messages: List<Message>,
+                tools: List<Tool>,
+                outputSchema: String,
+            ): LlmResponse {
+                val message = messages.single().content
+                if (message.contains("기록 ")) {
+                    val active = activeChunkCalls.incrementAndGet()
+                    maxActiveChunkCalls.updateAndGet { current -> maxOf(current, active) }
+                    delay(200)
+                    activeChunkCalls.decrementAndGet()
+                    val firstRecordId = Regex("""r\d+""").find(message)?.value ?: "r1"
+                    return LlmResponse.Text(
+                        topicJson(
+                            title = "chunk $firstRecordId",
+                            evidenceRecordIds = """["$firstRecordId"]""",
+                            claimEvidenceRecordIds = """["$firstRecordId"]""",
+                        ),
+                    )
+                }
+
+                return LlmResponse.Text(
+                    topicJson(
+                        title = "merged",
+                        evidenceRecordIds = """["r1", "r201", "r401"]""",
+                        claimEvidenceRecordIds = """["r1", "r201", "r401"]""",
+                    ),
+                )
+            }
+        }
+        val service = LlmTopicAnalyzer(backend)
+
+        service.analyze(documentWithRecords(401))
+
+        assertTrue(maxActiveChunkCalls.get() > 1, "expected overlapping chunk analysis calls")
     }
 
     @Test

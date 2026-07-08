@@ -14,6 +14,9 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisResult
 import com.homeassistant.domain.topicanalysis.TopicDraft
 import com.homeassistant.domain.topicanalysis.normalizeDomainTag
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalyzer
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
 class LlmTopicAnalyzer(
@@ -38,7 +41,12 @@ class LlmTopicAnalyzer(
         if (document.records.isEmpty()) return emptyList()
         if (document.records.size <= chunkSize) return analyzeChunk(document)
 
-        val chunkTopics = chunkDocument(document).flatMap { chunk -> analyzeChunk(chunk) }
+        val chunkTopics = coroutineScope {
+            chunkDocument(document)
+                .map { chunk -> async { analyzeChunk(chunk) } }
+                .awaitAll()
+                .flatten()
+        }
         return mergeTopics(document, chunkTopics)
     }
 

@@ -42,7 +42,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/analyze") {
             contentType(ContentType.Application.Json)
-            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -58,6 +58,44 @@ class KakaoImportRoutesTest {
         assertEquals("[동훈] [오후 4:49] 따랑해", FakeAnalyzer.text)
         assertEquals(1, FakeAnalyzer.previewCalls)
         assertEquals(0, FakeAnalyzer.saveCalls)
+    }
+
+    @Test
+    fun `import analyze route rejects server file path input`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"filePath":"settings.gradle.kts"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
+    }
+
+    @Test
+    fun `import analyze route rejects legacy file name input`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
     }
 
     @Test

@@ -89,7 +89,7 @@ Pure abstractions and shared types.
 Ktor + Netty server. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
-- `POST /api/kakao/import/analyze` -> imports Kakao text/file content and returns pending topic candidates.
+- `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text content and returns pending topic candidates.
 
 `Application.kt` wires the database, selected LLM backend, Kakao import service, topic analysis service, and routes.
 

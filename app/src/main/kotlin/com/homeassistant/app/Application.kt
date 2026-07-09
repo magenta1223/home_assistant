@@ -67,6 +67,7 @@ fun Application.module() {
         topicRepository = repositories.topicAnalysis,
         previewRepository = repositories.kakaoAnalysisPreviews,
         topicClaimSearchIndex = topicClaimSearchIndex,
+        indexingOutbox = repositories.indexingOutbox,
     )
     val topicAnswer = TopicAnswerService(repositories.topicAnalysis, topicClaimSearchIndex)
     val openRouterApiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]

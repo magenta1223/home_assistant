@@ -7,18 +7,22 @@ import com.homeassistant.core.tools.ToolCallSpec
 import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.datamodel.memory.MemoryCandidateRow
 import com.homeassistant.datamodel.memory.MemoryRow
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.domain.indexing.IndexingOutboxStore
 import kotlin.test.*
 
 class MemoryToolsTest {
     private lateinit var repo: FakeMemoryStore
     private lateinit var vectorStore: RecordingVectorStore
     private lateinit var tools: MemoryTools
+    private lateinit var outbox: FakeIndexingOutboxStore
 
     @BeforeTest
     fun setup() {
         repo = FakeMemoryStore()
         vectorStore = RecordingVectorStore()
-        tools = MemoryTools(repo, DeterministicEmbeddingService("test-model"), vectorStore)
+        outbox = FakeIndexingOutboxStore()
+        tools = MemoryTools(repo, DeterministicEmbeddingService("test-model"), vectorStore, outbox)
     }
 
     private fun spec(name: String, args: String) = ToolCallSpec(name, args)
@@ -84,6 +88,26 @@ class MemoryToolsTest {
     }
 
     @Test
+    fun `memory_candidate_approve keeps committed memory pending when vector indexing fails`() {
+        val created = tools.execute(
+            spec(
+                "memory_candidate_create",
+                """{"conversationId":"conv-1","domain":"HOME","memoryType":"STATE","content":"Stored first","summary":"Stored","confidence":0.9}""",
+            ),
+            userId,
+        )
+        val candidateId = created.value.substringAfter("candidate_id=").substringBefore(" ").trim().toInt()
+        vectorStore.failUpserts = true
+
+        val result = tools.execute(spec("memory_candidate_approve", """{"candidateId":$candidateId}"""), userId)
+
+        assertContains(result.value, "memory_id=")
+        assertContains(result.value, "index_status=INDEX_PENDING")
+        assertEquals(listOf(1), outbox.pending(IndexTargetType.MEMORY))
+        assertEquals(1, repo.listMemories().size)
+    }
+
+    @Test
     fun `memory_search combines vector ids with sqlite metadata`() {
         val memory = repo.approveCandidate(
             userId,
@@ -109,12 +133,29 @@ class MemoryToolsTest {
     private class RecordingVectorStore : VectorStore {
         val upserts = mutableListOf<VectorPoint>()
         var results: List<VectorSearchResult> = emptyList()
+        var failUpserts = false
 
         override fun upsert(point: VectorPoint) {
+            if (failUpserts) error("qdrant unavailable")
             upserts += point
         }
 
         override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> = results
+    }
+
+    private class FakeIndexingOutboxStore : IndexingOutboxStore {
+        private val pending = mutableMapOf<IndexTargetType, MutableSet<Int>>()
+
+        override fun pending(targetType: IndexTargetType, limit: Int): List<Int> =
+            pending[targetType].orEmpty().take(limit)
+
+        override fun markIndexed(targetType: IndexTargetType, targetId: Int) {
+            pending[targetType]?.remove(targetId)
+        }
+
+        override fun markFailed(targetType: IndexTargetType, targetId: Int, error: String) {
+            pending.getOrPut(targetType) { linkedSetOf() }.add(targetId)
+        }
     }
 
     private class FakeMemoryStore : MemoryStore {

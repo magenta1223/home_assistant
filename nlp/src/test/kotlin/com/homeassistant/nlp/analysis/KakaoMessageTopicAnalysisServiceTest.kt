@@ -16,6 +16,9 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageStore
 import com.homeassistant.domain.kakao.ParsedKakaoMessage
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.domain.indexing.NoOpIndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanswer.TopicClaimSearchHit
@@ -41,6 +44,7 @@ class KakaoMessageTopicAnalysisServiceTest {
             topicRepository = topicStore,
             previewRepository = previewStore,
             topicClaimSearchIndex = topicClaimSearchIndex,
+            indexingOutbox = NoOpIndexingOutboxStore,
         )
 
         val result = service.saveSelectedAnalysis(
@@ -64,6 +68,7 @@ class KakaoMessageTopicAnalysisServiceTest {
             importService = KakaoImportService(kakaoStore),
             topicRepository = FakeTopicStore(),
             previewRepository = FakePreviewStore(topics = listOf(topic("첫 후보", 1))),
+            indexingOutbox = NoOpIndexingOutboxStore,
         )
 
         val result = service.saveSelectedAnalysis(
@@ -75,6 +80,26 @@ class KakaoMessageTopicAnalysisServiceTest {
 
         assertEquals(emptyList(), result.topics)
         assertEquals(0, kakaoStore.importCalls)
+    }
+
+    @Test
+    fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
+        val outbox = FakeIndexingOutboxStore()
+        val service = KakaoMessageTopicAnalysisService(
+            backend = UnusedBackend,
+            importService = KakaoImportService(FakeKakaoMessageStore()),
+            topicRepository = FakeTopicStore(),
+            previewRepository = FakePreviewStore(topics = listOf(topic("후보", 1))),
+            topicClaimSearchIndex = FailingTopicClaimSearchIndex,
+            indexingOutbox = outbox,
+        )
+
+        val result = service.saveSelectedAnalysis(
+            TopicAnalysisSelectionSaveRequest("preview-1", setOf(0)),
+        )
+
+        assertEquals(listOf("후보"), result.topics.map { it.title })
+        assertEquals(listOf(1), outbox.pending(IndexTargetType.TOPIC))
     }
 }
 
@@ -146,6 +171,26 @@ private class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
 
     override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
         emptyList()
+}
+
+private object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
+    override fun index(topic: Topic) = error("qdrant unavailable")
+    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> = emptyList()
+}
+
+private class FakeIndexingOutboxStore : IndexingOutboxStore {
+    private val pending = mutableMapOf<IndexTargetType, MutableSet<Int>>()
+
+    override fun pending(targetType: IndexTargetType, limit: Int): List<Int> =
+        pending[targetType].orEmpty().take(limit)
+
+    override fun markIndexed(targetType: IndexTargetType, targetId: Int) {
+        pending[targetType]?.remove(targetId)
+    }
+
+    override fun markFailed(targetType: IndexTargetType, targetId: Int, error: String) {
+        pending.getOrPut(targetType) { linkedSetOf() }.add(targetId)
+    }
 }
 
 private class FakeKakaoMessageStore : KakaoMessageStore {

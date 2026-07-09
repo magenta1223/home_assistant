@@ -6,6 +6,9 @@ import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.repository.db.tables.TopicCandidateTable
+import com.homeassistant.repository.db.tables.IndexingOutboxTable
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.repository.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.repository.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -20,15 +23,17 @@ class TopicAnalysisRepositoryTest {
     private lateinit var keepAlive: java.sql.Connection
     private lateinit var db: Database
     private lateinit var repository: TopicAnalysisRepository
+    private lateinit var outbox: IndexingOutboxRepository
 
     @BeforeTest
     fun setup() {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(TopicCandidateTable)
+            SchemaUtils.create(TopicCandidateTable, IndexingOutboxTable)
         }
         repository = TopicAnalysisRepository(db)
+        outbox = IndexingOutboxRepository(db)
     }
 
     @AfterTest
@@ -73,6 +78,7 @@ class TopicAnalysisRepositoryTest {
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", topic.claims.single().text)
         assertEquals(listOf(2, 3), topic.claims.single().evidenceRefs)
         assertEquals(CandidateStatus.APPROVED, topic.status)
+        assertEquals(listOf(topic.id), outbox.pending(IndexTargetType.TOPIC))
     }
 
     @Test

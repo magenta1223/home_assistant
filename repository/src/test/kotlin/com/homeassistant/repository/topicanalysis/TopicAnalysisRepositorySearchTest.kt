@@ -6,6 +6,7 @@ import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.repository.db.tables.TopicCandidateTable
+import com.homeassistant.repository.db.tables.IndexingOutboxTable
 import com.homeassistant.repository.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -29,7 +30,7 @@ class TopicAnalysisRepositorySearchTest {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(TopicCandidateTable)
+            SchemaUtils.create(TopicCandidateTable, IndexingOutboxTable)
         }
         repository = TopicAnalysisRepository(db)
     }

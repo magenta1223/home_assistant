@@ -16,13 +16,23 @@ class TopicAnswerServiceTest {
     fun `answers from approved topic claims`() {
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(
-                listOf(topic(id = 7, title = "집 물건 위치", claimText = "주차장 차단기 리모컨은 벽장 제일 위칸에 있다."))
+                listOf(
+                    topic(
+                        id = 7,
+                        title = "집 물건 위치",
+                        claimTexts = listOf(
+                            "주차장 차단기 리모컨은 벽장 제일 위칸에 있다.",
+                            "동훈은 집안일 체크리스트를 나열했다.",
+                        ),
+                    ),
+                )
             )
         )
 
         val result = service.answer(TopicAnswerRequest(question = "차단기 리모컨 어디 있어?", limit = 5))
 
         assertTrue(result.answer.contains("주차장 차단기 리모컨은 벽장 제일 위칸에 있다."))
+        assertTrue(!result.answer.contains("집안일 체크리스트"))
         assertEquals(1, result.matches.size)
         assertEquals(7, result.matches.single().topicId)
         assertEquals(listOf("주차장 차단기 리모컨은 벽장 제일 위칸에 있다."), result.matches.single().claims)
@@ -36,6 +46,23 @@ class TopicAnswerServiceTest {
 
         assertEquals("승인된 기억에서 관련 내용을 찾지 못했습니다.", result.answer)
         assertEquals(emptyList(), result.matches)
+    }
+
+    @Test
+    fun `answer text uses strongest match only`() {
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(
+                listOf(
+                    topic(1, "리모컨 위치", "리모컨은 벽장 제일 위칸에 있다."),
+                    topic(2, "보안 리모컨", "보안 리모컨은 잘 해제하고 나가는 습관을 들이자고 했다."),
+                )
+            )
+        )
+
+        val result = service.answer(TopicAnswerRequest(question = "리모컨 어디", limit = 5))
+
+        assertEquals("저장된 기억 기준으로는 리모컨은 벽장 제일 위칸에 있다.", result.answer)
+        assertEquals(2, result.matches.size)
     }
 
     @Test
@@ -57,6 +84,9 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
 }
 
 private fun topic(id: Int, title: String, claimText: String) =
+    topic(id, title, listOf(claimText))
+
+private fun topic(id: Int, title: String, claimTexts: List<String>) =
     Topic(
         id = id,
         sourceType = "kakao",
@@ -66,15 +96,15 @@ private fun topic(id: Int, title: String, claimText: String) =
         memoryTypes = listOf(MemoryType.REFERENCE),
         domains = listOf("home"),
         evidenceRefs = listOf(id * 10),
-        claims = listOf(
+        claims = claimTexts.mapIndexed { index, claimText ->
             TopicClaim(
-                id = 1,
+                id = index + 1,
                 text = claimText,
                 subject = title,
                 memoryType = MemoryType.REFERENCE,
                 certainty = ClaimCertainty.SAID,
                 evidenceRefs = listOf(id * 10),
-            ),
-        ),
+            )
+        },
         status = CandidateStatus.APPROVED,
     )

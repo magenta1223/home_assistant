@@ -64,6 +64,18 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             .map { it.topic }
     }
 
+    override fun getApprovedTopics(topicIds: Collection<Int>): List<Topic> = transaction(db) {
+        val distinctIds = topicIds.distinct()
+        if (distinctIds.isEmpty()) return@transaction emptyList()
+
+        TopicCandidateTable.selectAll()
+            .where {
+                (TopicCandidateTable.id inList distinctIds) and
+                    (TopicCandidateTable.status eq CandidateStatus.APPROVED.name)
+            }
+            .map { row -> getTopic(row[TopicCandidateTable.id]) }
+    }
+
     private fun approveTopic(topicId: Int): Topic {
         TopicCandidateTable.update({ TopicCandidateTable.id eq topicId }) {
             it[status] = CandidateStatus.APPROVED.name

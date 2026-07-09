@@ -12,16 +12,26 @@ import java.net.http.HttpResponse
 class QdrantVectorStore(
     private val baseUrl: String,
     private val collection: String,
-) : VectorStore {
+) : VectorStore, PayloadVectorStore {
     private val client = HttpClient.newHttpClient()
     @Volatile private var collectionReady = false
 
     override fun upsert(point: VectorPoint) {
+        upsert(
+            PayloadVectorPoint(
+                id = point.memoryId,
+                vector = point.vector,
+                payload = point.payload,
+            ),
+        )
+    }
+
+    override fun upsert(point: PayloadVectorPoint) {
         ensureCollection(point.vector.size)
         val body = QdrantUpsertRequest(
             points = listOf(
                 QdrantPoint(
-                    id = point.memoryId,
+                    id = point.id,
                     vector = point.vector,
                     payload = point.payload,
                 ),
@@ -31,17 +41,30 @@ class QdrantVectorStore(
     }
 
     override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> {
+        val must = buildMap {
+            put("familyId", filter.familyId)
+            filter.memoryType?.let { put("memoryType", it.code) }
+            filter.domain?.let { put("domain", it.uppercase()) }
+            filter.memberId?.let { put("memberId", it) }
+        }
+        return search(vector, PayloadVectorSearchFilter(must), limit)
+            .map { hit ->
+                val memoryId = hit.payload["memoryId"]?.toIntOrNull() ?: hit.id
+                VectorSearchResult(memoryId, hit.score)
+            }
+    }
+
+    override fun search(
+        vector: List<Float>,
+        filter: PayloadVectorSearchFilter,
+        limit: Int,
+    ): List<PayloadVectorSearchResult> {
         ensureCollection(vector.size)
         val body = buildJsonObject {
             put("vector", JsonArray(vector.map { JsonPrimitive(it) }))
             put("limit", limit)
             put("with_payload", true)
-            val must = buildList {
-                add(match("familyId", filter.familyId))
-                filter.memoryType?.let { add(match("memoryType", it.code)) }
-                filter.domain?.let { add(match("domain", it.uppercase())) }
-                filter.memberId?.let { add(match("memberId", it)) }
-            }
+            val must = filter.must.map { (key, value) -> match(key, value) }
             if (must.isNotEmpty()) put("filter", buildJsonObject { put("must", JsonArray(must)) })
         }.toString()
         val response = request("POST", "/collections/$collection/points/search", body)
@@ -49,8 +72,7 @@ class QdrantVectorStore(
             .decodeFromString<QdrantSearchResponse>()
             .result
             .map { hit ->
-                val memoryId = hit.payload["memoryId"]?.toIntOrNull() ?: hit.id
-                VectorSearchResult(memoryId, hit.score)
+                PayloadVectorSearchResult(hit.id, hit.score, hit.payload)
             }
     }
 

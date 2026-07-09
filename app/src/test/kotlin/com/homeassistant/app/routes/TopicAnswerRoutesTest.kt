@@ -4,6 +4,7 @@ import com.homeassistant.domain.topicanswer.TopicAnswerMatch
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerResult
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
+import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
@@ -61,6 +62,25 @@ class TopicAnswerRoutesTest {
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
     }
+
+    @Test
+    fun `topic answer route returns service unavailable when vector index is not configured`() = testApplication {
+        application {
+            install(ServerContentNegotiation) { json() }
+            configureRoutes(
+                kakaoImportAnalyze = UnusedTopicAnalysis,
+                topicAnswer = UnavailableTopicAnswer,
+            )
+        }
+
+        val response = client.post("/api/topics/answer") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"question":"리모컨 어디 있어?","limit":5}""")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertContains(response.bodyAsText(), "topic claim vector index is not configured")
+    }
 }
 
 private object FakeTopicAnswer : TopicAnswerUseCase {
@@ -78,6 +98,11 @@ private object FakeTopicAnswer : TopicAnswerUseCase {
                 ),
             ),
         )
+}
+
+private object UnavailableTopicAnswer : TopicAnswerUseCase {
+    override fun answer(request: TopicAnswerRequest): TopicAnswerResult =
+        throw TopicClaimSearchIndexUnavailableException("topic claim vector index is not configured")
 }
 
 private object UnusedTopicAnalysis : TopicAnalysisUseCase() {

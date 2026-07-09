@@ -10,6 +10,8 @@ import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicDraft
+import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
+import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
@@ -21,6 +23,7 @@ class KakaoMessageTopicAnalysisService(
     private val importService: KakaoImportService,
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
+    private val topicClaimSearchIndex: TopicClaimSearchIndex = UnavailableTopicClaimSearchIndex,
 ): TopicAnalysisUseCase() {
     private val topicAnalyzer = LlmTopicAnalyzer(backend)
 
@@ -98,11 +101,14 @@ class KakaoMessageTopicAnalysisService(
             index + 1 to imported.messages.first { it.fingerprint == message.fingerprint }.id
         }.toMap()
 
+        val savedTopics = topics.map { topic ->
+            topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
+        }
+        savedTopics.forEach(topicClaimSearchIndex::index)
+
         return TopicAnalysisSaveResult(
             previewId = previewId,
-            topics = topics.map { topic ->
-                topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
-            },
+            topics = savedTopics,
         )
     }
 

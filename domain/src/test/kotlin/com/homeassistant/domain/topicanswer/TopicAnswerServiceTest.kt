@@ -13,7 +13,7 @@ import kotlin.test.assertTrue
 
 class TopicAnswerServiceTest {
     @Test
-    fun `answers from approved topic claims`() {
+    fun `answers from vector topic claim hits`() {
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(
                 listOf(
@@ -26,7 +26,10 @@ class TopicAnswerServiceTest {
                         ),
                     ),
                 )
-            )
+            ),
+            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+                listOf(TopicClaimSearchHit(topicId = 7, claimId = 1, score = 0.91)),
+            ),
         )
 
         val result = service.answer(TopicAnswerRequest(question = "차단기 리모컨 어디 있어?", limit = 5))
@@ -40,7 +43,10 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `returns no match answer when approved topics do not match`() {
-        val service = TopicAnswerService(topicStore = FakeTopicStore(emptyList()))
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(emptyList()),
+            topicClaimSearchIndex = FakeTopicClaimSearchIndex(emptyList()),
+        )
 
         val result = service.answer(TopicAnswerRequest(question = "없는 질문", limit = 5))
 
@@ -56,7 +62,13 @@ class TopicAnswerServiceTest {
                     topic(1, "리모컨 위치", "리모컨은 벽장 제일 위칸에 있다."),
                     topic(2, "보안 리모컨", "보안 리모컨은 잘 해제하고 나가는 습관을 들이자고 했다."),
                 )
-            )
+            ),
+            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+                listOf(
+                    TopicClaimSearchHit(topicId = 1, claimId = 1, score = 0.92),
+                    TopicClaimSearchHit(topicId = 2, claimId = 1, score = 0.74),
+                ),
+            ),
         )
 
         val result = service.answer(TopicAnswerRequest(question = "리모컨 어디", limit = 5))
@@ -67,11 +79,40 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `clamps requested limit`() {
-        val service = TopicAnswerService(topicStore = FakeTopicStore(List(12) { topic(it + 1, "후보 $it", "리모컨 claim $it") }))
+        val topics = List(12) { topic(it + 1, "후보 $it", "리모컨 claim $it") }
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(topics),
+            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+                topics.map { TopicClaimSearchHit(topicId = it.id, claimId = 1, score = 1.0) },
+            ),
+        )
 
         val result = service.answer(TopicAnswerRequest(question = "리모컨", limit = 50))
 
         assertEquals(10, result.matches.size)
+    }
+
+    @Test
+    fun `preserves vector hit ordering when hydrating topics`() {
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(
+                listOf(
+                    topic(1, "첫번째", "첫번째 claim"),
+                    topic(2, "두번째", "두번째 claim"),
+                ),
+            ),
+            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+                listOf(
+                    TopicClaimSearchHit(topicId = 2, claimId = 1, score = 0.93),
+                    TopicClaimSearchHit(topicId = 1, claimId = 1, score = 0.91),
+                ),
+            ),
+        )
+
+        val result = service.answer(TopicAnswerRequest(question = "순서", limit = 5))
+
+        assertEquals(listOf(2, 1), result.matches.map { it.topicId })
+        assertEquals("저장된 기억 기준으로는 두번째 claim", result.answer)
     }
 }
 
@@ -81,6 +122,18 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
 
     override fun searchApprovedTopics(query: String, limit: Int): List<Topic> =
         topics.take(limit.coerceIn(1, 10))
+
+    override fun getApprovedTopics(topicIds: Collection<Int>): List<Topic> =
+        topics.filter { it.id in topicIds.toSet() }
+}
+
+private class FakeTopicClaimSearchIndex(
+    private val hits: List<TopicClaimSearchHit>,
+) : TopicClaimSearchIndex {
+    override fun index(topic: Topic) = Unit
+
+    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
+        hits.take(limit.coerceIn(1, 10))
 }
 
 private fun topic(id: Int, title: String, claimText: String) =

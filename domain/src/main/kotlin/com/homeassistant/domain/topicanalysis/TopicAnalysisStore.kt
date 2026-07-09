@@ -6,4 +6,5 @@ import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 interface TopicAnalysisStore {
     fun createTopic(candidate: TopicCandidate): Topic
     fun searchApprovedTopics(query: String, limit: Int): List<Topic>
+    fun getApprovedTopics(topicIds: Collection<Int>): List<Topic>
 }

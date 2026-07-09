@@ -4,6 +4,7 @@ import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
+import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
@@ -81,7 +82,11 @@ fun Application.configureRoutes(
                 return@post
             }
 
-            call.respond(HttpStatusCode.OK, topicAnswer.answer(req))
+            try {
+                call.respond(HttpStatusCode.OK, topicAnswer.answer(req))
+            } catch (e: TopicClaimSearchIndexUnavailableException) {
+                call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to e.message))
+            }
         }
 
         get(AppConfig.ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET) {

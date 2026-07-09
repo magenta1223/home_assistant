@@ -12,6 +12,7 @@ import com.homeassistant.core.constants.Env
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.topicanswer.TopicAnswerService
+import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
 import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.nlp.backend.openrouter.OpenRouterBackend
@@ -59,13 +60,15 @@ fun Application.module() {
 
     val repositories = RepositoryFactory.create(dbPath)
     val llmBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
+    val topicClaimSearchIndex = UnavailableTopicClaimSearchIndex
     val kakaoTopicAnalysis = KakaoMessageTopicAnalysisService(
         backend = llmBackend,
         importService = KakaoImportService(repositories.kakaoMessages),
         topicRepository = repositories.topicAnalysis,
         previewRepository = repositories.kakaoAnalysisPreviews,
+        topicClaimSearchIndex = topicClaimSearchIndex,
     )
-    val topicAnswer = TopicAnswerService(repositories.topicAnalysis)
+    val topicAnswer = TopicAnswerService(repositories.topicAnalysis, topicClaimSearchIndex)
     val openRouterApiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
     val topicAnalysisModelEval = openRouterApiKey?.let { apiKey ->
         TopicAnalysisModelEvalService(

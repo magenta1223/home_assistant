@@ -5,13 +5,18 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 
 class TopicAnswerService(
     private val topicStore: TopicAnalysisStore,
+    private val topicClaimSearchIndex: TopicClaimSearchIndex,
 ) : TopicAnswerUseCase {
     override fun answer(request: TopicAnswerRequest): TopicAnswerResult {
         val question = request.question.trim()
         val limit = request.limit.coerceIn(1, 10)
-        val queryTokens = tokenize(question)
-        val topics = topicStore.searchApprovedTopics(question, limit)
-        val matches = topics.map { it.toMatch(queryTokens) }
+        val hits = topicClaimSearchIndex.search(question, limit)
+        val topicsById = topicStore
+            .getApprovedTopics(hits.map { it.topicId })
+            .associateBy { it.id }
+        val matches = hits.mapNotNull { hit ->
+            topicsById[hit.topicId]?.toMatch(hit)
+        }
 
         return TopicAnswerResult(
             question = question,
@@ -20,13 +25,11 @@ class TopicAnswerService(
         )
     }
 
-    private fun Topic.toMatch(queryTokens: Set<String>): TopicAnswerMatch {
-        val scoredClaims = claims
-            .map { claim -> claim to scoreClaim(claim.text, queryTokens) }
-            .filter { (_, score) -> score > 0 }
-            .sortedByDescending { (_, score) -> score }
-            .map { (claim, _) -> claim }
-        val selectedClaims = (scoredClaims.ifEmpty { claims }).take(3)
+    private fun Topic.toMatch(hit: TopicClaimSearchHit): TopicAnswerMatch {
+        val selectedClaims = claims
+            .filter { it.id == hit.claimId }
+            .ifEmpty { claims }
+            .take(3)
 
         return TopicAnswerMatch(
             topicId = id,
@@ -35,18 +38,6 @@ class TopicAnswerService(
             claims = selectedClaims.map { it.text }.distinct(),
             evidenceRefs = selectedClaims.flatMap { it.evidenceRefs }.distinct(),
         )
-    }
-
-    private fun tokenize(text: String): Set<String> =
-        Regex("[\\p{L}\\p{N}]+")
-            .findAll(text.lowercase())
-            .map { it.value }
-            .filter { it.length >= 2 }
-            .toSet()
-
-    private fun scoreClaim(claim: String, queryTokens: Set<String>): Int {
-        val normalized = claim.lowercase()
-        return queryTokens.count { normalized.contains(it) }
     }
 
     private fun buildAnswer(matches: List<TopicAnswerMatch>): String {

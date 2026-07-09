@@ -18,6 +18,8 @@ import com.homeassistant.domain.kakao.KakaoMessageStore
 import com.homeassistant.domain.kakao.ParsedKakaoMessage
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
+import com.homeassistant.domain.topicanswer.TopicClaimSearchHit
+import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import kotlinx.coroutines.runBlocking
@@ -29,6 +31,7 @@ class KakaoMessageTopicAnalysisServiceTest {
     fun `save selected analysis persists only selected preview topics`() = runBlocking {
         val kakaoStore = FakeKakaoMessageStore()
         val topicStore = FakeTopicStore()
+        val topicClaimSearchIndex = RecordingTopicClaimSearchIndex()
         val previewStore = FakePreviewStore(
             topics = listOf(topic("첫 후보", 1), topic("둘째 후보", 2), topic("셋째 후보", 3)),
         )
@@ -37,6 +40,7 @@ class KakaoMessageTopicAnalysisServiceTest {
             importService = KakaoImportService(kakaoStore),
             topicRepository = topicStore,
             previewRepository = previewStore,
+            topicClaimSearchIndex = topicClaimSearchIndex,
         )
 
         val result = service.saveSelectedAnalysis(
@@ -48,6 +52,7 @@ class KakaoMessageTopicAnalysisServiceTest {
 
         assertEquals(listOf("첫 후보", "셋째 후보"), result.topics.map { it.title })
         assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
+        assertEquals(listOf("첫 후보", "셋째 후보"), topicClaimSearchIndex.indexedTopics.map { it.title })
         assertEquals(1, kakaoStore.importCalls)
     }
 
@@ -126,6 +131,20 @@ private class FakeTopicStore : TopicAnalysisStore {
     }
 
     override fun searchApprovedTopics(query: String, limit: Int): List<Topic> =
+        emptyList()
+
+    override fun getApprovedTopics(topicIds: Collection<Int>): List<Topic> =
+        emptyList()
+}
+
+private class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
+    val indexedTopics = mutableListOf<Topic>()
+
+    override fun index(topic: Topic) {
+        indexedTopics += topic
+    }
+
+    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
         emptyList()
 }
 

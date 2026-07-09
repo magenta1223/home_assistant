@@ -48,6 +48,27 @@ interface VectorStore {
     fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult>
 }
 
+data class PayloadVectorPoint(
+    val id: Int,
+    val vector: List<Float>,
+    val payload: Map<String, String>,
+)
+
+data class PayloadVectorSearchFilter(
+    val must: Map<String, String> = emptyMap(),
+)
+
+data class PayloadVectorSearchResult(
+    val id: Int,
+    val score: Double,
+    val payload: Map<String, String>,
+)
+
+interface PayloadVectorStore {
+    fun upsert(point: PayloadVectorPoint)
+    fun search(vector: List<Float>, filter: PayloadVectorSearchFilter, limit: Int): List<PayloadVectorSearchResult>
+}
+
 interface EmbeddingService {
     fun embed(text: String): List<Float>
 }

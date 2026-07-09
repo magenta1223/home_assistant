@@ -28,6 +28,4 @@ object AppConfig {
     const val ROUTE_KAKAO_IMPORT_ANALYZE = "/api/kakao/import/analyze"
     const val ROUTE_KAKAO_IMPORT_SAVE = "/api/kakao/import/save"
     const val ROUTE_TOPIC_ANSWER = "/api/topics/answer"
-    const val ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET = "/api/test/topic-analysis/kakao-small-set"
-    const val ROUTE_TEST_TOPIC_ANALYSIS_OPENROUTER_MODEL_EVAL = "/api/test/topic-analysis/openrouter-model-eval"
 }

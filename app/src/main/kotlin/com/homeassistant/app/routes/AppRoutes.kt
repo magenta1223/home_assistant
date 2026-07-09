@@ -2,6 +2,8 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.topicanswer.TopicAnswerRequest
+import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
@@ -19,6 +21,7 @@ import java.nio.file.Path
 fun Application.configureRoutes(
     kakaoImportAnalyze: TopicAnalysisUseCase,
     modelEval: TopicAnalysisModelEvalUseCase? = null,
+    topicAnswer: TopicAnswerUseCase? = null,
 ) {
     routing {
         get(AppConfig.ROUTE_HEALTH) {
@@ -64,6 +67,21 @@ fun Application.configureRoutes(
             } catch (e: Exception) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
             }
+        }
+
+        post(AppConfig.ROUTE_TOPIC_ANSWER) {
+            if (topicAnswer == null) {
+                call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "topic answer is not configured"))
+                return@post
+            }
+
+            val req = call.receive<TopicAnswerRequest>()
+            if (req.question.isBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "question is required"))
+                return@post
+            }
+
+            call.respond(HttpStatusCode.OK, topicAnswer.answer(req))
         }
 
         get(AppConfig.ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET) {

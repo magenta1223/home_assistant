@@ -1,0 +1,89 @@
+package com.homeassistant.app.routes
+
+import com.homeassistant.domain.topicanswer.TopicAnswerMatch
+import com.homeassistant.domain.topicanswer.TopicAnswerRequest
+import com.homeassistant.domain.topicanswer.TopicAnswerResult
+import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
+import io.ktor.client.statement.bodyAsText
+import io.ktor.http.ContentType
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.contentType
+import io.ktor.serialization.kotlinx.json.json
+import io.ktor.server.application.install
+import io.ktor.server.plugins.contentnegotiation.ContentNegotiation as ServerContentNegotiation
+import io.ktor.server.testing.testApplication
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+
+class TopicAnswerRoutesTest {
+    @Test
+    fun `topic answer route returns answer from approved topics`() = testApplication {
+        application {
+            install(ServerContentNegotiation) { json() }
+            configureRoutes(
+                kakaoImportAnalyze = UnusedTopicAnalysis,
+                topicAnswer = FakeTopicAnswer,
+            )
+        }
+
+        val response = client.post("/api/topics/answer") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"question":"리모컨 어디 있어?","limit":5}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val body = response.bodyAsText()
+        assertContains(body, "저장된 기억 기준으로는 리모컨은 벽장 제일 위칸에 있다.")
+        assertContains(body, "\"matches\"")
+    }
+
+    @Test
+    fun `topic answer route rejects blank question`() = testApplication {
+        application {
+            install(ServerContentNegotiation) { json() }
+            configureRoutes(
+                kakaoImportAnalyze = UnusedTopicAnalysis,
+                topicAnswer = FakeTopicAnswer,
+            )
+        }
+
+        val response = client.post("/api/topics/answer") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"question":"   ","limit":5}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+}
+
+private object FakeTopicAnswer : TopicAnswerUseCase {
+    override fun answer(request: TopicAnswerRequest): TopicAnswerResult =
+        TopicAnswerResult(
+            question = request.question.trim(),
+            answer = "저장된 기억 기준으로는 리모컨은 벽장 제일 위칸에 있다.",
+            matches = listOf(
+                TopicAnswerMatch(
+                    topicId = 1,
+                    title = "집 물건 위치",
+                    summary = "리모컨 위치",
+                    claims = listOf("리모컨은 벽장 제일 위칸에 있다."),
+                    evidenceRefs = listOf(10),
+                ),
+            ),
+        )
+}
+
+private object UnusedTopicAnalysis : TopicAnalysisUseCase() {
+    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
+        error("not used")
+
+    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
+        error("not used")
+}

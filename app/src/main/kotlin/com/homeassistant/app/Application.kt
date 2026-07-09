@@ -11,6 +11,7 @@ import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.topicanswer.TopicAnswerService
 import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.nlp.backend.openrouter.OpenRouterBackend
@@ -64,6 +65,7 @@ fun Application.module() {
         topicRepository = repositories.topicAnalysis,
         previewRepository = repositories.kakaoAnalysisPreviews,
     )
+    val topicAnswer = TopicAnswerService(repositories.topicAnalysis)
     val openRouterApiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
     val topicAnalysisModelEval = openRouterApiKey?.let { apiKey ->
         TopicAnalysisModelEvalService(
@@ -101,5 +103,5 @@ fun Application.module() {
         }
     }
 
-    configureRoutes(kakaoTopicAnalysis, topicAnalysisModelEval)
+    configureRoutes(kakaoTopicAnalysis, topicAnalysisModelEval, topicAnswer)
 }

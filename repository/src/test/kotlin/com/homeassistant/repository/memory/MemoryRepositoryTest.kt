@@ -117,6 +117,61 @@ class MemoryRepositoryTest {
         assertTrue(repo.listMemories().isEmpty())
     }
 
+    @Test
+    fun `approve candidate rejects a different user`() {
+        val candidateId = createCandidate(UserId("mom"), "conv-owner-approve")
+        val auditCount = repo.auditLogs().size
+
+        assertFails {
+            repo.approveCandidate(UserId("dad"), candidateId)
+        }
+
+        assertEquals(CandidateStatus.PENDING, repo.getCandidate(candidateId)?.status)
+        assertTrue(repo.listMemories().isEmpty())
+        assertEquals(auditCount, repo.auditLogs().size)
+    }
+
+    @Test
+    fun `reject candidate rejects a different user`() {
+        val candidateId = createCandidate(UserId("mom"), "conv-owner-reject")
+        val auditCount = repo.auditLogs().size
+
+        assertFails {
+            repo.rejectCandidate(UserId("dad"), candidateId)
+        }
+
+        assertEquals(CandidateStatus.PENDING, repo.getCandidate(candidateId)?.status)
+        assertEquals(auditCount, repo.auditLogs().size)
+    }
+
+    @Test
+    fun `reject candidate rejects an already approved candidate`() {
+        val userId = UserId("mom")
+        val candidateId = createCandidate(userId, "conv-approved")
+        val memory = repo.approveCandidate(userId, candidateId)
+        val auditCount = repo.auditLogs().size
+
+        assertFails {
+            repo.rejectCandidate(userId, candidateId)
+        }
+
+        assertEquals(CandidateStatus.APPROVED, repo.getCandidate(candidateId)?.status)
+        assertEquals(memory.id, repo.listMemories().single().id)
+        assertEquals(auditCount, repo.auditLogs().size)
+    }
+
+    private fun createCandidate(userId: UserId, conversationId: String): Int =
+        repo.createCandidate(
+            userId = userId,
+            conversationId = conversationId,
+            domainName = "HOME",
+            memoryType = MemoryType.STATE,
+            content = "Owner-only candidate",
+            summary = "Owner-only",
+            confidence = 0.8,
+            sourceConversationMessageId = null,
+        )
+
     private fun memoryColumnNames(table: String): List<String> = transaction(db) {
         val names = mutableListOf<String>()
         exec("PRAGMA table_info($table)") { result ->

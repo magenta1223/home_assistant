@@ -47,12 +47,49 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         getTopic(topicId)
     }
 
+    override fun searchApprovedTopics(query: String, limit: Int): List<Topic> = transaction(db) {
+        val boundedLimit = limit.coerceIn(1, 10)
+        val queryTokens = tokenize(query)
+        if (queryTokens.isEmpty()) return@transaction emptyList()
+
+        TopicCandidateTable.selectAll()
+            .where { TopicCandidateTable.status eq CandidateStatus.APPROVED.name }
+            .map { row -> getTopic(row[TopicCandidateTable.id]) }
+            .mapNotNull { topic ->
+                val score = scoreTopic(topic, queryTokens)
+                if (score <= 0) null else ScoredTopic(topic, score)
+            }
+            .sortedWith(compareByDescending<ScoredTopic> { it.score }.thenBy { it.topic.id })
+            .take(boundedLimit)
+            .map { it.topic }
+    }
+
     private fun approveTopic(topicId: Int): Topic {
         TopicCandidateTable.update({ TopicCandidateTable.id eq topicId }) {
             it[status] = CandidateStatus.APPROVED.name
             it[updatedAt] = System.currentTimeMillis()
         }
         return getTopic(topicId)
+    }
+
+    private fun tokenize(text: String): Set<String> =
+        Regex("[\\p{L}\\p{N}]+")
+            .findAll(text.lowercase())
+            .map { it.value }
+            .filter { it.length >= 2 }
+            .toSet()
+
+    private fun scoreTopic(topic: Topic, queryTokens: Set<String>): Int {
+        val title = topic.title.lowercase()
+        val summary = topic.summary.lowercase()
+        val claims = topic.claims.joinToString(" ") { it.text }.lowercase()
+        return queryTokens.sumOf { token ->
+            var score = 0
+            if (title.contains(token)) score += 4
+            if (summary.contains(token)) score += 2
+            if (claims.contains(token)) score += 3
+            score
+        }
     }
 
     private fun findExistingTopic(candidate: TopicCandidate): Topic? {
@@ -114,6 +151,8 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             )
         }
 }
+
+private data class ScoredTopic(val topic: Topic, val score: Int)
 
 @Serializable
 private data class PersistedTopicClaim(

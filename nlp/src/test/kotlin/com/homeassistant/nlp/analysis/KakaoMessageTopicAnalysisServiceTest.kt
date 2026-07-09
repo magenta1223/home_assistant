@@ -124,6 +124,9 @@ private class FakeTopicStore : TopicAnalysisStore {
             status = CandidateStatus.PENDING,
         )
     }
+
+    override fun searchApprovedTopics(query: String, limit: Int): List<Topic> =
+        emptyList()
 }
 
 private class FakeKakaoMessageStore : KakaoMessageStore {

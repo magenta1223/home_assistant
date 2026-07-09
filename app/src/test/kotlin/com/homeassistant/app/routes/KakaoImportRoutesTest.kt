@@ -10,6 +10,7 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRunResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
@@ -119,6 +120,24 @@ class KakaoImportRoutesTest {
     }
 
     @Test
+    fun `import save route returns server error for unexpected failure`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/save") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"previewId":"broken"}""")
+        }
+
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
+    }
+
+    @Test
     fun `test topic analysis route analyzes bundled small kakao conversation`() = testApplication {
         FakeAnalyzer.reset()
         application {
@@ -208,7 +227,8 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
     override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
         this.previewId = previewId
         saveCalls += 1
-        if (previewId == "missing") throw IllegalArgumentException(previewId)
+        if (previewId == "missing") throw TopicAnalysisPreviewNotFoundException(previewId)
+        if (previewId == "broken") error("database unavailable")
         return TopicAnalysisSaveResult(previewId = previewId, topics = listOf(topic("2026-06-07.txt", 11)))
     }
 

@@ -72,7 +72,7 @@ class SlackSocketRuntime(
                                 slackClient.postEphemeral(
                                     channelId = session.channelId,
                                     userId = userId,
-                                    text = "선택한 후보 ${result.savedTopicCount}개를 저장했습니다.",
+                                    text = "선택한 후보 ${result.savedTopicCount}개를 승인했습니다.",
                                 )
                             }
                         }

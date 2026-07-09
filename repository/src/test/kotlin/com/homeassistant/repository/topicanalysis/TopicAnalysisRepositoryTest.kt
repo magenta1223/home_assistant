@@ -10,6 +10,7 @@ import com.homeassistant.repository.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 import java.sql.DriverManager
 import java.util.UUID
 import kotlin.test.*
@@ -71,7 +72,7 @@ class TopicAnalysisRepositoryTest {
         assertEquals(listOf(2, 3), topic.evidenceRefs)
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", topic.claims.single().text)
         assertEquals(listOf(2, 3), topic.claims.single().evidenceRefs)
-        assertEquals(CandidateStatus.PENDING, topic.status)
+        assertEquals(CandidateStatus.APPROVED, topic.status)
     }
 
     @Test
@@ -81,6 +82,22 @@ class TopicAnalysisRepositoryTest {
 
         assertEquals(first.id, second.id)
         assertEquals(first.claims.single().id, second.claims.single().id)
+    }
+
+    @Test
+    fun `approves existing pending topic when saving same approved topic again`() {
+        val pending = createSimpleTopic()
+        transaction(db) {
+            TopicCandidateTable.update({ TopicCandidateTable.id eq pending.id }) {
+                it[status] = CandidateStatus.PENDING.name
+            }
+        }
+
+        val approved = createSimpleTopic()
+
+        assertEquals(pending.id, approved.id)
+        assertEquals(CandidateStatus.APPROVED, approved.status)
+        assertEquals(CandidateStatus.APPROVED.name, topicStatus(pending.id))
     }
 
     private fun createSimpleTopic() =
@@ -111,5 +128,13 @@ class TopicAnalysisRepositoryTest {
             while (result.next()) names += result.getString("name")
         }
         names
+    }
+
+    private fun topicStatus(topicId: Int): String = transaction(db) {
+        var status = ""
+        exec("SELECT status FROM topic_candidates WHERE id = $topicId") { result ->
+            if (result.next()) status = result.getString("status")
+        }
+        status
     }
 }

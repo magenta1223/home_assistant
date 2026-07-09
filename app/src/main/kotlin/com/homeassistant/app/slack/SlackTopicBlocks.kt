@@ -28,7 +28,7 @@ object SlackTopicBlocks {
                     actions(
                         listOf(
                             button(
-                                text = "검토",
+                                text = "승인",
                                 actionId = ACTION_OPEN_REVIEW,
                                 value = previewId,
                                 style = "primary",
@@ -59,11 +59,11 @@ object SlackTopicBlocks {
                 "type" to "modal",
                 "callback_id" to CALLBACK_CONFIRM_TOPICS,
                 "private_metadata" to previewId,
-                "title" to plainText("기억 후보 검토"),
-                "submit" to plainText("저장"),
+                "title" to plainText("기억 후보 승인"),
+                "submit" to plainText("승인"),
                 "close" to plainText("취소"),
                 "blocks" to listOf(
-                    section("저장할 후보를 선택하세요."),
+                    section("승인할 후보를 선택하세요."),
                     mapOf(
                         "type" to "input",
                         "block_id" to "topic_selection",
@@ -71,7 +71,7 @@ object SlackTopicBlocks {
                         "element" to mapOf(
                             "type" to "multi_static_select",
                             "action_id" to ACTION_TOPIC_SELECTION,
-                            "placeholder" to plainText("저장할 후보 선택"),
+                            "placeholder" to plainText("승인할 후보 선택"),
                             "options" to options,
                             "initial_options" to options,
                         ),

@@ -18,13 +18,14 @@ import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.update
 
 /** Persists source-agnostic topic candidates and their memory types/evidence. */
 internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysisStore {
 
     override fun createTopic(candidate: TopicCandidate): Topic = transaction(db) {
         val existing = findExistingTopic(candidate)
-        if (existing != null) return@transaction existing
+        if (existing != null) return@transaction approveTopic(existing.id)
 
         val now = System.currentTimeMillis()
         val distinctEvidenceRefs = candidate.evidenceRefs.distinct()
@@ -34,7 +35,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             it[sourceName] = candidate.sourceName
             it[TopicCandidateTable.title] = candidate.title
             it[TopicCandidateTable.summary] = candidate.summary
-            it[status] = CandidateStatus.PENDING.name
+            it[status] = CandidateStatus.APPROVED.name
             it[memoryTypesJson] = candidate.memoryTypes.distinct().encodeToString()
             it[domainsJson] = candidate.domains.distinct().encodeToString()
             it[evidenceJson] = distinctEvidenceRefs.encodeToString()
@@ -44,6 +45,14 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         }[TopicCandidateTable.id]
 
         getTopic(topicId)
+    }
+
+    private fun approveTopic(topicId: Int): Topic {
+        TopicCandidateTable.update({ TopicCandidateTable.id eq topicId }) {
+            it[status] = CandidateStatus.APPROVED.name
+            it[updatedAt] = System.currentTimeMillis()
+        }
+        return getTopic(topicId)
     }
 
     private fun findExistingTopic(candidate: TopicCandidate): Topic? {

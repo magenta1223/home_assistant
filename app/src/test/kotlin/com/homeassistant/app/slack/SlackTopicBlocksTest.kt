@@ -11,7 +11,7 @@ import kotlin.test.assertTrue
 
 class SlackTopicBlocksTest {
     @Test
-    fun `analysis message renders preview topics and review button`() {
+    fun `analysis message renders preview topics and approval button`() {
         val message = SlackTopicBlocks.analysisMessage(
             previewId = "preview-1",
             sourceName = "family-kakao.txt",
@@ -29,6 +29,7 @@ class SlackTopicBlocksTest {
         assertEquals("button", reviewButton["type"])
         assertEquals(SlackTopicBlocks.ACTION_OPEN_REVIEW, reviewButton["action_id"])
         assertEquals("preview-1", reviewButton["value"])
+        assertEquals("승인", reviewButton.textObject())
     }
 
     @Test
@@ -58,6 +59,9 @@ class SlackTopicBlocksTest {
         val modal = assertIs<SlackModalBuildResult.Modal>(result).view
         assertEquals("preview-1", modal["private_metadata"])
         assertEquals(SlackTopicBlocks.CALLBACK_CONFIRM_TOPICS, modal["callback_id"])
+        assertEquals("기억 후보 승인", modal.textObject("title"))
+        assertEquals("승인", modal.textObject("submit"))
+        assertTrue(modal.blocks().textAt(0).contains("승인할 후보를 선택하세요."))
 
         val select = modal.blocks()[1].element()
         val options = select.options()
@@ -135,6 +139,10 @@ private fun Map<String, Any>.options(): List<Map<String, Any>> =
 @Suppress("UNCHECKED_CAST")
 private fun Map<String, Any>.textObject(): String =
     (this["text"] as Map<String, Any>)["text"] as String
+
+@Suppress("UNCHECKED_CAST")
+private fun Map<String, Any>.textObject(key: String): String =
+    (this[key] as Map<String, Any>)["text"] as String
 
 @Suppress("UNCHECKED_CAST")
 private fun Map<String, Any>.descriptionObject(): String =

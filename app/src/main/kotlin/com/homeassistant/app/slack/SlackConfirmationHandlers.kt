@@ -36,7 +36,7 @@ class SlackConfirmationHandlers(
         val session = reviewSessions.find(previewId)
             ?: return SlackReviewSubmitResult.Rejected("검토 요청을 찾을 수 없습니다.")
         if (session.ownerSlackUserId != actingSlackUserId) {
-            return SlackReviewSubmitResult.Rejected("업로드한 사용자만 이 후보를 저장할 수 있습니다.")
+            return SlackReviewSubmitResult.Rejected("업로드한 사용자만 이 후보를 승인할 수 있습니다.")
         }
         if (session.status != SlackTopicReviewStatus.AWAITING_CONFIRMATION) {
             return SlackReviewSubmitResult.Rejected("이미 처리되었거나 만료된 검토 요청입니다.")

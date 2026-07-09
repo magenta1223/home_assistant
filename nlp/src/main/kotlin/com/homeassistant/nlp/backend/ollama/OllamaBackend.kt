@@ -57,7 +57,7 @@ class OllamaBackend(
                 temperature = config.temperature,
                 topK = config.topK,
                 topP = config.topP,
-                numPredict = config.maxTokens.takeIf { it > 0 },
+                numPredict = config.effectiveNumPredict(),
                 numCtx = config.numCtx,
                 seed = config.seed,
                 repeatPenalty = config.repeatPenalty,

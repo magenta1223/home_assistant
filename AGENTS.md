@@ -27,11 +27,12 @@ Copy `.env` to the project root (already present; gitignored). Key variables:
 
 | Variable | Default | Notes |
 |---|---|---|
-| `AI_PROVIDER` | `ollama` | `ollama` or `openrouter` |
+| `AI_PROVIDER` | `ollama` | `ollama`, `openrouter`, or `anthropic` |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Used when `AI_PROVIDER=ollama` |
 | `OLLAMA_MODEL` | `llama3.2` | |
 | `OPENROUTER_API_KEY` | - | Required when `AI_PROVIDER=openrouter` |
-| `OPENROUTER_MODEL` | `z-ai/glm-4.5-air:free` | |
+| `OPENROUTER_MODEL` | `openai/gpt-5.5` | |
+| `ANTHROPIC_API_KEY` | - | Required when `AI_PROVIDER=anthropic` |
 | `EMBEDDING_MODEL` | - | Required only when wiring embedding-backed memory features |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
 | `QDRANT_COLLECTION` | `family_memories` | |

@@ -25,4 +25,7 @@ data class OllamaConfig(
     val numCtx: Int? = null,
     val seed: Int? = null,
     val repeatPenalty: Double? = null,
-)
+) {
+    internal fun effectiveNumPredict(): Int? =
+        numPredict ?: maxTokens.takeIf { it > 0 }
+}

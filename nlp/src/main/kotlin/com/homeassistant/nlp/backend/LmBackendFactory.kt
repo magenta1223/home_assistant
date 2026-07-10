@@ -10,22 +10,25 @@ import com.homeassistant.nlp.backend.openrouter.OpenRouterConfig
 import com.homeassistant.core.nlp.LlmBackend
 
 object LmBackendFactory {
-    fun create(aiProvider: AiProvider): LlmBackend = when (aiProvider) {
+    fun create(
+        aiProvider: AiProvider,
+        environment: (String) -> String? = { key -> Env[key] },
+    ): LlmBackend = when (aiProvider) {
         AiProvider.OLLAMA -> OllamaBackend(
-            baseUrl = Env[AppConfig.ENV_VAR_OLLAMA_BASE_URL] ?: AppConfig.DEFAULT_OLLAMA_BASE_URL,
-            model = Env[AppConfig.ENV_VAR_OLLAMA_MODEL] ?: AppConfig.DEFAULT_OLLAMA_MODEL,
+            baseUrl = environment(AppConfig.ENV_VAR_OLLAMA_BASE_URL) ?: AppConfig.DEFAULT_OLLAMA_BASE_URL,
+            model = environment(AppConfig.ENV_VAR_OLLAMA_MODEL) ?: AppConfig.DEFAULT_OLLAMA_MODEL,
             config = OllamaConfig(),
         )
         AiProvider.OPENROUTER -> OpenRouterBackend(
-            apiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
+            apiKey = environment(AppConfig.ENV_VAR_OPENROUTER_API_KEY)
                 ?: error("${AppConfig.ENV_VAR_OPENROUTER_API_KEY} not set"),
-            model = Env[AppConfig.ENV_VAR_OPENROUTER_MODEL]
+            model = environment(AppConfig.ENV_VAR_OPENROUTER_MODEL)
                 ?: AppConfig.DEFAULT_OPENROUTER_MODEL,
             config = OpenRouterConfig(),
         )
         AiProvider.ANTHROPIC -> AnthropicBackend(
-            apiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
-                ?: error("${AppConfig.ENV_VAR_OPENROUTER_API_KEY} not set"),
+            apiKey = environment(AppConfig.ENV_VAR_ANTHROPIC_API_KEY)
+                ?: error("${AppConfig.ENV_VAR_ANTHROPIC_API_KEY} not set"),
         )
     }
 }

@@ -10,6 +10,8 @@ import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.datamodel.memory.MemoryCandidateRow
 import com.homeassistant.datamodel.memory.MemoryRow
 import com.homeassistant.domain.memory.MemoryStore
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.repository.repo.indexing.enqueueIndex
 import com.homeassistant.repository.db.tables.*
 import kotlinx.serialization.encodeToString
 import org.jetbrains.exposed.sql.*
@@ -110,6 +112,7 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
             it[createdAt] = now
             it[updatedAt] = now
         }[MemoryTable.id]
+        enqueueIndex(IndexTargetType.MEMORY, memoryId)
         audit(AuditAction.MEMORY_CREATED, userId.value, candidateId, memoryId)
         fetchMemory(memoryId) ?: error("Created memory not found: $memoryId")
     }

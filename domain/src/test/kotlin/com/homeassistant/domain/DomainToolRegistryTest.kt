@@ -8,6 +8,7 @@ import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.datamodel.memory.MemoryCandidateRow
 import com.homeassistant.datamodel.memory.MemoryRow
 import com.homeassistant.domain.memory.*
+import com.homeassistant.domain.indexing.NoOpIndexingOutboxStore
 import kotlin.coroutines.Continuation
 import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
@@ -18,7 +19,12 @@ class DomainToolRegistryTest {
 
     @BeforeTest
     fun setup() {
-        registry = DomainToolRegistry(FakeMemoryStore(), DeterministicEmbeddingService("test-model"), RecordingVectorStore())
+        registry = DomainToolRegistry(
+            FakeMemoryStore(),
+            DeterministicEmbeddingService("test-model"),
+            RecordingVectorStore(),
+            NoOpIndexingOutboxStore,
+        )
     }
 
     private fun spec(name: String, args: String) = ToolCallSpec(name, args)

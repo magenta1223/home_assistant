@@ -10,6 +10,8 @@ import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaim
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.repository.repo.indexing.enqueueIndex
 import com.homeassistant.repository.db.tables.TopicCandidateTable
 import kotlinx.serialization.Serializable
 import org.jetbrains.exposed.sql.Database
@@ -43,6 +45,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             it[createdAt] = now
             it[updatedAt] = now
         }[TopicCandidateTable.id]
+        enqueueIndex(IndexTargetType.TOPIC, topicId)
 
         getTopic(topicId)
     }
@@ -81,6 +84,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             it[status] = CandidateStatus.APPROVED.name
             it[updatedAt] = System.currentTimeMillis()
         }
+        enqueueIndex(IndexTargetType.TOPIC, topicId)
         return getTopic(topicId)
     }
 

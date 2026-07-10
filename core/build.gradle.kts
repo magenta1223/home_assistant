@@ -7,12 +7,6 @@ dependencies {
     // Serialization
     api(libs.kotlinx.serialization.json)
 
-    // DJL for embeddings
-    api(libs.djl.api)
-    api(libs.djl.huggingface.tokenizers)
-    api(libs.djl.pytorch.engine)
-    api(libs.djl.pytorch.native.auto)
-
     // Dotenv
     api(libs.dotenv.kotlin)
 

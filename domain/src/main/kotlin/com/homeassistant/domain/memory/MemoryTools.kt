@@ -5,12 +5,16 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.tools.*
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.domain.indexing.IndexingOutboxStore
 import kotlinx.serialization.Serializable
+import org.slf4j.LoggerFactory
 
 class MemoryTools(
     private val repo: MemoryStore,
     private val embeddingService: EmbeddingService,
     private val vectorStore: VectorStore,
+    private val indexingOutbox: IndexingOutboxStore,
 ) {
 
     /**
@@ -163,22 +167,12 @@ class MemoryTools(
     private fun handleApprove(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: CandidateIdArgs = spec.arguments.decodeFromString()
         val memory = repo.approveCandidate(userId, args.candidateId)
-        vectorStore.upsert(
-            VectorPoint(
-                memoryId = memory.id,
-                vector = embeddingService.embed("${memory.summary}\n${memory.content}"),
-                payload = mapOf(
-                    "familyId" to memory.familyId,
-                    "memoryId" to memory.id.toString(),
-                    "memoryType" to memory.memoryType.code,
-                    "domain" to memory.domainName,
-                    "memberId" to (memory.subjectMemberId ?: ""),
-                    "createdBy" to memory.createdBy,
-                ),
-                numericPayload = mapOf("createdAt" to memory.createdAt),
-            ),
+        val indexed = indexMemory(memory)
+        retryPendingMemoryIndexes(memory.id)
+        val indexStatus = if (indexed) "INDEXED" else "INDEX_PENDING"
+        return ToolResult(
+            "기억이 저장되었습니다. memory_id=${memory.id} candidate_id=${args.candidateId} index_status=$indexStatus",
         )
-        return ToolResult("기억이 저장되었습니다. memory_id=${memory.id} candidate_id=${args.candidateId}")
     }
 
     private fun handleReject(spec: ToolCallSpec, userId: UserId): ToolResult {
@@ -197,7 +191,7 @@ class MemoryTools(
             createdAfter = args.createdAfter,
             createdBefore = args.createdBefore,
         )
-        val results = vectorStore.search(embeddingService.embed(args.query), filter, args.limit)
+        val results = vectorStore.search(embeddingService.embed("query: ${args.query}"), filter, args.limit)
         val byId = repo.listMemories(results.map { it.memoryId }).associateBy { it.id }
         val lines = results.mapNotNull { result ->
             byId[result.memoryId]?.let { memory ->
@@ -206,4 +200,49 @@ class MemoryTools(
         }
         return if (lines.isEmpty()) ToolResult("관련 기억을 찾지 못했습니다.") else ToolResult(lines.joinToString("\n"))
     }
+
+    private fun indexMemory(memory: com.homeassistant.datamodel.memory.MemoryRow): Boolean =
+        try {
+            vectorStore.upsert(
+                VectorPoint(
+                    memoryId = memory.id,
+                    vector = embeddingService.embed("passage: ${memory.summary}\n${memory.content}"),
+                    payload = mapOf(
+                        "familyId" to memory.familyId,
+                        "memoryId" to memory.id.toString(),
+                        "memoryType" to memory.memoryType.code,
+                        "domain" to memory.domainName,
+                        "memberId" to (memory.subjectMemberId ?: ""),
+                        "createdBy" to memory.createdBy,
+                    ),
+                    numericPayload = mapOf("createdAt" to memory.createdAt),
+                ),
+            )
+            indexingOutbox.markIndexed(IndexTargetType.MEMORY, memory.id)
+            true
+        } catch (error: Exception) {
+            log.warn("Memory vector indexing deferred memoryId=${memory.id}", error)
+            runCatching {
+                indexingOutbox.markFailed(
+                    IndexTargetType.MEMORY,
+                    memory.id,
+                    error.message ?: error::class.simpleName.orEmpty(),
+                )
+            }
+            false
+        }
+
+    private fun retryPendingMemoryIndexes(currentMemoryId: Int) {
+        runCatching {
+            indexingOutbox.pending(IndexTargetType.MEMORY)
+                .asSequence()
+                .filter { it != currentMemoryId }
+                .mapNotNull(repo::getMemory)
+                .forEach(::indexMemory)
+        }.onFailure { error ->
+            log.warn("Failed to dispatch pending memory indexes", error)
+        }
+    }
 }
+
+private val log = LoggerFactory.getLogger(MemoryTools::class.java)

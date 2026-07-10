@@ -33,9 +33,10 @@ Copy `.env` to the project root (already present; gitignored). Key variables:
 | `OPENROUTER_API_KEY` | - | Required when `AI_PROVIDER=openrouter` |
 | `OPENROUTER_MODEL` | `openai/gpt-5.5` | |
 | `ANTHROPIC_API_KEY` | - | Required when `AI_PROVIDER=anthropic` |
-| `EMBEDDING_MODEL` | - | Required only when wiring embedding-backed memory features |
+| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Local embedding model name for logs/docs |
+| `EMBEDDING_MODEL_PATH` | - | Local model directory containing `tokenizer.json`; enables embedding-backed vector indexing |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
-| `QDRANT_COLLECTION` | `family_memories` | |
+| `QDRANT_COLLECTION` | `family_memories` | Must use 384-dimensional vectors for the default local embedding model |
 
 Server port and DB path are configured in `AppConfig` and Ktor application config.
 

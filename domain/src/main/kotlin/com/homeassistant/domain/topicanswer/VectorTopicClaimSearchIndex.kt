@@ -15,7 +15,7 @@ class VectorTopicClaimSearchIndex(
             vectorStore.upsert(
                 PayloadVectorPoint(
                     id = pointId(topic.id, claim.id),
-                    vector = embeddingService.embed("${topic.title}\n${topic.summary}\n${claim.text}"),
+                    vector = embeddingService.embed("passage: ${topic.title}\n${topic.summary}\n${claim.text}"),
                     payload = mapOf(
                         "kind" to TOPIC_CLAIM_KIND,
                         "topicId" to topic.id.toString(),
@@ -33,7 +33,7 @@ class VectorTopicClaimSearchIndex(
     override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
         vectorStore
             .search(
-                vector = embeddingService.embed(question),
+                vector = embeddingService.embed("query: $question"),
                 filter = PayloadVectorSearchFilter(must = mapOf("kind" to TOPIC_CLAIM_KIND)),
                 limit = limit.coerceIn(1, 10),
             )

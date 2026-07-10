@@ -6,6 +6,8 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.datamodel.memory.AuditAction
 import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.repository.db.tables.*
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.repository.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.repository.repo.memory.MemoryRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -19,6 +21,7 @@ class MemoryRepositoryTest {
     private lateinit var keepAlive: java.sql.Connection
     private lateinit var db: Database
     private lateinit var repo: MemoryRepository
+    private lateinit var outbox: IndexingOutboxRepository
 
     @BeforeTest
     fun setup() {
@@ -33,9 +36,11 @@ class MemoryRepositoryTest {
                 MemoryCandidateTable,
                 MemoryTable,
                 AuditLogTable,
+                IndexingOutboxTable,
             )
         }
         repo = MemoryRepository(db)
+        outbox = IndexingOutboxRepository(db)
     }
 
     @AfterTest
@@ -96,6 +101,7 @@ class MemoryRepositoryTest {
         assertEquals("AFTER_SCHOOL", memory.domainName)
         assertEquals(CandidateStatus.APPROVED, repo.getCandidate(candidateId)?.status)
         assertTrue(repo.auditLogs().any { it.action == AuditAction.MEMORY_CREATED && it.memoryId == memory.id })
+        assertEquals(listOf(memory.id), outbox.pending(IndexTargetType.MEMORY))
     }
 
     @Test

@@ -8,6 +8,8 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.kakao.KakaoMessageParser
+import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicDraft
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
@@ -18,6 +20,7 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import org.slf4j.LoggerFactory
 
 class KakaoMessageTopicAnalysisService(
     backend: LlmBackend,
@@ -25,6 +28,7 @@ class KakaoMessageTopicAnalysisService(
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
     private val topicClaimSearchIndex: TopicClaimSearchIndex = UnavailableTopicClaimSearchIndex,
+    private val indexingOutbox: IndexingOutboxStore,
 ): TopicAnalysisUseCase() {
     private val topicAnalyzer = LlmTopicAnalyzer(backend)
 
@@ -105,7 +109,8 @@ class KakaoMessageTopicAnalysisService(
         val savedTopics = topics.map { topic ->
             topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
         }
-        savedTopics.forEach(topicClaimSearchIndex::index)
+        savedTopics.forEach(::indexTopic)
+        retryPendingTopicIndexes(savedTopics.mapTo(mutableSetOf()) { it.id })
 
         return TopicAnalysisSaveResult(
             previewId = previewId,
@@ -144,4 +149,33 @@ class KakaoMessageTopicAnalysisService(
                 )
             },
         )
+
+    private fun indexTopic(topic: com.homeassistant.datamodel.topicanalysis.Topic): Boolean =
+        try {
+            topicClaimSearchIndex.index(topic)
+            indexingOutbox.markIndexed(IndexTargetType.TOPIC, topic.id)
+            true
+        } catch (error: Exception) {
+            log.warn("Topic vector indexing deferred topicId=${topic.id}", error)
+            runCatching {
+                indexingOutbox.markFailed(
+                    IndexTargetType.TOPIC,
+                    topic.id,
+                    error.message ?: error::class.simpleName.orEmpty(),
+                )
+            }
+            false
+        }
+
+    private fun retryPendingTopicIndexes(currentTopicIds: Set<Int>) {
+        runCatching {
+            val pendingIds = indexingOutbox.pending(IndexTargetType.TOPIC)
+                .filterNot(currentTopicIds::contains)
+            topicRepository.getApprovedTopics(pendingIds).forEach(::indexTopic)
+        }.onFailure { error ->
+            log.warn("Failed to dispatch pending topic indexes", error)
+        }
+    }
 }
+
+private val log = LoggerFactory.getLogger(KakaoMessageTopicAnalysisService::class.java)

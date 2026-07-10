@@ -20,6 +20,7 @@ internal object DatabaseFactory {
                 KakaoImportedMessageTable,
                 TopicAnalysisPreviewTable,
                 TopicCandidateTable,
+                IndexingOutboxTable,
             )
         }
         return db

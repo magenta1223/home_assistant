@@ -7,6 +7,7 @@ import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
  * Filters applied to vector memory search.
  *
  * @property familyId Family scope to search within.
+ * @property createdBy User who owns the memory.
  * @property memoryType Optional memory category filter.
  * @property domain Optional domain name filter.
  * @property memberId Optional subject member filter.
@@ -15,6 +16,7 @@ import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
  */
 data class MemorySearchFilter(
     val familyId: String = DEFAULT_FAMILY_ID,
+    val createdBy: String? = null,
     val memoryType: MemoryType? = null,
     val domain: String? = null,
     val memberId: String? = null,
@@ -28,11 +30,13 @@ data class MemorySearchFilter(
  * @property memoryId Confirmed memory id used as the vector point id.
  * @property vector Embedding vector for the memory text.
  * @property payload String metadata stored with the vector point.
+ * @property numericPayload Numeric metadata stored with the vector point.
  */
 data class VectorPoint(
     val memoryId: Int,
     val vector: List<Float>,
     val payload: Map<String, String>,
+    val numericPayload: Map<String, Long> = emptyMap(),
 )
 
 /**
@@ -52,10 +56,17 @@ data class PayloadVectorPoint(
     val id: Int,
     val vector: List<Float>,
     val payload: Map<String, String>,
+    val numericPayload: Map<String, Long> = emptyMap(),
 )
 
 data class PayloadVectorSearchFilter(
     val must: Map<String, String> = emptyMap(),
+    val ranges: Map<String, NumericRange> = emptyMap(),
+)
+
+data class NumericRange(
+    val gte: Long? = null,
+    val lte: Long? = null,
 )
 
 data class PayloadVectorSearchResult(

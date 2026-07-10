@@ -8,6 +8,7 @@ import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableExce
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.http.*
@@ -63,7 +64,7 @@ fun Application.configureRoutes(
             try {
                 val result = kakaoImportAnalyze.saveAnalysis(req.previewId)
                 call.respond(HttpStatusCode.OK, result)
-            } catch (e: Exception) {
+            } catch (e: TopicAnalysisPreviewNotFoundException) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
             }
         }

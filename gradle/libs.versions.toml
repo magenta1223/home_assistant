@@ -1,0 +1,74 @@
+[versions]
+kotlin = "2.2.21"
+ktor = "3.1.1"
+exposed = "0.57.0"
+caffeine = "3.1.8"
+kotlinxSerialization = "1.7.3"
+kotlinxSchema = "0.5.0"
+sqliteJdbc = "3.47.1.0"
+anthropic = "0.8.0"
+djl = "0.31.0"
+djlPytorchNative = "1.9.+"
+logback = "1.5.12"
+mockk = "1.13.13"
+dotenv = "6.4.1"
+slack = "1.49.0"
+tyrus = "1.20"
+javaxWebsocket = "1.1"
+
+[libraries]
+# Ktor server
+ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-server-netty = { module = "io.ktor:ktor-server-netty", version.ref = "ktor" }
+ktor-server-content-negotiation = { module = "io.ktor:ktor-server-content-negotiation", version.ref = "ktor" }
+ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx-json", version.ref = "ktor" }
+ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.ref = "ktor" }
+ktor-server-call-logging = { module = "io.ktor:ktor-server-call-logging", version.ref = "ktor" }
+ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
+ktor-client-cio = { module = "io.ktor:ktor-client-cio", version.ref = "ktor" }
+ktor-client-content-negotiation = { module = "io.ktor:ktor-client-content-negotiation", version.ref = "ktor" }
+ktor-server-test-host = { module = "io.ktor:ktor-server-test-host", version.ref = "ktor" }
+
+# Serialization
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+kotlinx-schema-generator-json = { module = "org.jetbrains.kotlinx:kotlinx-schema-generator-json", version.ref = "kotlinxSchema" }
+
+# Exposed ORM + SQLite
+exposed-core = { module = "org.jetbrains.exposed:exposed-core", version.ref = "exposed" }
+exposed-jdbc = { module = "org.jetbrains.exposed:exposed-jdbc", version.ref = "exposed" }
+exposed-dao = { module = "org.jetbrains.exposed:exposed-dao", version.ref = "exposed" }
+sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbc" }
+
+# Caffeine cache
+caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "caffeine" }
+
+# Anthropic
+anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic" }
+
+# DJL
+djl-api = { module = "ai.djl:api", version.ref = "djl" }
+djl-huggingface-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djl" }
+djl-pytorch-engine = { module = "ai.djl.pytorch:pytorch-engine", version.ref = "djl" }
+djl-pytorch-native-auto = { module = "ai.djl.pytorch:pytorch-native-auto", version.ref = "djlPytorchNative" }
+
+# Logging
+logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }
+
+# Kotlin test
+kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
+
+# Dotenv
+dotenv-kotlin = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "dotenv" }
+
+# Slack
+slack-bolt-socket-mode = { module = "com.slack.api:bolt-socket-mode", version.ref = "slack" }
+javax-websocket-api = { module = "javax.websocket:javax.websocket-api", version.ref = "javaxWebsocket" }
+tyrus-standalone-client = { module = "org.glassfish.tyrus.bundles:tyrus-standalone-client", version.ref = "tyrus" }
+
+# Testing
+mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }

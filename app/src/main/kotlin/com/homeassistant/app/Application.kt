@@ -56,7 +56,9 @@ fun Application.module() {
     log.info("Database: $dbPath")
 
     val repositories = RepositoryFactory.create(dbPath)
-    val llmBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
+    val llmBackend = LmBackendFactory.create(
+        AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: AppConfig.DEFAULT_AI_PROVIDER),
+    )
     val topicClaimSearchIndex = UnavailableTopicClaimSearchIndex
     val kakaoTopicAnalysis = KakaoMessageTopicAnalysisService(
         backend = llmBackend,

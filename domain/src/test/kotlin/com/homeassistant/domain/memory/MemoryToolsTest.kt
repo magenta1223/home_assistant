@@ -81,6 +81,8 @@ class MemoryToolsTest {
 
         assertContains(result.value, "memory_id=")
         assertEquals(1, vectorStore.upserts.size)
+        assertEquals("dad", vectorStore.upserts.single().payload["createdBy"])
+        assertTrue(vectorStore.upserts.single().numericPayload.getValue("createdAt") > 0)
     }
 
     @Test
@@ -100,21 +102,34 @@ class MemoryToolsTest {
         )
         vectorStore.results = listOf(VectorSearchResult(memory.id, 0.95))
 
-        val result = tools.execute(spec("memory_search", """{"query":"summer trip","domain":"TRAVEL"}"""), userId)
+        val result = tools.execute(
+            spec(
+                "memory_search",
+                """{"query":"summer trip","domain":"TRAVEL","createdAfter":100,"createdBefore":200}""",
+            ),
+            userId,
+        )
 
         assertContains(result.value, "memory_id=${memory.id}")
         assertContains(result.value, "Busan July")
+        assertEquals("dad", vectorStore.lastFilter?.createdBy)
+        assertEquals(100, vectorStore.lastFilter?.createdAfter)
+        assertEquals(200, vectorStore.lastFilter?.createdBefore)
     }
 
     private class RecordingVectorStore : VectorStore {
         val upserts = mutableListOf<VectorPoint>()
         var results: List<VectorSearchResult> = emptyList()
+        var lastFilter: MemorySearchFilter? = null
 
         override fun upsert(point: VectorPoint) {
             upserts += point
         }
 
-        override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> = results
+        override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> {
+            lastFilter = filter
+            return results
+        }
     }
 
     private class FakeMemoryStore : MemoryStore {

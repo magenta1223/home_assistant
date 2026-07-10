@@ -1,8 +1,6 @@
 package com.homeassistant.domain.memory
 
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
-import com.homeassistant.core.utils.JsonSerializer.encodeToString
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.*
 import java.net.URI
 import java.net.http.HttpClient
@@ -22,32 +20,30 @@ class QdrantVectorStore(
                 id = point.memoryId,
                 vector = point.vector,
                 payload = point.payload,
+                numericPayload = point.numericPayload,
             ),
         )
     }
 
     override fun upsert(point: PayloadVectorPoint) {
         ensureCollection(point.vector.size)
-        val body = QdrantUpsertRequest(
-            points = listOf(
-                QdrantPoint(
-                    id = point.id,
-                    vector = point.vector,
-                    payload = point.payload,
-                ),
-            )
-        )
-        request("PUT", "/collections/$collection/points?wait=true", body.encodeToString())
+        request("PUT", "/collections/$collection/points?wait=true", qdrantUpsertBody(point))
     }
 
     override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> {
         val must = buildMap {
             put("familyId", filter.familyId)
+            filter.createdBy?.let { put("createdBy", it) }
             filter.memoryType?.let { put("memoryType", it.code) }
             filter.domain?.let { put("domain", it.uppercase()) }
             filter.memberId?.let { put("memberId", it) }
         }
-        return search(vector, PayloadVectorSearchFilter(must), limit)
+        val ranges = if (filter.createdAfter != null || filter.createdBefore != null) {
+            mapOf("createdAt" to NumericRange(gte = filter.createdAfter, lte = filter.createdBefore))
+        } else {
+            emptyMap()
+        }
+        return search(vector, PayloadVectorSearchFilter(must, ranges), limit)
             .map { hit ->
                 val memoryId = hit.payload["memoryId"]?.toIntOrNull() ?: hit.id
                 VectorSearchResult(memoryId, hit.score)
@@ -60,25 +56,18 @@ class QdrantVectorStore(
         limit: Int,
     ): List<PayloadVectorSearchResult> {
         ensureCollection(vector.size)
-        val body = buildJsonObject {
-            put("vector", JsonArray(vector.map { JsonPrimitive(it) }))
-            put("limit", limit)
-            put("with_payload", true)
-            val must = filter.must.map { (key, value) -> match(key, value) }
-            if (must.isNotEmpty()) put("filter", buildJsonObject { put("must", JsonArray(must)) })
-        }.toString()
+        val body = qdrantSearchBody(vector, filter, limit)
         val response = request("POST", "/collections/$collection/points/search", body)
         return response
             .decodeFromString<QdrantSearchResponse>()
             .result
             .map { hit ->
-                PayloadVectorSearchResult(hit.id, hit.score, hit.payload)
+                PayloadVectorSearchResult(
+                    hit.id,
+                    hit.score,
+                    hit.payload.mapValues { (_, value) -> value.jsonPrimitive.content },
+                )
             }
-    }
-
-    private fun match(key: String, value: String): JsonObject = buildJsonObject {
-        put("key", key)
-        put("match", buildJsonObject { put("value", value) })
     }
 
     private fun request(method: String, path: String, body: String): String {
@@ -109,27 +98,12 @@ class QdrantVectorStore(
     }
 
     /**
-     * Qdrant upsert request body.
-     *
-     * @property points Vector points to insert or replace.
-     */
-    @Serializable private data class QdrantUpsertRequest(val points: List<QdrantPoint>)
-
-    /**
-     * Qdrant vector point payload.
-     *
-     * @property id Point id stored in Qdrant.
-     * @property vector Embedding vector stored for the point.
-     * @property payload String metadata stored with the point.
-     */
-    @Serializable private data class QdrantPoint(val id: Int, val vector: List<Float>, val payload: Map<String, String>)
-
-    /**
      * Qdrant search response body.
      *
      * @property result Search hits returned by Qdrant.
      */
-    @Serializable private data class QdrantSearchResponse(val result: List<QdrantHit> = emptyList())
+    @kotlinx.serialization.Serializable
+    private data class QdrantSearchResponse(val result: List<QdrantHit> = emptyList())
 
     /**
      * Qdrant search hit.
@@ -138,5 +112,48 @@ class QdrantVectorStore(
      * @property score Similarity score returned by Qdrant.
      * @property payload String metadata returned with the hit.
      */
-    @Serializable private data class QdrantHit(val id: Int, val score: Double, val payload: Map<String, String> = emptyMap())
+    @kotlinx.serialization.Serializable
+    private data class QdrantHit(val id: Int, val score: Double, val payload: JsonObject = buildJsonObject {})
 }
+
+internal fun qdrantUpsertBody(point: PayloadVectorPoint): String =
+    buildJsonObject {
+        put("points", buildJsonArray {
+            add(buildJsonObject {
+                put("id", point.id)
+                put("vector", JsonArray(point.vector.map(::JsonPrimitive)))
+                put("payload", buildJsonObject {
+                    point.payload.forEach { (key, value) -> put(key, value) }
+                    point.numericPayload.forEach { (key, value) -> put(key, value) }
+                })
+            })
+        })
+    }.toString()
+
+internal fun qdrantSearchBody(
+    vector: List<Float>,
+    filter: PayloadVectorSearchFilter,
+    limit: Int,
+): String =
+    buildJsonObject {
+        put("vector", JsonArray(vector.map(::JsonPrimitive)))
+        put("limit", limit)
+        put("with_payload", true)
+        val conditions = filter.must.map { (key, value) ->
+            buildJsonObject {
+                put("key", key)
+                put("match", buildJsonObject { put("value", value) })
+            }
+        } + filter.ranges.map { (key, range) ->
+            buildJsonObject {
+                put("key", key)
+                put("range", buildJsonObject {
+                    range.gte?.let { put("gte", it) }
+                    range.lte?.let { put("lte", it) }
+                })
+            }
+        }
+        if (conditions.isNotEmpty()) {
+            put("filter", buildJsonObject { put("must", JsonArray(conditions)) })
+        }
+    }.toString()

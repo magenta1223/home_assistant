@@ -10,6 +10,7 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -39,7 +40,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/analyze") {
             contentType(ContentType.Application.Json)
-            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -55,6 +56,44 @@ class KakaoImportRoutesTest {
         assertEquals("[동훈] [오후 4:49] 따랑해", FakeAnalyzer.text)
         assertEquals(1, FakeAnalyzer.previewCalls)
         assertEquals(0, FakeAnalyzer.saveCalls)
+    }
+
+    @Test
+    fun `import analyze route rejects server file path input`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"filePath":"settings.gradle.kts"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
+    }
+
+    @Test
+    fun `import analyze route rejects legacy file name input`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
     }
 
     @Test
@@ -113,6 +152,24 @@ class KakaoImportRoutesTest {
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
+    }
+
+    @Test
+    fun `import save route returns server error for unexpected failure`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/save") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"previewId":"broken"}""")
+        }
+
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
     }
 
     @Test
@@ -180,7 +237,8 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
     override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
         this.previewId = previewId
         saveCalls += 1
-        if (previewId == "missing") throw IllegalArgumentException(previewId)
+        if (previewId == "missing") throw TopicAnalysisPreviewNotFoundException(previewId)
+        if (previewId == "broken") error("database unavailable")
         return TopicAnalysisSaveResult(previewId = previewId, topics = listOf(topic("2026-06-07.txt", 11)))
     }
 

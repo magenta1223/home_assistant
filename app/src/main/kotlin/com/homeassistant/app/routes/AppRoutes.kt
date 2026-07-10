@@ -5,6 +5,7 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
@@ -14,8 +15,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
-import java.nio.file.Files
-import java.nio.file.Path
 
 fun Application.configureRoutes(
     kakaoImportAnalyze: TopicAnalysisUseCase,
@@ -29,22 +28,22 @@ fun Application.configureRoutes(
         post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {
 
             val req = call.receive<KakaoImportAnalyzeRequest>()
-            val sourceFileName = req.fileName ?: req.filePath?.let { Path.of(it).fileName.toString() }
-            if (sourceFileName.isNullOrBlank()) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "fileName or filePath is required"))
+            val sourceName = req.sourceName
+            if (sourceName.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "sourceName is required"))
                 return@post
             }
 
-            val text = req.text ?: req.filePath?.let { Files.readString(Path.of(it)) }
+            val text = req.text
             if (text.isNullOrBlank()) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "text or readable filePath is required"))
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "text is required"))
                 return@post
             }
 
             val result = kakaoImportAnalyze.analyze(
                 TopicAnalysisRequest(
                     sourceType = "kakao",
-                    sourceName = sourceFileName,
+                    sourceName = sourceName,
                     text = text
                 )
             )
@@ -62,7 +61,7 @@ fun Application.configureRoutes(
             try {
                 val result = kakaoImportAnalyze.saveAnalysis(req.previewId)
                 call.respond(HttpStatusCode.OK, result)
-            } catch (e: Exception) {
+            } catch (e: TopicAnalysisPreviewNotFoundException) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
             }
         }
@@ -92,14 +91,12 @@ fun Application.configureRoutes(
 /**
  * Request body accepted by the Kakao import preview endpoint.
  *
- * @property fileName Optional source file name used when raw text is provided.
- * @property filePath Optional local path to read when text is not provided.
- * @property text Optional raw Kakao export text.
+ * @property sourceName Source name associated with the raw text.
+ * @property text Raw Kakao export text.
  */
 @Serializable
 private data class KakaoImportAnalyzeRequest(
-    val fileName: String? = null,
-    val filePath: String? = null,
+    val sourceName: String? = null,
     val text: String? = null,
 )
 

@@ -81,12 +81,13 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
     override fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow = transaction(db) {
         ensureMember(userId.value)
         val candidate = MemoryCandidateTable.selectAll()
-            .where { MemoryCandidateTable.id eq candidateId }
+            .where {
+                (MemoryCandidateTable.id eq candidateId) and
+                    (MemoryCandidateTable.createdBy eq userId.value) and
+                    (MemoryCandidateTable.status eq CandidateStatus.PENDING.name)
+            }
             .singleOrNull()
-            ?: error("Candidate not found: $candidateId")
-        check(candidate[MemoryCandidateTable.status] == CandidateStatus.PENDING.name) {
-            "Candidate is not pending: $candidateId"
-        }
+            ?: error("Pending candidate not found for user: $candidateId")
 
         val now = System.currentTimeMillis()
         MemoryCandidateTable.update({ MemoryCandidateTable.id eq candidateId }) {
@@ -115,11 +116,15 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
 
     override fun rejectCandidate(userId: UserId, candidateId: Int) = transaction(db) {
         ensureMember(userId.value)
-        val updated = MemoryCandidateTable.update({ MemoryCandidateTable.id eq candidateId }) {
+        val updated = MemoryCandidateTable.update({
+            (MemoryCandidateTable.id eq candidateId) and
+                (MemoryCandidateTable.createdBy eq userId.value) and
+                (MemoryCandidateTable.status eq CandidateStatus.PENDING.name)
+        }) {
             it[status] = CandidateStatus.REJECTED.name
             it[updatedAt] = System.currentTimeMillis()
         }
-        check(updated > 0) { "Candidate not found: $candidateId" }
+        check(updated > 0) { "Pending candidate not found for user: $candidateId" }
         audit(AuditAction.CANDIDATE_REJECTED, userId.value, candidateId, null)
         Unit
     }

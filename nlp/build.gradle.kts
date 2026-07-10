@@ -20,12 +20,6 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
     implementation(libs.kotlinx.schema.generator.json)
 
-    // Local embeddings
-    implementation(libs.djl.api)
-    implementation(libs.djl.huggingface.tokenizers)
-    implementation(libs.djl.pytorch.engine)
-    implementation(libs.djl.pytorch.native.auto)
-
     // Logging
     implementation(libs.logback.classic)
 

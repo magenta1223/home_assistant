@@ -28,15 +28,14 @@ Copy `.env` to the project root (already present; gitignored). Key variables:
 | Variable | Default | Notes |
 |---|---|---|
 | `AI_PROVIDER` | `ollama` | `ollama`, `openrouter`, or `anthropic` |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Used when `AI_PROVIDER=ollama` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Used by Ollama chat and embedding calls |
 | `OLLAMA_MODEL` | `llama3.2` | |
 | `OPENROUTER_API_KEY` | - | Required when `AI_PROVIDER=openrouter` |
 | `OPENROUTER_MODEL` | `openai/gpt-5.5` | |
 | `ANTHROPIC_API_KEY` | - | Required when `AI_PROVIDER=anthropic` |
-| `EMBEDDING_MODEL` | `intfloat/multilingual-e5-small` | Local embedding model name for logs/docs |
-| `EMBEDDING_MODEL_PATH` | - | Local model directory containing `tokenizer.json`; enables embedding-backed vector indexing |
+| `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Ollama embedding model; run `ollama pull qllama/multilingual-e5-base` before vector indexing |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
-| `QDRANT_COLLECTION` | `family_memories` | Must use 384-dimensional vectors for the default local embedding model |
+| `QDRANT_COLLECTION` | `family_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 
 Server port and DB path are configured in `AppConfig` and Ktor application config.
 

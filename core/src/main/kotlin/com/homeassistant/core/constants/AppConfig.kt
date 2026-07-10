@@ -12,7 +12,6 @@ object AppConfig {
     const val ENV_VAR_QDRANT_URL            = "QDRANT_URL"
     const val ENV_VAR_QDRANT_COLLECTION     = "QDRANT_COLLECTION"
     const val ENV_VAR_EMBEDDING_MODEL       = "EMBEDDING_MODEL"
-    const val ENV_VAR_EMBEDDING_MODEL_PATH  = "EMBEDDING_MODEL_PATH"
     const val ENV_VAR_SLACK_APP_TOKEN       = "SLACK_APP_TOKEN"
     const val ENV_VAR_SLACK_BOT_TOKEN       = "SLACK_BOT_TOKEN"
     const val ENV_VAR_SLACK_MAX_FILE_SIZE_BYTES = "SLACK_MAX_FILE_SIZE_BYTES"
@@ -22,8 +21,8 @@ object AppConfig {
     const val DEFAULT_OLLAMA_MODEL          = "llama3.2"
     const val DEFAULT_QDRANT_URL            = "http://localhost:6333"
     const val DEFAULT_QDRANT_COLLECTION     = "family_memories"
-    const val DEFAULT_EMBEDDING_MODEL_NAME  = "intfloat/multilingual-e5-small"
-    const val DEFAULT_EMBEDDING_VECTOR_SIZE = 384
+    const val DEFAULT_EMBEDDING_MODEL_NAME  = "qllama/multilingual-e5-base"
+    const val DEFAULT_EMBEDDING_VECTOR_SIZE = 768
     const val DEFAULT_SLACK_MAX_FILE_SIZE_BYTES = 10_485_760L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val DEFAULT_LLM_MAX_TOKENS    = 8192

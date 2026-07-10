@@ -14,6 +14,7 @@ import kotlin.test.*
 class MemoryToolsTest {
     private lateinit var repo: FakeMemoryStore
     private lateinit var vectorStore: RecordingVectorStore
+    private lateinit var embeddingService: RecordingEmbeddingService
     private lateinit var tools: MemoryTools
     private lateinit var outbox: FakeIndexingOutboxStore
 
@@ -21,8 +22,9 @@ class MemoryToolsTest {
     fun setup() {
         repo = FakeMemoryStore()
         vectorStore = RecordingVectorStore()
+        embeddingService = RecordingEmbeddingService()
         outbox = FakeIndexingOutboxStore()
-        tools = MemoryTools(repo, DeterministicEmbeddingService("test-model"), vectorStore, outbox)
+        tools = MemoryTools(repo, embeddingService, vectorStore, outbox)
     }
 
     private fun spec(name: String, args: String) = ToolCallSpec(name, args)
@@ -85,6 +87,7 @@ class MemoryToolsTest {
 
         assertContains(result.value, "memory_id=")
         assertEquals(1, vectorStore.upserts.size)
+        assertEquals(listOf("passage: Dad decaf\nDad prefers decaf after dinner"), embeddingService.embeddedTexts)
         assertEquals("dad", vectorStore.upserts.single().payload["createdBy"])
         assertTrue(vectorStore.upserts.single().numericPayload.getValue("createdAt") > 0)
     }
@@ -136,9 +139,19 @@ class MemoryToolsTest {
 
         assertContains(result.value, "memory_id=${memory.id}")
         assertContains(result.value, "Busan July")
+        assertEquals("query: summer trip", embeddingService.embeddedTexts.single())
         assertEquals("dad", vectorStore.lastFilter?.createdBy)
         assertEquals(100, vectorStore.lastFilter?.createdAfter)
         assertEquals(200, vectorStore.lastFilter?.createdBefore)
+    }
+
+    private class RecordingEmbeddingService : EmbeddingService {
+        val embeddedTexts = mutableListOf<String>()
+
+        override fun embed(text: String): List<Float> {
+            embeddedTexts += text
+            return List(384) { index -> index / 384.0f }
+        }
     }
 
     private class RecordingVectorStore : VectorStore {

@@ -33,8 +33,8 @@ class VectorTopicClaimSearchIndexTest {
         assertEquals(2, vectorStore.upserted.size)
         assertEquals(
             listOf(
-                "집 물건 위치\n리모컨 위치 정보\n차단기 리모컨은 벽장 제일 위칸에 있다.",
-                "집 물건 위치\n리모컨 위치 정보\n천장등 리모컨도 함께 있다.",
+                "passage: 집 물건 위치\n리모컨 위치 정보\n차단기 리모컨은 벽장 제일 위칸에 있다.",
+                "passage: 집 물건 위치\n리모컨 위치 정보\n천장등 리모컨도 함께 있다.",
             ),
             embeddingService.embeddedTexts,
         )
@@ -65,7 +65,7 @@ class VectorTopicClaimSearchIndexTest {
 
         val hits = index.search("차단기 리모컨 어디 있어?", limit = 5)
 
-        assertEquals(listOf("차단기 리모컨 어디 있어?"), embeddingService.embeddedTexts)
+        assertEquals(listOf("query: 차단기 리모컨 어디 있어?"), embeddingService.embeddedTexts)
         assertEquals(PayloadVectorSearchFilter(must = mapOf("kind" to "topic_claim")), vectorStore.lastFilter)
         assertEquals(5, vectorStore.lastLimit)
         assertEquals(

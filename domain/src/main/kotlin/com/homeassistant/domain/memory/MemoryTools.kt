@@ -191,7 +191,7 @@ class MemoryTools(
             createdAfter = args.createdAfter,
             createdBefore = args.createdBefore,
         )
-        val results = vectorStore.search(embeddingService.embed(args.query), filter, args.limit)
+        val results = vectorStore.search(embeddingService.embed("query: ${args.query}"), filter, args.limit)
         val byId = repo.listMemories(results.map { it.memoryId }).associateBy { it.id }
         val lines = results.mapNotNull { result ->
             byId[result.memoryId]?.let { memory ->
@@ -206,7 +206,7 @@ class MemoryTools(
             vectorStore.upsert(
                 VectorPoint(
                     memoryId = memory.id,
-                    vector = embeddingService.embed("${memory.summary}\n${memory.content}"),
+                    vector = embeddingService.embed("passage: ${memory.summary}\n${memory.content}"),
                     payload = mapOf(
                         "familyId" to memory.familyId,
                         "memoryId" to memory.id.toString(),

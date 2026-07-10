@@ -15,10 +15,7 @@ import com.homeassistant.domain.topicanswer.TopicAnswerService
 import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
 import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
-import com.homeassistant.nlp.backend.openrouter.OpenRouterBackend
-import com.homeassistant.nlp.backend.openrouter.OpenRouterConfig
 import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
-import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisModelEvalService
 import com.homeassistant.repository.repo.RepositoryFactory
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
@@ -59,7 +56,9 @@ fun Application.module() {
     log.info("Database: $dbPath")
 
     val repositories = RepositoryFactory.create(dbPath)
-    val llmBackend = LmBackendFactory.create(AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: "openrouter"))
+    val llmBackend = LmBackendFactory.create(
+        AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: AppConfig.DEFAULT_AI_PROVIDER),
+    )
     val topicClaimSearchIndex = UnavailableTopicClaimSearchIndex
     val kakaoTopicAnalysis = KakaoMessageTopicAnalysisService(
         backend = llmBackend,
@@ -70,19 +69,6 @@ fun Application.module() {
         indexingOutbox = repositories.indexingOutbox,
     )
     val topicAnswer = TopicAnswerService(repositories.topicAnalysis, topicClaimSearchIndex)
-    val openRouterApiKey = Env[AppConfig.ENV_VAR_OPENROUTER_API_KEY]
-    val topicAnalysisModelEval = openRouterApiKey?.let { apiKey ->
-        TopicAnalysisModelEvalService(
-            backendFactory = { model ->
-                OpenRouterBackend(
-                    apiKey = apiKey,
-                    model = model,
-                    config = OpenRouterConfig(),
-                )
-            },
-        )
-    }
-
     val slackConfig = SlackConfig.fromEnv()
     if (slackConfig == null) {
         log.info("Slack Socket Mode disabled: SLACK_APP_TOKEN or SLACK_BOT_TOKEN is missing")
@@ -107,5 +93,5 @@ fun Application.module() {
         }
     }
 
-    configureRoutes(kakaoTopicAnalysis, topicAnalysisModelEval, topicAnswer)
+    configureRoutes(kakaoTopicAnalysis, topicAnswer)
 }

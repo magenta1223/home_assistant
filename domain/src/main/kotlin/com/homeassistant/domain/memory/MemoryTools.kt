@@ -117,6 +117,8 @@ class MemoryTools(
                     "memoryType" to PropertySchema("string", "기억 타입 필터"),
                     "domain" to PropertySchema("string", "생활 영역 필터"),
                     "memberId" to PropertySchema("string", "구성원 필터"),
+                    "createdAfter" to PropertySchema("integer", "생성 시각 하한(epoch milliseconds)"),
+                    "createdBefore" to PropertySchema("integer", "생성 시각 상한(epoch milliseconds)"),
                     "limit" to PropertySchema("integer", "최대 결과 수"),
                 ),
                 required = listOf("query"),
@@ -130,7 +132,7 @@ class MemoryTools(
             "memory_candidate_list_pending" -> handleListPending(spec, userId)
             "memory_candidate_approve" -> handleApprove(spec, userId)
             "memory_candidate_reject" -> handleReject(spec, userId)
-            "memory_search" -> handleSearch(spec)
+            "memory_search" -> handleSearch(spec, userId)
             else -> error("Unhandled tool: ${spec.name}")
         }
     } catch (e: Exception) {
@@ -179,9 +181,10 @@ class MemoryTools(
         return ToolResult("기억 후보가 거절되었습니다. candidate_id=${args.candidateId}")
     }
 
-    private fun handleSearch(spec: ToolCallSpec): ToolResult {
+    private fun handleSearch(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: SearchArgs = spec.arguments.decodeFromString()
         val filter = MemorySearchFilter(
+            createdBy = userId.value,
             memoryType = args.memoryType,
             domain = args.domain?.uppercase(),
             memberId = args.memberId,
@@ -210,8 +213,9 @@ class MemoryTools(
                         "memoryType" to memory.memoryType.code,
                         "domain" to memory.domainName,
                         "memberId" to (memory.subjectMemberId ?: ""),
-                        "createdAt" to memory.createdAt.toString(),
+                        "createdBy" to memory.createdBy,
                     ),
+                    numericPayload = mapOf("createdAt" to memory.createdAt),
                 ),
             )
             indexingOutbox.markIndexed(IndexTargetType.MEMORY, memory.id)

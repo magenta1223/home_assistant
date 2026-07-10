@@ -10,9 +10,7 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalResult
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalRunResult
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisModelEvalUseCase
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -42,7 +40,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/analyze") {
             contentType(ContentType.Application.Json)
-            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -58,6 +56,44 @@ class KakaoImportRoutesTest {
         assertEquals("[동훈] [오후 4:49] 따랑해", FakeAnalyzer.text)
         assertEquals(1, FakeAnalyzer.previewCalls)
         assertEquals(0, FakeAnalyzer.saveCalls)
+    }
+
+    @Test
+    fun `import analyze route rejects server file path input`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"filePath":"settings.gradle.kts"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
+    }
+
+    @Test
+    fun `import analyze route rejects legacy file name input`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+        }
+
+        assertEquals(HttpStatusCode.BadRequest, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
     }
 
     @Test
@@ -119,7 +155,25 @@ class KakaoImportRoutesTest {
     }
 
     @Test
-    fun `test topic analysis route analyzes bundled small kakao conversation`() = testApplication {
+    fun `import save route returns server error for unexpected failure`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/save") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"previewId":"broken"}""")
+        }
+
+        assertEquals(HttpStatusCode.InternalServerError, response.status)
+    }
+
+    @Test
+    fun `test topic analysis route is not exposed`() = testApplication {
         FakeAnalyzer.reset()
         application {
             install(ContentNegotiation) {
@@ -130,41 +184,17 @@ class KakaoImportRoutesTest {
 
         val response = client.get("/api/test/topic-analysis/kakao-small-set")
 
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertContains(FakeAnalyzer.sourceFileName, "topic-analysis-small-kakao")
-        assertContains(FakeAnalyzer.text, "2026년 3월 15일 오후 1:58, 동훈 : 우리은행 1002266102280")
-        assertContains(FakeAnalyzer.text, "관리사무소 질문 리스트")
-        assertContains(response.bodyAsText(), "관계 표현")
-        assertContains(response.bodyAsText(), "importedRecordCount")
+        assertEquals(HttpStatusCode.NotFound, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
     }
 
     @Test
-    fun `model eval route runs bundled kakao asset and returns output file path`() = testApplication {
-        FakeModelEval.reset()
+    fun `model eval route is not exposed`() = testApplication {
         application {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeModelEval)
-        }
-
-        val response = client.post("/api/test/topic-analysis/openrouter-model-eval")
-
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(1, FakeModelEval.calls)
-        assertContains(response.bodyAsText(), "topic-analysis-model-evals")
-        assertContains(response.bodyAsText(), "deepseek/deepseek-v4-flash")
-        assertContains(response.bodyAsText(), "parseSucceeded")
-    }
-
-    @Test
-    fun `model eval route passes requested model list`() = testApplication {
-        FakeModelEval.reset()
-        application {
-            install(ContentNegotiation) {
-                json()
-            }
-            configureRoutes(FakeAnalyzer, FakeModelEval)
+            configureRoutes(FakeAnalyzer)
         }
 
         val response = client.post("/api/test/topic-analysis/openrouter-model-eval") {
@@ -172,8 +202,7 @@ class KakaoImportRoutesTest {
             setBody("""{"models":["z-ai/glm-5.2","qwen/qwen3.7-max"]}""")
         }
 
-        assertEquals(HttpStatusCode.OK, response.status)
-        assertEquals(listOf("z-ai/glm-5.2", "qwen/qwen3.7-max"), FakeModelEval.requestedModels)
+        assertEquals(HttpStatusCode.NotFound, response.status)
     }
 }
 
@@ -208,7 +237,8 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
     override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
         this.previewId = previewId
         saveCalls += 1
-        if (previewId == "missing") throw IllegalArgumentException(previewId)
+        if (previewId == "missing") throw TopicAnalysisPreviewNotFoundException(previewId)
+        if (previewId == "broken") error("database unavailable")
         return TopicAnalysisSaveResult(previewId = previewId, topics = listOf(topic("2026-06-07.txt", 11)))
     }
 
@@ -254,31 +284,4 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
             ),
             status = CandidateStatus.PENDING,
         )
-}
-
-private object FakeModelEval : TopicAnalysisModelEvalUseCase() {
-    var calls = 0
-    var requestedModels: List<String>? = null
-
-    fun reset() {
-        calls = 0
-        requestedModels = null
-    }
-
-    override suspend fun runBundledKakaoAsset(models: List<String>?): TopicAnalysisModelEvalRunResult {
-        calls += 1
-        requestedModels = models
-        return TopicAnalysisModelEvalRunResult(
-            outputPath = "build/topic-analysis-model-evals/eval-test.txt",
-            sourceName = "KakaoTalkChats.txt",
-            results = listOf(
-                TopicAnalysisModelEvalResult(
-                    model = "deepseek/deepseek-v4-flash",
-                    parseSucceeded = true,
-                    errorMessage = null,
-                    rawResponseCount = 1,
-                ),
-            ),
-        )
-    }
 }

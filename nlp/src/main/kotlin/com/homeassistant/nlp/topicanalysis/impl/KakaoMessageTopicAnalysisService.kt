@@ -17,6 +17,7 @@ import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import org.slf4j.LoggerFactory
@@ -64,7 +65,7 @@ class KakaoMessageTopicAnalysisService(
 
     override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
         val preview = previewRepository.findPreview(previewId)
-            ?: throw Exception("PREVIEW_NOT_FOUND: $previewId")
+            ?: throw TopicAnalysisPreviewNotFoundException(previewId)
 
         return savePreviewTopics(
             previewId = previewId,
@@ -76,7 +77,7 @@ class KakaoMessageTopicAnalysisService(
 
     override suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
         val preview = previewRepository.findPreview(request.previewId)
-            ?: throw Exception("PREVIEW_NOT_FOUND: ${request.previewId}")
+            ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
         val selectedTopics = request.selectedTopicIndices
             .sorted()
             .mapNotNull { index -> preview.topics.getOrNull(index) }

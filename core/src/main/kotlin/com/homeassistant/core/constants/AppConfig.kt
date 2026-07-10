@@ -4,6 +4,7 @@ object AppConfig {
     const val DEFAULT_PORT              = 8080
     const val CONFIG_KEY_DB_PATH        = "homeassistant.dbPath"
     const val ENV_VAR_AI_PROVIDER           = "AI_PROVIDER"
+    const val ENV_VAR_ANTHROPIC_API_KEY     = "ANTHROPIC_API_KEY"
     const val ENV_VAR_OPENROUTER_API_KEY    = "OPENROUTER_API_KEY"
     const val ENV_VAR_OPENROUTER_MODEL      = "OPENROUTER_MODEL"
     const val ENV_VAR_OLLAMA_BASE_URL       = "OLLAMA_BASE_URL"
@@ -14,6 +15,7 @@ object AppConfig {
     const val ENV_VAR_SLACK_APP_TOKEN       = "SLACK_APP_TOKEN"
     const val ENV_VAR_SLACK_BOT_TOKEN       = "SLACK_BOT_TOKEN"
     const val ENV_VAR_SLACK_MAX_FILE_SIZE_BYTES = "SLACK_MAX_FILE_SIZE_BYTES"
+    const val DEFAULT_AI_PROVIDER           = "ollama"
     const val DEFAULT_OPENROUTER_MODEL      = "openai/gpt-5.5"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://localhost:11434"
     const val DEFAULT_OLLAMA_MODEL          = "llama3.2"
@@ -28,6 +30,4 @@ object AppConfig {
     const val ROUTE_KAKAO_IMPORT_ANALYZE = "/api/kakao/import/analyze"
     const val ROUTE_KAKAO_IMPORT_SAVE = "/api/kakao/import/save"
     const val ROUTE_TOPIC_ANSWER = "/api/topics/answer"
-    const val ROUTE_TEST_TOPIC_ANALYSIS_KAKAO_SMALL_SET = "/api/test/topic-analysis/kakao-small-set"
-    const val ROUTE_TEST_TOPIC_ANALYSIS_OPENROUTER_MODEL_EVAL = "/api/test/topic-analysis/openrouter-model-eval"
 }

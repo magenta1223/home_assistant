@@ -91,7 +91,8 @@ The `(team_id, slack_user_id)` pair is the primary key. Keeping the active point
 channel_id          Slack DM channel
 message_ts          Slack message timestamp
 session_id          resolved local session when available
-status              PROCESSING, COMPLETED, or FAILED
+status              PROCESSING, ANSWER_READY, COMPLETED, or FAILED
+answer_text         final Codex answer once generated, otherwise null
 response_ts         optional Slack response timestamp
 created_at          receipt time
 updated_at          latest state change
@@ -136,7 +137,8 @@ Calls the existing approved-topic answer/search boundary using the authenticated
 5. Kotlin retrieves relevant approved household memories for the question.
 6. `CodexConversationClient` starts `codex exec --json` in the dedicated workspace.
 7. On `thread.started`, the application immediately persists the Codex thread, local session, and active pointer.
-8. On the final agent message, the application posts the answer to the DM and marks the receipt completed.
+8. On the final agent message, the application stores the answer and marks the receipt `ANSWER_READY`.
+9. The application posts the stored answer to the DM and marks the receipt completed.
 
 Persisting on `thread.started` minimizes orphaned Codex threads if the process fails after startup but before producing an answer.
 
@@ -146,7 +148,7 @@ Persisting on `thread.started` minimizes orphaned Codex threads if the process f
 2. The active session is loaded and ownership is revalidated.
 3. Kotlin retrieves relevant approved memories for the new question.
 4. `CodexConversationClient` runs `codex exec resume <codexThreadId> --json` with the new turn.
-5. The final agent message is posted to Slack, session activity is updated, and the receipt is completed.
+5. The final agent message is stored with `ANSWER_READY`, session activity is updated, the stored answer is posted to Slack, and the receipt is completed.
 
 ### Resume selection
 
@@ -187,13 +189,13 @@ The context block is explicitly labeled as untrusted reference content. It canno
 ## Failure Handling
 
 - Workspace mismatch or a missing Slack user ID: reject without invoking Codex.
-- Duplicate Slack message: return the previously recorded state and do not invoke Codex again.
+- Duplicate Slack message: do not invoke Codex again. If its receipt is `ANSWER_READY`, retry only Slack delivery using the stored answer; otherwise return the recorded state.
 - Approved-memory search unavailable: continue without memory context and state that stored-memory lookup was unavailable only when it affects the answer.
 - Codex fails before `thread.started`: mark the receipt failed; no local session is created.
 - Codex fails after `thread.started`: retain the persisted session so the next message can resume it; mark the receipt failed.
 - Resume reports a missing or corrupt Codex thread: do not silently create a new thread. Set `unavailable_at` and `unavailable_reason`, clear the active pointer, and tell the user to start or select another conversation.
 - Timeout: terminate the process tree, mark the receipt failed, and post a short retryable error.
-- Slack response posting fails after Codex completes: retain the completed Codex turn and receipt state; retry delivery without running Codex again.
+- Slack response posting fails after Codex completes: retain the stored answer in `ANSWER_READY`; retry delivery without running Codex again.
 - Application restart: stale `PROCESSING` receipts become recoverable failures; they are never automatically re-executed without an explicit retry policy.
 
 ## Concurrency
@@ -212,6 +214,7 @@ The database owns durable idempotency and active-pointer invariants. Multi-insta
 - Internal `UserId` derivation is deterministic for the Slack workspace and member pair.
 - Workspace mismatch is rejected before retrieval or Codex invocation.
 - Duplicate `(channelId, messageTs)` does not invoke Codex twice.
+- An `ANSWER_READY` duplicate retries Slack delivery with the stored answer and does not invoke Codex.
 - `/brain new` clears only the invoking member's active pointer.
 - Resume lists and activates only sessions owned by the invoking member.
 - A forged modal session ID cannot cross the ownership boundary.

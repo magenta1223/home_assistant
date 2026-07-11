@@ -7,8 +7,6 @@ kotlinxSerialization = "1.7.3"
 kotlinxSchema = "0.5.0"
 sqliteJdbc = "3.47.1.0"
 anthropic = "0.8.0"
-djl = "0.31.0"
-djlPytorchNative = "1.9.+"
 logback = "1.5.12"
 mockk = "1.13.13"
 dotenv = "6.4.1"
@@ -44,12 +42,6 @@ caffeine = { module = "com.github.ben-manes.caffeine:caffeine", version.ref = "c
 
 # Anthropic
 anthropic-java = { module = "com.anthropic:anthropic-java", version.ref = "anthropic" }
-
-# DJL
-djl-api = { module = "ai.djl:api", version.ref = "djl" }
-djl-huggingface-tokenizers = { module = "ai.djl.huggingface:tokenizers", version.ref = "djl" }
-djl-pytorch-engine = { module = "ai.djl.pytorch:pytorch-engine", version.ref = "djl" }
-djl-pytorch-native-auto = { module = "ai.djl.pytorch:pytorch-native-auto", version.ref = "djlPytorchNative" }
 
 # Logging
 logback-classic = { module = "ch.qos.logback:logback-classic", version.ref = "logback" }

@@ -13,11 +13,10 @@ import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.memory.QdrantVectorStore
 import com.homeassistant.domain.kakao.KakaoImportService
 import com.homeassistant.domain.topicanswer.TopicAnswerService
-import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
 import com.homeassistant.domain.topicanswer.VectorTopicClaimSearchIndex
 import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
-import com.homeassistant.nlp.embedding.LocalEmbeddingService
+import com.homeassistant.nlp.embedding.OllamaEmbeddingService
 import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import com.homeassistant.repository.repo.RepositoryFactory
 import io.ktor.serialization.kotlinx.json.json
@@ -31,7 +30,6 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import org.slf4j.LoggerFactory
 import org.slf4j.event.Level
 import java.io.PrintStream
-import java.nio.file.Path
 
 private val log = LoggerFactory.getLogger("Application")
 
@@ -65,27 +63,20 @@ fun Application.module() {
     )
     val embeddingModelName = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
         ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
-    val embeddingService = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL_PATH]?.let { modelPath ->
-        log.info("Local embedding model: $embeddingModelName path=$modelPath")
-        LocalEmbeddingService.fromModelPath(Path.of(modelPath))
-    }
-    val topicClaimSearchIndex = if (embeddingService == null) {
-        log.info("Topic claim vector index disabled: ${AppConfig.ENV_VAR_EMBEDDING_MODEL_PATH} is missing")
-        UnavailableTopicClaimSearchIndex
-    } else {
-        VectorTopicClaimSearchIndex(
-            embeddingService = embeddingService,
-            vectorStore = QdrantVectorStore(
-                baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
-                collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
-            ),
-        )
-    }
-    embeddingService?.let { service ->
-        monitor.subscribe(ApplicationStopped) {
-            service.close()
-        }
-    }
+    val embeddingBaseUrl = Env[AppConfig.ENV_VAR_OLLAMA_BASE_URL]
+        ?: AppConfig.DEFAULT_OLLAMA_BASE_URL
+    log.info("Ollama embedding model=$embeddingModelName baseUrl=$embeddingBaseUrl")
+    val embeddingService = OllamaEmbeddingService(
+        baseUrl = embeddingBaseUrl,
+        model = embeddingModelName,
+    )
+    val topicClaimSearchIndex = VectorTopicClaimSearchIndex(
+        embeddingService = embeddingService,
+        vectorStore = QdrantVectorStore(
+            baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
+            collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
+        ),
+    )
     val kakaoTopicAnalysis = KakaoMessageTopicAnalysisService(
         backend = llmBackend,
         importService = KakaoImportService(repositories.kakaoMessages),

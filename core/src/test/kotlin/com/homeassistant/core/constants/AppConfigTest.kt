@@ -15,9 +15,8 @@ class AppConfigTest {
     }
 
     @Test
-    fun `default embedding configuration uses local multilingual e5 small`() {
-        assertEquals("EMBEDDING_MODEL_PATH", AppConfig.ENV_VAR_EMBEDDING_MODEL_PATH)
-        assertEquals("intfloat/multilingual-e5-small", AppConfig.DEFAULT_EMBEDDING_MODEL_NAME)
-        assertEquals(384, AppConfig.DEFAULT_EMBEDDING_VECTOR_SIZE)
+    fun `default embedding configuration uses ollama multilingual e5 base`() {
+        assertEquals("qllama/multilingual-e5-base", AppConfig.DEFAULT_EMBEDDING_MODEL_NAME)
+        assertEquals(768, AppConfig.DEFAULT_EMBEDDING_VECTOR_SIZE)
     }
 }

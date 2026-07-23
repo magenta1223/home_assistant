@@ -3,6 +3,7 @@ package com.homeassistant.nlp.backend
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.nlp.backend.anthropic.AnthropicBackend
+import com.homeassistant.nlp.backend.codex.CodexCliBackend
 import com.homeassistant.nlp.backend.ollama.OllamaBackend
 import com.homeassistant.nlp.backend.ollama.OllamaConfig
 import com.homeassistant.nlp.backend.openrouter.OpenRouterBackend
@@ -30,5 +31,6 @@ object LmBackendFactory {
             apiKey = environment(AppConfig.ENV_VAR_ANTHROPIC_API_KEY)
                 ?: error("${AppConfig.ENV_VAR_ANTHROPIC_API_KEY} not set"),
         )
+        AiProvider.CODEX -> CodexCliBackend()
     }
 }

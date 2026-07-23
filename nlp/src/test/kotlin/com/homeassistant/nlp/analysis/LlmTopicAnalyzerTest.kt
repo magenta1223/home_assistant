@@ -195,19 +195,23 @@ class LlmTopicAnalyzerTest {
     }
 
     @Test
-    fun `chunk prompt includes topic evidence and claim limits`() = runBlocking {
+    fun `chunk prompt has no topic count limit and keeps evidence and claim limits`() = runBlocking {
         val backend = RecordingBackend(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
         val service = LlmTopicAnalyzer(backend)
 
         service.analyze(documentWithRecords(201))
 
-        assertContains(backend.calls.first().system, "최대 5개")
+        assertFalse(backend.calls.first().system.contains("후보 topic은 최대"))
         assertContains(backend.calls.first().system, "evidenceRecordIds는 topic당 최대 5개")
         assertContains(backend.calls.first().system, "claims는 topic당 최대 3개")
+        assertContains(backend.calls.first().system, "한 번만 짧게 언급된 정보")
+        assertContains(backend.calls.first().system, "누락되지 않았는지 다시 점검")
+        assertContains(backend.calls.first().system, "최대 200 records씩 내부 검토 구간")
+        assertContains(backend.calls.first().system, "독립 topic은 다음 조건을 모두 만족")
     }
 
     @Test
-    fun `merge prompt asks to merge interrupted topics and limits final topics`() = runBlocking {
+    fun `merge prompt preserves reusable topics without a final topic limit`() = runBlocking {
         val backend = RecordingBackend(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
         val service = LlmTopicAnalyzer(backend)
 
@@ -217,7 +221,9 @@ class LlmTopicAnalyzerTest {
         assertContains(mergeSystem, "시간상 떨어져")
         assertContains(mergeSystem, "같은 주제")
         assertContains(mergeSystem, "병합")
-        assertContains(mergeSystem, "최종 최대 20개")
+        assertFalse(mergeSystem.contains("최종 최대 20개"))
+        assertContains(mergeSystem, "저빈도 topic")
+        assertContains(mergeSystem, "일부 후보를 버리지 마세요")
     }
 
     @Test

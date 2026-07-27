@@ -1,7 +1,7 @@
 package com.homeassistant.nlp.backend
 
 enum class AiProvider {
-    OLLAMA, OPENROUTER, ANTHROPIC;
+    OLLAMA, OPENROUTER, ANTHROPIC, CODEX;
 
     companion object {
         fun from(value: String): AiProvider =

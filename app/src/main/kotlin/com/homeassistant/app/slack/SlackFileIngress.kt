@@ -1,9 +1,10 @@
 package com.homeassistant.app.slack
 
 import com.slack.api.model.event.MessageFileShareEvent
+import com.homeassistant.domain.slackconversation.SlackPrincipal
 
 data class SlackKakaoFileUpload(
-    val slackUserId: String,
+    val principal: SlackPrincipal,
     val channelId: String,
     val messageTs: String,
     val fileId: String?,
@@ -12,9 +13,14 @@ data class SlackKakaoFileUpload(
 )
 
 object SlackFileIngress {
-    fun from(event: MessageFileShareEvent, maxFileSizeBytes: Long): List<SlackKakaoFileUpload> {
+    fun from(
+        event: MessageFileShareEvent,
+        principal: SlackPrincipal,
+        maxFileSizeBytes: Long,
+    ): List<SlackKakaoFileUpload> {
         if (event.channelType != "im") return emptyList()
         val userId = event.user?.takeIf { it.isNotBlank() } ?: return emptyList()
+        if (userId != principal.slackUserId) return emptyList()
         val channelId = event.channel?.takeIf { it.isNotBlank() } ?: return emptyList()
         val messageTs = event.threadTs ?: event.ts ?: return emptyList()
 
@@ -26,7 +32,7 @@ object SlackFileIngress {
             if (size > maxFileSizeBytes) return@mapNotNull null
 
             SlackKakaoFileUpload(
-                slackUserId = userId,
+                principal = principal,
                 channelId = channelId,
                 messageTs = messageTs,
                 fileId = file.id,

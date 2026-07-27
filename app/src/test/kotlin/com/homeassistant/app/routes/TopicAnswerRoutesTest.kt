@@ -9,6 +9,7 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -36,7 +37,7 @@ class TopicAnswerRoutesTest {
 
         val response = client.post("/api/topics/answer") {
             contentType(ContentType.Application.Json)
-            setBody("""{"question":"리모컨 어디 있어?","limit":5}""")
+            setBody("""{"userId":"dad","familyId":"family-1","question":"리모컨 어디 있어?","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -57,7 +58,7 @@ class TopicAnswerRoutesTest {
 
         val response = client.post("/api/topics/answer") {
             contentType(ContentType.Application.Json)
-            setBody("""{"question":"   ","limit":5}""")
+            setBody("""{"userId":"dad","familyId":"family-1","question":"   ","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -75,7 +76,7 @@ class TopicAnswerRoutesTest {
 
         val response = client.post("/api/topics/answer") {
             contentType(ContentType.Application.Json)
-            setBody("""{"question":"리모컨 어디 있어?","limit":5}""")
+            setBody("""{"userId":"dad","familyId":"family-1","question":"리모컨 어디 있어?","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
@@ -109,6 +110,6 @@ private object UnusedTopicAnalysis : TopicAnalysisUseCase() {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("not used")
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 }

@@ -101,6 +101,8 @@ class SlackTopicBlocksTest {
 
     private fun topic(title: String, summary: String) =
         TopicCandidate(
+            familyId = "family-1",
+            createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = "family-kakao.txt",
             title = title,

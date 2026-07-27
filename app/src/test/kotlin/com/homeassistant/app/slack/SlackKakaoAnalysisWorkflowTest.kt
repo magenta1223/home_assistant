@@ -2,6 +2,7 @@ package com.homeassistant.app.slack
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.slackconversation.SlackPrincipal
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
@@ -9,6 +10,7 @@ import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import kotlinx.coroutines.runBlocking
@@ -34,7 +36,9 @@ class SlackKakaoAnalysisWorkflowTest {
         assertEquals("kakao export", analyzer.text)
         assertEquals("kakao.txt", analyzer.sourceName)
         assertEquals(SlackTopicReviewStatus.AWAITING_CONFIRMATION, sessions.find("preview-1")?.status)
-        assertEquals("U1", sessions.find("preview-1")?.ownerSlackUserId)
+        assertEquals("U1", sessions.find("preview-1")?.principal?.slackUserId)
+        assertEquals("dad", analyzer.userId)
+        assertEquals("family-1", analyzer.familyId)
         assertEquals(2, slack.messages.size)
         assertEquals("D1", slack.messages.last().channelId)
         assertEquals("1710000000.000100", slack.messages.last().threadTs)
@@ -76,7 +80,7 @@ class SlackKakaoAnalysisWorkflowTest {
 
     private fun upload() =
         SlackKakaoFileUpload(
-            slackUserId = "U1",
+            principal = SlackPrincipal("T1", "U1", "dad", "family-1"),
             channelId = "D1",
             messageTs = "1710000000.000100",
             fileId = null,
@@ -102,8 +106,9 @@ private class FakeSlackClient(
         text: String,
         blocks: List<Map<String, Any>>,
         threadTs: String?,
-    ) {
+    ): SlackMessageDelivery {
         messages += PostedMessage(channelId, text, threadTs)
+        return SlackMessageDelivery("${messages.size}.0")
     }
 
     override fun postEphemeral(channelId: String, userId: String, text: String) {
@@ -130,10 +135,14 @@ private data class EphemeralMessage(
 private class FakeAnalyzer : TopicAnalysisUseCase() {
     var sourceName = ""
     var text = ""
+    var userId = ""
+    var familyId = ""
 
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult {
         sourceName = request.sourceName
         text = request.text
+        userId = request.userId
+        familyId = request.familyId
         return TopicAnalysisResult(
             previewId = "preview-1",
             sourceType = request.sourceType,
@@ -143,15 +152,15 @@ private class FakeAnalyzer : TopicAnalysisUseCase() {
         )
     }
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
-        TopicAnalysisSaveResult(previewId, emptyList<Topic>())
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
+        TopicAnalysisSaveResult(request.previewId, emptyList<Topic>())
 }
 
 private object FailingAnalyzer : TopicAnalysisUseCase() {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("analysis failed")
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 }
 
@@ -159,12 +168,14 @@ private object DuplicateAnalyzer : TopicAnalysisUseCase() {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         throw DuplicateKakaoMessagesException(request.sourceName, 1)
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 }
 
 private fun topic() =
     TopicCandidate(
+        familyId = "family-1",
+        createdByUserId = "dad",
         sourceType = "kakao",
         sourceName = "kakao.txt",
         title = "이사 준비",

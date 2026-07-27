@@ -13,6 +13,7 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -41,7 +42,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/analyze") {
             contentType(ContentType.Application.Json)
-            setBody("""{"sourceName":"duplicate.txt","text":"duplicate"}""")
+            setBody(scoped("""{"sourceName":"duplicate.txt","text":"duplicate"}"""))
         }
 
         assertEquals(HttpStatusCode.Conflict, response.status)
@@ -60,7 +61,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/analyze") {
             contentType(ContentType.Application.Json)
-            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+            setBody(scoped("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}"""))
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -128,7 +129,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"preview-1"}""")
+            setBody("""{"previewId":"preview-1","userId":"dad","familyId":"family-1"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -150,7 +151,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"   "}""")
+            setBody("""{"previewId":"   ","userId":"dad","familyId":"family-1"}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -168,7 +169,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"missing"}""")
+            setBody("""{"previewId":"missing","userId":"dad","familyId":"family-1"}""")
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
@@ -186,7 +187,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"broken"}""")
+            setBody("""{"previewId":"broken","userId":"dad","familyId":"family-1"}""")
         }
 
         assertEquals(HttpStatusCode.InternalServerError, response.status)
@@ -224,6 +225,9 @@ class KakaoImportRoutesTest {
 
         assertEquals(HttpStatusCode.NotFound, response.status)
     }
+
+    private fun scoped(json: String): String =
+        json.dropLast(1) + ""","userId":"dad","familyId":"family-1"}"""
 }
 
 private object FakeAnalyzer : TopicAnalysisUseCase() {
@@ -257,16 +261,21 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
         )
     }
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
-        this.previewId = previewId
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
+        this.previewId = request.previewId
         saveCalls += 1
-        if (previewId == "missing") throw TopicAnalysisPreviewNotFoundException(previewId)
-        if (previewId == "broken") error("database unavailable")
-        return TopicAnalysisSaveResult(previewId = previewId, topics = listOf(topic("2026-06-07.txt", 11)))
+        if (request.previewId == "missing") throw TopicAnalysisPreviewNotFoundException(request.previewId)
+        if (request.previewId == "broken") error("database unavailable")
+        return TopicAnalysisSaveResult(
+            previewId = request.previewId,
+            topics = listOf(topic("2026-06-07.txt", 11)),
+        )
     }
 
     private fun newTopic(sourceFileName: String, evidenceRef: Int) =
         TopicCandidate(
+            familyId = "family-1",
+            createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = sourceFileName,
             title = "관계 표현",
@@ -288,6 +297,8 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
     private fun topic(sourceFileName: String, evidenceRef: Int) =
         Topic(
             id = 7,
+            familyId = "family-1",
+            createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = sourceFileName,
             title = "관계 표현",

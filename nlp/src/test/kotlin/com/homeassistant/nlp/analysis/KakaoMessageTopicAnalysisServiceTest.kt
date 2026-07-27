@@ -1,5 +1,9 @@
 package com.homeassistant.nlp.analysis
 
+import com.homeassistant.core.identity.FamilyId
+import com.homeassistant.core.identity.HouseholdAccessPolicy
+import com.homeassistant.core.identity.HouseholdAccessScope
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
@@ -49,10 +53,11 @@ class KakaoMessageTopicAnalysisServiceTest {
             topicRepository = FakeTopicStore(),
             previewRepository = previewStore,
             indexingOutbox = NoOpIndexingOutboxStore,
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
         val error = assertFailsWith<DuplicateKakaoMessagesException> {
-            service.analyze(TopicAnalysisRequest("kakao", "family-kakao.txt", text))
+            service.analyze(request(text))
         }
 
         assertEquals(2, error.recordCount)
@@ -74,9 +79,10 @@ class KakaoMessageTopicAnalysisServiceTest {
             topicRepository = FakeTopicStore(),
             previewRepository = previewStore,
             indexingOutbox = NoOpIndexingOutboxStore,
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.analyze(TopicAnalysisRequest("kakao", "family-kakao.txt", text))
+        val result = service.analyze(request(text))
 
         assertEquals(1, result.importedRecordCount)
         assertEquals(1, backend.calls)
@@ -100,11 +106,14 @@ class KakaoMessageTopicAnalysisServiceTest {
             previewRepository = previewStore,
             topicClaimSearchIndex = topicClaimSearchIndex,
             indexingOutbox = NoOpIndexingOutboxStore,
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
         val result = service.saveSelectedAnalysis(
             TopicAnalysisSelectionSaveRequest(
                 previewId = "preview-1",
+                userId = TEST_SCOPE.userId.value,
+                familyId = TEST_SCOPE.familyId.value,
                 selectedTopicIndices = setOf(2, 0, 99),
             ),
         )
@@ -124,11 +133,14 @@ class KakaoMessageTopicAnalysisServiceTest {
             topicRepository = FakeTopicStore(),
             previewRepository = FakePreviewStore(topics = listOf(topic("첫 후보", 1))),
             indexingOutbox = NoOpIndexingOutboxStore,
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
         val result = service.saveSelectedAnalysis(
             TopicAnalysisSelectionSaveRequest(
                 previewId = "preview-1",
+                userId = TEST_SCOPE.userId.value,
+                familyId = TEST_SCOPE.familyId.value,
                 selectedTopicIndices = emptySet(),
             ),
         )
@@ -147,10 +159,16 @@ class KakaoMessageTopicAnalysisServiceTest {
             previewRepository = FakePreviewStore(topics = listOf(topic("후보", 1))),
             topicClaimSearchIndex = FailingTopicClaimSearchIndex,
             indexingOutbox = outbox,
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
         val result = service.saveSelectedAnalysis(
-            TopicAnalysisSelectionSaveRequest("preview-1", setOf(0)),
+            TopicAnalysisSelectionSaveRequest(
+                previewId = "preview-1",
+                userId = TEST_SCOPE.userId.value,
+                familyId = TEST_SCOPE.familyId.value,
+                selectedTopicIndices = setOf(0),
+            ),
         )
 
         assertEquals(listOf("후보"), result.topics.map { it.title })
@@ -189,6 +207,8 @@ private class FakeTopicStore : TopicAnalysisStore {
         createdTopics += candidate
         return Topic(
             id = createdTopics.size,
+            familyId = candidate.familyId,
+            createdByUserId = candidate.createdByUserId,
             sourceType = candidate.sourceType,
             sourceName = candidate.sourceName,
             title = candidate.title,
@@ -210,10 +230,20 @@ private class FakeTopicStore : TopicAnalysisStore {
         )
     }
 
-    override fun searchApprovedTopics(query: String, limit: Int): List<Topic> =
+    override fun searchApprovedTopics(
+        scope: HouseholdAccessScope,
+        query: String,
+        limit: Int,
+    ): List<Topic> =
         emptyList()
 
-    override fun getApprovedTopics(topicIds: Collection<Int>): List<Topic> =
+    override fun getApprovedTopics(
+        scope: HouseholdAccessScope,
+        topicIds: Collection<Int>,
+    ): List<Topic> =
+        emptyList()
+
+    override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> =
         emptyList()
 }
 
@@ -224,13 +254,21 @@ private class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
         indexedTopics += topic
     }
 
-    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
+    override fun search(
+        scope: HouseholdAccessScope,
+        question: String,
+        limit: Int,
+    ): List<TopicClaimSearchHit> =
         emptyList()
 }
 
 private object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
     override fun index(topic: Topic) = error("qdrant unavailable")
-    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> = emptyList()
+    override fun search(
+        scope: HouseholdAccessScope,
+        question: String,
+        limit: Int,
+    ): List<TopicClaimSearchHit> = emptyList()
 }
 
 private class FakeIndexingOutboxStore : IndexingOutboxStore {
@@ -328,6 +366,8 @@ private fun kakaoText(): String =
 
 private fun topic(title: String, evidenceRef: Int) =
     TopicCandidate(
+        familyId = TEST_SCOPE.familyId.value,
+        createdByUserId = TEST_SCOPE.userId.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = title,
@@ -345,3 +385,15 @@ private fun topic(title: String, evidenceRef: Int) =
             ),
         ),
     )
+
+private fun request(text: String): TopicAnalysisRequest =
+    TopicAnalysisRequest(
+        userId = TEST_SCOPE.userId.value,
+        familyId = TEST_SCOPE.familyId.value,
+        sourceType = "kakao",
+        sourceName = "family-kakao.txt",
+        text = text,
+    )
+
+private val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
+private val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_SCOPE }

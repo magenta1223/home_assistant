@@ -36,6 +36,14 @@ Copy `.env` to the project root (already present; gitignored). Key variables:
 | `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Ollama embedding model; run `ollama pull qllama/multilingual-e5-base` before vector indexing |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
 | `QDRANT_COLLECTION` | `family_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
+| `SLACK_TEAM_ID` | - | Required Slack workspace ID |
+| `SLACK_MEMBER_SCOPES_JSON` | - | Server-owned mapping of Slack members to immutable `userId`/`familyId` scopes |
+| `CODEX_EXECUTABLE` | - | Absolute path to the version-specific service Codex executable |
+| `CODEX_EXPECTED_VERSION` | `0.144.5` | Exact service CLI version validated at startup |
+| `CODEX_WORK_DIR` | - | Dedicated minimal service workspace; must not contain the application DB |
+| `CODEX_HOME` | - | Persistent service-only Codex home, separate from the operator CLI |
+| `CODEX_API_KEY` | - | Service secret mapped to `OPENAI_API_KEY` only in the Codex child process |
+| `CODEX_TIMEOUT_SECONDS` | `120` | Positive per-turn process timeout |
 
 Server port and DB path are configured in `AppConfig` and Ktor application config.
 
@@ -47,8 +55,11 @@ The project is now a **home second brain**, not a general chat assistant. The pr
 2. Analyze source records into topic candidates with an LLM.
 3. Store pending memory candidates and evidence.
 4. Approve, reject, search, and retrieve memories through domain tools or future purpose-built APIs.
+5. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
 
-Do not reintroduce `/api/chat`, conversation sessions, intent-analysis pipelines, or chat-response DTOs unless the product direction changes again.
+Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
+
+Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-analysis pipelines, or chat-response DTOs. Keep Slack identity, authorization, memory retrieval, idempotency, and session expiry inside the Kotlin application.
 
 ## Module Architecture
 

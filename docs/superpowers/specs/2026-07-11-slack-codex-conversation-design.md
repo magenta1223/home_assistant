@@ -24,11 +24,11 @@ The first version does not let Codex access SQLite, Qdrant, repository files, or
 
 ### Normal conversation
 
-A member sends a top-level DM to the Slack app. If the member has a Codex thread whose last activity is less than ten minutes old, the application resumes it. Otherwise, the application removes the expired active-session link, starts a new Codex thread, and makes it active.
+A member sends a top-level DM to the Slack app. If the member has a Codex thread whose last activity is less than ten minutes old, the application automatically continues it. This automatic continuation is the only resume behavior. Otherwise, the application removes the expired active-session link, permanently stops considering the old thread resumable, starts a new Codex thread, and makes it active.
 
 The DM timeline remains a normal continuous messenger experience. Slack threads are not used as conversation boundaries.
 
-There are no session commands, session lists, or manual resume controls in the MVP. Expired Codex thread files may remain in the server-owned `CODEX_HOME`, but the application no longer retains an active link to them and never resumes them.
+There are no session commands, session lists, or manual resume controls in the MVP. Expired, failed, historical, and stale-recovery threads are never resumed. Expired Codex thread files may remain in the server-owned `CODEX_HOME`, but the application no longer retains an active link to them.
 
 ## Identity And Authorization
 
@@ -41,12 +41,14 @@ Slack identity is determined before Codex runs.
 - `teamId` is the configured household Slack workspace ID.
 - `slackUserId` is the stable member ID supplied by Slack events and interactions.
 - Every event must match the configured `teamId`.
-- The Kotlin boundary derives the internal identity deterministically as `UserId("slack:<teamId>:<slackUserId>")`; neither configuration nor an LLM chooses the mapping.
+- The Kotlin boundary resolves `(teamId, slackUserId)` through a server-owned mapping to immutable `userId` and `familyId` values before processing. Unmapped members are rejected.
+- Slack text, HTTP payload content, Codex prompts, persisted Codex history, tools, and model output can never select or override `userId` or `familyId`.
+- The complete `(teamId, slackUserId, userId, familyId)` tuple is persisted with the session and revalidated on every active lookup.
 - A member can resume only the unexpired active session owned by the same `(teamId, slackUserId)` pair.
 - Codex never receives or selects an internal `UserId`.
 - Codex never receives database credentials or a database path.
 
-Approved topic retrieval remains inside the Kotlin application. The application retrieves household-scoped matches through the existing `TopicAnswerUseCase` boundary and serializes only the relevant titles, summaries, and claims into the Codex turn context.
+Approved topic retrieval remains inside the Kotlin application. Every topic stores `familyId` and `createdByUserId`. The application first authorizes the immutable `(userId, familyId)` scope, filters vector candidates by `familyId`, and then rechecks `familyId` and approved status while hydrating the authoritative SQL topics. It serializes only the relevant titles, summaries, and claims into the Codex turn context.
 
 ## Persistence Model
 
@@ -56,6 +58,8 @@ Approved topic retrieval remains inside the Kotlin application. The application 
 id                  internal session ID
 team_id             owning Slack workspace
 slack_user_id       owning Slack member
+user_id             resolved internal household member
+family_id           resolved household
 codex_thread_id     persistent Codex thread ID, unique
 created_at          creation time
 last_active_at      latest completed or failed turn time
@@ -92,7 +96,7 @@ Codex's own session files are stored under a dedicated persistent `CODEX_HOME`. 
 
 ### `SlackDirectMessageHandler`
 
-Validates workspace and DM events, derives the internal `UserId`, acknowledges Slack immediately, claims the message receipt, and submits work outside the Slack acknowledgement path. It ignores bot-authored messages, message edits, deletes, and unsupported subtypes.
+Validates workspace and DM events, resolves the immutable household scope from the server-owned mapping, acknowledges Slack immediately, claims the message receipt, and submits work outside the Slack acknowledgement path. It ignores bot-authored messages, message edits, deletes, unsupported subtypes, and unmapped members.
 
 ### `SlackConversationService`
 
@@ -110,7 +114,9 @@ For a new conversation it runs non-interactively with JSONL output and parses th
 
 ### `HouseholdContextProvider`
 
-Calls the existing approved-topic answer/search boundary using the authenticated request context. It converts matches into a bounded, clearly delimited context block. Imported memory text is treated as reference data, not as agent instructions.
+Calls the existing approved-topic answer/search boundary using the immutable authenticated `(userId, familyId)` context. Vector filtering and SQL hydration independently enforce `familyId`; the SQL check is authoritative. It converts matches into a bounded, clearly delimited context block. Imported memory text is treated as reference data, not as agent instructions.
+
+If retrieval fails, the turn fails before Codex is invoked. If no authorized topic matches, the application skips Codex and sends only the deterministic “approved memories contain no related content” response. When matches exist, Codex is instructed to use only facts in that bounded reference block.
 
 ## Message Flow
 
@@ -142,6 +148,9 @@ Codex runs in a dedicated minimal workspace that contains only agent instruction
 
 Runtime requirements:
 
+- A service-only Codex CLI pinned to the tested version in a version-specific installation directory.
+- Startup validation that the service executable version matches the configured expected version.
+- A separate executable path and `CODEX_HOME` from any latest interactive Codex CLI used by the operator.
 - Read-only sandbox.
 - Approval policy that never blocks waiting for terminal input.
 - No direct SQLite or Qdrant access.
@@ -171,11 +180,11 @@ The context block is explicitly labeled as untrusted reference content. It canno
 - Duplicate Slack message: do not invoke Codex again. If its receipt is `ANSWER_READY`, retry only Slack delivery using the stored answer; otherwise return the recorded state.
 - Approved-memory search unavailable: continue without memory context and state that stored-memory lookup was unavailable only when it affects the answer.
 - Codex fails before `thread.started`: mark the receipt failed; no local session is created.
-- Codex fails after `thread.started`: retain the persisted session so the next message can resume it; mark the receipt failed.
+- Codex fails after `thread.started`: retain the historical session row for diagnostics, clear its active pointer, and mark the receipt failed. Never resume that thread.
 - Resume failure: clear the active pointer and return a short retryable error. The next DM starts a new thread; the MVP does not repair or manually resume the previous thread.
 - Timeout: terminate the process tree, mark the receipt failed, and post a short retryable error.
-- Slack response posting fails after Codex completes: retain the stored answer in `ANSWER_READY`; retry delivery without running Codex again.
-- Application restart: stale `PROCESSING` receipts become recoverable failures; they are never automatically re-executed without an explicit retry policy.
+- Slack response posting fails after Codex completes, returns `ok=false`, or omits its response timestamp: retain the stored answer in `ANSWER_READY`; retry delivery without running Codex again. Mark `COMPLETED` only after a verified `ok=true` response with a nonblank timestamp.
+- Application restart: stale `PROCESSING` receipts become terminal failures; their sessions are not resumed and their prompts are not automatically re-executed.
 
 ## Concurrency
 
@@ -192,6 +201,10 @@ The database owns durable idempotency and active-pointer invariants. Multi-insta
 - Different Slack members never share an active pointer or thread.
 - Internal `UserId` derivation is deterministic for the Slack workspace and member pair.
 - Workspace mismatch is rejected before retrieval or Codex invocation.
+- An unmapped Slack member is rejected before topic retrieval or Codex invocation.
+- A mapped member cannot change `userId` or `familyId` through message text, stored session data, or Codex output.
+- Vector search includes the requested family scope, and SQL hydration drops cross-family candidate IDs even if the vector store returns them.
+- Slack `ok=false` and missing-timestamp responses never complete a receipt.
 - Duplicate `(channelId, messageTs)` does not invoke Codex twice.
 - An `ANSWER_READY` duplicate retries Slack delivery with the stored answer and does not invoke Codex.
 - A follow-up before ten minutes resumes the active thread.

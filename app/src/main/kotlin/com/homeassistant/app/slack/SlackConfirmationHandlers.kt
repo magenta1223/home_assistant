@@ -2,6 +2,7 @@ package com.homeassistant.app.slack
 
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.domain.slackconversation.SlackPrincipal
 
 class SlackConfirmationHandlers(
     private val topicAnalysis: TopicAnalysisUseCase,
@@ -9,11 +10,11 @@ class SlackConfirmationHandlers(
 ) {
     fun buildReviewModal(
         previewId: String,
-        actingSlackUserId: String,
+        actingPrincipal: SlackPrincipal,
     ): SlackReviewActionResult {
         val session = reviewSessions.find(previewId)
             ?: return SlackReviewActionResult.Ephemeral("검토 요청을 찾을 수 없습니다.")
-        if (session.ownerSlackUserId != actingSlackUserId) {
+        if (session.principal != actingPrincipal) {
             return SlackReviewActionResult.Ephemeral("업로드한 사용자만 이 후보를 검토할 수 있습니다.")
         }
         if (session.status != SlackTopicReviewStatus.AWAITING_CONFIRMATION) {
@@ -31,11 +32,11 @@ class SlackConfirmationHandlers(
     suspend fun submitSelection(
         previewId: String,
         selectedTopicIndices: Set<Int>,
-        actingSlackUserId: String,
+        actingPrincipal: SlackPrincipal,
     ): SlackReviewSubmitResult {
         val session = reviewSessions.find(previewId)
             ?: return SlackReviewSubmitResult.Rejected("검토 요청을 찾을 수 없습니다.")
-        if (session.ownerSlackUserId != actingSlackUserId) {
+        if (session.principal != actingPrincipal) {
             return SlackReviewSubmitResult.Rejected("업로드한 사용자만 이 후보를 승인할 수 있습니다.")
         }
         if (session.status != SlackTopicReviewStatus.AWAITING_CONFIRMATION) {
@@ -45,6 +46,8 @@ class SlackConfirmationHandlers(
         val result = topicAnalysis.saveSelectedAnalysis(
             TopicAnalysisSelectionSaveRequest(
                 previewId = previewId,
+                userId = session.principal.userId.value,
+                familyId = session.principal.familyId.value,
                 selectedTopicIndices = selectedTopicIndices,
             ),
         )
@@ -60,7 +63,7 @@ interface SlackTopicReviewSessionStore {
 
 data class SlackTopicReviewSession(
     val previewId: String,
-    val ownerSlackUserId: String,
+    val principal: SlackPrincipal,
     val status: SlackTopicReviewStatus,
     val channelId: String = "",
     val messageTs: String? = null,

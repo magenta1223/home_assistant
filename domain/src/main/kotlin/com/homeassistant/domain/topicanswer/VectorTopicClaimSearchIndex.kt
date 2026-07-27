@@ -1,5 +1,6 @@
 package com.homeassistant.domain.topicanswer
 
+import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.PayloadVectorPoint
@@ -18,6 +19,8 @@ class VectorTopicClaimSearchIndex(
                     vector = embeddingService.embed("passage: ${topic.title}\n${topic.summary}\n${claim.text}"),
                     payload = mapOf(
                         "kind" to TOPIC_CLAIM_KIND,
+                        "familyId" to topic.familyId,
+                        "createdByUserId" to topic.createdByUserId,
                         "topicId" to topic.id.toString(),
                         "claimId" to claim.id.toString(),
                         "sourceType" to topic.sourceType,
@@ -30,11 +33,20 @@ class VectorTopicClaimSearchIndex(
         }
     }
 
-    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
+    override fun search(
+        scope: HouseholdAccessScope,
+        question: String,
+        limit: Int,
+    ): List<TopicClaimSearchHit> =
         vectorStore
             .search(
                 vector = embeddingService.embed("query: $question"),
-                filter = PayloadVectorSearchFilter(must = mapOf("kind" to TOPIC_CLAIM_KIND)),
+                filter = PayloadVectorSearchFilter(
+                    must = mapOf(
+                        "kind" to TOPIC_CLAIM_KIND,
+                        "familyId" to scope.familyId.value,
+                    ),
+                ),
                 limit = limit.coerceIn(1, 10),
             )
             .mapNotNull { result ->

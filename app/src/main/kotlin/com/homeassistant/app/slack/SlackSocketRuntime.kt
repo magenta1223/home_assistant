@@ -15,6 +15,7 @@ class SlackSocketRuntime(
     private val confirmationHandlers: SlackConfirmationHandlers,
     private val reviewSessions: SlackTopicReviewSessionStore,
     private val slackClient: SlackClient,
+    private val conversationListeners: SlackConversationListeners? = null,
     private val executor: ExecutorService = Executors.newFixedThreadPool(2),
 ) : AutoCloseable {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -28,7 +29,13 @@ class SlackSocketRuntime(
         )
 
         app.event(MessageFileShareEvent::class.java) { payload, ctx ->
-            val uploads = SlackFileIngress.from(payload.event, config.maxFileSizeBytes)
+            val principal = config.identityDirectory.resolve(payload.teamId, payload.event.user)
+                ?: return@event ctx.ack()
+            val uploads = SlackFileIngress.from(
+                event = payload.event,
+                principal = principal,
+                maxFileSizeBytes = config.maxFileSizeBytes,
+            )
             uploads.forEach { upload ->
                 executor.submit {
                     runBlocking {
@@ -44,8 +51,10 @@ class SlackSocketRuntime(
             val previewId = payload.actions.firstOrNull()?.value
             val userId = payload.user?.id
             if (previewId.isNullOrBlank() || userId.isNullOrBlank()) return@blockAction ctx.ack()
+            val principal = config.identityDirectory.resolve(payload.team?.id, userId)
+                ?: return@blockAction ctx.ack()
 
-            when (val result = confirmationHandlers.buildReviewModal(previewId, userId)) {
+            when (val result = confirmationHandlers.buildReviewModal(previewId, principal)) {
                 is SlackReviewActionResult.OpenModal -> slackClient.openModal(payload.triggerId, result.view)
                 is SlackReviewActionResult.Ephemeral -> slackClient.postEphemeral(
                     channelId = payload.channel.id,
@@ -61,12 +70,18 @@ class SlackSocketRuntime(
             val previewId = payload.view.privateMetadata
             val userId = payload.user?.id
             if (previewId.isNullOrBlank() || userId.isNullOrBlank()) return@viewSubmission ctx.ack()
+            val principal = config.identityDirectory.resolve(payload.team?.id, userId)
+                ?: return@viewSubmission ctx.ack()
 
             val selectedIndices = selectedTopicIndices(payload.view.state?.values.orEmpty())
             val session = reviewSessions.find(previewId)
             executor.submit {
                 runBlocking {
-                    when (val result = confirmationHandlers.submitSelection(previewId, selectedIndices, userId)) {
+                    when (val result = confirmationHandlers.submitSelection(
+                        previewId,
+                        selectedIndices,
+                        principal,
+                    )) {
                         is SlackReviewSubmitResult.Saved -> {
                             if (session != null && session.channelId.isNotBlank()) {
                                 slackClient.postEphemeral(
@@ -90,6 +105,8 @@ class SlackSocketRuntime(
             }
             ctx.ack()
         }
+
+        conversationListeners?.register(app)
 
         socketModeApp = SocketModeApp(config.appToken, app)
     }

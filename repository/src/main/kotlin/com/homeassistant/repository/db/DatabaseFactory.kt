@@ -9,7 +9,7 @@ internal object DatabaseFactory {
     fun init(dbPath: String): Database {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(
+            SchemaUtils.createMissingTablesAndColumns(
                 FamilyTable,
                 FamilyMemberTable,
                 DomainTable,
@@ -21,6 +21,9 @@ internal object DatabaseFactory {
                 TopicAnalysisPreviewTable,
                 TopicCandidateTable,
                 IndexingOutboxTable,
+                SlackCodexSessionTable,
+                SlackCodexActiveSessionTable,
+                SlackMessageReceiptTable,
             )
         }
         return db

@@ -1,5 +1,8 @@
 package com.homeassistant.repository.topicanalysis
 
+import com.homeassistant.core.identity.FamilyId
+import com.homeassistant.core.identity.HouseholdAccessScope
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
@@ -45,7 +48,7 @@ class TopicAnalysisRepositorySearchTest {
         val remote = repository.createTopic(topic("주차장 리모컨 위치", "주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", 10))
         repository.createTopic(topic("점심 기록", "점심으로 쭈꾸미 덮밥을 먹었다.", 20))
 
-        val results = repository.searchApprovedTopics("차단기 리모컨 어디", limit = 5)
+        val results = repository.searchApprovedTopics(TEST_SCOPE, "차단기 리모컨 어디", limit = 5)
 
         assertEquals(listOf(remote.id), results.map { it.id })
         assertEquals("주차장 리모컨 위치", results.single().title)
@@ -61,7 +64,7 @@ class TopicAnalysisRepositorySearchTest {
             }
         }
 
-        val results = repository.searchApprovedTopics("세콤 경비", limit = 5)
+        val results = repository.searchApprovedTopics(TEST_SCOPE, "세콤 경비", limit = 5)
 
         assertEquals(emptyList(), results)
     }
@@ -72,13 +75,15 @@ class TopicAnalysisRepositorySearchTest {
             repository.createTopic(topic("리모컨 후보 $index", "리모컨 관련 claim $index", index + 1))
         }
 
-        val results = repository.searchApprovedTopics("리모컨", limit = 50)
+        val results = repository.searchApprovedTopics(TEST_SCOPE, "리모컨", limit = 50)
 
         assertEquals(10, results.size)
     }
 
     private fun topic(title: String, claimText: String, evidenceRef: Int) =
         TopicCandidate(
+            familyId = TEST_SCOPE.familyId.value,
+            createdByUserId = TEST_SCOPE.userId.value,
             sourceType = "kakao",
             sourceName = "family-kakao.txt",
             title = title,
@@ -96,4 +101,8 @@ class TopicAnalysisRepositorySearchTest {
                 ),
             ),
         )
+
+    private companion object {
+        val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
+    }
 }

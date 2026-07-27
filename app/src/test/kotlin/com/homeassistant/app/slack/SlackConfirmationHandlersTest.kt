@@ -12,6 +12,8 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
+import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,10 +22,10 @@ import kotlin.test.assertIs
 class SlackConfirmationHandlersTest {
     @Test
     fun `uploader can open review modal`() {
-        val sessions = FakeSessionStore(session(ownerSlackUserId = "U1"))
+        val sessions = FakeSessionStore(session(principal = principal("U1")))
         val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
 
-        val result = handlers.buildReviewModal(previewId = "preview-1", actingSlackUserId = "U1")
+        val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U1"))
 
         val openModal = assertIs<SlackReviewActionResult.OpenModal>(result)
         assertEquals("preview-1", openModal.view["private_metadata"])
@@ -31,10 +33,10 @@ class SlackConfirmationHandlersTest {
 
     @Test
     fun `other user cannot open review modal`() {
-        val sessions = FakeSessionStore(session(ownerSlackUserId = "U1"))
+        val sessions = FakeSessionStore(session(principal = principal("U1")))
         val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
 
-        val result = handlers.buildReviewModal(previewId = "preview-1", actingSlackUserId = "U2")
+        val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U2"))
 
         assertIs<SlackReviewActionResult.Ephemeral>(result)
     }
@@ -44,7 +46,7 @@ class SlackConfirmationHandlersTest {
         val sessions = FakeSessionStore(session(status = SlackTopicReviewStatus.COMPLETED))
         val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
 
-        val result = handlers.buildReviewModal(previewId = "preview-1", actingSlackUserId = "U1")
+        val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U1"))
 
         assertIs<SlackReviewActionResult.Ephemeral>(result)
     }
@@ -58,13 +60,15 @@ class SlackConfirmationHandlersTest {
         val result = handlers.submitSelection(
             previewId = "preview-1",
             selectedTopicIndices = setOf(0, 2),
-            actingSlackUserId = "U1",
+            actingPrincipal = principal("U1"),
         )
 
         val saved = assertIs<SlackReviewSubmitResult.Saved>(result)
         assertEquals(2, saved.savedTopicCount)
         assertEquals("preview-1", FakeTopicAnalysis.selectionRequest.previewId)
         assertEquals(setOf(0, 2), FakeTopicAnalysis.selectionRequest.selectedTopicIndices)
+        assertEquals("dad", FakeTopicAnalysis.selectionRequest.userId)
+        assertEquals("family-1", FakeTopicAnalysis.selectionRequest.familyId)
         assertEquals(SlackTopicReviewStatus.COMPLETED, sessions.find("preview-1")?.status)
     }
 
@@ -77,7 +81,7 @@ class SlackConfirmationHandlersTest {
         val result = handlers.submitSelection(
             previewId = "preview-1",
             selectedTopicIndices = emptySet(),
-            actingSlackUserId = "U1",
+            actingPrincipal = principal("U1"),
         )
 
         val saved = assertIs<SlackReviewSubmitResult.Saved>(result)
@@ -86,14 +90,17 @@ class SlackConfirmationHandlersTest {
     }
 
     private fun session(
-        ownerSlackUserId: String = "U1",
+        principal: SlackPrincipal = principal("U1"),
         status: SlackTopicReviewStatus = SlackTopicReviewStatus.AWAITING_CONFIRMATION,
     ) = SlackTopicReviewSession(
         previewId = "preview-1",
-        ownerSlackUserId = ownerSlackUserId,
+        principal = principal,
         status = status,
         topics = listOf(topic(1), topic(2), topic(3)),
     )
+
+    private fun principal(slackUserId: String) =
+        SlackPrincipal("T1", slackUserId, if (slackUserId == "U1") "dad" else "mom", "family-1")
 }
 
 private class FakeSessionStore(
@@ -113,13 +120,13 @@ private object FakeTopicAnalysis : TopicAnalysisUseCase() {
     lateinit var selectionRequest: TopicAnalysisSelectionSaveRequest
 
     fun reset() {
-        selectionRequest = TopicAnalysisSelectionSaveRequest("", emptySet())
+        selectionRequest = TopicAnalysisSelectionSaveRequest("", "dad", "family-1", emptySet())
     }
 
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("not used")
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 
     override suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
@@ -133,6 +140,8 @@ private object FakeTopicAnalysis : TopicAnalysisUseCase() {
 
 private fun topic(id: Int) =
     TopicCandidate(
+        familyId = "family-1",
+        createdByUserId = "dad",
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = "후보 $id",
@@ -154,6 +163,8 @@ private fun topic(id: Int) =
 private fun persistedTopic(id: Int) =
     Topic(
         id = id,
+        familyId = "family-1",
+        createdByUserId = "dad",
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = "후보 $id",

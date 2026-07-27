@@ -2,6 +2,11 @@ package com.homeassistant.app
 
 import com.homeassistant.app.routes.configureRoutes
 import com.homeassistant.app.slack.InMemorySlackTopicReviewSessionStore
+import com.homeassistant.app.slack.CodexConversationConfig
+import com.homeassistant.app.slack.HouseholdContextProvider
+import com.homeassistant.app.slack.ProcessCodexConversationClient
+import com.homeassistant.app.slack.SlackConversationListeners
+import com.homeassistant.app.slack.SlackConversationService
 import com.homeassistant.app.slack.SlackConfig
 import com.homeassistant.app.slack.SlackConfirmationHandlers
 import com.homeassistant.app.slack.SlackKakaoAnalysisWorkflow
@@ -9,6 +14,7 @@ import com.homeassistant.app.slack.SlackSocketRuntime
 import com.homeassistant.app.slack.SlackWebApiClient
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
+import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.memory.QdrantVectorStore
 import com.homeassistant.domain.kakao.KakaoImportService
@@ -77,6 +83,9 @@ fun Application.module() {
             collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
         ),
     )
+    val slackConfig = SlackConfig.fromEnv()
+    val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
+        ?: HouseholdAccessPolicy { false }
     val kakaoTopicAnalysis = KakaoMessageTopicAnalysisService(
         backend = llmBackend,
         importService = KakaoImportService(repositories.kakaoMessages),
@@ -84,14 +93,46 @@ fun Application.module() {
         previewRepository = repositories.kakaoAnalysisPreviews,
         topicClaimSearchIndex = topicClaimSearchIndex,
         indexingOutbox = repositories.indexingOutbox,
+        accessPolicy = accessPolicy,
     )
-    val topicAnswer = TopicAnswerService(repositories.topicAnalysis, topicClaimSearchIndex)
-    val slackConfig = SlackConfig.fromEnv()
+    val topicAnswer = TopicAnswerService(
+        repositories.topicAnalysis,
+        topicClaimSearchIndex,
+        accessPolicy,
+    )
     if (slackConfig == null) {
-        log.info("Slack Socket Mode disabled: SLACK_APP_TOKEN or SLACK_BOT_TOKEN is missing")
+        log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
     } else {
         val slackClient = SlackWebApiClient(slackConfig.botToken)
         val reviewSessions = InMemorySlackTopicReviewSessionStore()
+        val conversationListeners = CodexConversationConfig.fromEnv()
+            ?.let(::ProcessCodexConversationClient)
+            ?.takeIf { client ->
+                if (client.validateVersion()) {
+                    true
+                } else {
+                    log.warn("Slack conversation disabled: CODEX_VERSION_MISMATCH")
+                    false
+                }
+            }
+            ?.let { client ->
+                repositories.slackCodexSessions.failStaleProcessing(
+                    before = System.currentTimeMillis() - SlackConversationService.SESSION_IDLE_TIMEOUT_MILLIS,
+                    now = System.currentTimeMillis(),
+                )
+                SlackConversationListeners(
+                    SlackConversationService(
+                        identities = slackConfig.identityDirectory,
+                        sessions = repositories.slackCodexSessions,
+                        contextProvider = HouseholdContextProvider(topicAnswer),
+                        codex = client,
+                        slack = slackClient,
+                    ),
+                )
+            }
+        if (conversationListeners == null) {
+            log.info("Slack conversation disabled: Codex configuration is missing or invalid")
+        }
         val slackRuntime = SlackSocketRuntime(
             config = slackConfig,
             workflow = SlackKakaoAnalysisWorkflow(
@@ -103,6 +144,7 @@ fun Application.module() {
             confirmationHandlers = SlackConfirmationHandlers(kakaoTopicAnalysis, reviewSessions),
             reviewSessions = reviewSessions,
             slackClient = slackClient,
+            conversationListeners = conversationListeners,
         )
         slackRuntime.startAsync()
         monitor.subscribe(ApplicationStopped) {

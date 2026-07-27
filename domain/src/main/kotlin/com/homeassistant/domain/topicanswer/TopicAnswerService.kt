@@ -1,18 +1,23 @@
 package com.homeassistant.domain.topicanswer
 
+import com.homeassistant.core.identity.HouseholdAccessDeniedException
+import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 
 class TopicAnswerService(
     private val topicStore: TopicAnalysisStore,
     private val topicClaimSearchIndex: TopicClaimSearchIndex,
+    private val accessPolicy: HouseholdAccessPolicy,
 ) : TopicAnswerUseCase {
     override fun answer(request: TopicAnswerRequest): TopicAnswerResult {
+        val scope = request.scope()
+        if (!accessPolicy.isAuthorized(scope)) throw HouseholdAccessDeniedException()
         val question = request.question.trim()
         val limit = request.limit.coerceIn(1, 10)
-        val hits = topicClaimSearchIndex.search(question, limit)
+        val hits = topicClaimSearchIndex.search(scope, question, limit)
         val topicsById = topicStore
-            .getApprovedTopics(hits.map { it.topicId })
+            .getApprovedTopics(scope, hits.map { it.topicId })
             .associateBy { it.id }
         val matches = hits.mapNotNull { hit ->
             topicsById[hit.topicId]?.toMatch(hit)

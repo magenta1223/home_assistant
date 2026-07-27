@@ -1,5 +1,10 @@
 package com.homeassistant.nlp.topicanalysis.impl
 
+import com.homeassistant.core.identity.FamilyId
+import com.homeassistant.core.identity.HouseholdAccessDeniedException
+import com.homeassistant.core.identity.HouseholdAccessPolicy
+import com.homeassistant.core.identity.HouseholdAccessScope
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
@@ -17,6 +22,7 @@ import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
 import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
@@ -30,12 +36,15 @@ class KakaoMessageTopicAnalysisService(
     private val previewRepository: TopicAnalysisPreviewStore,
     private val topicClaimSearchIndex: TopicClaimSearchIndex = UnavailableTopicClaimSearchIndex,
     private val indexingOutbox: IndexingOutboxStore,
+    private val accessPolicy: HouseholdAccessPolicy,
 ): TopicAnalysisUseCase() {
     private val topicAnalyzer = LlmTopicAnalyzer(backend)
 
     override suspend fun analyze(
         request: TopicAnalysisRequest
     ): TopicAnalysisResult {
+        val scope = request.scope()
+        requireAuthorized(scope)
         val sourceName = request.sourceName
         val messages = KakaoMessageParser.parse(sourceName, request.text)
         val newFingerprints = importService.findNewMessages(messages)
@@ -63,7 +72,7 @@ class KakaoMessageTopicAnalysisService(
             },
         )
         val topics = topicAnalyzer.analyze(document).topics.map { topic ->
-            topic.toNewTopicCandidate(document)
+            topic.toNewTopicCandidate(document, scope)
         }
         val preview = previewRepository.createPreview(sourceName, request.text, topics)
         return TopicAnalysisResult(
@@ -76,12 +85,15 @@ class KakaoMessageTopicAnalysisService(
     }
 
 
-    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult {
-        val preview = previewRepository.findPreview(previewId)
-            ?: throw TopicAnalysisPreviewNotFoundException(previewId)
+    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
+        val scope = request.scope()
+        requireAuthorized(scope)
+        val preview = previewRepository.findPreview(request.previewId)
+            ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
+        requirePreviewScope(preview.topics, scope)
 
         return savePreviewTopics(
-            previewId = previewId,
+            previewId = request.previewId,
             sourceFileName = preview.sourceFileName,
             text = preview.text,
             topics = preview.topics,
@@ -89,8 +101,11 @@ class KakaoMessageTopicAnalysisService(
     }
 
     override suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
+        val scope = request.scope()
+        requireAuthorized(scope)
         val preview = previewRepository.findPreview(request.previewId)
             ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
+        requirePreviewScope(preview.topics, scope)
         val selectedTopics = request.selectedTopicIndices
             .sorted()
             .mapNotNull { index -> preview.topics.getOrNull(index) }
@@ -131,8 +146,13 @@ class KakaoMessageTopicAnalysisService(
         )
     }
 
-    private fun TopicDraft.toNewTopicCandidate(document: SourceDocument): TopicCandidate =
+    private fun TopicDraft.toNewTopicCandidate(
+        document: SourceDocument,
+        scope: HouseholdAccessScope,
+    ): TopicCandidate =
         TopicCandidate(
+            familyId = scope.familyId.value,
+            createdByUserId = scope.userId.value,
             sourceType = document.sourceType,
             sourceName = document.sourceName,
             title = title,
@@ -184,9 +204,35 @@ class KakaoMessageTopicAnalysisService(
         runCatching {
             val pendingIds = indexingOutbox.pending(IndexTargetType.TOPIC)
                 .filterNot(currentTopicIds::contains)
-            topicRepository.getApprovedTopics(pendingIds).forEach(::indexTopic)
+            topicRepository.getApprovedTopicsForIndexing(pendingIds).forEach(::indexTopic)
         }.onFailure { error ->
             log.warn("Failed to dispatch pending topic indexes", error)
+        }
+    }
+
+    private fun TopicAnalysisRequest.scope(): HouseholdAccessScope =
+        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
+
+    private fun TopicAnalysisSaveRequest.scope(): HouseholdAccessScope =
+        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
+
+    private fun TopicAnalysisSelectionSaveRequest.scope(): HouseholdAccessScope =
+        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
+
+    private fun requireAuthorized(scope: HouseholdAccessScope) {
+        if (!accessPolicy.isAuthorized(scope)) throw HouseholdAccessDeniedException()
+    }
+
+    private fun requirePreviewScope(
+        topics: List<TopicCandidate>,
+        scope: HouseholdAccessScope,
+    ) {
+        if (topics.any {
+                it.familyId != scope.familyId.value ||
+                    it.createdByUserId != scope.userId.value
+            }
+        ) {
+            throw HouseholdAccessDeniedException()
         }
     }
 }

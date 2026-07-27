@@ -53,6 +53,8 @@ class TopicAnalysisRepositoryTest {
     fun `stores topic candidate lists in one topic candidate row`() {
         val topic = repository.createTopic(
             TopicCandidate(
+                familyId = "family-1",
+                createdByUserId = "dad",
                 sourceType = "kakao",
                 sourceName = "2026-06-07.txt",
                 title = "카인드커피에서 만나기",
@@ -109,6 +111,8 @@ class TopicAnalysisRepositoryTest {
     private fun createSimpleTopic() =
         repository.createTopic(
             TopicCandidate(
+                familyId = "family-1",
+                createdByUserId = "dad",
                 sourceType = "kakao",
                 sourceName = "2026-06-07.txt",
                 title = "관계 표현",

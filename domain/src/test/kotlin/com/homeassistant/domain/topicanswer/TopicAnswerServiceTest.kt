@@ -1,5 +1,10 @@
 package com.homeassistant.domain.topicanswer
 
+import com.homeassistant.core.identity.FamilyId
+import com.homeassistant.core.identity.HouseholdAccessDeniedException
+import com.homeassistant.core.identity.HouseholdAccessPolicy
+import com.homeassistant.core.identity.HouseholdAccessScope
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
@@ -10,6 +15,7 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertFailsWith
 
 class TopicAnswerServiceTest {
     @Test
@@ -30,9 +36,10 @@ class TopicAnswerServiceTest {
             topicClaimSearchIndex = FakeTopicClaimSearchIndex(
                 listOf(TopicClaimSearchHit(topicId = 7, claimId = 1, score = 0.91)),
             ),
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.answer(TopicAnswerRequest(question = "차단기 리모컨 어디 있어?", limit = 5))
+        val result = service.answer(request("차단기 리모컨 어디 있어?", 5))
 
         assertTrue(result.answer.contains("주차장 차단기 리모컨은 벽장 제일 위칸에 있다."))
         assertTrue(!result.answer.contains("집안일 체크리스트"))
@@ -46,9 +53,10 @@ class TopicAnswerServiceTest {
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(emptyList()),
             topicClaimSearchIndex = FakeTopicClaimSearchIndex(emptyList()),
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.answer(TopicAnswerRequest(question = "없는 질문", limit = 5))
+        val result = service.answer(request("없는 질문", 5))
 
         assertEquals("승인된 기억에서 관련 내용을 찾지 못했습니다.", result.answer)
         assertEquals(emptyList(), result.matches)
@@ -69,9 +77,10 @@ class TopicAnswerServiceTest {
                     TopicClaimSearchHit(topicId = 2, claimId = 1, score = 0.74),
                 ),
             ),
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.answer(TopicAnswerRequest(question = "리모컨 어디", limit = 5))
+        val result = service.answer(request("리모컨 어디", 5))
 
         assertEquals("저장된 기억 기준으로는 리모컨은 벽장 제일 위칸에 있다.", result.answer)
         assertEquals(2, result.matches.size)
@@ -85,9 +94,10 @@ class TopicAnswerServiceTest {
             topicClaimSearchIndex = FakeTopicClaimSearchIndex(
                 topics.map { TopicClaimSearchHit(topicId = it.id, claimId = 1, score = 1.0) },
             ),
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.answer(TopicAnswerRequest(question = "리모컨", limit = 50))
+        val result = service.answer(request("리모컨", 50))
 
         assertEquals(10, result.matches.size)
     }
@@ -107,12 +117,51 @@ class TopicAnswerServiceTest {
                     TopicClaimSearchHit(topicId = 1, claimId = 1, score = 0.91),
                 ),
             ),
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.answer(TopicAnswerRequest(question = "순서", limit = 5))
+        val result = service.answer(request("순서", 5))
 
         assertEquals(listOf(2, 1), result.matches.map { it.topicId })
         assertEquals("저장된 기억 기준으로는 두번째 claim", result.answer)
+    }
+
+    @Test
+    fun `rejects an unauthorized user and family pair before vector search`() {
+        val index = FakeTopicClaimSearchIndex(emptyList())
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(emptyList()),
+            topicClaimSearchIndex = index,
+            accessPolicy = TEST_ACCESS_POLICY,
+        )
+
+        assertFailsWith<HouseholdAccessDeniedException> {
+            service.answer(
+                TopicAnswerRequest(
+                    userId = "attacker",
+                    familyId = TEST_SCOPE.familyId.value,
+                    question = "비밀",
+                ),
+            )
+        }
+        assertEquals(null, index.lastScope)
+    }
+
+    @Test
+    fun `drops a cross-family vector hit during sql hydration`() {
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(
+                listOf(topic(7, "다른 가족", "노출되면 안 됨", familyId = "other-family")),
+            ),
+            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+                listOf(TopicClaimSearchHit(7, 1, 1.0)),
+            ),
+            accessPolicy = TEST_ACCESS_POLICY,
+        )
+
+        val result = service.answer(request("비밀", 5))
+
+        assertEquals(emptyList(), result.matches)
     }
 }
 
@@ -120,28 +169,57 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
     override fun createTopic(candidate: TopicCandidate): Topic =
         error("not used")
 
-    override fun searchApprovedTopics(query: String, limit: Int): List<Topic> =
-        topics.take(limit.coerceIn(1, 10))
+    override fun searchApprovedTopics(
+        scope: HouseholdAccessScope,
+        query: String,
+        limit: Int,
+    ): List<Topic> =
+        topics.filter { it.familyId == scope.familyId.value }.take(limit.coerceIn(1, 10))
 
-    override fun getApprovedTopics(topicIds: Collection<Int>): List<Topic> =
+    override fun getApprovedTopics(
+        scope: HouseholdAccessScope,
+        topicIds: Collection<Int>,
+    ): List<Topic> =
+        topics.filter { it.familyId == scope.familyId.value && it.id in topicIds.toSet() }
+
+    override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> =
         topics.filter { it.id in topicIds.toSet() }
 }
 
 private class FakeTopicClaimSearchIndex(
     private val hits: List<TopicClaimSearchHit>,
 ) : TopicClaimSearchIndex {
+    var lastScope: HouseholdAccessScope? = null
+
     override fun index(topic: Topic) = Unit
 
-    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
-        hits.take(limit.coerceIn(1, 10))
+    override fun search(
+        scope: HouseholdAccessScope,
+        question: String,
+        limit: Int,
+    ): List<TopicClaimSearchHit> {
+        lastScope = scope
+        return hits.take(limit.coerceIn(1, 10))
+    }
 }
 
-private fun topic(id: Int, title: String, claimText: String) =
-    topic(id, title, listOf(claimText))
+private fun topic(
+    id: Int,
+    title: String,
+    claimText: String,
+    familyId: String = TEST_SCOPE.familyId.value,
+) = topic(id, title, listOf(claimText), familyId)
 
-private fun topic(id: Int, title: String, claimTexts: List<String>) =
+private fun topic(
+    id: Int,
+    title: String,
+    claimTexts: List<String>,
+    familyId: String = TEST_SCOPE.familyId.value,
+) =
     Topic(
         id = id,
+        familyId = familyId,
+        createdByUserId = TEST_SCOPE.userId.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = title,
@@ -161,3 +239,14 @@ private fun topic(id: Int, title: String, claimTexts: List<String>) =
         },
         status = CandidateStatus.APPROVED,
     )
+
+private fun request(question: String, limit: Int): TopicAnswerRequest =
+    TopicAnswerRequest(
+        userId = TEST_SCOPE.userId.value,
+        familyId = TEST_SCOPE.familyId.value,
+        question = question,
+        limit = limit,
+    )
+
+private val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
+private val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_SCOPE }

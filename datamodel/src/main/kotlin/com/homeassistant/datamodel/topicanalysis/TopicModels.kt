@@ -21,6 +21,8 @@ data class TopicClaim(
 @Serializable
 data class Topic(
     val id: Int,
+    val familyId: String,
+    val createdByUserId: String,
     val sourceType: String,
     val sourceName: String,
     val title: String,
@@ -43,6 +45,8 @@ data class TopicClaimCandidate(
 
 @Serializable
 data class TopicCandidate(
+    val familyId: String,
+    val createdByUserId: String,
     val sourceType: String,
     val sourceName: String,
     val title: String,

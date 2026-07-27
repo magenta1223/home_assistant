@@ -12,12 +12,13 @@ import java.nio.charset.CodingErrorAction
 import java.nio.charset.Charset
 import java.nio.charset.StandardCharsets
 
-class SlackWebApiClient(
+internal class SlackWebApiClient(
     private val botToken: String,
     private val slack: Slack = Slack.getInstance(),
     private val httpClient: HttpClient = HttpClient.newBuilder()
         .followRedirects(HttpClient.Redirect.NORMAL)
         .build(),
+    private val messagePoster: SlackMessagePoster? = null,
 ) : SlackClient {
     private val gson = GsonFactory.createSnakeCase()
 
@@ -51,13 +52,23 @@ class SlackWebApiClient(
         text: String,
         blocks: List<Map<String, Any>>,
         threadTs: String?,
-    ) {
-        slack.methods(botToken).chatPostMessage { req ->
-            req.channel(channelId)
-                .text(text)
-                .blocksAsString(gson.toJson(blocks))
-                .threadTs(threadTs)
+    ): SlackMessageDelivery {
+        val response = messagePoster?.post(channelId, text, blocks, threadTs)
+            ?: slack.methods(botToken).chatPostMessage { req ->
+                val builder = req.channel(channelId)
+                    .text(text)
+                    .threadTs(threadTs)
+                if (blocks.isNotEmpty()) {
+                    builder.blocksAsString(gson.toJson(blocks))
+                }
+                builder
+            }.let { SlackPostMessageResponse(it.isOk, it.ts, it.error) }
+        if (!response.ok) {
+            throw SlackMessageDeliveryException(response.error ?: "API_REJECTED")
         }
+        val responseTs = response.ts?.takeIf { it.isNotBlank() }
+            ?: throw SlackMessageDeliveryException("MISSING_RESPONSE_TS")
+        return SlackMessageDelivery(responseTs)
     }
 
     override fun postEphemeral(channelId: String, userId: String, text: String) {
@@ -122,3 +133,18 @@ class SlackWebApiClient(
         return nulls.toDouble() / sampled
     }
 }
+
+internal fun interface SlackMessagePoster {
+    fun post(
+        channelId: String,
+        text: String,
+        blocks: List<Map<String, Any>>,
+        threadTs: String?,
+    ): SlackPostMessageResponse
+}
+
+internal data class SlackPostMessageResponse(
+    val ok: Boolean,
+    val ts: String?,
+    val error: String?,
+)

@@ -6,6 +6,7 @@ import com.homeassistant.repository.repo.memory.MemoryRepository
 import com.homeassistant.repository.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.repository.repo.topicanalysis.TopicAnalysisPreviewRepository
 import com.homeassistant.repository.repo.topicanalysis.TopicAnalysisRepository
+import com.homeassistant.repository.repo.slackconversation.SlackCodexSessionRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
@@ -16,6 +17,7 @@ object RepositoryFactory {
             topicAnalysis = TopicAnalysisRepository(db),
             memories = MemoryRepository(db),
             indexingOutbox = IndexingOutboxRepository(db),
+            slackCodexSessions = SlackCodexSessionRepository(db),
         )
     }
 }

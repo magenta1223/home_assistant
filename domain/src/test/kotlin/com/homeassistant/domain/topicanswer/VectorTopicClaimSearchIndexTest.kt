@@ -1,5 +1,8 @@
 package com.homeassistant.domain.topicanswer
 
+import com.homeassistant.core.identity.FamilyId
+import com.homeassistant.core.identity.HouseholdAccessScope
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
@@ -41,6 +44,8 @@ class VectorTopicClaimSearchIndexTest {
         assertEquals("topic_claim", vectorStore.upserted.first().payload["kind"])
         assertEquals("7", vectorStore.upserted.first().payload["topicId"])
         assertEquals("1", vectorStore.upserted.first().payload["claimId"])
+        assertEquals(TEST_SCOPE.familyId.value, vectorStore.upserted.first().payload["familyId"])
+        assertEquals(TEST_SCOPE.userId.value, vectorStore.upserted.first().payload["createdByUserId"])
         assertEquals("family-kakao.txt", vectorStore.upserted.first().payload["sourceName"])
     }
 
@@ -63,10 +68,18 @@ class VectorTopicClaimSearchIndexTest {
         )
         val index = VectorTopicClaimSearchIndex(embeddingService, vectorStore)
 
-        val hits = index.search("차단기 리모컨 어디 있어?", limit = 5)
+        val hits = index.search(TEST_SCOPE, "차단기 리모컨 어디 있어?", limit = 5)
 
         assertEquals(listOf("query: 차단기 리모컨 어디 있어?"), embeddingService.embeddedTexts)
-        assertEquals(PayloadVectorSearchFilter(must = mapOf("kind" to "topic_claim")), vectorStore.lastFilter)
+        assertEquals(
+            PayloadVectorSearchFilter(
+                must = mapOf(
+                    "kind" to "topic_claim",
+                    "familyId" to TEST_SCOPE.familyId.value,
+                ),
+            ),
+            vectorStore.lastFilter,
+        )
         assertEquals(5, vectorStore.lastLimit)
         assertEquals(
             listOf(
@@ -112,6 +125,8 @@ private class RecordingPayloadVectorStore(
 private fun topic(id: Int, claims: List<TopicClaim>) =
     Topic(
         id = id,
+        familyId = TEST_SCOPE.familyId.value,
+        createdByUserId = TEST_SCOPE.userId.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = "집 물건 위치",
@@ -122,6 +137,8 @@ private fun topic(id: Int, claims: List<TopicClaim>) =
         claims = claims,
         status = CandidateStatus.APPROVED,
     )
+
+private val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
 
 private fun claim(id: Int, text: String) =
     TopicClaim(

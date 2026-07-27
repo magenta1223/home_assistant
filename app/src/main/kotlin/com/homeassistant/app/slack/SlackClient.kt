@@ -10,7 +10,7 @@ interface SlackClient {
         text: String,
         blocks: List<Map<String, Any>>,
         threadTs: String? = null,
-    )
+    ): SlackMessageDelivery
 
     fun postEphemeral(
         channelId: String,
@@ -23,3 +23,9 @@ interface SlackClient {
         view: Map<String, Any>,
     )
 }
+
+data class SlackMessageDelivery(val responseTs: String)
+
+class SlackMessageDeliveryException(
+    val category: String,
+) : RuntimeException("Slack message delivery failed: $category")

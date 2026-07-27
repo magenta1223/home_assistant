@@ -2,6 +2,7 @@ package com.homeassistant.repository.repo.topicanalysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.core.utils.JsonSerializer.encodeToString
 import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
@@ -26,6 +27,8 @@ import org.jetbrains.exposed.sql.update
 internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysisStore {
 
     override fun createTopic(candidate: TopicCandidate): Topic = transaction(db) {
+        require(candidate.familyId.isNotBlank()) { "familyId is required" }
+        require(candidate.createdByUserId.isNotBlank()) { "createdByUserId is required" }
         val existing = findExistingTopic(candidate)
         if (existing != null) return@transaction approveTopic(existing.id)
 
@@ -33,6 +36,8 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         val distinctEvidenceRefs = candidate.evidenceRefs.distinct()
         val distinctClaims = candidate.claims.distinctBy { it.text to it.evidenceRefs.toSet() }
         val topicId = TopicCandidateTable.insert {
+            it[familyId] = candidate.familyId
+            it[createdByUserId] = candidate.createdByUserId
             it[sourceType] = candidate.sourceType
             it[sourceName] = candidate.sourceName
             it[TopicCandidateTable.title] = candidate.title
@@ -50,13 +55,20 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         getTopic(topicId)
     }
 
-    override fun searchApprovedTopics(query: String, limit: Int): List<Topic> = transaction(db) {
+    override fun searchApprovedTopics(
+        scope: HouseholdAccessScope,
+        query: String,
+        limit: Int,
+    ): List<Topic> = transaction(db) {
         val boundedLimit = limit.coerceIn(1, 10)
         val queryTokens = tokenize(query)
         if (queryTokens.isEmpty()) return@transaction emptyList()
 
         TopicCandidateTable.selectAll()
-            .where { TopicCandidateTable.status eq CandidateStatus.APPROVED.name }
+            .where {
+                (TopicCandidateTable.familyId eq scope.familyId.value) and
+                    (TopicCandidateTable.status eq CandidateStatus.APPROVED.name)
+            }
             .map { row -> getTopic(row[TopicCandidateTable.id]) }
             .mapNotNull { topic ->
                 val score = scoreTopic(topic, queryTokens)
@@ -67,7 +79,23 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             .map { it.topic }
     }
 
-    override fun getApprovedTopics(topicIds: Collection<Int>): List<Topic> = transaction(db) {
+    override fun getApprovedTopics(
+        scope: HouseholdAccessScope,
+        topicIds: Collection<Int>,
+    ): List<Topic> = transaction(db) {
+        val distinctIds = topicIds.distinct()
+        if (distinctIds.isEmpty()) return@transaction emptyList()
+
+        TopicCandidateTable.selectAll()
+            .where {
+                (TopicCandidateTable.id inList distinctIds) and
+                    (TopicCandidateTable.familyId eq scope.familyId.value) and
+                    (TopicCandidateTable.status eq CandidateStatus.APPROVED.name)
+            }
+            .map { row -> getTopic(row[TopicCandidateTable.id]) }
+    }
+
+    override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> = transaction(db) {
         val distinctIds = topicIds.distinct()
         if (distinctIds.isEmpty()) return@transaction emptyList()
 
@@ -112,7 +140,8 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         val evidenceRefs = candidate.evidenceRefs.toSet()
         val candidates = TopicCandidateTable.selectAll()
             .where {
-                (TopicCandidateTable.sourceType eq candidate.sourceType) and
+                (TopicCandidateTable.familyId eq candidate.familyId) and
+                    (TopicCandidateTable.sourceType eq candidate.sourceType) and
                     (TopicCandidateTable.sourceName eq candidate.sourceName) and
                     (TopicCandidateTable.title eq candidate.title)
             }
@@ -130,6 +159,8 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
 
         return Topic(
             id = topicId,
+            familyId = row[TopicCandidateTable.familyId],
+            createdByUserId = row[TopicCandidateTable.createdByUserId],
             sourceType = row[TopicCandidateTable.sourceType],
             sourceName = row[TopicCandidateTable.sourceName],
             title = row[TopicCandidateTable.title],

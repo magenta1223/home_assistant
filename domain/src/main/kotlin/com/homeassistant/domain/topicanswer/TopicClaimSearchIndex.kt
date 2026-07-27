@@ -1,5 +1,6 @@
 package com.homeassistant.domain.topicanswer
 
+import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.datamodel.topicanalysis.Topic
 
 data class TopicClaimSearchHit(
@@ -10,7 +11,7 @@ data class TopicClaimSearchHit(
 
 interface TopicClaimSearchIndex {
     fun index(topic: Topic)
-    fun search(question: String, limit: Int): List<TopicClaimSearchHit>
+    fun search(scope: HouseholdAccessScope, question: String, limit: Int): List<TopicClaimSearchHit>
 }
 
 object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
@@ -18,7 +19,11 @@ object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
         // Indexing is skipped until a real embedding provider is wired.
     }
 
-    override fun search(question: String, limit: Int): List<TopicClaimSearchHit> =
+    override fun search(
+        scope: HouseholdAccessScope,
+        question: String,
+        limit: Int,
+    ): List<TopicClaimSearchHit> =
         throw TopicClaimSearchIndexUnavailableException("topic claim vector index is not configured")
 }
 

@@ -6,6 +6,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class TopicAnalysisRequest(
+    val userId: String,
+    val familyId: String,
     val sourceType: String,
     val sourceName: String,
     val text: String,
@@ -23,7 +25,9 @@ data class TopicAnalysisResult(
 
 @Serializable
 data class TopicAnalysisSaveRequest(
-    val previewId: String
+    val previewId: String,
+    val userId: String,
+    val familyId: String,
 )
 
 @Serializable
@@ -35,6 +39,8 @@ data class TopicAnalysisSaveResult(
 @Serializable
 data class TopicAnalysisSelectionSaveRequest(
     val previewId: String,
+    val userId: String,
+    val familyId: String,
     val selectedTopicIndices: Set<Int>,
 )
 

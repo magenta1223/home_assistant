@@ -2,6 +2,7 @@ package com.homeassistant.app.slack
 
 import com.slack.api.model.File
 import com.slack.api.model.event.MessageFileShareEvent
+import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -13,10 +14,10 @@ class SlackFileIngressTest {
             files = listOf(file("kakao.txt", 1024, "https://slack/files/kakao.txt")),
         )
 
-        val uploads = SlackFileIngress.from(event, maxFileSizeBytes = 10_485_760)
+        val uploads = SlackFileIngress.from(event, principal(), maxFileSizeBytes = 10_485_760)
 
         assertEquals(1, uploads.size)
-        assertEquals("U1", uploads.single().slackUserId)
+        assertEquals("U1", uploads.single().principal.slackUserId)
         assertEquals("D1", uploads.single().channelId)
         assertEquals("1710000000.000100", uploads.single().messageTs)
         assertEquals("kakao.txt", uploads.single().fileName)
@@ -30,7 +31,7 @@ class SlackFileIngressTest {
             files = listOf(file("kakao.txt", 1024, "https://slack/files/kakao.txt")),
         )
 
-        assertEquals(emptyList(), SlackFileIngress.from(event, maxFileSizeBytes = 10_485_760))
+        assertEquals(emptyList(), SlackFileIngress.from(event, principal(), maxFileSizeBytes = 10_485_760))
     }
 
     @Test
@@ -43,7 +44,7 @@ class SlackFileIngressTest {
             ),
         )
 
-        assertEquals(emptyList(), SlackFileIngress.from(event, maxFileSizeBytes = 10_485_760))
+        assertEquals(emptyList(), SlackFileIngress.from(event, principal(), maxFileSizeBytes = 10_485_760))
     }
 
     private fun fileShareEvent(
@@ -66,4 +67,7 @@ class SlackFileIngressTest {
         this.size = size
         this.urlPrivateDownload = downloadUrl
     }
+
+    private fun principal() =
+        SlackPrincipal("T1", "U1", "dad", "family-1")
 }

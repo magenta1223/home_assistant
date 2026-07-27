@@ -29,6 +29,8 @@ class SlackKakaoAnalysisWorkflow(
             val text = slackClient.downloadText(downloadUrl, maxFileSizeBytes)
             val result = topicAnalysis.analyze(
                 TopicAnalysisRequest(
+                    userId = upload.principal.userId.value,
+                    familyId = upload.principal.familyId.value,
                     sourceType = "kakao",
                     sourceName = upload.fileName,
                     text = text,
@@ -38,7 +40,7 @@ class SlackKakaoAnalysisWorkflow(
                 log.warn("Slack Kakao analysis parsed zero messages for file ${upload.fileName}")
                 slackClient.postEphemeral(
                     channelId = upload.channelId,
-                    userId = upload.slackUserId,
+                    userId = upload.principal.slackUserId,
                     text = "Kakao 대화 메시지를 읽지 못했습니다. 대화 내보내기 파일이 텍스트 형식인지 확인해주세요.\n" +
                         "읽은 첫 줄: `${text.firstNonBlankLinePreview()}`",
                 )
@@ -48,7 +50,7 @@ class SlackKakaoAnalysisWorkflow(
             reviewSessions.put(
                 SlackTopicReviewSession(
                     previewId = result.previewId,
-                    ownerSlackUserId = upload.slackUserId,
+                    principal = upload.principal,
                     status = SlackTopicReviewStatus.AWAITING_CONFIRMATION,
                     channelId = upload.channelId,
                     messageTs = upload.messageTs,
@@ -72,14 +74,14 @@ class SlackKakaoAnalysisWorkflow(
         } catch (e: DuplicateKakaoMessagesException) {
             slackClient.postEphemeral(
                 channelId = upload.channelId,
-                userId = upload.slackUserId,
+                userId = upload.principal.slackUserId,
                 text = "이미 분석된 Kakao 대화입니다. 새 메시지가 포함된 파일을 올려주세요.",
             )
         } catch (e: Exception) {
             log.warn("Slack Kakao analysis failed for file ${upload.fileName}: ${e.message}")
             slackClient.postEphemeral(
                 channelId = upload.channelId,
-                userId = upload.slackUserId,
+                userId = upload.principal.slackUserId,
                 text = "Kakao 대화 분석에 실패했습니다. 파일 형식, 크기, Slack 권한을 확인해주세요.\n" +
                     "원인: `${e.safeMessage()}`",
             )

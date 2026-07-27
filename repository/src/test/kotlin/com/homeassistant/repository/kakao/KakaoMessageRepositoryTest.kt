@@ -1,6 +1,7 @@
 package com.homeassistant.repository.kakao
 
 import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.repository.db.tables.KakaoImportedMessageTable
 import com.homeassistant.repository.repo.kakao.KakaoMessageRepository
 import org.jetbrains.exposed.sql.Database
@@ -41,5 +42,9 @@ class KakaoMessageRepositoryTest {
         assertEquals(2, result.importedMessageCount)
         assertEquals(2, result.messages.size)
         assertEquals(0, repeated.importedMessageCount)
+        assertEquals(
+            emptyList(),
+            service.findNewMessages(KakaoMessageParser.parse("2026-06-07.txt", text)),
+        )
     }
 }

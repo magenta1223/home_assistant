@@ -23,13 +23,68 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanswer.TopicClaimSearchHit
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
+import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
+import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 
 class KakaoMessageTopicAnalysisServiceTest {
+    @Test
+    fun `analyze skips llm and preview when every message fingerprint already exists`() = runBlocking {
+        val text = kakaoText()
+        val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
+        val backend = DuplicateGuardRecordingBackend()
+        val previewStore = RecordingPreviewStore()
+        val service = KakaoMessageTopicAnalysisService(
+            backend = backend,
+            importService = KakaoImportService(
+                FakeKakaoMessageStore(parsed.mapTo(mutableSetOf()) { it.fingerprint }),
+            ),
+            topicRepository = FakeTopicStore(),
+            previewRepository = previewStore,
+            indexingOutbox = NoOpIndexingOutboxStore,
+        )
+
+        val error = assertFailsWith<DuplicateKakaoMessagesException> {
+            service.analyze(TopicAnalysisRequest("kakao", "family-kakao.txt", text))
+        }
+
+        assertEquals(2, error.recordCount)
+        assertEquals(0, backend.calls)
+        assertEquals(0, previewStore.createCalls)
+    }
+
+    @Test
+    fun `analyze sends only new messages to llm while preserving original evidence refs`() = runBlocking {
+        val text = kakaoText()
+        val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
+        val backend = DuplicateGuardRecordingBackend()
+        val previewStore = RecordingPreviewStore()
+        val service = KakaoMessageTopicAnalysisService(
+            backend = backend,
+            importService = KakaoImportService(
+                FakeKakaoMessageStore(setOf(parsed.first().fingerprint)),
+            ),
+            topicRepository = FakeTopicStore(),
+            previewRepository = previewStore,
+            indexingOutbox = NoOpIndexingOutboxStore,
+        )
+
+        val result = service.analyze(TopicAnalysisRequest("kakao", "family-kakao.txt", text))
+
+        assertEquals(1, result.importedRecordCount)
+        assertEquals(1, backend.calls)
+        assertContains(backend.prompt, "r2 | 승민 | 2026년 6월 15일 오전 6:44 | 둘째 메시지")
+        assertFalse(backend.prompt.contains("첫 메시지"))
+        assertEquals(1, previewStore.createCalls)
+    }
+
     @Test
     fun `save selected analysis persists only selected preview topics`() = runBlocking {
         val kakaoStore = FakeKakaoMessageStore()
@@ -193,9 +248,15 @@ private class FakeIndexingOutboxStore : IndexingOutboxStore {
     }
 }
 
-private class FakeKakaoMessageStore : KakaoMessageStore {
+private class FakeKakaoMessageStore(
+    private val existingFingerprints: Set<String> = emptySet(),
+) : KakaoMessageStore {
     private var messages = emptyList<KakaoMessage>()
     var importCalls = 0
+
+    override fun findExistingFingerprints(fingerprints: Set<String>): Set<String> =
+        (existingFingerprints + messages.map { it.fingerprint })
+            .filterTo(mutableSetOf()) { it in fingerprints }
 
     override fun importMessages(messages: List<ParsedKakaoMessage>): List<KakaoMessage> {
         importCalls += 1
@@ -218,6 +279,37 @@ private class FakeKakaoMessageStore : KakaoMessageStore {
         messages
 }
 
+private class RecordingPreviewStore : TopicAnalysisPreviewStore {
+    var createCalls = 0
+
+    override fun createPreview(
+        sourceFileName: String,
+        text: String,
+        topics: List<TopicCandidate>,
+    ): KakaoAnalysisPreview {
+        createCalls += 1
+        return KakaoAnalysisPreview("preview-1", sourceFileName, text, topics)
+    }
+
+    override fun findPreview(previewId: String): KakaoAnalysisPreview? = null
+}
+
+private class DuplicateGuardRecordingBackend : LlmBackend {
+    var calls = 0
+    var prompt = ""
+
+    override suspend fun complete(
+        system: String,
+        messages: List<Message>,
+        tools: List<Tool>,
+        outputSchema: String,
+    ): LlmResponse {
+        calls += 1
+        prompt = messages.single().content
+        return LlmResponse.Text("""{"topics":[]}""")
+    }
+}
+
 private object UnusedBackend : LlmBackend {
     override suspend fun complete(
         system: String,
@@ -227,6 +319,12 @@ private object UnusedBackend : LlmBackend {
     ): LlmResponse =
         error("not used")
 }
+
+private fun kakaoText(): String =
+    """
+    2026년 6월 15일 오전 6:43, 동훈 : 첫 메시지
+    2026년 6월 15일 오전 6:44, 승민 : 둘째 메시지
+    """.trimIndent()
 
 private fun topic(title: String, evidenceRef: Int) =
     TopicCandidate(

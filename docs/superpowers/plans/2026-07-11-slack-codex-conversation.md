@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Route household Slack DMs through persistent Codex CLI threads while Kotlin retains identity, memory retrieval, idempotency, and session-control ownership.
+**Goal:** Route household Slack DMs through Codex CLI threads that remain active for ten minutes while Kotlin retains identity, memory retrieval, idempotency, and session-expiry ownership.
 
-**Architecture:** Add a Slack-specific session port to `domain`, implement it with Exposed in `repository`, and keep Codex process control and Slack interaction in `app/slack`. Each Slack member has one durable active-session pointer; Kotlin retrieves approved household context and passes it to an isolated non-interactive Codex process without exposing database access.
+**Architecture:** Add a Slack-specific session port to `domain`, implement it with Exposed in `repository`, and keep Codex process control and Slack interaction in `app/slack`. Each Slack member has at most one active-session pointer. A pointer is valid for ten minutes after `lastActiveAt`; an expired pointer is removed and the next DM starts a new Codex thread. Kotlin retrieves approved household context and passes it to an isolated non-interactive Codex process without exposing database access.
 
 **Tech Stack:** Kotlin 2.2.21, JVM 21, Exposed 0.57.0, SQLite 3.47.1.0, Slack Bolt/Socket Mode 1.49.0, Codex CLI non-interactive JSONL protocol, kotlin.test, MockK
 
@@ -15,6 +15,8 @@
 - Do not expose SQLite, Qdrant, repository files, service secrets, or household files to Codex.
 - Run Codex with read-only sandbox, no interactive approvals, ignored personal config/rules, disabled web search, a dedicated working directory, and persistent `CODEX_HOME`.
 - Never use `--ephemeral`; resumable Codex threads require persisted rollout state.
+- Resume only the current member's active thread when `now - lastActiveAt < 10 minutes`; otherwise remove the active pointer and start a new thread.
+- Do not add `/brain` commands, session lists, manual session activation, or cleanup of expired thread files under `CODEX_HOME` in the MVP.
 - Serialize turns per Slack principal and deduplicate `(channelId, messageTs)` before Codex invocation.
 - Persist `thread.started` before waiting for the final agent message.
 - Store final answers as `ANSWER_READY` before Slack delivery so delivery can retry without rerunning Codex.
@@ -32,8 +34,6 @@
 - `app/.../slack/CodexConversationClient.kt`: process boundary and JSONL parser.
 - `app/.../slack/HouseholdContextProvider.kt`: bounded approved-topic context formatting.
 - `app/.../slack/SlackConversationService.kt`: per-user serialization and message orchestration.
-- `app/.../slack/SlackConversationBlocks.kt`: resume modal and current-session message rendering.
-- `app/.../slack/SlackConversationCommands.kt`: `/brain` command and modal submission behavior.
 - `app/.../slack/SlackDirectMessageIngress.kt`: pure Slack message filtering/mapping.
 - `app/.../slack/SlackSocketRuntime.kt`: register the new listeners without changing existing file listeners.
 - `app/.../Application.kt`: wire repositories, Codex client, context provider, and Slack conversation services.
@@ -103,11 +103,8 @@ data class SlackCodexSession(
     val id: Int,
     val principal: SlackPrincipal,
     val codexThreadId: String,
-    val title: String,
     val createdAt: Long,
     val lastActiveAt: Long,
-    val unavailableAt: Long? = null,
-    val unavailableReason: String? = null,
 )
 
 data class SlackMessageReceipt(
@@ -125,13 +122,10 @@ interface SlackCodexSessionStore {
     fun markAnswerReady(key: SlackMessageKey, answer: String, now: Long)
     fun markCompleted(key: SlackMessageKey, responseTs: String?, now: Long)
     fun markFailed(key: SlackMessageKey, now: Long)
-    fun createAndActivate(principal: SlackPrincipal, codexThreadId: String, title: String, now: Long): SlackCodexSession
-    fun active(principal: SlackPrincipal): SlackCodexSession?
+    fun createAndActivate(principal: SlackPrincipal, codexThreadId: String, now: Long): SlackCodexSession
+    fun active(principal: SlackPrincipal, now: Long, idleTimeoutMillis: Long): SlackCodexSession?
     fun clearActive(principal: SlackPrincipal)
-    fun listAvailable(principal: SlackPrincipal, limit: Int = 20): List<SlackCodexSession>
-    fun activate(principal: SlackPrincipal, sessionId: Int): SlackCodexSession?
     fun touch(principal: SlackPrincipal, sessionId: Int, now: Long)
-    fun markUnavailable(principal: SlackPrincipal, sessionId: Int, reason: String, now: Long)
 }
 ```
 
@@ -150,7 +144,7 @@ git commit -m "feat: define Slack Codex session contract"
 
 ---
 
-### Task 2: Persist Sessions, Active Pointers, And Receipts
+### Task 2: Persist Expiring Active Sessions And Receipts
 
 **Files:**
 - Create: `repository/src/main/kotlin/com/homeassistant/repository/db/tables/SlackCodexConversationTables.kt`
@@ -171,13 +165,12 @@ git commit -m "feat: define Slack Codex session contract"
 fun `create replaces only the same principals active pointer`() {
     val dad = SlackPrincipal("T1", "U1")
     val mom = SlackPrincipal("T1", "U2")
-    val oldDad = repo.createAndActivate(dad, "thread-1", "old", 1)
-    repo.createAndActivate(mom, "thread-2", "mom", 2)
-    val newDad = repo.createAndActivate(dad, "thread-3", "new", 3)
+    repo.createAndActivate(dad, "thread-1", 1)
+    repo.createAndActivate(mom, "thread-2", 2)
+    val newDad = repo.createAndActivate(dad, "thread-3", 3)
 
-    assertEquals(newDad.id, repo.active(dad)?.id)
-    assertEquals("thread-2", repo.active(mom)?.codexThreadId)
-    assertEquals(listOf(newDad.id, oldDad.id), repo.listAvailable(dad).map { it.id })
+    assertEquals(newDad.id, repo.active(dad, 3, 600_000)?.id)
+    assertEquals("thread-2", repo.active(mom, 3, 600_000)?.codexThreadId)
 }
 
 @Test
@@ -191,12 +184,12 @@ fun `duplicate message claim returns null and answer remains deliverable`() {
 }
 
 @Test
-fun `activate rejects a session owned by another principal`() {
-    val owner = SlackPrincipal("T1", "U1")
-    val attacker = SlackPrincipal("T1", "U2")
-    val session = repo.createAndActivate(owner, "thread-1", "private", 1)
-    assertNull(repo.activate(attacker, session.id))
-    assertNull(repo.active(attacker))
+fun `active expires and removes a pointer after ten minutes`() {
+    val principal = SlackPrincipal("T1", "U1")
+    repo.createAndActivate(principal, "thread-1", 1)
+    assertNotNull(repo.active(principal, 600_000, 600_000))
+    assertNull(repo.active(principal, 600_001, 600_000))
+    assertNull(repo.active(principal, 2, 600_000))
 }
 ```
 
@@ -214,11 +207,8 @@ internal object SlackCodexSessionTable : Table("slack_codex_sessions") {
     val teamId = text("team_id")
     val slackUserId = text("slack_user_id")
     val codexThreadId = text("codex_thread_id").uniqueIndex()
-    val title = text("title")
     val createdAt = long("created_at")
     val lastActiveAt = long("last_active_at")
-    val unavailableAt = long("unavailable_at").nullable()
-    val unavailableReason = text("unavailable_reason").nullable()
     override val primaryKey = PrimaryKey(id)
 }
 
@@ -244,7 +234,7 @@ internal object SlackMessageReceiptTable : Table("slack_message_receipts") {
 
 - [ ] **Step 4: Implement repository transactions and register the tables/store**
 
-Use `transaction(db)` for every method. `createAndActivate` must insert the session, delete the principal's previous pointer, and insert the new pointer in one transaction. `activate` must select by both local session ID and owner before replacing the pointer. `listAvailable` must filter `unavailable_at IS NULL`, order by `last_active_at DESC`, and apply `limit.coerceIn(1, 100)`. `claimMessage` must catch only the unique-key collision and return `null`; other SQL failures propagate.
+Use `transaction(db)` for every method. `createAndActivate` must insert the session, delete the principal's previous pointer, and insert the new pointer in one transaction. `active` must select by both pointer and owner. When `now - last_active_at >= idleTimeoutMillis`, it must delete the pointer in the same transaction and return `null`; it does not delete the session row or files under `CODEX_HOME`. `claimMessage` must catch only the unique-key collision and return `null`; other SQL failures propagate.
 
 Add all three tables to `DatabaseFactory.init`, expose `slackCodexSessions: SlackCodexSessionStore` from `RepositoryStores`, and construct `SlackCodexSessionRepository(db)` in `RepositoryFactory`.
 
@@ -252,7 +242,7 @@ Add all three tables to `DatabaseFactory.init`, expose `slackCodexSessions: Slac
 
 Run: `./gradlew :repository:test --tests '*SlackCodexSessionRepositoryTest'`
 
-Expected: PASS for active replacement, ownership rejection, unavailable filtering, receipt transitions, and duplicate claims.
+Expected: PASS for active replacement, ten-minute expiry, ownership isolation, receipt transitions, and duplicate claims.
 
 - [ ] **Step 6: Commit persistence**
 
@@ -387,16 +377,23 @@ git commit -m "feat: run resumable Codex conversations"
 fun `first message persists thread and answer before Slack delivery`() {
     val service = service(codex = FakeCodex(startThread = "thread-1", answer = "답변"))
     service.handle(message("100.1"))
-    assertEquals("thread-1", store.active(principal)?.codexThreadId)
+    assertEquals("thread-1", store.active(principal, now(), SESSION_IDLE_TIMEOUT_MILLIS)?.codexThreadId)
     assertEquals(SlackMessageReceiptStatus.COMPLETED, store.receipt(key("100.1"))?.status)
     assertEquals("답변", slack.messages.single().text)
 }
 
 @Test
-fun `follow up resumes active thread`() {
-    store.createAndActivate(principal, "thread-1", "첫 질문", 1)
+fun `follow up within ten minutes resumes active thread`() {
+    store.createAndActivate(principal, "thread-1", now() - 599_999)
     service().handle(message("100.2"))
     assertEquals("thread-1", codex.resumedThreadId)
+}
+
+@Test
+fun `follow up after ten minutes starts a new thread`() {
+    store.createAndActivate(principal, "thread-1", now() - 600_000)
+    service(codex = FakeCodex(startThread = "thread-2", answer = "새 답변")).handle(message("100.4"))
+    assertEquals("thread-2", store.active(principal, now(), SESSION_IDLE_TIMEOUT_MILLIS)?.codexThreadId)
 }
 
 @Test
@@ -409,7 +406,7 @@ fun `answer ready duplicate retries delivery without invoking Codex`() {
 }
 ```
 
-Also cover team mismatch before retrieval, resume failure clearing/marking the active session unavailable, context-search failure, Slack delivery failure leaving `ANSWER_READY`, deterministic title truncation, and two simultaneous messages for one principal executing in order.
+Also cover team mismatch before retrieval, the exact ten-minute expiry boundary, resume failure clearing the active pointer, context-search failure, Slack delivery failure leaving `ANSWER_READY`, and two simultaneous messages for one principal executing in order.
 
 - [ ] **Step 2: Run focused service tests and verify failure**
 
@@ -446,7 +443,7 @@ data class SlackConversationMessage(
 )
 ```
 
-Use a `ConcurrentHashMap<SlackPrincipal, ReentrantLock>` and `withLock`. Claim the receipt before acquiring Codex output. On a duplicate, deliver only a stored `ANSWER_READY` answer. For a new Codex session, persist from the `onThreadStarted` callback and attach its local ID to the receipt. For success, mark `ANSWER_READY`, post the stored answer, then mark `COMPLETED`. For a missing/corrupt resume result, mark the session unavailable and clear the active pointer. Derive a title by compacting whitespace and taking at most 60 characters.
+Use a `ConcurrentHashMap<SlackPrincipal, ReentrantLock>` and `withLock`. Claim the receipt before acquiring Codex output. Inside the principal lock, load the active session using the current time and `SESSION_IDLE_TIMEOUT_MILLIS = 600_000`; the store atomically removes an expired pointer. On a duplicate, deliver only a stored `ANSWER_READY` answer. For a new Codex session, persist from the `onThreadStarted` callback and attach its local ID to the receipt. For success, update `lastActiveAt`, mark `ANSWER_READY`, post the stored answer, then mark `COMPLETED`. On any resume failure, clear the active pointer and return a short retryable error; the next DM starts a new thread.
 
 - [ ] **Step 5: Run focused service tests**
 
@@ -463,98 +460,7 @@ git commit -m "feat: orchestrate Slack Codex turns"
 
 ---
 
-### Task 5: Add `/brain` Session Controls
-
-**Files:**
-- Create: `app/src/main/kotlin/com/homeassistant/app/slack/SlackConversationBlocks.kt`
-- Create: `app/src/main/kotlin/com/homeassistant/app/slack/SlackConversationCommands.kt`
-- Test: `app/src/test/kotlin/com/homeassistant/app/slack/SlackConversationBlocksTest.kt`
-- Test: `app/src/test/kotlin/com/homeassistant/app/slack/SlackConversationCommandsTest.kt`
-
-**Interfaces:**
-- Consumes: `SlackCodexSessionStore`, `SlackClient`, Slack command/view payload values.
-- Produces: `/brain new`, `/brain resume`, `/brain current`, and callback `slack_codex_resume_session`.
-
-- [ ] **Step 1: Write failing command tests**
-
-```kotlin
-@Test
-fun `new clears only invoking principal`() {
-    val dad = SlackPrincipal("T1", "U1")
-    val mom = SlackPrincipal("T1", "U2")
-    store.createAndActivate(dad, "dad-thread", "dad", 1)
-    store.createAndActivate(mom, "mom-thread", "mom", 1)
-    commands.newConversation(dad)
-    assertNull(store.active(dad))
-    assertNotNull(store.active(mom))
-}
-
-@Test
-fun `forged resume session is rejected`() {
-    val owner = SlackPrincipal("T1", "U1")
-    val attacker = SlackPrincipal("T1", "U2")
-    val session = store.createAndActivate(owner, "thread-1", "private", 1)
-    assertIs<SlackResumeResult.Rejected>(commands.resume(attacker, session.id))
-}
-```
-
-- [ ] **Step 2: Run the command tests and verify failure**
-
-Run: `./gradlew :app:test --tests '*SlackConversationBlocksTest' --tests '*SlackConversationCommandsTest'`
-
-Expected: FAIL because the command and Block Kit builders do not exist.
-
-- [ ] **Step 3: Implement Block Kit and command behavior**
-
-`SlackConversationBlocks.resumeModal` must render at most 20 available sessions as `static_select` options. Each option value is the local numeric session ID; the label contains the title and formatted last-active time. Set callback ID to `slack_codex_resume_session`. Do not include `codexThreadId` or identity in modal metadata.
-
-`SlackConversationCommands` must:
-
-- Verify the command's `teamId` equals configured `SLACK_TEAM_ID`.
-- Reject invocation outside a DM channel.
-- Clear the invoking principal's pointer for `new`.
-- Open the resume modal only when available sessions exist.
-- Return the active title/time for `current`.
-- On modal submission, use team/user from the fresh payload and call `store.activate(principal, localSessionId)`.
-- Return a concise usage message for an empty or unknown subcommand.
-
-Use these exact test-facing methods and result type; Slack payload adapters call them after extracting fresh team/user/channel values:
-
-```kotlin
-sealed interface SlackResumeResult {
-    data class Activated(val session: SlackCodexSession) : SlackResumeResult
-    data object Rejected : SlackResumeResult
-}
-
-class SlackConversationCommands(
-    private val configuredTeamId: String,
-    private val store: SlackCodexSessionStore,
-    private val slackClient: SlackClient,
-) {
-    fun newConversation(principal: SlackPrincipal)
-    fun resume(principal: SlackPrincipal, sessionId: Int): SlackResumeResult
-    fun current(principal: SlackPrincipal): SlackCodexSession?
-    fun handle(payload: SlashCommandPayload)
-    fun handleResumeSubmission(payload: ViewSubmissionPayload)
-}
-```
-
-- [ ] **Step 4: Run command and block tests**
-
-Run: `./gradlew :app:test --tests '*SlackConversationBlocksTest' --tests '*SlackConversationCommandsTest'`
-
-Expected: PASS including the forged-ID ownership regression test.
-
-- [ ] **Step 5: Commit session controls**
-
-```bash
-git add app/src/main/kotlin/com/homeassistant/app/slack/SlackConversationBlocks.kt app/src/main/kotlin/com/homeassistant/app/slack/SlackConversationCommands.kt app/src/test/kotlin/com/homeassistant/app/slack/SlackConversationBlocksTest.kt app/src/test/kotlin/com/homeassistant/app/slack/SlackConversationCommandsTest.kt
-git commit -m "feat: add Slack conversation controls"
-```
-
----
-
-### Task 6: Register DM, Command, And Modal Listeners
+### Task 5: Register DM Listeners
 
 **Files:**
 - Create: `app/src/main/kotlin/com/homeassistant/app/slack/SlackDirectMessageIngress.kt`
@@ -564,7 +470,7 @@ git commit -m "feat: add Slack conversation controls"
 - Test: `app/src/test/kotlin/com/homeassistant/app/slack/SlackConversationListenersTest.kt`
 
 **Interfaces:**
-- Consumes: Slack `MessageEvent`, command/view payloads, `SlackConversationService`, and `SlackConversationCommands`.
+- Consumes: Slack `MessageEvent` and `SlackConversationService`.
 - Produces: listener registration through `SlackConversationListeners.register(app)`.
 
 - [ ] **Step 1: Write failing ingress tests**
@@ -609,15 +515,6 @@ app.event(MessageEvent::class.java) { payload, ctx ->
     ctx.ack()
 }
 
-app.command("/brain") { req, ctx ->
-    executor.submit { conversationCommands.handle(req.payload) }
-    ctx.ack()
-}
-
-app.viewSubmission(SlackConversationBlocks.CALLBACK_RESUME_SESSION) { req, ctx ->
-    executor.submit { conversationCommands.handleResumeSubmission(req.payload) }
-    ctx.ack()
-}
 ```
 
 Handlers must acknowledge before waiting for Codex, database retrieval, or Slack Web API calls. Extend `SlackSocketRuntime` by constructing/registering this listener object; leave current file-share and topic-confirmation listeners unchanged.
@@ -637,7 +534,7 @@ git commit -m "feat: receive conversational Slack DMs"
 
 ---
 
-### Task 7: Wire Configuration And Verify The End-To-End Boundary
+### Task 6: Wire Configuration And Verify The End-To-End Boundary
 
 **Files:**
 - Modify: `core/src/main/kotlin/com/homeassistant/core/constants/AppConfig.kt`
@@ -651,7 +548,7 @@ git commit -m "feat: receive conversational Slack DMs"
 
 - [ ] **Step 1: Write a failing wiring test**
 
-The test must build the Slack conversation graph with fake `SlackCodexSessionStore`, `CodexConversationClient`, `TopicAnswerUseCase`, and `SlackClient`, send two messages for one principal, and assert the second invocation resumes the first parsed thread. A second principal must start a different thread. No real Slack, Qdrant, Codex, or OpenAI call is allowed.
+The test must build the Slack conversation graph with fake `SlackCodexSessionStore`, `CodexConversationClient`, `TopicAnswerUseCase`, and `SlackClient`. Two messages less than ten minutes apart for one principal must use the same parsed thread; a message at least ten minutes later must start a new thread. A second principal must start a different thread. No real Slack, Qdrant, Codex, or OpenAI call is allowed.
 
 - [ ] **Step 2: Run the wiring test and verify failure**
 

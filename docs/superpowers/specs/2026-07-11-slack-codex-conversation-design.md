@@ -2,9 +2,9 @@
 
 ## Goal
 
-Use Slack direct messages as the conversational entry point for the household second brain. Codex CLI owns conversational context through persistent threads, while the Kotlin application owns Slack identity, authorization, household-memory retrieval, and session selection.
+Use Slack direct messages as the conversational entry point for the household second brain. Codex CLI owns short-lived conversational context, while the Kotlin application owns Slack identity, authorization, household-memory retrieval, and a ten-minute active-session lease.
 
-The user should normally send plain DM messages without thinking about sessions. Session controls are available only when a user wants to start over or resume an older conversation.
+The user sends plain DM messages without managing sessions. Messages sent within ten minutes of the previous completed turn continue the active Codex thread. After ten minutes without another message, the application expires the active-session link and the next DM starts a new thread.
 
 ## Scope
 
@@ -13,9 +13,8 @@ The first version supports:
 - One configured Slack workspace for the household.
 - One independent active conversation per Slack member.
 - Plain-text DM questions and follow-up messages.
-- Persistent Codex threads across application restarts.
-- Starting a new conversation.
-- Listing and resuming a previous conversation.
+- Continuing a Codex thread while it remains active for ten minutes.
+- Automatically starting a new conversation after the active session expires.
 - Injecting relevant approved household memories into each Codex turn.
 - Existing Kakao file analysis and topic-confirmation behavior without changes.
 
@@ -25,21 +24,11 @@ The first version does not let Codex access SQLite, Qdrant, repository files, or
 
 ### Normal conversation
 
-A member sends a top-level DM to the Slack app. If the member has an active Codex thread, the application resumes it. Otherwise, the application starts a new Codex thread and makes it active.
+A member sends a top-level DM to the Slack app. If the member has a Codex thread whose last activity is less than ten minutes old, the application resumes it. Otherwise, the application removes the expired active-session link, starts a new Codex thread, and makes it active.
 
 The DM timeline remains a normal continuous messenger experience. Slack threads are not used as conversation boundaries.
 
-### Session controls
-
-One Slack command, `/brain`, accepts these subcommands:
-
-- `/brain new`: deactivate the current session. The next plain DM starts a new Codex thread.
-- `/brain resume`: open a modal listing the member's recent sessions, newest first.
-- `/brain current`: show the active session title and last-active time.
-
-Selecting a session in the resume modal atomically replaces the member's active-session pointer. The app posts a short confirmation containing the selected title and last-active time. It does not replay the old conversation into Slack.
-
-Session titles are derived deterministically from the first user message and truncated to a display-safe length. Creating a title does not make a second LLM call.
+There are no session commands, session lists, or manual resume controls in the MVP. Expired Codex thread files may remain in the server-owned `CODEX_HOME`, but the application no longer retains an active link to them and never resumes them.
 
 ## Identity And Authorization
 
@@ -53,7 +42,7 @@ Slack identity is determined before Codex runs.
 - `slackUserId` is the stable member ID supplied by Slack events and interactions.
 - Every event must match the configured `teamId`.
 - The Kotlin boundary derives the internal identity deterministically as `UserId("slack:<teamId>:<slackUserId>")`; neither configuration nor an LLM chooses the mapping.
-- A member can list, activate, and resume only sessions owned by the same `(teamId, slackUserId)` pair.
+- A member can resume only the unexpired active session owned by the same `(teamId, slackUserId)` pair.
 - Codex never receives or selects an internal `UserId`.
 - Codex never receives database credentials or a database path.
 
@@ -68,11 +57,8 @@ id                  internal session ID
 team_id             owning Slack workspace
 slack_user_id       owning Slack member
 codex_thread_id     persistent Codex thread ID, unique
-title               first-message-derived display title
 created_at          creation time
 last_active_at      latest completed or failed turn time
-unavailable_at      set when the Codex thread cannot be resumed
-unavailable_reason  internal diagnostic category, never raw process output
 ```
 
 ### `slack_codex_active_sessions`
@@ -83,7 +69,7 @@ slack_user_id       Slack member
 session_id          active slack_codex_sessions row
 ```
 
-The `(team_id, slack_user_id)` pair is the primary key. Keeping the active pointer in a separate table makes the one-active-session invariant explicit without restricting the number of archived sessions.
+The `(team_id, slack_user_id)` pair is the primary key. The pointer is removed when `last_active_at` is at least ten minutes old. Historical session rows are not exposed for listing or manual activation.
 
 ### `slack_message_receipts`
 
@@ -114,7 +100,7 @@ Coordinates identity lookup, active-session selection, approved-memory retrieval
 
 ### `SlackCodexSessionStore`
 
-Owns session rows, active-session pointers, ownership checks, recent-session listing, and message receipts. Active-pointer changes and ownership validation occur in database transactions.
+Owns session rows, expiring active-session pointers, ownership checks, and message receipts. Active lookup validates ownership and the ten-minute lease in a database transaction; an expired pointer is deleted before returning no active session.
 
 ### `CodexConversationClient`
 
@@ -149,13 +135,6 @@ Persisting on `thread.started` minimizes orphaned Codex threads if the process f
 3. Kotlin retrieves relevant approved memories for the new question.
 4. `CodexConversationClient` runs `codex exec resume <codexThreadId> --json` with the new turn.
 5. The final agent message is stored with `ANSWER_READY`, session activity is updated, the stored answer is posted to Slack, and the receipt is completed.
-
-### Resume selection
-
-1. `/brain resume` opens a modal containing only available sessions owned by the invoking member.
-2. The modal submission includes the local session ID, not a raw Codex thread ID.
-3. The server reloads the session, revalidates ownership, and atomically replaces the active pointer.
-4. A confirmation is posted to the member's DM.
 
 ## Codex Runtime Boundary
 
@@ -193,7 +172,7 @@ The context block is explicitly labeled as untrusted reference content. It canno
 - Approved-memory search unavailable: continue without memory context and state that stored-memory lookup was unavailable only when it affects the answer.
 - Codex fails before `thread.started`: mark the receipt failed; no local session is created.
 - Codex fails after `thread.started`: retain the persisted session so the next message can resume it; mark the receipt failed.
-- Resume reports a missing or corrupt Codex thread: do not silently create a new thread. Set `unavailable_at` and `unavailable_reason`, clear the active pointer, and tell the user to start or select another conversation.
+- Resume failure: clear the active pointer and return a short retryable error. The next DM starts a new thread; the MVP does not repair or manually resume the previous thread.
 - Timeout: terminate the process tree, mark the receipt failed, and post a short retryable error.
 - Slack response posting fails after Codex completes: retain the stored answer in `ANSWER_READY`; retry delivery without running Codex again.
 - Application restart: stale `PROCESSING` receipts become recoverable failures; they are never automatically re-executed without an explicit retry policy.
@@ -215,10 +194,9 @@ The database owns durable idempotency and active-pointer invariants. Multi-insta
 - Workspace mismatch is rejected before retrieval or Codex invocation.
 - Duplicate `(channelId, messageTs)` does not invoke Codex twice.
 - An `ANSWER_READY` duplicate retries Slack delivery with the stored answer and does not invoke Codex.
-- `/brain new` clears only the invoking member's active pointer.
-- Resume lists and activates only sessions owned by the invoking member.
-- A forged modal session ID cannot cross the ownership boundary.
-- Unavailable Codex threads cannot be selected or remain active.
+- A follow-up before ten minutes resumes the active thread.
+- A follow-up at or after ten minutes expires the active link and starts a new thread.
+- Expiring one member's session does not affect another member's active thread.
 - JSONL parsing handles progress events, final messages, failures, and malformed output.
 - Process arguments and prompt input do not pass through a shell.
 - Concurrent messages from one member execute in order.
@@ -228,7 +206,7 @@ The database owns durable idempotency and active-pointer invariants. Multi-insta
 
 - Repository tests cover session persistence, active-pointer replacement, and receipt uniqueness.
 - Slack handler tests verify immediate acknowledgement and asynchronous work submission.
-- A fake Codex executable verifies new and resume process protocols without making model calls.
+- A fake Codex executable verifies new and active-thread resume process protocols without making model calls.
 - Existing Slack Kakao analysis and confirmation tests remain green.
 - The full Gradle test suite and build pass.
 
@@ -240,6 +218,8 @@ The database owns durable idempotency and active-pointer invariants. Multi-insta
 - Allowing Codex to create, approve, reject, or delete memories in the first version.
 - Slack channel or group-DM conversations.
 - Using Slack threads as session boundaries.
+- Listing, selecting, or manually resuming previous Codex sessions.
+- Deleting expired Codex thread files from `CODEX_HOME`.
 - Streaming partial Codex output into Slack.
 - Multiple Slack workspaces or multiple application instances.
 - Migrating away from the existing configurable LLM backends used by topic analysis.

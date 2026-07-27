@@ -5,6 +5,7 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
+import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
@@ -40,14 +41,21 @@ fun Application.configureRoutes(
                 return@post
             }
 
-            val result = kakaoImportAnalyze.analyze(
-                TopicAnalysisRequest(
-                    sourceType = "kakao",
-                    sourceName = sourceName,
-                    text = text
+            try {
+                val result = kakaoImportAnalyze.analyze(
+                    TopicAnalysisRequest(
+                        sourceType = "kakao",
+                        sourceName = sourceName,
+                        text = text
+                    )
                 )
-            )
-            call.respond(HttpStatusCode.OK, result)
+                call.respond(HttpStatusCode.OK, result)
+            } catch (e: DuplicateKakaoMessagesException) {
+                call.respond(
+                    HttpStatusCode.Conflict,
+                    mapOf("error" to "all Kakao messages have already been analyzed"),
+                )
+            }
         }
 
         post(AppConfig.ROUTE_KAKAO_IMPORT_SAVE) {

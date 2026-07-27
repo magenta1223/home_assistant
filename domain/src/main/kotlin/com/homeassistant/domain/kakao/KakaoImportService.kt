@@ -4,6 +4,15 @@ import com.homeassistant.datamodel.kakao.KakaoMessage
 
 /** Imports a KakaoTalk export file into the Kakao message store. */
 class KakaoImportService(private val repository: KakaoMessageStore) {
+    fun findNewMessages(messages: List<ParsedKakaoMessage>): List<ParsedKakaoMessage> {
+        val existingFingerprints = repository.findExistingFingerprints(
+            messages.mapTo(mutableSetOf()) { it.fingerprint },
+        )
+        return messages
+            .filterNot { it.fingerprint in existingFingerprints }
+            .distinctBy { it.fingerprint }
+    }
+
     fun import(sourceFileName: String, text: String): KakaoImportResult {
         val parsed = KakaoMessageParser.parse(sourceFileName, text)
         val imported = repository.importMessages(parsed)

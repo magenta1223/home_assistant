@@ -14,6 +14,7 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicDraft
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
 import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
+import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
@@ -37,10 +38,22 @@ class KakaoMessageTopicAnalysisService(
     ): TopicAnalysisResult {
         val sourceName = request.sourceName
         val messages = KakaoMessageParser.parse(sourceName, request.text)
+        val newFingerprints = importService.findNewMessages(messages)
+            .mapTo(mutableSetOf()) { it.fingerprint }
+        if (messages.isNotEmpty() && newFingerprints.isEmpty()) {
+            throw DuplicateKakaoMessagesException(sourceName, messages.size)
+        }
+        val includedFingerprints = mutableSetOf<String>()
         val document = SourceDocument(
             sourceType = "kakao",
             sourceName = sourceName,
-            records = messages.mapIndexed { index, message ->
+            records = messages.mapIndexedNotNull { index, message ->
+                if (message.fingerprint !in newFingerprints ||
+                    !includedFingerprints.add(message.fingerprint)
+                ) {
+                    return@mapIndexedNotNull null
+                }
+
                 val recordNumber = index + 1
                 SourceRecord(
                     id = "r$recordNumber",
@@ -57,7 +70,7 @@ class KakaoMessageTopicAnalysisService(
             previewId = preview.previewId,
             sourceType = request.sourceType,
             sourceName = request.sourceName,
-            importedRecordCount = messages.count(),
+            importedRecordCount = document.records.size,
             topics = topics
         )
     }

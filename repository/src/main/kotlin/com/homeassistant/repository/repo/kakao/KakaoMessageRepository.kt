@@ -12,6 +12,19 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 /** Stores and retrieves deduplicated KakaoTalk messages imported from export files. */
 internal class KakaoMessageRepository(private val db: Database) : KakaoMessageStore {
+    override fun findExistingFingerprints(fingerprints: Set<String>): Set<String> = transaction(db) {
+        if (fingerprints.isEmpty()) return@transaction emptySet()
+
+        fingerprints
+            .chunked(FINGERPRINT_QUERY_BATCH_SIZE)
+            .flatMapTo(mutableSetOf()) { batch ->
+                KakaoImportedMessageTable
+                    .select(KakaoImportedMessageTable.fingerprint)
+                    .where { KakaoImportedMessageTable.fingerprint inList batch }
+                    .map { it[KakaoImportedMessageTable.fingerprint] }
+            }
+    }
+
     override fun importMessages(messages: List<ParsedKakaoMessage>): List<KakaoMessage> = transaction(db) {
         messages.mapNotNull { message ->
             val existing = KakaoImportedMessageTable.selectAll()
@@ -64,3 +77,5 @@ internal class KakaoMessageRepository(private val db: Database) : KakaoMessageSt
             fingerprint = this[KakaoImportedMessageTable.fingerprint],
         )
 }
+
+private const val FINGERPRINT_QUERY_BATCH_SIZE = 500

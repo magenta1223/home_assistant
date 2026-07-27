@@ -6,12 +6,14 @@ import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 class SlackKakaoAnalysisWorkflowTest {
@@ -52,6 +54,24 @@ class SlackKakaoAnalysisWorkflowTest {
 
         assertEquals(1, slack.ephemeralMessages.size)
         assertEquals("U1", slack.ephemeralMessages.single().userId)
+    }
+
+    @Test
+    fun `process reports already analyzed kakao data without creating review session`() = runBlocking {
+        val slack = FakeSlackClient(downloadedText = "kakao export")
+        val sessions = InMemorySlackTopicReviewSessionStore()
+        val workflow = SlackKakaoAnalysisWorkflow(
+            slackClient = slack,
+            topicAnalysis = DuplicateAnalyzer,
+            reviewSessions = sessions,
+            maxFileSizeBytes = 10_485_760,
+        )
+
+        workflow.process(upload())
+
+        assertEquals(1, slack.ephemeralMessages.size)
+        assertContains(slack.ephemeralMessages.single().text, "이미 분석된")
+        assertEquals(null, sessions.find("preview-1"))
     }
 
     private fun upload() =
@@ -130,6 +150,14 @@ private class FakeAnalyzer : TopicAnalysisUseCase() {
 private object FailingAnalyzer : TopicAnalysisUseCase() {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("analysis failed")
+
+    override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
+        error("not used")
+}
+
+private object DuplicateAnalyzer : TopicAnalysisUseCase() {
+    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
+        throw DuplicateKakaoMessagesException(request.sourceName, 1)
 
     override suspend fun saveAnalysis(previewId: String): TopicAnalysisSaveResult =
         error("not used")

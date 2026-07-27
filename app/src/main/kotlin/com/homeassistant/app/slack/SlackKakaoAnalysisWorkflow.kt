@@ -1,5 +1,6 @@
 package com.homeassistant.app.slack
 
+import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import org.slf4j.LoggerFactory
@@ -67,6 +68,12 @@ class SlackKakaoAnalysisWorkflow(
                 text = message["text"] as String,
                 blocks = message["blocks"] as List<Map<String, Any>>,
                 threadTs = upload.messageTs,
+            )
+        } catch (e: DuplicateKakaoMessagesException) {
+            slackClient.postEphemeral(
+                channelId = upload.channelId,
+                userId = upload.slackUserId,
+                text = "이미 분석된 Kakao 대화입니다. 새 메시지가 포함된 파일을 올려주세요.",
             )
         } catch (e: Exception) {
             log.warn("Slack Kakao analysis failed for file ${upload.fileName}: ${e.message}")

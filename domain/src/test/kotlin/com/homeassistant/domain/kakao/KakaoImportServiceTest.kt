@@ -6,6 +6,20 @@ import kotlin.test.assertEquals
 
 class KakaoImportServiceTest {
     @Test
+    fun `find new messages removes duplicate fingerprints within the request`() {
+        val service = KakaoImportService(FakeKakaoMessageStore())
+        val parsed = KakaoMessageParser.parse(
+            "duplicate.txt",
+            """
+            [동훈] [오후 4:49] 같은 메시지
+            [동훈] [오후 4:49] 같은 메시지
+            """.trimIndent(),
+        )
+
+        assertEquals(1, service.findNewMessages(parsed).size)
+    }
+
+    @Test
     fun `import stores only kakao messages and dedupes by fingerprint`() {
         val store = FakeKakaoMessageStore()
         val service = KakaoImportService(store)
@@ -25,6 +39,9 @@ class KakaoImportServiceTest {
     private class FakeKakaoMessageStore : KakaoMessageStore {
         private val messages = mutableListOf<KakaoMessage>()
         private var nextId = 1
+
+        override fun findExistingFingerprints(fingerprints: Set<String>): Set<String> =
+            messages.map { it.fingerprint }.filterTo(mutableSetOf()) { it in fingerprints }
 
         override fun importMessages(messages: List<ParsedKakaoMessage>): List<KakaoMessage> =
             messages.mapNotNull { message ->

@@ -7,6 +7,7 @@ import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaim
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
@@ -28,6 +29,25 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
 class KakaoImportRoutesTest {
+    @Test
+    fun `import analyze route returns conflict when all messages already exist`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) {
+                json()
+            }
+            configureRoutes(FakeAnalyzer)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"sourceName":"duplicate.txt","text":"duplicate"}""")
+        }
+
+        assertEquals(HttpStatusCode.Conflict, response.status)
+        assertContains(response.bodyAsText(), "already been analyzed")
+    }
+
     @Test
     fun `import analyze route previews request text and returns preview id`() = testApplication {
         FakeAnalyzer.reset()
@@ -225,6 +245,9 @@ private object FakeAnalyzer : TopicAnalysisUseCase() {
         this.sourceFileName = request.sourceName
         this.text = request.text
         previewCalls += 1
+        if (request.text == "duplicate") {
+            throw DuplicateKakaoMessagesException(request.sourceName, 1)
+        }
         return TopicAnalysisResult(
             previewId = "preview-1",
             sourceType = request.sourceType,

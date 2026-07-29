@@ -108,6 +108,10 @@ private class FakeSessionStore(
 ) : SlackTopicReviewSessionStore {
     private var session: SlackTopicReviewSession? = session
 
+    override fun save(session: SlackTopicReviewSession) {
+        this.session = session
+    }
+
     override fun find(previewId: String): SlackTopicReviewSession? =
         session?.takeIf { it.previewId == previewId }
 
@@ -116,7 +120,7 @@ private class FakeSessionStore(
     }
 }
 
-private object FakeTopicAnalysis : TopicAnalysisUseCase() {
+private object FakeTopicAnalysis : TopicAnalysisUseCase {
     lateinit var selectionRequest: TopicAnalysisSelectionSaveRequest
 
     fun reset() {

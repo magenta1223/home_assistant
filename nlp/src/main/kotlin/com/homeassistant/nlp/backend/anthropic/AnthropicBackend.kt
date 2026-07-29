@@ -19,7 +19,7 @@ import com.anthropic.models.messages.Tool as AnthropicTool
 
 private val log = LoggerFactory.getLogger(AnthropicBackend::class.java)
 
-class AnthropicBackend(
+internal class AnthropicBackend(
     apiKey: String,
     private val config: AnthropicConfig = AnthropicConfig(),
 ) : LlmBackend {

@@ -1,6 +1,6 @@
 package com.homeassistant.repository.kakao
 
-import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.repository.db.tables.KakaoImportedMessageTable
 import com.homeassistant.repository.repo.kakao.KakaoMessageRepository
@@ -30,7 +30,7 @@ class KakaoMessageRepositoryTest {
 
     @Test
     fun `import stores only kakao messages and dedupes by fingerprint`() {
-        val service = KakaoImportService(KakaoMessageRepository(db))
+        val service = KakaoImporterFactory.create(KakaoMessageRepository(db))
         val text = """
             [동훈] [오후 4:49] 따랑해
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ

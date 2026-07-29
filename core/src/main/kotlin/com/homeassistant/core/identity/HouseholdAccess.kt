@@ -20,7 +20,7 @@ fun interface HouseholdAccessPolicy {
     fun isAuthorized(scope: HouseholdAccessScope): Boolean
 }
 
-class FixedHouseholdAccessPolicy(
+private class FixedHouseholdAccessPolicy(
     scopes: Collection<HouseholdAccessScope>,
 ) : HouseholdAccessPolicy {
     private val authorizedScopes = scopes.toSet()
@@ -30,3 +30,11 @@ class FixedHouseholdAccessPolicy(
 }
 
 class HouseholdAccessDeniedException : RuntimeException("household access denied")
+
+object HouseholdAccessPolicies {
+    fun fixed(scopes: Collection<HouseholdAccessScope>): HouseholdAccessPolicy =
+        FixedHouseholdAccessPolicy(scopes)
+
+    fun denyAll(): HouseholdAccessPolicy =
+        HouseholdAccessPolicy { false }
+}

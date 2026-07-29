@@ -132,7 +132,7 @@ private data class EphemeralMessage(
     val text: String,
 )
 
-private class FakeAnalyzer : TopicAnalysisUseCase() {
+private class FakeAnalyzer : TopicAnalysisUseCase {
     var sourceName = ""
     var text = ""
     var userId = ""
@@ -156,7 +156,7 @@ private class FakeAnalyzer : TopicAnalysisUseCase() {
         TopicAnalysisSaveResult(request.previewId, emptyList<Topic>())
 }
 
-private object FailingAnalyzer : TopicAnalysisUseCase() {
+private object FailingAnalyzer : TopicAnalysisUseCase {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("analysis failed")
 
@@ -164,7 +164,7 @@ private object FailingAnalyzer : TopicAnalysisUseCase() {
         error("not used")
 }
 
-private object DuplicateAnalyzer : TopicAnalysisUseCase() {
+private object DuplicateAnalyzer : TopicAnalysisUseCase {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         throw DuplicateKakaoMessagesException(request.sourceName, 1)
 

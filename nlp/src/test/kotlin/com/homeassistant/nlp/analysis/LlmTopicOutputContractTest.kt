@@ -1,0 +1,126 @@
+package com.homeassistant.nlp.analysis
+
+import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse
+import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisOutputContract
+import com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse
+import com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse
+import kotlinx.coroutines.runBlocking
+import kotlin.test.Test
+import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+
+class LlmTopicOutputContractTest {
+    @Test
+    fun `rejects invalid topic analysis responses`() = runBlocking {
+        val invalid = listOf(
+            "not json",
+            topicJson(memoryTypes = """["UNKNOWN"]"""),
+            topicJson(evidenceRecordIds = """["missing"]"""),
+            topicJson(title = ""),
+            topicJson(summary = ""),
+        )
+
+        invalid.forEach { response ->
+            assertFailsWith<TopicAnalysisException> {
+                serviceFor(response).analyze(singleRecordDocument())
+            }
+        }
+    }
+
+    @Test
+    fun `accepts fenced and trailing topic responses`() = runBlocking {
+        val fenced = serviceFor("```json\n${topicJson()}\n```").analyze(singleRecordDocument())
+        val trailing = serviceFor("```json\n${topicJson()}\n```\n분석 완료")
+            .analyze(singleRecordDocument())
+
+        assertEquals("관계 표현", fenced.topics.single().title)
+        assertEquals("관계 표현", trailing.topics.single().title)
+    }
+
+    @Test
+    fun `decodes concrete memory type values`() {
+        val cases = mapOf(
+            "STATE" to MemoryType.STATE,
+            "OBSERVATION" to MemoryType.OBSERVATION,
+            "CHECKLIST" to MemoryType.CHECKLIST,
+        )
+
+        cases.forEach { (raw, expected) ->
+            val decoded = TopicAnalysisOutputContract.decode(topicJson(memoryTypes = """["$raw"]"""))
+            assertEquals(expected, decoded.topics.single().memoryTypes.single())
+        }
+    }
+
+    @Test
+    fun `accepts trailing commas`() = runBlocking {
+        val response = topicJson().replace("}\n          ]", "},\n          ]")
+            .replace("}\n      ]", "},\n      ]")
+        val result = serviceFor(response).analyze(singleRecordDocument())
+
+        assertEquals("관계 표현", result.topics.single().title)
+    }
+
+    @Test
+    fun `rejects invalid topic claims`() = runBlocking {
+        val invalid = listOf(
+            topicJson(claims = "[]"),
+            topicJson(claimText = ""),
+            topicJson(claimSubject = ""),
+            topicJson(claimMemoryType = "UNKNOWN"),
+            topicJson(claimCertainty = "GUESSED"),
+            topicJson(claimEvidenceRecordIds = """["missing"]"""),
+        )
+
+        invalid.forEach { response ->
+            assertFailsWith<TopicAnalysisException> {
+                serviceFor(response).analyze(singleRecordDocument())
+            }
+        }
+    }
+
+    @Test
+    fun `schema contains fields descriptions and inline definitions`() {
+        val schema = TopicAnalysisOutputContract.schema
+        listOf(
+            "topics",
+            "claims",
+            "memoryTypes",
+            "memoryType",
+            "certainty",
+            "evidenceRecordIds",
+            "Topic candidates extracted from the source document",
+            "Short review-facing title for one grouped household memory topic",
+            "Concise summary of why the grouped records belong together",
+            "Allowed MemoryType enum values represented by this topic",
+            "Evidence-backed atomic claims under this topic",
+            "Atomic memory statement supported by the cited evidence",
+            "How directly the source evidence supports this claim",
+            "\"enum\"",
+            "\"STATE\"",
+        ).forEach { assertContains(schema, it) }
+        assertFalse(schema.contains("memoryKind"))
+        assertFalse(schema.contains("memorySubtype"))
+        assertFalse(schema.contains("\"${'$'}ref\""))
+        assertFalse(schema.contains("\"${'$'}defs\""))
+    }
+
+    @Test
+    fun `dto names come from class names without overrides`() {
+        assertEquals(
+            "com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse",
+            TopicAnalysisLlmResponse.serializer().descriptor.serialName,
+        )
+        assertEquals(
+            "com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse",
+            TopicLlmResponse.serializer().descriptor.serialName,
+        )
+        assertEquals(
+            "com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse",
+            TopicClaimLlmResponse.serializer().descriptor.serialName,
+        )
+    }
+}

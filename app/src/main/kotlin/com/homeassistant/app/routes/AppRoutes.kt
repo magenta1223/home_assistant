@@ -2,7 +2,6 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.identity.HouseholdAccessDeniedException
-import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
@@ -116,7 +115,6 @@ fun Application.configureRoutes(
 
     }
 }
-
 /**
  * Request body accepted by the Kakao import preview endpoint.
  *
@@ -130,51 +128,3 @@ private data class KakaoImportAnalyzeRequest(
     val sourceName: String? = null,
     val text: String? = null,
 )
-
-
-
-/**
- * API response representation of a topic candidate.
- *
- * @property id Candidate id assigned by storage or preview generation.
- * @property title Short topic title.
- * @property summary Review-facing topic summary.
- * @property memoryTypes Memory categories represented by the topic.
- * @property domains Normalized domain tags attached to the topic.
- * @property evidenceRefs Source references that support the topic.
- * @property claims Evidence-backed claims grouped under the topic.
- * @property status Review state for the topic candidate.
- */
-@Serializable
-private data class TopicCandidateResponse(
-    val id: Int,
-    val title: String,
-    val summary: String,
-    val memoryTypes: List<MemoryType>,
-    val domains: List<String>,
-    val evidenceRefs: List<Int>,
-    val claims: List<TopicClaimResponse>,
-    val status: String,
-)
-
-/**
- * API response representation of an evidence-backed topic claim.
- *
- * @property id Claim id assigned by storage or preview generation.
- * @property text Claim text suitable for memory review.
- * @property subject Person, place, or concept the claim is about.
- * @property memoryType Memory category assigned to the claim.
- * @property certainty How directly source evidence supports the claim.
- * @property evidenceRefs Source references that support the claim.
- */
-@Serializable
-private data class TopicClaimResponse(
-    val id: Int,
-    val text: String,
-    val subject: String,
-    val memoryType: MemoryType,
-    val certainty: String,
-    val evidenceRefs: List<Int>,
-)
-
-

@@ -21,7 +21,7 @@ import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(OllamaBackend::class.java)
 
-class OllamaBackend(
+internal class OllamaBackend(
     private val baseUrl: String,
     private val model: String,
     private val config: OllamaConfig = OllamaConfig(),

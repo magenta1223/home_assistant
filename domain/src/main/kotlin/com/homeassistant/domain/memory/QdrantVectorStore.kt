@@ -2,16 +2,11 @@ package com.homeassistant.domain.memory
 
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import kotlinx.serialization.json.*
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
 
-class QdrantVectorStore(
-    private val baseUrl: String,
+internal class QdrantVectorStore(
     private val collection: String,
+    private val transport: QdrantTransport,
 ) : VectorStore, PayloadVectorStore {
-    private val client = HttpClient.newHttpClient()
     @Volatile private var collectionReady = false
 
     override fun upsert(point: VectorPoint) {
@@ -27,7 +22,7 @@ class QdrantVectorStore(
 
     override fun upsert(point: PayloadVectorPoint) {
         ensureCollection(point.vector.size)
-        request("PUT", "/collections/$collection/points?wait=true", qdrantUpsertBody(point))
+        transport.request("PUT", "/collections/$collection/points?wait=true", qdrantUpsertBody(point))
     }
 
     override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> {
@@ -57,7 +52,7 @@ class QdrantVectorStore(
     ): List<PayloadVectorSearchResult> {
         ensureCollection(vector.size)
         val body = qdrantSearchBody(vector, filter, limit)
-        val response = request("POST", "/collections/$collection/points/search", body)
+        val response = transport.request("POST", "/collections/$collection/points/search", body)
         return response
             .decodeFromString<QdrantSearchResponse>()
             .result
@@ -70,18 +65,6 @@ class QdrantVectorStore(
             }
     }
 
-    private fun request(method: String, path: String, body: String): String {
-        val request = HttpRequest.newBuilder(URI.create(baseUrl.trimEnd('/') + path))
-            .method(method, HttpRequest.BodyPublishers.ofString(body))
-            .header("Content-Type", "application/json")
-            .build()
-        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-        if (response.statusCode() !in 200..299) {
-            error("Qdrant request failed status=${response.statusCode()} body=${response.body()}")
-        }
-        return response.body()
-    }
-
     private fun ensureCollection(vectorSize: Int) {
         if (collectionReady) return
         synchronized(this) {
@@ -92,7 +75,7 @@ class QdrantVectorStore(
                     put("distance", "Cosine")
                 })
             }.toString()
-            request("PUT", "/collections/$collection", body)
+            transport.request("PUT", "/collections/$collection", body)
             collectionReady = true
         }
     }
@@ -114,6 +97,14 @@ class QdrantVectorStore(
      */
     @kotlinx.serialization.Serializable
     private data class QdrantHit(val id: Int, val score: Double, val payload: JsonObject = buildJsonObject {})
+}
+
+object PayloadVectorStoreFactory {
+    fun qdrant(
+        baseUrl: String,
+        collection: String,
+    ): PayloadVectorStore =
+        QdrantVectorStore(collection, QdrantTransportFactory.http(baseUrl))
 }
 
 internal fun qdrantUpsertBody(point: PayloadVectorPoint): String =

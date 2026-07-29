@@ -14,7 +14,7 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-class CodexCliBackend internal constructor(
+internal class CodexCliBackend(
     private val executable: String = defaultCodexExecutable(),
     private val timeoutMillis: Long = 180_000,
     private val processExecutor: CodexProcessExecutor = SystemCodexProcessExecutor,

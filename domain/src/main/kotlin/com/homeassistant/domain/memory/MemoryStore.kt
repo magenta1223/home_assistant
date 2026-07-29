@@ -5,7 +5,7 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.datamodel.memory.MemoryCandidateRow
 import com.homeassistant.datamodel.memory.MemoryRow
 
-interface MemoryStore {
+interface MemoryCommandStore {
     fun createCandidate(
         userId: UserId,
         conversationId: String,
@@ -19,10 +19,15 @@ interface MemoryStore {
         visibility: String = "FAMILY",
     ): Int
 
-    fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow>
-    fun getCandidate(id: Int): MemoryCandidateRow?
     fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow
     fun rejectCandidate(userId: UserId, candidateId: Int)
+}
+
+interface MemoryQueryStore {
+    fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow>
+    fun getCandidate(id: Int): MemoryCandidateRow?
     fun getMemory(id: Int): MemoryRow?
     fun listMemories(ids: List<Int>? = null): List<MemoryRow>
 }
+
+interface MemoryStore : MemoryCommandStore, MemoryQueryStore

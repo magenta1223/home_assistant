@@ -17,12 +17,12 @@ import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaim
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
-import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.kakao.KakaoMessageStore
 import com.homeassistant.domain.kakao.ParsedKakaoMessage
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
-import com.homeassistant.domain.indexing.NoOpIndexingOutboxStore
+import com.homeassistant.domain.indexing.IndexingOutboxes
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanswer.TopicClaimSearchHit
@@ -47,12 +47,12 @@ class KakaoMessageTopicAnalysisServiceTest {
         val previewStore = RecordingPreviewStore()
         val service = KakaoMessageTopicAnalysisService(
             backend = backend,
-            importService = KakaoImportService(
+            importService = KakaoImporterFactory.create(
                 FakeKakaoMessageStore(parsed.mapTo(mutableSetOf()) { it.fingerprint }),
             ),
             topicRepository = FakeTopicStore(),
             previewRepository = previewStore,
-            indexingOutbox = NoOpIndexingOutboxStore,
+            indexingOutbox = IndexingOutboxes.noOp(),
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
@@ -65,118 +65,9 @@ class KakaoMessageTopicAnalysisServiceTest {
         assertEquals(0, previewStore.createCalls)
     }
 
-    @Test
-    fun `analyze sends only new messages to llm while preserving original evidence refs`() = runBlocking {
-        val text = kakaoText()
-        val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
-        val backend = DuplicateGuardRecordingBackend()
-        val previewStore = RecordingPreviewStore()
-        val service = KakaoMessageTopicAnalysisService(
-            backend = backend,
-            importService = KakaoImportService(
-                FakeKakaoMessageStore(setOf(parsed.first().fingerprint)),
-            ),
-            topicRepository = FakeTopicStore(),
-            previewRepository = previewStore,
-            indexingOutbox = NoOpIndexingOutboxStore,
-            accessPolicy = TEST_ACCESS_POLICY,
-        )
-
-        val result = service.analyze(request(text))
-
-        assertEquals(1, result.importedRecordCount)
-        assertEquals(1, backend.calls)
-        assertContains(backend.prompt, "r2 | 승민 | 2026년 6월 15일 오전 6:44 | 둘째 메시지")
-        assertFalse(backend.prompt.contains("첫 메시지"))
-        assertEquals(1, previewStore.createCalls)
-    }
-
-    @Test
-    fun `save selected analysis persists only selected preview topics`() = runBlocking {
-        val kakaoStore = FakeKakaoMessageStore()
-        val topicStore = FakeTopicStore()
-        val topicClaimSearchIndex = RecordingTopicClaimSearchIndex()
-        val previewStore = FakePreviewStore(
-            topics = listOf(topic("첫 후보", 1), topic("둘째 후보", 2), topic("셋째 후보", 3)),
-        )
-        val service = KakaoMessageTopicAnalysisService(
-            backend = UnusedBackend,
-            importService = KakaoImportService(kakaoStore),
-            topicRepository = topicStore,
-            previewRepository = previewStore,
-            topicClaimSearchIndex = topicClaimSearchIndex,
-            indexingOutbox = NoOpIndexingOutboxStore,
-            accessPolicy = TEST_ACCESS_POLICY,
-        )
-
-        val result = service.saveSelectedAnalysis(
-            TopicAnalysisSelectionSaveRequest(
-                previewId = "preview-1",
-                userId = TEST_SCOPE.userId.value,
-                familyId = TEST_SCOPE.familyId.value,
-                selectedTopicIndices = setOf(2, 0, 99),
-            ),
-        )
-
-        assertEquals(listOf("첫 후보", "셋째 후보"), result.topics.map { it.title })
-        assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
-        assertEquals(listOf("첫 후보", "셋째 후보"), topicClaimSearchIndex.indexedTopics.map { it.title })
-        assertEquals(1, kakaoStore.importCalls)
-    }
-
-    @Test
-    fun `save selected analysis with empty selection does not import kakao messages`() = runBlocking {
-        val kakaoStore = FakeKakaoMessageStore()
-        val service = KakaoMessageTopicAnalysisService(
-            backend = UnusedBackend,
-            importService = KakaoImportService(kakaoStore),
-            topicRepository = FakeTopicStore(),
-            previewRepository = FakePreviewStore(topics = listOf(topic("첫 후보", 1))),
-            indexingOutbox = NoOpIndexingOutboxStore,
-            accessPolicy = TEST_ACCESS_POLICY,
-        )
-
-        val result = service.saveSelectedAnalysis(
-            TopicAnalysisSelectionSaveRequest(
-                previewId = "preview-1",
-                userId = TEST_SCOPE.userId.value,
-                familyId = TEST_SCOPE.familyId.value,
-                selectedTopicIndices = emptySet(),
-            ),
-        )
-
-        assertEquals(emptyList(), result.topics)
-        assertEquals(0, kakaoStore.importCalls)
-    }
-
-    @Test
-    fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
-        val outbox = FakeIndexingOutboxStore()
-        val service = KakaoMessageTopicAnalysisService(
-            backend = UnusedBackend,
-            importService = KakaoImportService(FakeKakaoMessageStore()),
-            topicRepository = FakeTopicStore(),
-            previewRepository = FakePreviewStore(topics = listOf(topic("후보", 1))),
-            topicClaimSearchIndex = FailingTopicClaimSearchIndex,
-            indexingOutbox = outbox,
-            accessPolicy = TEST_ACCESS_POLICY,
-        )
-
-        val result = service.saveSelectedAnalysis(
-            TopicAnalysisSelectionSaveRequest(
-                previewId = "preview-1",
-                userId = TEST_SCOPE.userId.value,
-                familyId = TEST_SCOPE.familyId.value,
-                selectedTopicIndices = setOf(0),
-            ),
-        )
-
-        assertEquals(listOf("후보"), result.topics.map { it.title })
-        assertEquals(listOf(1), outbox.pending(IndexTargetType.TOPIC))
-    }
 }
 
-private class FakePreviewStore(
+internal class FakePreviewStore(
     private val topics: List<TopicCandidate>,
 ) : TopicAnalysisPreviewStore {
     override fun createPreview(
@@ -200,7 +91,7 @@ private class FakePreviewStore(
         )
 }
 
-private class FakeTopicStore : TopicAnalysisStore {
+internal class FakeTopicStore : TopicAnalysisStore {
     val createdTopics = mutableListOf<TopicCandidate>()
 
     override fun createTopic(candidate: TopicCandidate): Topic {
@@ -247,7 +138,7 @@ private class FakeTopicStore : TopicAnalysisStore {
         emptyList()
 }
 
-private class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
+internal class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
     val indexedTopics = mutableListOf<Topic>()
 
     override fun index(topic: Topic) {
@@ -262,7 +153,7 @@ private class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
         emptyList()
 }
 
-private object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
+internal object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
     override fun index(topic: Topic) = error("qdrant unavailable")
     override fun search(
         scope: HouseholdAccessScope,
@@ -271,7 +162,7 @@ private object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
     ): List<TopicClaimSearchHit> = emptyList()
 }
 
-private class FakeIndexingOutboxStore : IndexingOutboxStore {
+internal class FakeIndexingOutboxStore : IndexingOutboxStore {
     private val pending = mutableMapOf<IndexTargetType, MutableSet<Int>>()
 
     override fun pending(targetType: IndexTargetType, limit: Int): List<Int> =
@@ -286,7 +177,7 @@ private class FakeIndexingOutboxStore : IndexingOutboxStore {
     }
 }
 
-private class FakeKakaoMessageStore(
+internal class FakeKakaoMessageStore(
     private val existingFingerprints: Set<String> = emptySet(),
 ) : KakaoMessageStore {
     private var messages = emptyList<KakaoMessage>()
@@ -317,7 +208,7 @@ private class FakeKakaoMessageStore(
         messages
 }
 
-private class RecordingPreviewStore : TopicAnalysisPreviewStore {
+internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
     var createCalls = 0
 
     override fun createPreview(
@@ -332,7 +223,7 @@ private class RecordingPreviewStore : TopicAnalysisPreviewStore {
     override fun findPreview(previewId: String): KakaoAnalysisPreview? = null
 }
 
-private class DuplicateGuardRecordingBackend : LlmBackend {
+internal class DuplicateGuardRecordingBackend : LlmBackend {
     var calls = 0
     var prompt = ""
 
@@ -348,7 +239,7 @@ private class DuplicateGuardRecordingBackend : LlmBackend {
     }
 }
 
-private object UnusedBackend : LlmBackend {
+internal object UnusedBackend : LlmBackend {
     override suspend fun complete(
         system: String,
         messages: List<Message>,
@@ -358,13 +249,13 @@ private object UnusedBackend : LlmBackend {
         error("not used")
 }
 
-private fun kakaoText(): String =
+internal fun kakaoText(): String =
     """
     2026년 6월 15일 오전 6:43, 동훈 : 첫 메시지
     2026년 6월 15일 오전 6:44, 승민 : 둘째 메시지
     """.trimIndent()
 
-private fun topic(title: String, evidenceRef: Int) =
+internal fun topic(title: String, evidenceRef: Int) =
     TopicCandidate(
         familyId = TEST_SCOPE.familyId.value,
         createdByUserId = TEST_SCOPE.userId.value,
@@ -386,7 +277,7 @@ private fun topic(title: String, evidenceRef: Int) =
         ),
     )
 
-private fun request(text: String): TopicAnalysisRequest =
+internal fun request(text: String): TopicAnalysisRequest =
     TopicAnalysisRequest(
         userId = TEST_SCOPE.userId.value,
         familyId = TEST_SCOPE.familyId.value,
@@ -395,5 +286,5 @@ private fun request(text: String): TopicAnalysisRequest =
         text = text,
     )
 
-private val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
-private val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_SCOPE }
+internal val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
+internal val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_SCOPE }

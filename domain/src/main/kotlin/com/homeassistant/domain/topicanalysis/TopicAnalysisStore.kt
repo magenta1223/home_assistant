@@ -4,9 +4,14 @@ import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.datamodel.topicanalysis.Topic
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 
-interface TopicAnalysisStore {
+interface TopicAnalysisCommandStore {
     fun createTopic(candidate: TopicCandidate): Topic
+}
+
+interface TopicAnalysisQueryStore {
     fun searchApprovedTopics(scope: HouseholdAccessScope, query: String, limit: Int): List<Topic>
     fun getApprovedTopics(scope: HouseholdAccessScope, topicIds: Collection<Int>): List<Topic>
     fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic>
 }
+
+interface TopicAnalysisStore : TopicAnalysisCommandStore, TopicAnalysisQueryStore

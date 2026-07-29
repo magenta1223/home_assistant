@@ -14,7 +14,7 @@ interface TopicClaimSearchIndex {
     fun search(scope: HouseholdAccessScope, question: String, limit: Int): List<TopicClaimSearchHit>
 }
 
-object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
+private object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
     override fun index(topic: Topic) {
         // Indexing is skipped until a real embedding provider is wired.
     }
@@ -25,6 +25,11 @@ object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
         limit: Int,
     ): List<TopicClaimSearchHit> =
         throw TopicClaimSearchIndexUnavailableException("topic claim vector index is not configured")
+}
+
+object TopicClaimSearchIndexes {
+    fun unavailable(): TopicClaimSearchIndex =
+        UnavailableTopicClaimSearchIndex
 }
 
 class TopicClaimSearchIndexUnavailableException(message: String) : RuntimeException(message)

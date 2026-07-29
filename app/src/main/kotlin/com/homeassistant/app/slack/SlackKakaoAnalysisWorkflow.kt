@@ -5,15 +5,19 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import org.slf4j.LoggerFactory
 
-class SlackKakaoAnalysisWorkflow(
-    private val slackClient: SlackClient,
+interface SlackKakaoWorkflow {
+    suspend fun process(upload: SlackKakaoFileUpload)
+}
+
+internal class SlackKakaoAnalysisWorkflow(
+    private val slackClient: SlackKakaoClient,
     private val topicAnalysis: TopicAnalysisUseCase,
-    private val reviewSessions: InMemorySlackTopicReviewSessionStore,
+    private val reviewSessions: SlackTopicReviewSessionStore,
     private val maxFileSizeBytes: Long,
-) {
+) : SlackKakaoWorkflow {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    suspend fun process(upload: SlackKakaoFileUpload) {
+    override suspend fun process(upload: SlackKakaoFileUpload) {
         try {
             slackClient.postMessage(
                 channelId = upload.channelId,
@@ -47,7 +51,7 @@ class SlackKakaoAnalysisWorkflow(
                 return
             }
 
-            reviewSessions.put(
+            reviewSessions.save(
                 SlackTopicReviewSession(
                     previewId = result.previewId,
                     principal = upload.principal,

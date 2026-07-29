@@ -18,7 +18,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
 class SlackConversationServiceTest {
-    private val identities = SlackIdentityDirectory.fromJson(
+    private val identities = SlackIdentityDirectoryFactory.fromJson(
         "T1",
         """[{"teamId":"T1","slackUserId":"U1","userId":"dad","familyId":"family-1"}]""",
     )

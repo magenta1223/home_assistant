@@ -1,11 +1,11 @@
 package com.homeassistant.nlp.topicanalysis.api
 
-abstract class TopicAnalysisUseCase {
-    abstract suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult
+interface TopicAnalysisUseCase {
+    suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult
 
-    abstract suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
+    suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
 
-    open suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult =
+    suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult =
         saveAnalysis(
             TopicAnalysisSaveRequest(
                 previewId = request.previewId,

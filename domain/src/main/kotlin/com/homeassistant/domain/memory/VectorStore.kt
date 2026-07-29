@@ -84,7 +84,7 @@ interface EmbeddingService {
     fun embed(text: String): List<Float>
 }
 
-class DeterministicEmbeddingService(model: String) : EmbeddingService {
+internal class DeterministicEmbeddingService(model: String) : EmbeddingService {
     private val modelName = model.ifBlank { error("EMBEDDING_MODEL must not be blank") }
 
     override fun embed(text: String): List<Float> {
@@ -94,4 +94,9 @@ class DeterministicEmbeddingService(model: String) : EmbeddingService {
             ((byte % 31) / 31.0f)
         }
     }
+}
+
+object DomainEmbeddingServiceFactory {
+    fun deterministic(model: String): EmbeddingService =
+        DeterministicEmbeddingService(model)
 }

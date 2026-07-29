@@ -1,16 +1,10 @@
 package com.homeassistant.app.slack
 
-import com.homeassistant.core.utils.JsonSerializer
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
 
 sealed interface CodexTurnResult {
     data class Success(val answer: String) : CodexTurnResult
@@ -23,8 +17,9 @@ interface CodexConversationClient {
     fun resume(threadId: String, prompt: String): CodexTurnResult
 }
 
-class ProcessCodexConversationClient(
+internal class ProcessCodexConversationClient(
     private val config: CodexConversationConfig,
+    private val eventParser: CodexJsonlEventParser = CodexJsonlEventParserFactory.create(),
 ) : CodexConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
 
@@ -70,7 +65,9 @@ class ProcessCodexConversationClient(
         )
 
     override fun resume(threadId: String, prompt: String): CodexTurnResult {
-        if (!THREAD_ID_PATTERN.matches(threadId)) return CodexTurnResult.Failure("INVALID_THREAD_ID")
+        if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
+            return CodexTurnResult.Failure("INVALID_THREAD_ID")
+        }
         return execute(
             args = listOf(
                 "exec",
@@ -108,23 +105,13 @@ class ProcessCodexConversationClient(
             return CodexTurnResult.Failure("START_FAILED")
         }
 
-        val answer = AtomicReference<String>()
-        val failure = AtomicReference<String>()
-        val turnCompleted = AtomicBoolean(false)
-        val threadStarted = AtomicBoolean(false)
+        val state = CodexEventState()
         val stderr = StringBuilder()
         val readers = Executors.newFixedThreadPool(2)
         readers.submit {
             process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
                 lines.forEach { line ->
-                    parseEvent(
-                        line = line,
-                        answer = answer,
-                        failure = failure,
-                        turnCompleted = turnCompleted,
-                        threadStarted = threadStarted,
-                        onThreadStarted = onThreadStarted,
-                    )
+                    eventParser.parse(line, state, onThreadStarted)
                 }
             }
         }
@@ -158,50 +145,12 @@ class ProcessCodexConversationClient(
         readers.awaitTermination(READER_JOIN_SECONDS, TimeUnit.SECONDS)
 
         if (stderr.isNotEmpty()) log.debug("Codex stderr category=PROCESS_OUTPUT")
-        failure.get()?.let { return CodexTurnResult.Failure(it) }
+        state.failure.get()?.let { return CodexTurnResult.Failure(it) }
         if (process.exitValue() != 0) return CodexTurnResult.Failure("EXIT_${process.exitValue()}")
-        if (!turnCompleted.get()) return CodexTurnResult.Failure("INCOMPLETE_TURN")
-        val finalAnswer = answer.get()?.takeIf { it.isNotBlank() }
+        if (!state.turnCompleted.get()) return CodexTurnResult.Failure("INCOMPLETE_TURN")
+        val finalAnswer = state.answer.get()?.takeIf { it.isNotBlank() }
             ?: return CodexTurnResult.Failure("MISSING_AGENT_MESSAGE")
         return CodexTurnResult.Success(finalAnswer)
-    }
-
-    private fun parseEvent(
-        line: String,
-        answer: AtomicReference<String>,
-        failure: AtomicReference<String>,
-        turnCompleted: AtomicBoolean,
-        threadStarted: AtomicBoolean,
-        onThreadStarted: (String) -> Unit,
-    ) {
-        if (failure.get() != null) return
-        val event = runCatching {
-            JsonSerializer.json.parseToJsonElement(line).jsonObject
-        }.getOrElse {
-            failure.compareAndSet(null, "INVALID_JSONL")
-            return
-        }
-        when (event.string("type")) {
-            "thread.started" -> {
-                val threadId = event.string("thread_id")
-                if (threadId == null || !THREAD_ID_PATTERN.matches(threadId)) {
-                    failure.compareAndSet(null, "INVALID_THREAD_ID")
-                } else if (!threadStarted.compareAndSet(false, true)) {
-                    failure.compareAndSet(null, "DUPLICATE_THREAD_STARTED")
-                } else {
-                    runCatching { onThreadStarted(threadId) }
-                        .onFailure { failure.compareAndSet(null, "THREAD_PERSIST_FAILED") }
-                }
-            }
-            "item.completed" -> {
-                val item = event["item"] as? JsonObject ?: return
-                if (item.string("type") == "agent_message") {
-                    item.string("text")?.let(answer::set)
-                }
-            }
-            "turn.completed" -> turnCompleted.set(true)
-            "turn.failed", "error" -> failure.compareAndSet(null, "TURN_FAILED")
-        }
     }
 
     private fun configureEnvironment(builder: ProcessBuilder) {
@@ -218,13 +167,8 @@ class ProcessCodexConversationClient(
         process.destroyForcibly()
     }
 
-    private fun JsonObject.string(key: String): String? =
-        this[key]?.jsonPrimitive?.content
-
     private companion object {
         val VERSION_PATTERN = Regex("""codex-cli\s+([0-9A-Za-z.+-]+)""")
-        val THREAD_ID_PATTERN =
-            Regex("""[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}""")
         val SAFE_INHERITED_ENVIRONMENT_KEYS = setOf(
             "PATH",
             "Path",

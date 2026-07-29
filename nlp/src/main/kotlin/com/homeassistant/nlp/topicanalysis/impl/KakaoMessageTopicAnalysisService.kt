@@ -11,14 +11,13 @@ import com.homeassistant.core.source.SourceRecord
 import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
-import com.homeassistant.domain.kakao.KakaoImportService
+import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.kakao.KakaoMessageParser
-import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicDraft
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
-import com.homeassistant.domain.topicanswer.UnavailableTopicClaimSearchIndex
+import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexes
 import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
@@ -27,18 +26,22 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
-import org.slf4j.LoggerFactory
 
-class KakaoMessageTopicAnalysisService(
+internal class KakaoMessageTopicAnalysisService(
     backend: LlmBackend,
-    private val importService: KakaoImportService,
+    private val importService: KakaoImporter,
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
-    private val topicClaimSearchIndex: TopicClaimSearchIndex = UnavailableTopicClaimSearchIndex,
+    private val topicClaimSearchIndex: TopicClaimSearchIndex = TopicClaimSearchIndexes.unavailable(),
     private val indexingOutbox: IndexingOutboxStore,
     private val accessPolicy: HouseholdAccessPolicy,
-): TopicAnalysisUseCase() {
+): TopicAnalysisUseCase {
     private val topicAnalyzer = LlmTopicAnalyzer(backend)
+    private val topicIndexing = TopicIndexingCoordinatorFactory.create(
+        topicRepository,
+        topicClaimSearchIndex,
+        indexingOutbox,
+    )
 
     override suspend fun analyze(
         request: TopicAnalysisRequest
@@ -137,8 +140,8 @@ class KakaoMessageTopicAnalysisService(
         val savedTopics = topics.map { topic ->
             topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
         }
-        savedTopics.forEach(::indexTopic)
-        retryPendingTopicIndexes(savedTopics.mapTo(mutableSetOf()) { it.id })
+        savedTopics.forEach(topicIndexing::index)
+        topicIndexing.retryPending(savedTopics.mapTo(mutableSetOf()) { it.id })
 
         return TopicAnalysisSaveResult(
             previewId = previewId,
@@ -183,33 +186,6 @@ class KakaoMessageTopicAnalysisService(
             },
         )
 
-    private fun indexTopic(topic: com.homeassistant.datamodel.topicanalysis.Topic): Boolean =
-        try {
-            topicClaimSearchIndex.index(topic)
-            indexingOutbox.markIndexed(IndexTargetType.TOPIC, topic.id)
-            true
-        } catch (error: Exception) {
-            log.warn("Topic vector indexing deferred topicId=${topic.id}", error)
-            runCatching {
-                indexingOutbox.markFailed(
-                    IndexTargetType.TOPIC,
-                    topic.id,
-                    error.message ?: error::class.simpleName.orEmpty(),
-                )
-            }
-            false
-        }
-
-    private fun retryPendingTopicIndexes(currentTopicIds: Set<Int>) {
-        runCatching {
-            val pendingIds = indexingOutbox.pending(IndexTargetType.TOPIC)
-                .filterNot(currentTopicIds::contains)
-            topicRepository.getApprovedTopicsForIndexing(pendingIds).forEach(::indexTopic)
-        }.onFailure { error ->
-            log.warn("Failed to dispatch pending topic indexes", error)
-        }
-    }
-
     private fun TopicAnalysisRequest.scope(): HouseholdAccessScope =
         HouseholdAccessScope(UserId(userId), FamilyId(familyId))
 
@@ -236,5 +212,3 @@ class KakaoMessageTopicAnalysisService(
         }
     }
 }
-
-private val log = LoggerFactory.getLogger(KakaoMessageTopicAnalysisService::class.java)

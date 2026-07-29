@@ -1,7 +1,7 @@
 package com.homeassistant.app.slack
 
-import com.homeassistant.core.identity.FixedHouseholdAccessPolicy
 import com.homeassistant.core.identity.HouseholdAccessPolicy
+import com.homeassistant.core.identity.HouseholdAccessPolicies
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlinx.serialization.Serializable
@@ -15,22 +15,28 @@ data class SlackMemberScopeConfig(
     val familyId: String,
 )
 
-class SlackIdentityDirectory private constructor(
-    private val principals: Map<SlackActor, SlackPrincipal>,
-) {
-    val accessPolicy: HouseholdAccessPolicy =
-        FixedHouseholdAccessPolicy(principals.values.map { it.scope })
+interface SlackIdentityDirectory {
+    val accessPolicy: HouseholdAccessPolicy
+    fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
+}
 
-    fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal? {
+private class ConfiguredSlackIdentityDirectory(
+    private val principals: Map<SlackActor, SlackPrincipal>,
+) : SlackIdentityDirectory {
+    override val accessPolicy: HouseholdAccessPolicy =
+        HouseholdAccessPolicies.fixed(principals.values.map { it.scope })
+
+    override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal? {
         if (teamId.isNullOrBlank() || slackUserId.isNullOrBlank()) return null
         return principals[SlackActor(teamId, slackUserId)]
     }
+}
 
-    companion object {
-        fun fromJson(
-            configuredTeamId: String,
-            json: String,
-        ): SlackIdentityDirectory {
+object SlackIdentityDirectoryFactory {
+    fun fromJson(
+        configuredTeamId: String,
+        json: String,
+    ): SlackIdentityDirectory {
             require(configuredTeamId.isNotBlank()) { "SLACK_TEAM_ID is required" }
             val records = JsonSerializer.json.decodeFromString<List<SlackMemberScopeConfig>>(json)
             require(records.isNotEmpty()) { "SLACK_MEMBER_SCOPES_JSON must not be empty" }
@@ -52,8 +58,7 @@ class SlackIdentityDirectory private constructor(
                 )
                 require(previous == null) { "Duplicate Slack member mapping" }
             }
-            return SlackIdentityDirectory(principals)
-        }
+        return ConfiguredSlackIdentityDirectory(principals)
     }
 }
 

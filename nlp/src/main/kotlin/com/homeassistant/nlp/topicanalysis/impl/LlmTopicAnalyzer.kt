@@ -19,7 +19,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
-class LlmTopicAnalyzer(
+internal class LlmTopicAnalyzer(
     private val backend: LlmBackend,
     private val chunkSize: Int = CHUNK_SIZE,
 ) : TopicAnalyzer {

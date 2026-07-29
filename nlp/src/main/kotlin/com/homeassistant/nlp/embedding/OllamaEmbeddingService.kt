@@ -12,7 +12,7 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import kotlin.math.sqrt
 
-class OllamaEmbeddingService(
+internal class OllamaEmbeddingService(
     private val baseUrl: String,
     private val model: String,
     private val vectorSize: Int = AppConfig.DEFAULT_EMBEDDING_VECTOR_SIZE,
@@ -51,6 +51,11 @@ class OllamaEmbeddingService(
 
     private fun embedUri(): URI =
         URI.create("${baseUrl.trimEnd('/')}/api/embed")
+}
+
+object EmbeddingServiceFactory {
+    fun ollama(baseUrl: String, model: String): EmbeddingService =
+        OllamaEmbeddingService(baseUrl, model)
 }
 
 @Serializable

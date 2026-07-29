@@ -4,10 +4,14 @@ import com.homeassistant.domain.slackconversation.SlackPrincipal
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 
-class HouseholdContextProvider(
+interface HouseholdContextSource {
+    fun context(principal: SlackPrincipal, question: String): HouseholdContext
+}
+
+internal class HouseholdContextProvider(
     private val topicAnswer: TopicAnswerUseCase,
-) {
-    fun context(principal: SlackPrincipal, question: String): HouseholdContext {
+) : HouseholdContextSource {
+    override fun context(principal: SlackPrincipal, question: String): HouseholdContext {
         val result = topicAnswer.answer(
             TopicAnswerRequest(
                 userId = principal.userId.value,

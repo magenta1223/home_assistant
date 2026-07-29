@@ -3,10 +3,10 @@ package com.homeassistant.domain.topicanswer
 import com.homeassistant.core.identity.HouseholdAccessDeniedException
 import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
+import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
 
-class TopicAnswerService(
-    private val topicStore: TopicAnalysisStore,
+internal class TopicAnswerService(
+    private val topicStore: TopicAnalysisQueryStore,
     private val topicClaimSearchIndex: TopicClaimSearchIndex,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : TopicAnswerUseCase {
@@ -54,4 +54,13 @@ class TopicAnswerService(
             .take(3)
         return "저장된 기억 기준으로는 " + claims.joinToString(" ")
     }
+}
+
+object TopicAnswerFactory {
+    fun create(
+        topicStore: TopicAnalysisQueryStore,
+        topicClaimSearchIndex: TopicClaimSearchIndex,
+        accessPolicy: HouseholdAccessPolicy,
+    ): TopicAnswerUseCase =
+        TopicAnswerService(topicStore, topicClaimSearchIndex, accessPolicy)
 }

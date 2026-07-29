@@ -106,7 +106,7 @@ private object UnavailableTopicAnswer : TopicAnswerUseCase {
         throw TopicClaimSearchIndexUnavailableException("topic claim vector index is not configured")
 }
 
-private object UnusedTopicAnalysis : TopicAnalysisUseCase() {
+private object UnusedTopicAnalysis : TopicAnalysisUseCase {
     override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("not used")
 

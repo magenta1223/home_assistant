@@ -12,7 +12,7 @@ import kotlin.test.assertTrue
 class SlackIdentityDirectoryTest {
     @Test
     fun `resolves only the server configured immutable household scope`() {
-        val directory = SlackIdentityDirectory.fromJson(
+        val directory = SlackIdentityDirectoryFactory.fromJson(
             configuredTeamId = "T1",
             json = """[{"teamId":"T1","slackUserId":"U1","userId":"dad","familyId":"family-1"}]""",
         )
@@ -33,7 +33,7 @@ class SlackIdentityDirectoryTest {
     @Test
     fun `rejects duplicate or cross team mappings`() {
         assertFailsWith<IllegalArgumentException> {
-            SlackIdentityDirectory.fromJson(
+            SlackIdentityDirectoryFactory.fromJson(
                 "T1",
                 """[
                     {"teamId":"T1","slackUserId":"U1","userId":"dad","familyId":"family-1"},
@@ -42,7 +42,7 @@ class SlackIdentityDirectoryTest {
             )
         }
         assertFailsWith<IllegalArgumentException> {
-            SlackIdentityDirectory.fromJson(
+            SlackIdentityDirectoryFactory.fromJson(
                 "T1",
                 """[{"teamId":"T2","slackUserId":"U1","userId":"dad","familyId":"family-1"}]""",
             )

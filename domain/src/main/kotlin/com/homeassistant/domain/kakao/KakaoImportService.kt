@@ -3,8 +3,15 @@ package com.homeassistant.domain.kakao
 import com.homeassistant.datamodel.kakao.KakaoMessage
 
 /** Imports a KakaoTalk export file into the Kakao message store. */
-class KakaoImportService(private val repository: KakaoMessageStore) {
-    fun findNewMessages(messages: List<ParsedKakaoMessage>): List<ParsedKakaoMessage> {
+interface KakaoImporter {
+    fun findNewMessages(messages: List<ParsedKakaoMessage>): List<ParsedKakaoMessage>
+    fun import(sourceFileName: String, text: String): KakaoImportResult
+}
+
+internal class DefaultKakaoImporter(
+    private val repository: KakaoMessageStore,
+) : KakaoImporter {
+    override fun findNewMessages(messages: List<ParsedKakaoMessage>): List<ParsedKakaoMessage> {
         val existingFingerprints = repository.findExistingFingerprints(
             messages.mapTo(mutableSetOf()) { it.fingerprint },
         )
@@ -13,12 +20,17 @@ class KakaoImportService(private val repository: KakaoMessageStore) {
             .distinctBy { it.fingerprint }
     }
 
-    fun import(sourceFileName: String, text: String): KakaoImportResult {
+    override fun import(sourceFileName: String, text: String): KakaoImportResult {
         val parsed = KakaoMessageParser.parse(sourceFileName, text)
         val imported = repository.importMessages(parsed)
         val messages = repository.listMessages(sourceFileName)
         return KakaoImportResult(imported.size, messages)
     }
+}
+
+object KakaoImporterFactory {
+    fun create(store: KakaoMessageStore): KakaoImporter =
+        DefaultKakaoImporter(store)
 }
 
 /**

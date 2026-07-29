@@ -7,7 +7,7 @@ import com.homeassistant.domain.memory.PayloadVectorPoint
 import com.homeassistant.domain.memory.PayloadVectorSearchFilter
 import com.homeassistant.domain.memory.PayloadVectorStore
 
-class VectorTopicClaimSearchIndex(
+internal class VectorTopicClaimSearchIndex(
     private val embeddingService: EmbeddingService,
     private val vectorStore: PayloadVectorStore,
 ) : TopicClaimSearchIndex {
@@ -69,4 +69,12 @@ class VectorTopicClaimSearchIndex(
         const val POINT_ID_NAMESPACE = 1_000_000_000
         const val TOPIC_ID_MULTIPLIER = 1_000
     }
+}
+
+object TopicClaimSearchIndexFactory {
+    fun create(
+        embeddingService: EmbeddingService,
+        vectorStore: PayloadVectorStore,
+    ): TopicClaimSearchIndex =
+        VectorTopicClaimSearchIndex(embeddingService, vectorStore)
 }

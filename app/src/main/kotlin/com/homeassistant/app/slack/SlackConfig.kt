@@ -19,7 +19,7 @@ data class SlackConfig(
                 ?.takeIf { it.isNotBlank() }
             if (appToken == null || botToken == null || teamId == null || mappingsJson == null) return null
             val identityDirectory = runCatching {
-                SlackIdentityDirectory.fromJson(teamId, mappingsJson)
+                SlackIdentityDirectoryFactory.fromJson(teamId, mappingsJson)
             }.getOrNull() ?: return null
 
             val maxFileSizeBytes = Env[AppConfig.ENV_VAR_SLACK_MAX_FILE_SIZE_BYTES]

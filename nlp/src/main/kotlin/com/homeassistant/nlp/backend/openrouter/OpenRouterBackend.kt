@@ -20,7 +20,7 @@ import org.slf4j.LoggerFactory
 
 private val log = LoggerFactory.getLogger(OpenRouterBackend::class.java)
 
-class OpenRouterBackend(
+internal class OpenRouterBackend(
     private val apiKey: String,
     private val model: String,
     private val config: OpenRouterConfig = OpenRouterConfig(),

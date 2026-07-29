@@ -4,11 +4,20 @@ import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 
-class SlackConfirmationHandlers(
+interface SlackConfirmationHandler {
+    fun buildReviewModal(previewId: String, actingPrincipal: SlackPrincipal): SlackReviewActionResult
+    suspend fun submitSelection(
+        previewId: String,
+        selectedTopicIndices: Set<Int>,
+        actingPrincipal: SlackPrincipal,
+    ): SlackReviewSubmitResult
+}
+
+internal class SlackConfirmationHandlers(
     private val topicAnalysis: TopicAnalysisUseCase,
     private val reviewSessions: SlackTopicReviewSessionStore,
-) {
-    fun buildReviewModal(
+) : SlackConfirmationHandler {
+    override fun buildReviewModal(
         previewId: String,
         actingPrincipal: SlackPrincipal,
     ): SlackReviewActionResult {
@@ -29,7 +38,7 @@ class SlackConfirmationHandlers(
         }
     }
 
-    suspend fun submitSelection(
+    override suspend fun submitSelection(
         previewId: String,
         selectedTopicIndices: Set<Int>,
         actingPrincipal: SlackPrincipal,
@@ -57,6 +66,7 @@ class SlackConfirmationHandlers(
 }
 
 interface SlackTopicReviewSessionStore {
+    fun save(session: SlackTopicReviewSession)
     fun find(previewId: String): SlackTopicReviewSession?
     fun markCompleted(previewId: String)
 }

@@ -2,10 +2,10 @@ package com.homeassistant.app.slack
 
 import java.util.concurrent.ConcurrentHashMap
 
-class InMemorySlackTopicReviewSessionStore : SlackTopicReviewSessionStore {
+internal class InMemorySlackTopicReviewSessionStore : SlackTopicReviewSessionStore {
     private val sessions = ConcurrentHashMap<String, SlackTopicReviewSession>()
 
-    fun put(session: SlackTopicReviewSession) {
+    override fun save(session: SlackTopicReviewSession) {
         sessions[session.previewId] = session
     }
 
@@ -17,4 +17,9 @@ class InMemorySlackTopicReviewSessionStore : SlackTopicReviewSessionStore {
             session.copy(status = SlackTopicReviewStatus.COMPLETED)
         }
     }
+}
+
+object SlackTopicReviewSessionStoreFactory {
+    fun inMemory(): SlackTopicReviewSessionStore =
+        InMemorySlackTopicReviewSessionStore()
 }

@@ -1,6 +1,6 @@
 package com.homeassistant.application.topicanswer.answer
 
-import com.homeassistant.core.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.topicanalysis.Topic
 
 data class TopicClaimSearchHit(

@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.codex.conversation
 
-import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.adapter.shared.json.JsonSerializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive

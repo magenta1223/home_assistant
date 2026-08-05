@@ -1,6 +1,6 @@
 package com.homeassistant.application.memory.approve
 
-import com.homeassistant.core.identity.UserId
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.memory.*

@@ -102,14 +102,14 @@ package com.homeassistant.domain.kakao
 //                TopicDraft(
 //                    title = "관계 표현",
 //                    summary = "애정 표현을 주고받았다.",
-//                    memoryTypes = listOf(com.homeassistant.core.memory.MemoryType.STATE),
+//                    memoryTypes = listOf(com.homeassistant.domain.memory.MemoryType.STATE),
 //                    domains = listOf("relationship"),
 //                    evidence = evidence,
 //                    claims = listOf(
 //                        NewTopicClaim(
 //                            text = "동훈은 애정 표현을 했다.",
 //                            subject = "동훈",
-//                            memoryType = com.homeassistant.core.memory.MemoryType.STATE,
+//                            memoryType = com.homeassistant.domain.memory.MemoryType.STATE,
 //                            certainty = com.homeassistant.domain.topicanalysis.ClaimCertainty.OBSERVED,
 //                            evidence = evidence,
 //                        ),

@@ -1,2 +1,2 @@
 rootProject.name = "homeAssistant-backend"
-include("core", "domain", "application", "adapter", "app")
+include("domain", "application", "adapter", "app")

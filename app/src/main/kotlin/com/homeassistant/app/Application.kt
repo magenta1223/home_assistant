@@ -1,8 +1,8 @@
 package com.homeassistant.app
 
 import com.homeassistant.adapter.inbound.http.configureRoutes
-import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.adapter.shared.config.AppConfig
+import com.homeassistant.adapter.shared.json.JsonSerializer
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped

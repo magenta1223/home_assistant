@@ -17,7 +17,6 @@ tasks.named<JavaExec>("run") {
 dependencies {
     implementation(project(":adapter"))
     implementation(project(":application"))
-    implementation(project(":core"))
     implementation(project(":domain"))
 
     // Ktor server

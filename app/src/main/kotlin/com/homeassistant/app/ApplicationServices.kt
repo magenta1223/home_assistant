@@ -11,9 +11,9 @@ import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactor
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
-import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.constants.Env
-import com.homeassistant.core.identity.HouseholdAccessPolicies
+import com.homeassistant.adapter.shared.config.AppConfig
+import com.homeassistant.adapter.shared.config.Env
+import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.application.topicanswer.answer.TopicAnswerFactory
 import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase

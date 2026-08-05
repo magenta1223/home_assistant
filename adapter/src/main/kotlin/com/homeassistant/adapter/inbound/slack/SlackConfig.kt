@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.constants.Env
+import com.homeassistant.adapter.shared.config.AppConfig
+import com.homeassistant.adapter.shared.config.Env
 
 data class SlackConfig(
     val appToken: String,

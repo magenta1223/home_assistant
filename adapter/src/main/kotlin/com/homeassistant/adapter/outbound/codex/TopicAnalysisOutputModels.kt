@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.utils.JsonSerializer
-import com.homeassistant.core.utils.JsonSerializer.decodeFromString
-import com.homeassistant.core.utils.JsonSerializer.encodeToString
-import com.homeassistant.core.utils.JsonSerializer.parseToJsonElement
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.adapter.shared.json.JsonSerializer
+import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
+import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
+import com.homeassistant.adapter.shared.json.JsonSerializer.parseToJsonElement
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import kotlinx.schema.Schema

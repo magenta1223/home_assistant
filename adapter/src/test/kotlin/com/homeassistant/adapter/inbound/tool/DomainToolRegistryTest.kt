@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.tool
 
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.tools.ToolCallSpec
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.adapter.inbound.tool.ToolCallSpec
 import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.domain.memory.MemoryCandidateRow
 import com.homeassistant.domain.memory.MemoryRow

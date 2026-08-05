@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.tool
 
 import com.homeassistant.application.memory.MemoryUseCasesFactory
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.tools.*
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.adapter.inbound.tool.*
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.MemoryStore
 import com.homeassistant.domain.memory.VectorStore

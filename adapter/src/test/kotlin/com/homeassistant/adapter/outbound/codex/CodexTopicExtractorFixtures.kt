@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.source.SourceDocument
-import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceRecord
 
 internal fun serviceFor(response: String): CodexTopicExtractor =
     CodexTopicExtractor(StaticClient(response))

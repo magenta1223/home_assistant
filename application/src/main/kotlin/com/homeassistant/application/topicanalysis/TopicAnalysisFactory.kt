@@ -4,7 +4,7 @@ import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
 import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
 import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
-import com.homeassistant.core.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore

@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryType
 
 internal object TopicAnalysisPrompt {
     private val retentionCriteria =

@@ -1,12 +1,12 @@
 package com.homeassistant.application.topicanalysis.analyze
 
-import com.homeassistant.core.identity.FamilyId
-import com.homeassistant.core.identity.HouseholdAccessDeniedException
-import com.homeassistant.core.identity.HouseholdAccessPolicy
-import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.source.SourceDocument
-import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.domain.identity.FamilyId
+import com.homeassistant.domain.identity.HouseholdAccessDeniedException
+import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicCandidate

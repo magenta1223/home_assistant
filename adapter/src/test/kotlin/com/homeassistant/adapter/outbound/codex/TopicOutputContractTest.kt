@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test

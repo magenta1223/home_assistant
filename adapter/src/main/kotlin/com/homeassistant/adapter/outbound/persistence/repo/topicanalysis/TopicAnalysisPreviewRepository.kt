@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.topicanalysis
 
-import com.homeassistant.core.utils.JsonSerializer.decodeFromString
-import com.homeassistant.core.utils.JsonSerializer.encodeToString
+import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
+import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.kakao.KakaoAnalysisPreview
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore

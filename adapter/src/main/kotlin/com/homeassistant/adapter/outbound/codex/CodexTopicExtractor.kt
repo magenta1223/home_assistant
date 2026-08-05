@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.source.SourceDocument
-import com.homeassistant.core.source.SourceRecord
-import com.homeassistant.core.utils.JsonSerializer.encodeToString
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceRecord
+import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.topicanalysis.NewTopicClaim
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import com.homeassistant.domain.topicanalysis.TopicAnalysisResult

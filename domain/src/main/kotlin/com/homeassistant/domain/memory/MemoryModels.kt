@@ -1,7 +1,7 @@
 package com.homeassistant.domain.memory
 
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
 
 const val DEFAULT_FAMILY_ID = "default-family"
 

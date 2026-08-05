@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.outbound.persistence.repo.memory
 
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.domain.memory.MemoryCandidateRow
 import com.homeassistant.domain.memory.MemoryRow

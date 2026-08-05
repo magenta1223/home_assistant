@@ -6,10 +6,10 @@ import com.homeassistant.application.memory.create.CreateMemoryCandidateInput
 import com.homeassistant.application.memory.list.ListPendingMemoryCandidatesInput
 import com.homeassistant.application.memory.reject.RejectMemoryCandidateInput
 import com.homeassistant.application.memory.search.SearchMemoriesInput
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.tools.*
-import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.adapter.inbound.tool.*
+import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import kotlinx.serialization.Serializable
 
 internal class MemoryTools(

@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic

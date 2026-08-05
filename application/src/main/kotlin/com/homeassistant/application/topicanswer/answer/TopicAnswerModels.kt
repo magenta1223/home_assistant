@@ -1,8 +1,8 @@
 package com.homeassistant.application.topicanswer.answer
 
-import com.homeassistant.core.identity.FamilyId
-import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.core.identity.UserId
+import com.homeassistant.domain.identity.FamilyId
+import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
 @Serializable

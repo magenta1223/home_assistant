@@ -1,7 +1,7 @@
 package com.homeassistant.application.memory.search
 
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.*
 
 data class SearchMemoriesInput(

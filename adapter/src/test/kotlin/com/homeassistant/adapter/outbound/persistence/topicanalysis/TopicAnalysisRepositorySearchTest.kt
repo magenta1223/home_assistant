@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.topicanalysis
 
-import com.homeassistant.core.identity.FamilyId
-import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.identity.FamilyId
+import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaimCandidate

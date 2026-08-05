@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.repo.topicanalysis
 
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.core.utils.JsonSerializer.decodeFromString
-import com.homeassistant.core.utils.JsonSerializer.encodeToString
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
+import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicCandidate

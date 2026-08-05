@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
-import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import kotlinx.serialization.json.JsonObject

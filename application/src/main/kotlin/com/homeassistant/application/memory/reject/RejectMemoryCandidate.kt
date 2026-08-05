@@ -1,6 +1,6 @@
 package com.homeassistant.application.memory.reject
 
-import com.homeassistant.core.identity.UserId
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCommandStore
 
 data class RejectMemoryCandidateInput(

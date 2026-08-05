@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.codex.conversation
 
-import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.constants.Env
+import com.homeassistant.adapter.shared.config.AppConfig
+import com.homeassistant.adapter.shared.config.Env
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration

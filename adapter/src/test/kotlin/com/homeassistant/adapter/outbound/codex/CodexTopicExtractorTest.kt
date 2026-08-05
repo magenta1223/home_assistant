@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.source.SourceDocument
-import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import kotlinx.coroutines.delay

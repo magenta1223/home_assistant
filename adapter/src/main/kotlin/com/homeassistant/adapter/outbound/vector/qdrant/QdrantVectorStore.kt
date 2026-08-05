@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.vector.qdrant
 
-import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.domain.memory.MemorySearchFilter
 import com.homeassistant.domain.memory.NumericRange
 import com.homeassistant.domain.memory.PayloadVectorPoint

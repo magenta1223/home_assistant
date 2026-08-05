@@ -1,6 +1,6 @@
 package com.homeassistant.application.memory.list
 
-import com.homeassistant.core.identity.UserId
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCandidateRow
 import com.homeassistant.domain.memory.MemoryQueryStore
 

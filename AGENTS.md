@@ -15,7 +15,6 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 ./gradlew test
 
 # Run tests for a specific module
-./gradlew :core:test
 ./gradlew :application:test
 ./gradlew :adapter:test
 ./gradlew :domain:test
@@ -63,27 +62,16 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 ## Module Architecture
 
 ```text
-core/       - shared domain types, tool schemas, and constants
 domain/     - domain models, ports, and business/application policies
 application/ - target home for vertically sliced use cases and their ports
 adapter/     - target home for inbound and outbound technology adapters
 app/        - composition root and Ktor server startup
 ```
 
-The codebase is migrating toward `app -> adapter -> application -> domain`. During the migration,
-the legacy `core` module remains until its responsibilities have moved.
+The dependency direction is `app -> adapter -> application -> domain`.
 Within `application`, keep commands, results, use-case orchestration, and use-case-specific output
 ports together by use case. Within `adapter`, classify external entry points under `inbound` and
 application-driven integrations under `outbound`.
-
-### core
-
-Pure abstractions and shared types.
-
-- `tools/*` - JSON Schema based tool definitions and executor interface.
-- `identity/UserId` - user identity value type used by memory tools.
-- `memory/MemoryTypes.kt` - memory categories and candidate status.
-- `constants/AppConfig`, `Env` - configuration keys and defaults.
 
 ### application
 
@@ -103,10 +91,13 @@ Pure abstractions and shared types.
 - `outbound/persistence/` - SQLite/Exposed repositories and schema implementations.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.
 - `outbound/vector/topicclaim/` - topic-claim semantic index implementation.
+- `shared/config/` and `shared/json/` - runtime-only adapter/composition support; never domain APIs.
 
 ### domain
 
+- `identity/` - household identity, authorization scope, and access policy.
 - `kakao/` - Kakao source models, import policy, and persistence ports.
+- `source/` - source-agnostic analysis documents and records.
 - `topicanalysis/` - topic domain models and persistence ports.
 - `memory/` - memory domain models plus embedding and vector-store ports.
 

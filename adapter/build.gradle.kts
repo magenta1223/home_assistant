@@ -5,9 +5,10 @@ plugins {
 
 dependencies {
     api(project(":application"))
-    api(project(":core"))
     api(project(":domain"))
 
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.dotenv.kotlin)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.schema.generator.json)
     implementation(libs.exposed.core)

@@ -3,11 +3,11 @@ package com.homeassistant.app.routes
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.inbound.http.configureRoutes
-import com.homeassistant.core.identity.FamilyId
-import com.homeassistant.core.identity.HouseholdAccessPolicies
-import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.domain.identity.FamilyId
+import com.homeassistant.domain.identity.HouseholdAccessPolicies
+import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexes

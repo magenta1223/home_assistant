@@ -1,7 +1,7 @@
 package com.homeassistant.domain.topicanalysis
 
-import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.source.SourceRecord
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.source.SourceRecord
 
 /**
  * New claim payload before persistence under a topic candidate.

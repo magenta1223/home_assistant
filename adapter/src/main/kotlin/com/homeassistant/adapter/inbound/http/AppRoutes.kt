@@ -5,8 +5,8 @@ import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessage
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
-import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.identity.HouseholdAccessDeniedException
+import com.homeassistant.adapter.shared.config.AppConfig
+import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
 import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexUnavailableException

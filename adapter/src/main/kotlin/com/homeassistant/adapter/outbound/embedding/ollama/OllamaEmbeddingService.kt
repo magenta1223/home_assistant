@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
-import com.homeassistant.core.constants.AppConfig
-import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.adapter.shared.config.AppConfig
+import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.domain.memory.EmbeddingService
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString

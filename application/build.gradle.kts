@@ -4,8 +4,8 @@ plugins {
 }
 
 dependencies {
-    api(project(":core"))
     api(project(":domain"))
+    api(libs.kotlinx.serialization.json)
 
     implementation(libs.logback.classic)
 

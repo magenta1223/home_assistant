@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.memory
 
-import com.homeassistant.core.identity.UserId
-import com.homeassistant.core.memory.CandidateStatus
-import com.homeassistant.core.memory.MemoryType
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.adapter.outbound.persistence.repo.memory.AuditAction
 import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.adapter.outbound.persistence.db.tables.*

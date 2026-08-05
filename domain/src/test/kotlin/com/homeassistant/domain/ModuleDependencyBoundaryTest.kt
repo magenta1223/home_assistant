@@ -17,8 +17,8 @@ class ModuleDependencyBoundaryTest {
             "domain module must not declare a project dependency on nlp",
         )
         assertFalse(
-            domainBuild.contains("project(\":repository\")"),
-            "domain module must not declare a project dependency on repository",
+            domainBuild.contains("project(\":adapter\")") || domainBuild.contains("project(\":application\")"),
+            "domain module must not declare a project dependency on application or adapter",
         )
     }
 
@@ -31,7 +31,8 @@ class ModuleDependencyBoundaryTest {
                 file.readText().lineSequence()
                     .filter {
                         it.startsWith("import com.homeassistant.nlp.") ||
-                            it.startsWith("import com.homeassistant.repository.") ||
+                            it.startsWith("import com.homeassistant.application.") ||
+                            it.startsWith("import com.homeassistant.adapter.") ||
                             it.startsWith("import com.homeassistant.app.") ||
                             it.startsWith("import org.jetbrains.exposed.")
                     }
@@ -41,7 +42,7 @@ class ModuleDependencyBoundaryTest {
 
         assertFalse(
             offendingImports.isNotEmpty(),
-            "domain source must not import repository, nlp, app, or Exposed packages:\n${offendingImports.joinToString("\n")}",
+            "domain source must not import application, adapter, nlp, app, or Exposed packages:\n${offendingImports.joinToString("\n")}",
         )
     }
 }

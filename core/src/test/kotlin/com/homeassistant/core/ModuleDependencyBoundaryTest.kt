@@ -20,9 +20,8 @@ class ModuleDependencyBoundaryTest {
         assertEquals(setOf("core"), actual.getValue("domain"))
         assertEquals(setOf("core", "domain"), actual.getValue("application"))
         assertEquals(setOf("application", "core", "domain"), actual.getValue("adapter"))
-        assertEquals(setOf("core", "domain"), actual.getValue("repository"))
         assertEquals(setOf("core", "domain"), actual.getValue("nlp"))
-        assertEquals(setOf("adapter", "application", "core", "domain", "nlp", "repository"), actual.getValue("app"))
+        assertEquals(setOf("adapter", "application", "core", "domain", "nlp"), actual.getValue("app"))
     }
 
     @Test
@@ -40,26 +39,26 @@ class ModuleDependencyBoundaryTest {
     }
 
     @Test
-    fun `repository internals are not imported outside repository module`() {
-        val violations = listOf("core", "domain", "nlp", "app").flatMap { module ->
-            repositoryInternalImportsFor(module)
+    fun `persistence internals are not imported outside adapter composition`() {
+        val violations = listOf("core", "domain", "application", "nlp", "app").flatMap { module ->
+            persistenceInternalImportsFor(module)
         }
 
         assertTrue(
             violations.isEmpty(),
-            "Repository internals must not be imported outside repository module:\n${violations.joinToString("\n")}",
+            "Persistence internals must not cross adapter boundaries:\n${violations.joinToString("\n")}",
         )
     }
 
     @Test
-    fun `exposed is only imported inside repository module`() {
-        val violations = listOf("core", "domain", "application", "adapter", "nlp", "app").flatMap { module ->
+    fun `exposed is only imported inside persistence adapter`() {
+        val violations = listOf("core", "domain", "application", "nlp", "app").flatMap { module ->
             exposedImportsFor(module)
-        }
+        } + exposedImportsOutsidePersistenceAdapter()
 
         assertTrue(
             violations.isEmpty(),
-            "Exposed database APIs must not be imported outside repository module:\n${violations.joinToString("\n")}",
+            "Exposed database APIs must not be imported outside persistence adapter:\n${violations.joinToString("\n")}",
         )
     }
 
@@ -104,12 +103,11 @@ class ModuleDependencyBoundaryTest {
 
     private fun forbiddenImports(module: String): Set<String> =
         when (module) {
-            "core" -> setOf("domain", "application", "adapter", "repository", "nlp", "app")
-            "domain" -> setOf("application", "adapter", "repository", "nlp", "app")
-            "application" -> setOf("adapter", "repository", "nlp", "app")
-            "adapter" -> setOf("repository", "nlp", "app")
-            "repository" -> setOf("nlp", "app")
-            "nlp" -> setOf("repository", "app")
+            "core" -> setOf("domain", "application", "adapter", "nlp", "app")
+            "domain" -> setOf("application", "adapter", "nlp", "app")
+            "application" -> setOf("adapter", "nlp", "app")
+            "adapter" -> setOf("nlp", "app")
+            "nlp" -> setOf("app")
             "app" -> emptySet()
             else -> error("Unknown module $module")
         }
@@ -128,23 +126,21 @@ class ModuleDependencyBoundaryTest {
             .toList()
     }
 
-    private fun repositoryInternalImportsFor(module: String): List<String> {
+    private fun persistenceInternalImportsFor(module: String): List<String> {
         val sourceRoot = projectRoot.resolve("$module/src/main/kotlin")
         if (!sourceRoot.toFile().exists()) return emptyList()
 
-        val allowedRepositoryImports = setOf(
-            "import com.homeassistant.repository.RepositoryFactory",
-            "import com.homeassistant.repository.RepositoryStores",
-            "import com.homeassistant.repository.repo.RepositoryFactory",
-            "import com.homeassistant.repository.repo.RepositoryStores",
+        val allowedPersistenceImports = setOf(
+            "import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory",
+            "import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores",
         )
 
         return sourceRoot.walk()
             .filter { it.toString().endsWith(".kt") }
             .flatMap { file ->
                 file.readText().lineSequence()
-                    .filter { it.startsWith("import com.homeassistant.repository.") }
-                    .filterNot { it in allowedRepositoryImports }
+                    .filter { it.startsWith("import com.homeassistant.adapter.outbound.persistence.") }
+                    .filterNot { it in allowedPersistenceImports }
                     .map { "${projectRoot.relativize(file)}: $it" }
             }
             .toList()
@@ -156,6 +152,21 @@ class ModuleDependencyBoundaryTest {
 
         return sourceRoot.walk()
             .filter { it.toString().endsWith(".kt") }
+            .flatMap { file ->
+                file.readText().lineSequence()
+                    .filter { it.startsWith("import org.jetbrains.exposed.") }
+                    .map { "${projectRoot.relativize(file)}: $it" }
+            }
+            .toList()
+    }
+
+    private fun exposedImportsOutsidePersistenceAdapter(): List<String> {
+        val sourceRoot = projectRoot.resolve("adapter/src/main/kotlin")
+        if (!sourceRoot.toFile().exists()) return emptyList()
+
+        return sourceRoot.walk()
+            .filter { it.toString().endsWith(".kt") }
+            .filterNot { it.toString().contains("${java.io.File.separator}outbound${java.io.File.separator}persistence${java.io.File.separator}") }
             .flatMap { file ->
                 file.readText().lineSequence()
                     .filter { it.startsWith("import org.jetbrains.exposed.") }
@@ -180,6 +191,6 @@ class ModuleDependencyBoundaryTest {
     }
 
     private companion object {
-        val MODULES = listOf("core", "domain", "application", "adapter", "repository", "nlp", "app")
+        val MODULES = listOf("core", "domain", "application", "adapter", "nlp", "app")
     }
 }

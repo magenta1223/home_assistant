@@ -17,7 +17,6 @@
             <option value="$PROJECT_DIR$/core" />
             <option value="$PROJECT_DIR$/domain" />
             <option value="$PROJECT_DIR$/nlp" />
-            <option value="$PROJECT_DIR$/repository" />
           </set>
         </option>
       </GradleProjectSettings>

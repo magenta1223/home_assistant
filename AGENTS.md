@@ -68,13 +68,12 @@ core/       - shared domain types, tool schemas, and constants
 domain/     - domain models, ports, and business/application policies
 application/ - target home for vertically sliced use cases and their ports
 adapter/     - target home for inbound and outbound technology adapters
-repository/ - Exposed/SQLite persistence adapters
 nlp/        - legacy local embedding adapter pending migration
 app/        - Ktor server wiring and HTTP routes
 ```
 
 The codebase is migrating toward `app -> adapter -> application -> domain`. During the migration,
-the legacy `core`, `repository`, and `nlp` modules remain until their responsibilities have moved.
+the legacy `core` and `nlp` modules remain until their responsibilities have moved.
 Within `application`, keep commands, results, use-case orchestration, and use-case-specific output
 ports together by use case. Within `adapter`, classify external entry points under `inbound` and
 application-driven integrations under `outbound`.
@@ -106,11 +105,6 @@ Pure abstractions and shared types.
 - `topicanalysis/` - topic domain models and persistence ports.
 - `memory/` - memory domain models, tools, embeddings, and vector-store ports.
 - `DomainToolRegistry` - single registration point for domain tools.
-
-### repository
-
-- `db/` - database initialization and Exposed table definitions.
-- `repo/` - SQLite implementations of domain persistence ports.
 
 ### app
 

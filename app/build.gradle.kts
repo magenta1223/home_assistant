@@ -20,7 +20,6 @@ dependencies {
     implementation(project(":core"))
     implementation(project(":nlp"))
     implementation(project(":domain"))
-    implementation(project(":repository"))
 
     // Ktor server
     implementation(libs.ktor.server.core)

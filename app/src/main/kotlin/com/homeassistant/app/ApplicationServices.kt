@@ -15,7 +15,7 @@ import com.homeassistant.domain.topicanswer.TopicAnswerFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexFactory
 import com.homeassistant.nlp.embedding.EmbeddingServiceFactory
-import com.homeassistant.repository.repo.RepositoryFactory
+import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
 interface ApplicationServices : AutoCloseable {

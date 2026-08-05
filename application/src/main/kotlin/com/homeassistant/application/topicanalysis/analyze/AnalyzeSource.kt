@@ -13,14 +13,18 @@ import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.topicanalysis.TopicDraft
 
+interface AnalyzeSourceUseCase {
+    suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult
+}
+
 internal class AnalyzeSource(
     private val topicExtractor: TopicExtractor,
     private val sourceTextParser: SourceTextParser,
     private val importService: KakaoImporter,
     private val previewRepository: TopicAnalysisPreviewStore,
     private val accessPolicy: HouseholdAccessPolicy,
-) {
-    suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
+) : AnalyzeSourceUseCase {
+    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
         val scope = request.scope()
         requireAuthorized(scope)
         val messages = sourceTextParser.parse(request.sourceName, request.text)

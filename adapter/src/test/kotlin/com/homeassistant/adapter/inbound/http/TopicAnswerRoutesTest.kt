@@ -7,9 +7,11 @@ import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -30,7 +32,8 @@ class TopicAnswerRoutesTest {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
-                kakaoImportAnalyze = UnusedTopicAnalysis,
+                analyzeSource = UnusedTopicAnalysis,
+                saveTopicCandidates = UnusedTopicAnalysis,
                 topicAnswer = FakeTopicAnswer,
             )
         }
@@ -51,7 +54,8 @@ class TopicAnswerRoutesTest {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
-                kakaoImportAnalyze = UnusedTopicAnalysis,
+                analyzeSource = UnusedTopicAnalysis,
+                saveTopicCandidates = UnusedTopicAnalysis,
                 topicAnswer = FakeTopicAnswer,
             )
         }
@@ -69,7 +73,8 @@ class TopicAnswerRoutesTest {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
-                kakaoImportAnalyze = UnusedTopicAnalysis,
+                analyzeSource = UnusedTopicAnalysis,
+                saveTopicCandidates = UnusedTopicAnalysis,
                 topicAnswer = UnavailableTopicAnswer,
             )
         }
@@ -106,10 +111,13 @@ private object UnavailableTopicAnswer : TopicAnswerUseCase {
         throw TopicClaimSearchIndexUnavailableException("topic claim vector index is not configured")
 }
 
-private object UnusedTopicAnalysis : TopicAnalysisUseCase {
-    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
+private object UnusedTopicAnalysis : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase {
+    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("not used")
 
-    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
+    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
+        error("not used")
+
+    override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 }

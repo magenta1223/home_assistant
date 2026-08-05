@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import org.slf4j.LoggerFactory
@@ -11,7 +11,7 @@ interface SlackKakaoWorkflow {
 
 internal class SlackKakaoAnalysisWorkflow(
     private val slackClient: SlackKakaoClient,
-    private val topicAnalysis: TopicAnalysisUseCase,
+    private val analyzeSource: AnalyzeSourceUseCase,
     private val reviewSessions: SlackTopicReviewSessionStore,
     private val maxFileSizeBytes: Long,
 ) : SlackKakaoWorkflow {
@@ -31,7 +31,7 @@ internal class SlackKakaoAnalysisWorkflow(
                 ?: upload.downloadUrl
                 ?: error("Slack file download URL is missing")
             val text = slackClient.downloadText(downloadUrl, maxFileSizeBytes)
-            val result = topicAnalysis.analyze(
+            val result = analyzeSource.execute(
                 TopicAnalysisRequest(
                     userId = upload.principal.userId.value,
                     familyId = upload.principal.familyId.value,

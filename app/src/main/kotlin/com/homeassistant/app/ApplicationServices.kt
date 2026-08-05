@@ -10,7 +10,7 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCo
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCases
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.adapter.shared.config.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -22,13 +22,13 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
 interface ApplicationServices : AutoCloseable {
-    val topicAnalysis: TopicAnalysisUseCase
+    val topicAnalysis: TopicAnalysisUseCases
     val topicAnswer: TopicAnswerUseCase
     fun start()
 }
 
 private class DefaultApplicationServices(
-    override val topicAnalysis: TopicAnalysisUseCase,
+    override val topicAnalysis: TopicAnalysisUseCases,
     override val topicAnswer: TopicAnswerUseCase,
     private val slackRuntime: SlackRuntime?,
 ) : ApplicationServices {

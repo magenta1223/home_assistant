@@ -12,7 +12,6 @@ import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -37,7 +36,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
@@ -56,7 +55,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
@@ -86,7 +85,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
@@ -105,7 +104,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
@@ -124,7 +123,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/save") {
@@ -146,7 +145,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/save") {
@@ -164,7 +163,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/save") {
@@ -182,7 +181,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/kakao/import/save") {
@@ -200,7 +199,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.get("/api/test/topic-analysis/kakao-small-set")
@@ -215,7 +214,7 @@ class KakaoImportRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer)
         }
 
         val response = client.post("/api/test/topic-analysis/openrouter-model-eval") {

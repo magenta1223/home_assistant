@@ -55,7 +55,7 @@ class KakaoMessageTopicAnalysisServiceTest {
         )
 
         val error = assertFailsWith<DuplicateKakaoMessagesException> {
-            service.analyze(request(text))
+            service.analyzeSource.execute(request(text))
         }
 
         assertEquals(2, error.recordCount)

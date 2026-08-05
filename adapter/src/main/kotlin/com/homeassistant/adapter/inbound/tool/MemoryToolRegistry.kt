@@ -8,16 +8,16 @@ import com.homeassistant.domain.memory.MemoryStore
 import com.homeassistant.domain.memory.VectorStore
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 
-interface DomainTools : IToolExecutor {
+interface MemoryToolExecutor : IToolExecutor {
     fun tools(): List<Tool>
 }
 
-internal class DomainToolRegistry(
+internal class MemoryToolRegistry(
     memoryStore: MemoryStore,
     embeddingService: EmbeddingService,
     vectorStore: VectorStore,
     indexingOutbox: IndexingOutboxStore,
-) : DomainTools {
+) : MemoryToolExecutor {
 
     private val memoryTools = MemoryTools(
         MemoryUseCasesFactory.create(memoryStore, embeddingService, vectorStore, indexingOutbox),
@@ -32,12 +32,12 @@ internal class DomainToolRegistry(
         else error("Unhandled tool: ${spec.name}")
 }
 
-object DomainToolsFactory {
+object MemoryToolExecutorFactory {
     fun create(
         memoryStore: MemoryStore,
         embeddingService: EmbeddingService,
         vectorStore: VectorStore,
         indexingOutbox: IndexingOutboxStore,
-    ): DomainTools =
-        DomainToolRegistry(memoryStore, embeddingService, vectorStore, indexingOutbox)
+    ): MemoryToolExecutor =
+        MemoryToolRegistry(memoryStore, embeddingService, vectorStore, indexingOutbox)
 }

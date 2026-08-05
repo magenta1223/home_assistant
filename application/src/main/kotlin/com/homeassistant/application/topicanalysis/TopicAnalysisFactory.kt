@@ -22,8 +22,8 @@ object TopicAnalysisFactory {
         searchIndex: TopicClaimSearchIndex = TopicClaimSearchIndexes.unavailable(),
         indexingOutbox: IndexingOutboxStore,
         accessPolicy: HouseholdAccessPolicy,
-    ): TopicAnalysisUseCase =
-        DefaultTopicAnalysisUseCase(
+    ): TopicAnalysisUseCases =
+        TopicAnalysisUseCases(
             analyzeSource = AnalyzeSource(
                 topicExtractor = topicExtractor,
                 sourceTextParser = sourceTextParser,

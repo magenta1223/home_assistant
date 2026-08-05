@@ -11,11 +11,13 @@ import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessage
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
 
-internal object FakeAnalyzer : TopicAnalysisUseCase {
+internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase {
     var sourceFileName = ""
     var text = ""
     var previewId = ""
@@ -30,7 +32,7 @@ internal object FakeAnalyzer : TopicAnalysisUseCase {
         saveCalls = 0
     }
 
-    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult {
+    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
         sourceFileName = request.sourceName
         text = request.text
         previewCalls += 1
@@ -46,7 +48,7 @@ internal object FakeAnalyzer : TopicAnalysisUseCase {
         )
     }
 
-    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
+    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
         previewId = request.previewId
         saveCalls += 1
         if (request.previewId == "missing") throw TopicAnalysisPreviewNotFoundException(request.previewId)
@@ -56,6 +58,9 @@ internal object FakeAnalyzer : TopicAnalysisUseCase {
             topics = listOf(topic("2026-06-07.txt", 11)),
         )
     }
+
+    override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult =
+        saveAll(TopicAnalysisSaveRequest(request.previewId, request.userId, request.familyId))
 
     private fun newTopic(sourceName: String, evidenceRef: Int) =
         TopicCandidate(

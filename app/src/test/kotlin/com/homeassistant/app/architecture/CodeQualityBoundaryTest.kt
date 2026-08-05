@@ -44,6 +44,24 @@ class CodeQualityBoundaryTest {
         )
     }
 
+    @Test
+    fun `domain model names do not expose persistence row terminology`() {
+        val domainSource = projectRoot.resolve("domain/src/main/kotlin")
+        val violations = domainSource.walk()
+            .filter { path -> path.toString().endsWith(".kt") }
+            .flatMap { path ->
+                ROW_MODEL.findAll(path.readText())
+                    .map { match -> projectRoot.relativize(path) to match.groupValues[1] }
+            }
+            .toList()
+
+        assertTrue(
+            violations.isEmpty(),
+            "Domain model names must describe domain concepts, not database rows:\n" +
+                violations.joinToString("\n") { (path, name) -> "$path: $name" },
+        )
+    }
+
     private fun kotlinSources(mainOnly: Boolean = false) =
         MODULES.asSequence()
             .flatMap { module ->
@@ -57,5 +75,7 @@ class CodeQualityBoundaryTest {
         val MODULES = listOf("domain", "application", "adapter", "app")
         val PUBLIC_CLASS =
             Regex("""(?m)^(?:public\s+)?(?:(?:abstract|open)\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)""")
+        val ROW_MODEL =
+            Regex("""(?m)^(?:data\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*Row)\b""")
     }
 }

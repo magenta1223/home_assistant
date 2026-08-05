@@ -12,7 +12,7 @@ import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -26,7 +26,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val sessions = InMemorySlackTopicReviewSessionStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
-            topicAnalysis = analyzer,
+            analyzeSource = analyzer,
             reviewSessions = sessions,
             maxFileSizeBytes = 10_485_760,
         )
@@ -49,7 +49,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val slack = FakeSlackClient(downloadedText = "kakao export")
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
-            topicAnalysis = FailingAnalyzer,
+            analyzeSource = FailingAnalyzer,
             reviewSessions = InMemorySlackTopicReviewSessionStore(),
             maxFileSizeBytes = 10_485_760,
         )
@@ -66,7 +66,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val sessions = InMemorySlackTopicReviewSessionStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
-            topicAnalysis = DuplicateAnalyzer,
+            analyzeSource = DuplicateAnalyzer,
             reviewSessions = sessions,
             maxFileSizeBytes = 10_485_760,
         )
@@ -132,13 +132,13 @@ private data class EphemeralMessage(
     val text: String,
 )
 
-private class FakeAnalyzer : TopicAnalysisUseCase {
+private class FakeAnalyzer : AnalyzeSourceUseCase {
     var sourceName = ""
     var text = ""
     var userId = ""
     var familyId = ""
 
-    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult {
+    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
         sourceName = request.sourceName
         text = request.text
         userId = request.userId
@@ -152,24 +152,16 @@ private class FakeAnalyzer : TopicAnalysisUseCase {
         )
     }
 
-    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
-        TopicAnalysisSaveResult(request.previewId, emptyList<Topic>())
 }
 
-private object FailingAnalyzer : TopicAnalysisUseCase {
-    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
+private object FailingAnalyzer : AnalyzeSourceUseCase {
+    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("analysis failed")
-
-    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
-        error("not used")
 }
 
-private object DuplicateAnalyzer : TopicAnalysisUseCase {
-    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
+private object DuplicateAnalyzer : AnalyzeSourceUseCase {
+    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         throw DuplicateKakaoMessagesException(request.sourceName, 1)
-
-    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
-        error("not used")
 }
 
 private fun topic() =

@@ -6,8 +6,8 @@ import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.adapter.inbound.tool.ToolCallSpec
 import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
-import com.homeassistant.domain.memory.MemoryCandidateRow
-import com.homeassistant.domain.memory.MemoryRow
+import com.homeassistant.domain.memory.MemoryCandidate
+import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.memory.*
@@ -189,8 +189,8 @@ class MemoryToolsTest {
     }
 
     private class FakeMemoryStore : MemoryStore {
-        private val candidates = mutableMapOf<Int, MemoryCandidateRow>()
-        private val memories = mutableMapOf<Int, MemoryRow>()
+        private val candidates = mutableMapOf<Int, MemoryCandidate>()
+        private val memories = mutableMapOf<Int, Memory>()
         private var nextCandidateId = 1
         private var nextMemoryId = 1
 
@@ -208,7 +208,7 @@ class MemoryToolsTest {
         ): Int {
             val id = nextCandidateId++
             val now = System.currentTimeMillis()
-            candidates[id] = MemoryCandidateRow(
+            candidates[id] = MemoryCandidate(
                 id = id,
                 familyId = DEFAULT_FAMILY_ID,
                 conversationId = conversationId,
@@ -229,20 +229,20 @@ class MemoryToolsTest {
             return id
         }
 
-        override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow> =
+        override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidate> =
             candidates.values.filter {
                 it.createdBy == userId.value &&
                     it.conversationId == conversationId &&
                     it.status == CandidateStatus.PENDING
             }
 
-        override fun getCandidate(id: Int): MemoryCandidateRow? = candidates[id]
+        override fun getCandidate(id: Int): MemoryCandidate? = candidates[id]
 
-        override fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow {
+        override fun approveCandidate(userId: UserId, candidateId: Int): Memory {
             val candidate = candidates.getValue(candidateId)
             val now = System.currentTimeMillis()
             candidates[candidateId] = candidate.copy(status = CandidateStatus.APPROVED, updatedAt = now)
-            return MemoryRow(
+            return Memory(
                 id = nextMemoryId++,
                 familyId = candidate.familyId,
                 domainId = candidate.domainId,
@@ -266,9 +266,9 @@ class MemoryToolsTest {
             candidates[candidateId] = candidate.copy(status = CandidateStatus.REJECTED)
         }
 
-        override fun getMemory(id: Int): MemoryRow? = memories[id]
+        override fun getMemory(id: Int): Memory? = memories[id]
 
-        override fun listMemories(ids: List<Int>?): List<MemoryRow> =
+        override fun listMemories(ids: List<Int>?): List<Memory> =
             ids?.mapNotNull { memories[it] } ?: memories.values.toList()
     }
 }

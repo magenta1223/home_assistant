@@ -13,6 +13,11 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
 
+interface SaveTopicCandidatesUseCase {
+    fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
+    fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult
+}
+
 internal class SaveTopicCandidates(
     private val importService: KakaoImporter,
     private val sourceTextParser: SourceTextParser,
@@ -21,14 +26,14 @@ internal class SaveTopicCandidates(
     topicClaimSearchIndex: TopicClaimSearchIndex,
     indexingOutbox: IndexingOutboxStore,
     private val accessPolicy: HouseholdAccessPolicy,
-) {
+) : SaveTopicCandidatesUseCase {
     private val topicIndexing = TopicIndexingCoordinatorFactory.create(
         topicRepository,
         topicClaimSearchIndex,
         indexingOutbox,
     )
 
-    fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
+    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
         val scope = request.scope()
         requireAuthorized(scope)
         val preview = previewRepository.findPreview(request.previewId)
@@ -37,7 +42,7 @@ internal class SaveTopicCandidates(
         return savePreviewTopics(request.previewId, preview.sourceFileName, preview.text, preview.topics)
     }
 
-    fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
+    override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
         val scope = request.scope()
         requireAuthorized(scope)
         val preview = previewRepository.findPreview(request.previewId)

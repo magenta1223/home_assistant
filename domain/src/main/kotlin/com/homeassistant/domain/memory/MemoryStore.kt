@@ -17,15 +17,15 @@ interface MemoryCommandStore {
         visibility: String = "FAMILY",
     ): Int
 
-    fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow
+    fun approveCandidate(userId: UserId, candidateId: Int): Memory
     fun rejectCandidate(userId: UserId, candidateId: Int)
 }
 
 interface MemoryQueryStore {
-    fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow>
-    fun getCandidate(id: Int): MemoryCandidateRow?
-    fun getMemory(id: Int): MemoryRow?
-    fun listMemories(ids: List<Int>? = null): List<MemoryRow>
+    fun listPending(userId: UserId, conversationId: String): List<MemoryCandidate>
+    fun getCandidate(id: Int): MemoryCandidate?
+    fun getMemory(id: Int): Memory?
+    fun listMemories(ids: List<Int>? = null): List<Memory>
 }
 
 interface MemoryStore : MemoryCommandStore, MemoryQueryStore

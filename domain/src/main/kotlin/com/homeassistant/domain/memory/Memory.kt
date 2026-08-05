@@ -1,11 +1,8 @@
 package com.homeassistant.domain.memory
 
-import com.homeassistant.domain.memory.CandidateStatus
-import com.homeassistant.domain.memory.MemoryType
-
 const val DEFAULT_FAMILY_ID = "default-family"
 
-data class MemoryCandidateRow(
+data class MemoryCandidate(
     val id: Int,
     val familyId: String,
     val conversationId: String,
@@ -24,7 +21,7 @@ data class MemoryCandidateRow(
     val updatedAt: Long,
 )
 
-data class MemoryRow(
+data class Memory(
     val id: Int,
     val familyId: String,
     val domainId: Int,

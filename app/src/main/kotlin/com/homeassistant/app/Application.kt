@@ -44,5 +44,9 @@ fun Application.module() {
     val services = ApplicationServicesFactory.create(dbPath)
     services.start()
     monitor.subscribe(ApplicationStopped) { services.close() }
-    configureRoutes(services.topicAnalysis, services.topicAnswer)
+    configureRoutes(
+        services.topicAnalysis.analyzeSource,
+        services.topicAnalysis.saveTopicCandidates,
+        services.topicAnswer,
+    )
 }

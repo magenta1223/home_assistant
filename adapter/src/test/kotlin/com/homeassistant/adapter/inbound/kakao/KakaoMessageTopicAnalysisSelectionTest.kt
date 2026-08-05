@@ -28,7 +28,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.analyze(request(text))
+        val result = service.analyzeSource.execute(request(text))
 
         assertEquals(1, result.importedRecordCount)
         assertEquals(1, extractor.calls)
@@ -49,7 +49,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             index,
         )
 
-        val result = service.saveSelectedAnalysis(selection(setOf(2, 0, 99)))
+        val result = service.saveTopicCandidates.saveSelected(selection(setOf(2, 0, 99)))
 
         assertEquals(listOf("첫 후보", "셋째 후보"), result.topics.map { it.title })
         assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
@@ -64,7 +64,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             kakaoStore,
             FakeTopicStore(),
             FakePreviewStore(listOf(topic("첫 후보", 1))),
-        ).saveSelectedAnalysis(selection(emptySet()))
+        ).saveTopicCandidates.saveSelected(selection(emptySet()))
 
         assertEquals(emptyList(), result.topics)
         assertEquals(0, kakaoStore.importCalls)
@@ -84,7 +84,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             TEST_ACCESS_POLICY,
         )
 
-        val result = service.saveSelectedAnalysis(selection(setOf(0)))
+        val result = service.saveTopicCandidates.saveSelected(selection(setOf(0)))
 
         assertEquals(listOf("후보"), result.topics.map { it.title })
         assertEquals(listOf(1), outbox.pending(IndexTargetType.TOPIC))

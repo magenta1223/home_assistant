@@ -63,7 +63,7 @@ class LiveTopicAnalysisApiTest {
         testApplication {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
-                configureRoutes(topicAnalysis)
+                configureRoutes(topicAnalysis.analyzeSource, topicAnalysis.saveTopicCandidates)
             }
 
             val response = client.post("/api/kakao/import/analyze") {

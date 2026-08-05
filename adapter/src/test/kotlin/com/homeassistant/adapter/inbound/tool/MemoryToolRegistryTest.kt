@@ -5,8 +5,8 @@ import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.adapter.inbound.tool.ToolCallSpec
 import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
-import com.homeassistant.domain.memory.MemoryCandidateRow
-import com.homeassistant.domain.memory.MemoryRow
+import com.homeassistant.domain.memory.MemoryCandidate
+import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.*
 import com.homeassistant.domain.indexing.IndexingOutboxes
 import kotlin.coroutines.Continuation
@@ -14,12 +14,12 @@ import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.coroutines.startCoroutine
 import kotlin.test.*
 
-class DomainToolRegistryTest {
-    private lateinit var registry: DomainTools
+class MemoryToolRegistryTest {
+    private lateinit var registry: MemoryToolExecutor
 
     @BeforeTest
     fun setup() {
-        registry = DomainToolsFactory.create(
+        registry = MemoryToolExecutorFactory.create(
             FakeMemoryStore(),
             DeterministicEmbeddingService(),
             RecordingVectorStore(),
@@ -89,14 +89,14 @@ class DomainToolRegistryTest {
             visibility: String,
         ): Int = nextId++
 
-        override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow> = emptyList()
-        override fun getCandidate(id: Int): MemoryCandidateRow? = null
-        override fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow =
-            MemoryRow(candidateId, DEFAULT_FAMILY_ID, 1, "GENERAL", MemoryType.STATE, "", "", null, userId.value, "FAMILY", 1.0, null, candidateId, 0, 0)
+        override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidate> = emptyList()
+        override fun getCandidate(id: Int): MemoryCandidate? = null
+        override fun approveCandidate(userId: UserId, candidateId: Int): Memory =
+            Memory(candidateId, DEFAULT_FAMILY_ID, 1, "GENERAL", MemoryType.STATE, "", "", null, userId.value, "FAMILY", 1.0, null, candidateId, 0, 0)
 
         override fun rejectCandidate(userId: UserId, candidateId: Int) = Unit
-        override fun getMemory(id: Int): MemoryRow? = null
-        override fun listMemories(ids: List<Int>?): List<MemoryRow> = emptyList()
+        override fun getMemory(id: Int): Memory? = null
+        override fun listMemories(ids: List<Int>?): List<Memory> = emptyList()
     }
 }
 

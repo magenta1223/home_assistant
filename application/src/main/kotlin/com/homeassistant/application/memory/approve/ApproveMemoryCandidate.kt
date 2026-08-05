@@ -12,7 +12,7 @@ data class ApproveMemoryCandidateInput(
 )
 
 data class ApproveMemoryCandidateOutput(
-    val memory: MemoryRow,
+    val memory: Memory,
     val indexed: Boolean,
 )
 
@@ -29,7 +29,7 @@ class ApproveMemoryCandidate(
         return ApproveMemoryCandidateOutput(memory, indexed)
     }
 
-    private fun index(memory: MemoryRow): Boolean =
+    private fun index(memory: Memory): Boolean =
         try {
             vectorStore.upsert(memory.toVectorPoint())
             indexingOutbox.markIndexed(IndexTargetType.MEMORY, memory.id)
@@ -58,7 +58,7 @@ class ApproveMemoryCandidate(
         }
     }
 
-    private fun MemoryRow.toVectorPoint() =
+    private fun Memory.toVectorPoint() =
         VectorPoint(
             memoryId = id,
             vector = embeddingService.embed("passage: $summary\n$content"),

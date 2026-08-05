@@ -16,7 +16,7 @@ data class SearchMemoriesInput(
 )
 
 data class MemorySearchMatch(
-    val memory: MemoryRow,
+    val memory: Memory,
     val score: Double,
 )
 

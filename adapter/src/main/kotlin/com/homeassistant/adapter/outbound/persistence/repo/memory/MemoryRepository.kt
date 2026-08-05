@@ -5,8 +5,8 @@ import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
-import com.homeassistant.domain.memory.MemoryCandidateRow
-import com.homeassistant.domain.memory.MemoryRow
+import com.homeassistant.domain.memory.MemoryCandidate
+import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryStore
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
@@ -61,7 +61,7 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
         id
     }
 
-    override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidateRow> = transaction(db) {
+    override fun listPending(userId: UserId, conversationId: String): List<MemoryCandidate> = transaction(db) {
         ensureMember(userId.value)
         MemoryCandidateTable.selectAll()
             .where {
@@ -69,16 +69,16 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
                     (MemoryCandidateTable.conversationId eq conversationId) and
                     (MemoryCandidateTable.status eq CandidateStatus.PENDING.name)
             }
-            .map { it.toCandidateRow() }
+            .map { it.toMemoryCandidate() }
     }
 
-    override fun getCandidate(id: Int): MemoryCandidateRow? = transaction(db) {
+    override fun getCandidate(id: Int): MemoryCandidate? = transaction(db) {
         MemoryCandidateTable.selectAll().where { MemoryCandidateTable.id eq id }
             .singleOrNull()
-            ?.toCandidateRow()
+            ?.toMemoryCandidate()
     }
 
-    override fun approveCandidate(userId: UserId, candidateId: Int): MemoryRow = transaction(db) {
+    override fun approveCandidate(userId: UserId, candidateId: Int): Memory = transaction(db) {
         ensureMember(userId.value)
         val candidate = MemoryCandidateTable.selectAll()
             .where {
@@ -130,12 +130,12 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
         Unit
     }
 
-    override fun getMemory(id: Int): MemoryRow? = transaction(db) { fetchMemory(id) }
+    override fun getMemory(id: Int): Memory? = transaction(db) { fetchMemory(id) }
 
-    override fun listMemories(ids: List<Int>?): List<MemoryRow> = transaction(db) {
+    override fun listMemories(ids: List<Int>?): List<Memory> = transaction(db) {
         val query = if (ids.isNullOrEmpty()) MemoryTable.selectAll()
         else MemoryTable.selectAll().where { MemoryTable.id inList ids }
-        query.map { it.toMemoryRow() }
+        query.map { it.toMemory() }
     }
 
     fun auditLogs(): List<AuditLogRow> = transaction(db) {
@@ -197,12 +197,12 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
         }
     }
 
-    private fun fetchMemory(id: Int): MemoryRow? =
-        MemoryTable.selectAll().where { MemoryTable.id eq id }.singleOrNull()?.toMemoryRow()
+    private fun fetchMemory(id: Int): Memory? =
+        MemoryTable.selectAll().where { MemoryTable.id eq id }.singleOrNull()?.toMemory()
 
-    private fun ResultRow.toCandidateRow(): MemoryCandidateRow {
-        val domain = DomainTable.selectAll().where { DomainTable.id eq this@toCandidateRow[MemoryCandidateTable.domainId] }.single()
-        return MemoryCandidateRow(
+    private fun ResultRow.toMemoryCandidate(): MemoryCandidate {
+        val domain = DomainTable.selectAll().where { DomainTable.id eq this@toMemoryCandidate[MemoryCandidateTable.domainId] }.single()
+        return MemoryCandidate(
             id = this[MemoryCandidateTable.id],
             familyId = this[MemoryCandidateTable.familyId],
             conversationId = this[MemoryCandidateTable.conversationId],
@@ -222,9 +222,9 @@ internal class MemoryRepository(private val db: Database) : MemoryStore {
         )
     }
 
-    private fun ResultRow.toMemoryRow(): MemoryRow {
-        val domain = DomainTable.selectAll().where { DomainTable.id eq this@toMemoryRow[MemoryTable.domainId] }.single()
-        return MemoryRow(
+    private fun ResultRow.toMemory(): Memory {
+        val domain = DomainTable.selectAll().where { DomainTable.id eq this@toMemory[MemoryTable.domainId] }.single()
+        return Memory(
             id = this[MemoryTable.id],
             familyId = this[MemoryTable.familyId],
             domainId = this[MemoryTable.domainId],

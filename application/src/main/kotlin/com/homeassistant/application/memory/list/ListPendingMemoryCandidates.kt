@@ -1,7 +1,7 @@
 package com.homeassistant.application.memory.list
 
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryCandidateRow
+import com.homeassistant.domain.memory.MemoryCandidate
 import com.homeassistant.domain.memory.MemoryQueryStore
 
 data class ListPendingMemoryCandidatesInput(
@@ -10,7 +10,7 @@ data class ListPendingMemoryCandidatesInput(
 )
 
 data class ListPendingMemoryCandidatesOutput(
-    val candidates: List<MemoryCandidateRow>,
+    val candidates: List<MemoryCandidate>,
 )
 
 class ListPendingMemoryCandidates(

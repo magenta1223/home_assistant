@@ -11,7 +11,7 @@ import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlinx.coroutines.runBlocking
@@ -120,20 +120,17 @@ private class FakeSessionStore(
     }
 }
 
-private object FakeTopicAnalysis : TopicAnalysisUseCase {
+private object FakeTopicAnalysis : SaveTopicCandidatesUseCase {
     lateinit var selectionRequest: TopicAnalysisSelectionSaveRequest
 
     fun reset() {
         selectionRequest = TopicAnalysisSelectionSaveRequest("", "dad", "family-1", emptySet())
     }
 
-    override suspend fun analyze(request: TopicAnalysisRequest): TopicAnalysisResult =
+    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 
-    override suspend fun saveAnalysis(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
-        error("not used")
-
-    override suspend fun saveSelectedAnalysis(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
+    override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
         selectionRequest = request
         return TopicAnalysisSaveResult(
             previewId = request.previewId,

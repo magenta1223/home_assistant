@@ -1,10 +1,11 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
@@ -18,7 +19,8 @@ import io.ktor.server.routing.*
 import kotlinx.serialization.Serializable
 
 fun Application.configureRoutes(
-    kakaoImportAnalyze: TopicAnalysisUseCase,
+    analyzeSource: AnalyzeSourceUseCase,
+    saveTopicCandidates: SaveTopicCandidatesUseCase,
     topicAnswer: TopicAnswerUseCase? = null,
 ) {
     routing {
@@ -48,7 +50,7 @@ fun Application.configureRoutes(
             }
 
             try {
-                val result = kakaoImportAnalyze.analyze(
+                val result = analyzeSource.execute(
                     TopicAnalysisRequest(
                         userId = userId,
                         familyId = familyId,
@@ -80,7 +82,7 @@ fun Application.configureRoutes(
             }
 
             try {
-                val result = kakaoImportAnalyze.saveAnalysis(req)
+                val result = saveTopicCandidates.saveAll(req)
                 call.respond(HttpStatusCode.OK, result)
             } catch (e: TopicAnalysisPreviewNotFoundException) {
                 call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))

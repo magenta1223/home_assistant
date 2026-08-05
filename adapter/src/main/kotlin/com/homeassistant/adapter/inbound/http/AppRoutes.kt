@@ -7,9 +7,9 @@ import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotF
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.identity.HouseholdAccessDeniedException
-import com.homeassistant.domain.topicanswer.TopicAnswerRequest
-import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
+import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
+import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexUnavailableException
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*

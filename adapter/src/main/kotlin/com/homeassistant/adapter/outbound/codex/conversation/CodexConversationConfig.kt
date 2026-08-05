@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.inbound.slack
+package com.homeassistant.adapter.outbound.codex.conversation
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env

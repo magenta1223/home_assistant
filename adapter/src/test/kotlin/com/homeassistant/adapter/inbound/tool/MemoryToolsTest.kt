@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.inbound.tool
 
+import com.homeassistant.application.memory.MemoryUseCasesFactory
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
@@ -25,7 +26,7 @@ class MemoryToolsTest {
         vectorStore = RecordingVectorStore()
         embeddingService = RecordingEmbeddingService()
         outbox = FakeIndexingOutboxStore()
-        tools = MemoryTools(repo, embeddingService, vectorStore, outbox)
+        tools = MemoryTools(MemoryUseCasesFactory.create(repo, embeddingService, vectorStore, outbox))
     }
 
     private fun spec(name: String, args: String) = ToolCallSpec(name, args)

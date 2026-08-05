@@ -1,5 +1,7 @@
-package com.homeassistant.domain.topicanswer
+package com.homeassistant.adapter.outbound.vector.topicclaim
 
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchHit
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
 import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.memory.EmbeddingService

@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.inbound.slack
+package com.homeassistant.adapter.outbound.codex.conversation
 
 object CodexConversationClientFactory {
     fun create(config: CodexConversationConfig): CodexConversationClient =

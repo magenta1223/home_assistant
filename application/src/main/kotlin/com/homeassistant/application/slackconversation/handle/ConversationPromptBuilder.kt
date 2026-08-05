@@ -1,16 +1,7 @@
-package com.homeassistant.adapter.inbound.slack
+package com.homeassistant.application.slackconversation.handle
 
-interface SlackConversationPromptBuilder {
-    fun build(context: String, userText: String): String
-}
-
-object SlackConversationPromptBuilderFactory {
-    fun create(): SlackConversationPromptBuilder =
-        GroundedSlackConversationPromptBuilder()
-}
-
-private class GroundedSlackConversationPromptBuilder : SlackConversationPromptBuilder {
-    override fun build(context: String, userText: String): String =
+class ConversationPromptBuilder {
+    fun build(context: String, userText: String): String =
         buildString {
             appendLine("Answer the household member's question concisely in Korean.")
             appendLine(

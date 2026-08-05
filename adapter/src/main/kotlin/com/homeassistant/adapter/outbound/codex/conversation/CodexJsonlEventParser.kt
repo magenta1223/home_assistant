@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.inbound.slack
+package com.homeassistant.adapter.outbound.codex.conversation
 
 import com.homeassistant.core.utils.JsonSerializer
 import kotlinx.serialization.json.JsonObject

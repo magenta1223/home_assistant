@@ -1,27 +1,20 @@
 package com.homeassistant.adapter.inbound.tool
 
+import com.homeassistant.application.memory.MemoryUseCases
+import com.homeassistant.application.memory.approve.ApproveMemoryCandidateInput
+import com.homeassistant.application.memory.create.CreateMemoryCandidateInput
+import com.homeassistant.application.memory.list.ListPendingMemoryCandidatesInput
+import com.homeassistant.application.memory.reject.RejectMemoryCandidateInput
+import com.homeassistant.application.memory.search.SearchMemoriesInput
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.tools.*
-import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
-import com.homeassistant.domain.indexing.IndexingOutboxStore
-import com.homeassistant.domain.memory.*
 import kotlinx.serialization.Serializable
 
 internal class MemoryTools(
-    private val repo: MemoryStore,
-    private val embeddingService: EmbeddingService,
-    private val vectorStore: VectorStore,
-    private val indexingOutbox: IndexingOutboxStore,
+    private val useCases: MemoryUseCases,
 ) {
-    private val indexing = MemoryIndexingCoordinatorFactory.create(
-        repo,
-        embeddingService,
-        vectorStore,
-        indexingOutbox,
-    )
-
     /**
      * Arguments for creating a reviewable memory candidate.
      *
@@ -146,23 +139,27 @@ internal class MemoryTools(
 
     private fun handleCreate(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: CreateCandidateArgs = spec.arguments.decodeFromString()
-        val id = repo.createCandidate(
-            userId = userId,
-            conversationId = args.conversationId,
-            domainName = args.domain,
-            memoryType = args.memoryType,
-            content = args.content,
-            summary = args.summary,
-            confidence = args.confidence,
-            sourceConversationMessageId = args.sourceConversationMessageId,
-            subjectMemberId = args.subjectMemberId,
+        val result = useCases.createCandidate.execute(
+            CreateMemoryCandidateInput(
+                userId = userId,
+                conversationId = args.conversationId,
+                domainName = args.domain,
+                memoryType = args.memoryType,
+                content = args.content,
+                summary = args.summary,
+                confidence = args.confidence,
+                sourceConversationMessageId = args.sourceConversationMessageId,
+                subjectMemberId = args.subjectMemberId,
+            ),
         )
-        return ToolResult("기억 후보가 생성되었습니다. candidate_id=$id status=PENDING")
+        return ToolResult("기억 후보가 생성되었습니다. candidate_id=${result.candidateId} status=PENDING")
     }
 
     private fun handleListPending(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: Map<String, String> = spec.arguments.decodeFromString()
-        val candidates = repo.listPending(userId, args.getValue("conversationId"))
+        val candidates = useCases.listPendingCandidates.execute(
+            ListPendingMemoryCandidatesInput(userId, args.getValue("conversationId")),
+        ).candidates
         return if (candidates.isEmpty()) ToolResult("대기 중인 기억 후보가 없습니다.")
         else ToolResult(candidates.joinToString("\n") {
             "candidate_id=${it.id} [${it.domainName}/${it.memoryType.code}] ${it.summary}"
@@ -171,36 +168,38 @@ internal class MemoryTools(
 
     private fun handleApprove(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: CandidateIdArgs = spec.arguments.decodeFromString()
-        val memory = repo.approveCandidate(userId, args.candidateId)
-        val indexed = indexing.index(memory)
-        indexing.retryPending(memory.id)
-        val indexStatus = if (indexed) "INDEXED" else "INDEX_PENDING"
+        val result = useCases.approveCandidate.execute(
+            ApproveMemoryCandidateInput(userId, args.candidateId),
+        )
+        val indexStatus = if (result.indexed) "INDEXED" else "INDEX_PENDING"
         return ToolResult(
-            "기억이 저장되었습니다. memory_id=${memory.id} candidate_id=${args.candidateId} index_status=$indexStatus",
+            "기억이 저장되었습니다. memory_id=${result.memory.id} candidate_id=${args.candidateId} index_status=$indexStatus",
         )
     }
 
     private fun handleReject(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: CandidateIdArgs = spec.arguments.decodeFromString()
-        repo.rejectCandidate(userId, args.candidateId)
+        useCases.rejectCandidate.execute(RejectMemoryCandidateInput(userId, args.candidateId))
         return ToolResult("기억 후보가 거절되었습니다. candidate_id=${args.candidateId}")
     }
 
     private fun handleSearch(spec: ToolCallSpec, userId: UserId): ToolResult {
         val args: SearchArgs = spec.arguments.decodeFromString()
-        val filter = MemorySearchFilter(
-            createdBy = userId.value,
-            memoryType = args.memoryType,
-            domain = args.domain?.uppercase(),
-            memberId = args.memberId,
-            createdAfter = args.createdAfter,
-            createdBefore = args.createdBefore,
+        val results = useCases.searchMemories.execute(
+            SearchMemoriesInput(
+                userId = userId,
+                query = args.query,
+                memoryType = args.memoryType,
+                domain = args.domain?.uppercase(),
+                memberId = args.memberId,
+                createdAfter = args.createdAfter,
+                createdBefore = args.createdBefore,
+                limit = args.limit,
+            ),
         )
-        val results = vectorStore.search(embeddingService.embed("query: ${args.query}"), filter, args.limit)
-        val byId = repo.listMemories(results.map { it.memoryId }).associateBy { it.id }
-        val lines = results.mapNotNull { result ->
-            byId[result.memoryId]?.let { memory ->
-                "memory_id=${memory.id} score=${"%.2f".format(result.score)} [${memory.domainName}/${memory.memoryType.code}] ${memory.summary}"
+        val lines = results.matches.map { match ->
+            with(match.memory) {
+                "memory_id=$id score=${"%.2f".format(match.score)} [$domainName/${memoryType.code}] $summary"
             }
         }
         return if (lines.isEmpty()) ToolResult("관련 기억을 찾지 못했습니다.") else ToolResult(lines.joinToString("\n"))

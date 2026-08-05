@@ -11,7 +11,7 @@ import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
 
 internal class SaveTopicCandidates(
     private val importService: KakaoImporter,

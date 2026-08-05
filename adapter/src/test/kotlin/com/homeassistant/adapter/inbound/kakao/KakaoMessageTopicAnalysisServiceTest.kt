@@ -26,8 +26,8 @@ import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.indexing.IndexingOutboxes
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.domain.topicanswer.TopicClaimSearchHit
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchHit
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains

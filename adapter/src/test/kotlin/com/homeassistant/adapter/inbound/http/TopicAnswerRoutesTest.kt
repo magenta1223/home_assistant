@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.domain.topicanswer.TopicAnswerMatch
-import com.homeassistant.domain.topicanswer.TopicAnswerRequest
-import com.homeassistant.domain.topicanswer.TopicAnswerResult
-import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
+import com.homeassistant.application.topicanswer.answer.TopicAnswerMatch
+import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
+import com.homeassistant.application.topicanswer.answer.TopicAnswerResult
+import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult

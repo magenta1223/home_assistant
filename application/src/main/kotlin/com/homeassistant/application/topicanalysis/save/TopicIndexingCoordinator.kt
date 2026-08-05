@@ -4,7 +4,7 @@ import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
 import org.slf4j.LoggerFactory
 
 internal interface TopicIndexingCoordinator {

@@ -9,8 +9,8 @@ import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexes
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexes
 
 object TopicAnalysisFactory {
     fun kakao(

@@ -5,6 +5,8 @@ import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
+import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
+import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
@@ -13,9 +15,9 @@ import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.domain.topicanswer.TopicAnswerFactory
-import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexFactory
+import com.homeassistant.application.topicanswer.answer.TopicAnswerFactory
+import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
+import com.homeassistant.adapter.outbound.vector.topicclaim.TopicClaimSearchIndexFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
@@ -74,8 +76,17 @@ object ApplicationServicesFactory {
             topicClaimSearchIndex = topicClaimSearchIndex,
             accessPolicy = accessPolicy,
         )
+        val conversationClient = CodexConversationConfig.fromEnv()
+            ?.let(CodexConversationClientFactory::create)
+            ?.takeIf { it.validateVersion() }
         val slackRuntime = slackConfig?.let {
-            SlackRuntimeFactory.create(it, topicAnalysis, topicAnswer, repositories.slackCodexSessions)
+            SlackRuntimeFactory.create(
+                it,
+                topicAnalysis,
+                topicAnswer,
+                repositories.slackCodexSessions,
+                conversationClient,
+            )
         }
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")

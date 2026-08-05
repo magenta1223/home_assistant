@@ -1,20 +1,15 @@
-package com.homeassistant.adapter.inbound.slack
+package com.homeassistant.adapter.outbound.codex.conversation
 
+import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
+import com.homeassistant.application.slackconversation.handle.ConversationTurnResult
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-sealed interface CodexTurnResult {
-    data class Success(val answer: String) : CodexTurnResult
-    data class Failure(val category: String) : CodexTurnResult
-}
-
-interface CodexConversationClient {
+interface CodexConversationClient : ConversationTurnClient {
     fun validateVersion(): Boolean
-    fun start(prompt: String, onThreadStarted: (String) -> Unit): CodexTurnResult
-    fun resume(threadId: String, prompt: String): CodexTurnResult
 }
 
 internal class ProcessCodexConversationClient(
@@ -42,7 +37,7 @@ internal class ProcessCodexConversationClient(
     override fun start(
         prompt: String,
         onThreadStarted: (String) -> Unit,
-    ): CodexTurnResult =
+    ): ConversationTurnResult =
         execute(
             args = listOf(
                 "exec",
@@ -64,9 +59,9 @@ internal class ProcessCodexConversationClient(
             onThreadStarted = onThreadStarted,
         )
 
-    override fun resume(threadId: String, prompt: String): CodexTurnResult {
+    override fun resume(threadId: String, prompt: String): ConversationTurnResult {
         if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
-            return CodexTurnResult.Failure("INVALID_THREAD_ID")
+            return ConversationTurnResult.Failure("INVALID_THREAD_ID")
         }
         return execute(
             args = listOf(
@@ -94,15 +89,15 @@ internal class ProcessCodexConversationClient(
         args: List<String>,
         prompt: String,
         onThreadStarted: (String) -> Unit,
-    ): CodexTurnResult {
-        if (prompt.isBlank()) return CodexTurnResult.Failure("EMPTY_PROMPT")
+    ): ConversationTurnResult {
+        if (prompt.isBlank()) return ConversationTurnResult.Failure("EMPTY_PROMPT")
         val process = runCatching {
             ProcessBuilder(listOf(config.executable.toString()) + args)
                 .directory(config.workDir.toFile())
                 .also(::configureEnvironment)
                 .start()
         }.getOrElse {
-            return CodexTurnResult.Failure("START_FAILED")
+            return ConversationTurnResult.Failure("START_FAILED")
         }
 
         val state = CodexEventState()
@@ -133,24 +128,24 @@ internal class ProcessCodexConversationClient(
         }.onFailure {
             destroyProcessTree(process)
             readers.shutdownNow()
-            return CodexTurnResult.Failure("STDIN_FAILED")
+            return ConversationTurnResult.Failure("STDIN_FAILED")
         }
 
         if (!process.waitFor(config.timeout.toMillis(), TimeUnit.MILLISECONDS)) {
             destroyProcessTree(process)
             readers.shutdownNow()
-            return CodexTurnResult.Failure("TIMEOUT")
+            return ConversationTurnResult.Failure("TIMEOUT")
         }
         readers.shutdown()
         readers.awaitTermination(READER_JOIN_SECONDS, TimeUnit.SECONDS)
 
         if (stderr.isNotEmpty()) log.debug("Codex stderr category=PROCESS_OUTPUT")
-        state.failure.get()?.let { return CodexTurnResult.Failure(it) }
-        if (process.exitValue() != 0) return CodexTurnResult.Failure("EXIT_${process.exitValue()}")
-        if (!state.turnCompleted.get()) return CodexTurnResult.Failure("INCOMPLETE_TURN")
+        state.failure.get()?.let { return ConversationTurnResult.Failure(it) }
+        if (process.exitValue() != 0) return ConversationTurnResult.Failure("EXIT_${process.exitValue()}")
+        if (!state.turnCompleted.get()) return ConversationTurnResult.Failure("INCOMPLETE_TURN")
         val finalAnswer = state.answer.get()?.takeIf { it.isNotBlank() }
-            ?: return CodexTurnResult.Failure("MISSING_AGENT_MESSAGE")
-        return CodexTurnResult.Success(finalAnswer)
+            ?: return ConversationTurnResult.Failure("MISSING_AGENT_MESSAGE")
+        return ConversationTurnResult.Success(finalAnswer)
     }
 
     private fun configureEnvironment(builder: ProcessBuilder) {

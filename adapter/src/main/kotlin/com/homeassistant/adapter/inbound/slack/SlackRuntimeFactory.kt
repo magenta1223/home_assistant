@@ -1,7 +1,10 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
+import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
+import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
 import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
-import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
+import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
 import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
@@ -12,6 +15,7 @@ object SlackRuntimeFactory {
         topicAnalysis: TopicAnalysisUseCase,
         topicAnswer: TopicAnswerUseCase,
         codexSessions: SlackCodexSessionStore,
+        conversationClient: ConversationTurnClient?,
     ): SlackRuntime {
         val slackClient = SlackClientFactory.create(config.botToken)
         val reviewSessions = SlackTopicReviewSessionStoreFactory.inMemory()
@@ -21,6 +25,7 @@ object SlackRuntimeFactory {
             topicAnswer,
             codexSessions,
             slackClient,
+            conversationClient,
         )
         val workflow = SlackKakaoAnalysisWorkflow(
                 slackClient = slackClient,
@@ -46,24 +51,24 @@ object SlackRuntimeFactory {
         topicAnswer: TopicAnswerUseCase,
         sessions: SlackCodexSessionStore,
         slackClient: SlackMessageClient,
+        conversationClient: ConversationTurnClient?,
     ): SlackListenerRegistrar? {
-        val client = CodexConversationConfig.fromEnv()
-            ?.let(CodexConversationClientFactory::create)
-            ?: return disabled("configuration missing or invalid")
-        if (!client.validateVersion()) return disabled("CODEX_VERSION_MISMATCH")
+        val client = conversationClient ?: return disabled("configuration missing or invalid")
 
         val now = System.currentTimeMillis()
         sessions.failStaleProcessing(
-            before = now - SlackConversationService.SESSION_IDLE_TIMEOUT_MILLIS,
+            before = now - HandleSlackConversation.SESSION_IDLE_TIMEOUT_MILLIS,
             now = now,
         )
         return SlackConversationListeners(
             SlackConversationService(
-                identities = config.identityDirectory,
-                sessions = sessions,
-                contextProvider = HouseholdContextProvider(topicAnswer),
-                codex = client,
-                slack = slackClient,
+                HandleSlackConversation(
+                    identities = config.identityDirectory,
+                    sessions = sessions,
+                    contextProvider = HouseholdContextProvider(topicAnswer),
+                    conversationClient = client,
+                    answerPublisher = SlackConversationAnswerPublisher(slackClient),
+                ),
             ),
         )
     }

@@ -88,17 +88,21 @@ Pure abstractions and shared types.
 ### application
 
 - `topicanalysis/` - vertically sliced analysis and save use cases with their output ports.
+- `topicanswer/answer/` - topic-answer input, output, use case, and claim-search port.
+- `memory/{create,list,approve,reject,search}/` - memory use cases grouped with their inputs and outputs.
+- `slackconversation/handle/` - authorized Slack conversation/session orchestration and its ports.
 
 ### adapter
 
 - `inbound/http/` - Ktor routes and HTTP request/response DTO mapping.
 - `inbound/kakao/` - Kakao export parsing at the source-format boundary.
-- `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, and Slack-facing workflow.
-- `inbound/tool/` - memory tool schemas, dispatch, and tool-facing workflow.
-- `outbound/codex/` - Codex CLI client, prompt contract, and `TopicExtractor` implementation.
+- `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
+- `inbound/tool/` - memory tool schemas, JSON mapping, dispatch, and result formatting.
+- `outbound/codex/` - Codex topic extraction and conversation-turn implementations.
 - `outbound/embedding/ollama/` - local Ollama text embedding implementation.
 - `outbound/persistence/` - SQLite/Exposed repositories and schema implementations.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.
+- `outbound/vector/topicclaim/` - topic-claim semantic index implementation.
 
 ### domain
 

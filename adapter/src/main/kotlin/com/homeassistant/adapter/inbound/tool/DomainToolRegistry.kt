@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.inbound.tool
 
+import com.homeassistant.application.memory.MemoryUseCasesFactory
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.*
 import com.homeassistant.domain.memory.EmbeddingService
@@ -18,7 +19,9 @@ internal class DomainToolRegistry(
     indexingOutbox: IndexingOutboxStore,
 ) : DomainTools {
 
-    private val memoryTools = MemoryTools(memoryStore, embeddingService, vectorStore, indexingOutbox)
+    private val memoryTools = MemoryTools(
+        MemoryUseCasesFactory.create(memoryStore, embeddingService, vectorStore, indexingOutbox),
+    )
 
     private val dispatch: Set<String> = memoryTools.tools.map { it.name }.toSet()
 

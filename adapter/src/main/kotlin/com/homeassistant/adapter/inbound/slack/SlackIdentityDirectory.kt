@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.slackconversation.handle.SlackPrincipalResolver
 import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.core.identity.HouseholdAccessPolicies
 import com.homeassistant.core.utils.JsonSerializer
@@ -15,9 +16,9 @@ data class SlackMemberScopeConfig(
     val familyId: String,
 )
 
-interface SlackIdentityDirectory {
+interface SlackIdentityDirectory : SlackPrincipalResolver {
     val accessPolicy: HouseholdAccessPolicy
-    fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
+    override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
 }
 
 private class ConfiguredSlackIdentityDirectory(

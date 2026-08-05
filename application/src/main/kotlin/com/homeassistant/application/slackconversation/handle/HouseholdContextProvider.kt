@@ -1,14 +1,14 @@
-package com.homeassistant.adapter.inbound.slack
+package com.homeassistant.application.slackconversation.handle
 
 import com.homeassistant.domain.slackconversation.SlackPrincipal
-import com.homeassistant.domain.topicanswer.TopicAnswerRequest
-import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
+import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
+import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
 
 interface HouseholdContextSource {
     fun context(principal: SlackPrincipal, question: String): HouseholdContext
 }
 
-internal class HouseholdContextProvider(
+class HouseholdContextProvider(
     private val topicAnswer: TopicAnswerUseCase,
 ) : HouseholdContextSource {
     override fun context(principal: SlackPrincipal, question: String): HouseholdContext {

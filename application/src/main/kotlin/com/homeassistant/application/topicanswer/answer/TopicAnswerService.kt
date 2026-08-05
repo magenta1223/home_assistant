@@ -1,4 +1,4 @@
-package com.homeassistant.domain.topicanswer
+package com.homeassistant.application.topicanswer.answer
 
 import com.homeassistant.core.identity.HouseholdAccessDeniedException
 import com.homeassistant.core.identity.HouseholdAccessPolicy

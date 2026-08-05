@@ -1,5 +1,6 @@
-package com.homeassistant.domain.topicanswer
+package com.homeassistant.adapter.outbound.vector.topicclaim
 
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchHit
 import com.homeassistant.core.identity.FamilyId
 import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.identity.UserId

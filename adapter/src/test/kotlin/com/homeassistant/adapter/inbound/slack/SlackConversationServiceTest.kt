@@ -1,15 +1,16 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.slackconversation.handle.*
 import com.homeassistant.domain.slackconversation.SlackCodexSession
 import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
 import com.homeassistant.domain.slackconversation.SlackMessageKey
 import com.homeassistant.domain.slackconversation.SlackMessageReceipt
 import com.homeassistant.domain.slackconversation.SlackMessageReceiptStatus
 import com.homeassistant.domain.slackconversation.SlackPrincipal
-import com.homeassistant.domain.topicanswer.TopicAnswerRequest
-import com.homeassistant.domain.topicanswer.TopicAnswerResult
-import com.homeassistant.domain.topicanswer.TopicAnswerMatch
-import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
+import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
+import com.homeassistant.application.topicanswer.answer.TopicAnswerResult
+import com.homeassistant.application.topicanswer.answer.TopicAnswerMatch
+import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -70,33 +71,37 @@ class SlackConversationServiceTest {
                 TopicAnswerResult(request.question, "", emptyList())
         }
         val service = SlackConversationService(
-            identities,
-            store,
-            HouseholdContextProvider(noMatches),
-            codex,
-            SuccessfulSlack(),
-            clock,
+            HandleSlackConversation(
+                identities,
+                store,
+                HouseholdContextProvider(noMatches),
+                codex,
+                SlackConversationAnswerPublisher(SuccessfulSlack()),
+                clock,
+            ),
         )
 
         service.handle(message)
 
         assertEquals(0, codex.turns)
         assertEquals(SlackMessageReceiptStatus.COMPLETED, store.receipt(key())?.status)
-        assertEquals(SlackConversationService.NO_MATCH_ANSWER, store.receipt(key())?.answerText)
+        assertEquals(HandleSlackConversation.NO_MATCH_ANSWER, store.receipt(key())?.answerText)
     }
 
     private fun service(
         store: MemorySessionStore,
         answer: CapturingTopicAnswer,
         slack: SlackClient,
-        codex: CodexConversationClient = SuccessfulCodex,
+        codex: ConversationTurnClient = SuccessfulCodex,
     ) = SlackConversationService(
-        identities = identities,
-        sessions = store,
-        contextProvider = HouseholdContextProvider(answer),
-        codex = codex,
-        slack = slack,
-        clock = clock,
+        HandleSlackConversation(
+            identities = identities,
+            sessions = store,
+            contextProvider = HouseholdContextProvider(answer),
+            conversationClient = codex,
+            answerPublisher = SlackConversationAnswerPublisher(slack),
+            clock = clock,
+        ),
     )
 
     private fun key() = SlackMessageKey("D1", "100.1")
@@ -115,31 +120,28 @@ private class CapturingTopicAnswer : TopicAnswerUseCase {
     }
 }
 
-private object SuccessfulCodex : CodexConversationClient {
-    override fun validateVersion() = true
-
+private object SuccessfulCodex : ConversationTurnClient {
     override fun start(
         prompt: String,
         onThreadStarted: (String) -> Unit,
-    ): CodexTurnResult {
+    ): ConversationTurnResult {
         onThreadStarted("019fa391-a538-7531-b719-c20d3d330bdc")
-        return CodexTurnResult.Success("정답")
+        return ConversationTurnResult.Success("정답")
     }
 
     override fun resume(threadId: String, prompt: String) =
-        CodexTurnResult.Success("정답")
+        ConversationTurnResult.Success("정답")
 }
 
-private class CountingCodex : CodexConversationClient {
+private class CountingCodex : ConversationTurnClient {
     var turns = 0
-    override fun validateVersion() = true
-    override fun start(prompt: String, onThreadStarted: (String) -> Unit): CodexTurnResult {
+    override fun start(prompt: String, onThreadStarted: (String) -> Unit): ConversationTurnResult {
         turns++
-        return CodexTurnResult.Success("unexpected")
+        return ConversationTurnResult.Success("unexpected")
     }
-    override fun resume(threadId: String, prompt: String): CodexTurnResult {
+    override fun resume(threadId: String, prompt: String): ConversationTurnResult {
         turns++
-        return CodexTurnResult.Success("unexpected")
+        return ConversationTurnResult.Success("unexpected")
     }
 }
 

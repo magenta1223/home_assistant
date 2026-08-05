@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.slackconversation.handle.SlackConversationMessage
 import com.slack.api.model.event.MessageEvent
 
 object SlackDirectMessageIngress {

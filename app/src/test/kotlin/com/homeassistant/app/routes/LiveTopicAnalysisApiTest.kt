@@ -10,7 +10,7 @@ import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexes
+import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexes
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody

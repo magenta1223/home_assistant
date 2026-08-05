@@ -1,37 +1,35 @@
-package com.homeassistant.adapter.inbound.tool
+package com.homeassistant.application.memory.approve
 
+import com.homeassistant.core.identity.UserId
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.memory.*
 import org.slf4j.LoggerFactory
 
-internal interface MemoryIndexingCoordinator {
-    fun index(memory: MemoryRow): Boolean
-    fun retryPending(currentMemoryId: Int)
-}
+data class ApproveMemoryCandidateInput(
+    val userId: UserId,
+    val candidateId: Int,
+)
 
-internal object MemoryIndexingCoordinatorFactory {
-    fun create(
-        memoryStore: MemoryStore,
-        embeddingService: EmbeddingService,
-        vectorStore: VectorStore,
-        indexingOutbox: IndexingOutboxStore,
-    ): MemoryIndexingCoordinator =
-        DefaultMemoryIndexingCoordinator(
-            memoryStore,
-            embeddingService,
-            vectorStore,
-            indexingOutbox,
-        )
-}
+data class ApproveMemoryCandidateOutput(
+    val memory: MemoryRow,
+    val indexed: Boolean,
+)
 
-private class DefaultMemoryIndexingCoordinator(
+class ApproveMemoryCandidate(
     private val memoryStore: MemoryStore,
     private val embeddingService: EmbeddingService,
     private val vectorStore: VectorStore,
     private val indexingOutbox: IndexingOutboxStore,
-) : MemoryIndexingCoordinator {
-    override fun index(memory: MemoryRow): Boolean =
+) {
+    fun execute(input: ApproveMemoryCandidateInput): ApproveMemoryCandidateOutput {
+        val memory = memoryStore.approveCandidate(input.userId, input.candidateId)
+        val indexed = index(memory)
+        retryPending(memory.id)
+        return ApproveMemoryCandidateOutput(memory, indexed)
+    }
+
+    private fun index(memory: MemoryRow): Boolean =
         try {
             vectorStore.upsert(memory.toVectorPoint())
             indexingOutbox.markIndexed(IndexTargetType.MEMORY, memory.id)
@@ -48,7 +46,7 @@ private class DefaultMemoryIndexingCoordinator(
             false
         }
 
-    override fun retryPending(currentMemoryId: Int) {
+    private fun retryPending(currentMemoryId: Int) {
         runCatching {
             indexingOutbox.pending(IndexTargetType.MEMORY)
                 .asSequence()
@@ -76,4 +74,4 @@ private class DefaultMemoryIndexingCoordinator(
         )
 }
 
-private val log = LoggerFactory.getLogger(MemoryIndexingCoordinator::class.java)
+private val log = LoggerFactory.getLogger(ApproveMemoryCandidate::class.java)

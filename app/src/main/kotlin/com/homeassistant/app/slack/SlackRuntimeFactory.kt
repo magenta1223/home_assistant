@@ -2,7 +2,7 @@ package com.homeassistant.app.slack
 
 import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 

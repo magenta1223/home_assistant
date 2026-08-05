@@ -1,10 +1,9 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.application.topicanalysis
 
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxes
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -16,13 +15,13 @@ class KakaoMessageTopicAnalysisSelectionTest {
     fun `analyze sends only new messages to llm while preserving original evidence refs`() = runBlocking {
         val text = kakaoText()
         val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
-        val backend = DuplicateGuardRecordingBackend()
+        val extractor = RecordingTopicExtractor()
         val previewStore = RecordingPreviewStore()
-        val service = KakaoMessageTopicAnalysisService(
-            backend = backend,
-            importService = KakaoImporterFactory.create(FakeKakaoMessageStore(setOf(parsed.first().fingerprint))),
-            topicRepository = FakeTopicStore(),
-            previewRepository = previewStore,
+        val service = TopicAnalysisFactory.kakao(
+            topicExtractor = extractor,
+            importer = KakaoImporterFactory.create(FakeKakaoMessageStore(setOf(parsed.first().fingerprint))),
+            topicStore = FakeTopicStore(),
+            previewStore = previewStore,
             indexingOutbox = IndexingOutboxes.noOp(),
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -30,9 +29,9 @@ class KakaoMessageTopicAnalysisSelectionTest {
         val result = service.analyze(request(text))
 
         assertEquals(1, result.importedRecordCount)
-        assertEquals(1, backend.calls)
-        assertContains(backend.prompt, "r2 | 승민 | 2026년 6월 15일 오전 6:44 | 둘째 메시지")
-        assertFalse(backend.prompt.contains("첫 메시지"))
+        assertEquals(1, extractor.calls)
+        assertContains(extractor.document!!.records.single().content, "승민 | 2026년 6월 15일 오전 6:44 | 둘째 메시지")
+        assertFalse(extractor.document!!.records.single().content.contains("첫 메시지"))
         assertEquals(1, previewStore.createCalls)
     }
 
@@ -72,8 +71,8 @@ class KakaoMessageTopicAnalysisSelectionTest {
     @Test
     fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
         val outbox = FakeIndexingOutboxStore()
-        val service = KakaoMessageTopicAnalysisService(
-            UnusedBackend,
+        val service = TopicAnalysisFactory.kakao(
+            UnusedTopicExtractor,
             KakaoImporterFactory.create(FakeKakaoMessageStore()),
             FakeTopicStore(),
             FakePreviewStore(listOf(topic("후보", 1))),
@@ -93,8 +92,8 @@ class KakaoMessageTopicAnalysisSelectionTest {
         topicStore: FakeTopicStore,
         previewStore: FakePreviewStore,
         index: RecordingTopicClaimSearchIndex = RecordingTopicClaimSearchIndex(),
-    ) = KakaoMessageTopicAnalysisService(
-        UnusedBackend,
+    ) = TopicAnalysisFactory.kakao(
+        UnusedTopicExtractor,
         KakaoImporterFactory.create(kakaoStore),
         topicStore,
         previewStore,

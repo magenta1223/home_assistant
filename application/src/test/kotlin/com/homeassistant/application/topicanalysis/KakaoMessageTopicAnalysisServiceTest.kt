@@ -1,15 +1,15 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.application.topicanalysis
 
+import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
+import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
 import com.homeassistant.core.identity.FamilyId
 import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmResponse
-import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.tools.Tool
+import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.domain.kakao.KakaoAnalysisPreview
 import com.homeassistant.domain.kakao.KakaoMessage
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
@@ -27,10 +27,6 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanswer.TopicClaimSearchHit
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
-import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.nlp.topicanalysis.impl.KakaoMessageTopicAnalysisService
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -43,15 +39,15 @@ class KakaoMessageTopicAnalysisServiceTest {
     fun `analyze skips llm and preview when every message fingerprint already exists`() = runBlocking {
         val text = kakaoText()
         val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
-        val backend = DuplicateGuardRecordingBackend()
+        val extractor = RecordingTopicExtractor()
         val previewStore = RecordingPreviewStore()
-        val service = KakaoMessageTopicAnalysisService(
-            backend = backend,
-            importService = KakaoImporterFactory.create(
+        val service = TopicAnalysisFactory.kakao(
+            topicExtractor = extractor,
+            importer = KakaoImporterFactory.create(
                 FakeKakaoMessageStore(parsed.mapTo(mutableSetOf()) { it.fingerprint }),
             ),
-            topicRepository = FakeTopicStore(),
-            previewRepository = previewStore,
+            topicStore = FakeTopicStore(),
+            previewStore = previewStore,
             indexingOutbox = IndexingOutboxes.noOp(),
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -61,7 +57,7 @@ class KakaoMessageTopicAnalysisServiceTest {
         }
 
         assertEquals(2, error.recordCount)
-        assertEquals(0, backend.calls)
+        assertEquals(0, extractor.calls)
         assertEquals(0, previewStore.createCalls)
     }
 
@@ -223,29 +219,19 @@ internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
     override fun findPreview(previewId: String): KakaoAnalysisPreview? = null
 }
 
-internal class DuplicateGuardRecordingBackend : LlmBackend {
+internal class RecordingTopicExtractor : TopicExtractor {
     var calls = 0
-    var prompt = ""
+    var document: SourceDocument? = null
 
-    override suspend fun complete(
-        system: String,
-        messages: List<Message>,
-        tools: List<Tool>,
-        outputSchema: String,
-    ): LlmResponse {
+    override suspend fun analyze(document: SourceDocument): com.homeassistant.domain.topicanalysis.TopicAnalysisResult {
         calls += 1
-        prompt = messages.single().content
-        return LlmResponse.Text("""{"topics":[]}""")
+        this.document = document
+        return com.homeassistant.domain.topicanalysis.TopicAnalysisResult(emptyList())
     }
 }
 
-internal object UnusedBackend : LlmBackend {
-    override suspend fun complete(
-        system: String,
-        messages: List<Message>,
-        tools: List<Tool>,
-        outputSchema: String,
-    ): LlmResponse =
+internal object UnusedTopicExtractor : TopicExtractor {
+    override suspend fun analyze(document: SourceDocument): com.homeassistant.domain.topicanalysis.TopicAnalysisResult =
         error("not used")
 }
 

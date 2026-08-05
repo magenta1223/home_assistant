@@ -1,5 +1,6 @@
 package com.homeassistant.nlp.topicanalysis.impl
 
+import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.nlp.LlmResponse
@@ -13,7 +14,6 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import com.homeassistant.domain.topicanalysis.TopicAnalysisResult
 import com.homeassistant.domain.topicanalysis.TopicDraft
 import com.homeassistant.domain.topicanalysis.normalizeDomainTag
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalyzer
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -22,7 +22,7 @@ import kotlinx.coroutines.coroutineScope
 internal class LlmTopicAnalyzer(
     private val backend: LlmBackend,
     private val chunkSize: Int = CHUNK_SIZE,
-) : TopicAnalyzer {
+) : TopicExtractor {
     override suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
         val topics = analyzeValidTopics(document).map { topic ->
             TopicDraft(

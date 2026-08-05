@@ -1,15 +1,15 @@
 package com.homeassistant.app.routes
 
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
-import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*

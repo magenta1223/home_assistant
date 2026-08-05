@@ -6,6 +6,7 @@ plugins {
 }
 
 dependencies {
+    api(project(":application"))
     api(project(":core"))
     api(project(":domain"))
 

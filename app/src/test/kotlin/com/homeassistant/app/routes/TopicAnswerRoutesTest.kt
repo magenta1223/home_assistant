@@ -5,11 +5,11 @@ import com.homeassistant.domain.topicanswer.TopicAnswerRequest
 import com.homeassistant.domain.topicanswer.TopicAnswerResult
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexUnavailableException
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisResult
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveResult
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSaveRequest
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText

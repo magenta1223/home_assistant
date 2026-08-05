@@ -1,27 +1,7 @@
-package com.homeassistant.nlp.topicanalysis.api
+package com.homeassistant.application.topicanalysis.save
 
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
 import kotlinx.serialization.Serializable
-
-@Serializable
-data class TopicAnalysisRequest(
-    val userId: String,
-    val familyId: String,
-    val sourceType: String,
-    val sourceName: String,
-    val text: String,
-)
-
-
-@Serializable
-data class TopicAnalysisResult(
-    val previewId: String,
-    val sourceType: String,
-    val sourceName: String,
-    val importedRecordCount: Int,
-    val topics: List<TopicCandidate>,
-)
 
 @Serializable
 data class TopicAnalysisSaveRequest(
@@ -44,3 +24,6 @@ data class TopicAnalysisSelectionSaveRequest(
     val selectedTopicIndices: Set<Int>,
 )
 
+class TopicAnalysisPreviewNotFoundException(
+    val previewId: String,
+) : RuntimeException("Topic analysis preview not found: $previewId")

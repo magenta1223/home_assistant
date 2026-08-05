@@ -5,10 +5,11 @@ import com.homeassistant.core.identity.HouseholdAccessPolicies
 import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.utils.JsonSerializer
+import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexes
 import com.homeassistant.nlp.backend.LmBackendFactory
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisFactory
+import com.homeassistant.nlp.topicanalysis.api.TopicExtractorFactory
 import com.homeassistant.repository.repo.RepositoryFactory
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -41,7 +42,7 @@ class LiveTopicAnalysisApiTest {
 
         val repositories = RepositoryFactory.create(databasePath.toString())
         val topicAnalysis = TopicAnalysisFactory.kakao(
-            backend = LmBackendFactory.create(),
+            topicExtractor = TopicExtractorFactory.create(LmBackendFactory.create()),
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,

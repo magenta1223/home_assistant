@@ -1,7 +1,7 @@
 package com.homeassistant.app.slack
 
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 
 interface SlackConfirmationHandler {

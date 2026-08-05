@@ -1,8 +1,8 @@
 package com.homeassistant.app.slack
 
-import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import org.slf4j.LoggerFactory
 
 interface SlackKakaoWorkflow {

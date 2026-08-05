@@ -3,6 +3,8 @@ package com.homeassistant.app
 import com.homeassistant.app.slack.SlackConfig
 import com.homeassistant.app.slack.SlackRuntime
 import com.homeassistant.app.slack.SlackRuntimeFactory
+import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
+import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.identity.HouseholdAccessPolicies
@@ -13,8 +15,7 @@ import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexFactory
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.nlp.embedding.EmbeddingServiceFactory
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisFactory
-import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisUseCase
+import com.homeassistant.nlp.topicanalysis.api.TopicExtractorFactory
 import com.homeassistant.repository.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
@@ -60,7 +61,7 @@ object ApplicationServicesFactory {
         val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
             ?: HouseholdAccessPolicies.denyAll()
         val topicAnalysis = TopicAnalysisFactory.kakao(
-            backend = llmBackend,
+            topicExtractor = TopicExtractorFactory.create(llmBackend),
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,

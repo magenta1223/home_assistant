@@ -18,6 +18,9 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.slack.bolt.socket.mode)
+    implementation(libs.javax.websocket.api)
+    implementation(libs.tyrus.standalone.client)
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)

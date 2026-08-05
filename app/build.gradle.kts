@@ -31,11 +31,6 @@ dependencies {
     // Logging
     implementation(libs.logback.classic)
 
-    // Slack Socket Mode
-    implementation(libs.slack.bolt.socket.mode)
-    implementation(libs.javax.websocket.api)
-    implementation(libs.tyrus.standalone.client)
-
     // Testing
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)

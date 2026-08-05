@@ -1,8 +1,8 @@
 package com.homeassistant.app
 
-import com.homeassistant.app.slack.SlackConfig
-import com.homeassistant.app.slack.SlackRuntime
-import com.homeassistant.app.slack.SlackRuntimeFactory
+import com.homeassistant.adapter.inbound.slack.SlackConfig
+import com.homeassistant.adapter.inbound.slack.SlackRuntime
+import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory

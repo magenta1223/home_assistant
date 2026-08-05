@@ -1,4 +1,4 @@
-package com.homeassistant.domain.memory
+package com.homeassistant.adapter.outbound.vector.qdrant
 
 import java.net.URI
 import java.net.http.HttpClient

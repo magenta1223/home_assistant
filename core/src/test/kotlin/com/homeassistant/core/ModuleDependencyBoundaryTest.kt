@@ -20,8 +20,7 @@ class ModuleDependencyBoundaryTest {
         assertEquals(setOf("core"), actual.getValue("domain"))
         assertEquals(setOf("core", "domain"), actual.getValue("application"))
         assertEquals(setOf("application", "core", "domain"), actual.getValue("adapter"))
-        assertEquals(setOf("core", "domain"), actual.getValue("nlp"))
-        assertEquals(setOf("adapter", "application", "core", "domain", "nlp"), actual.getValue("app"))
+        assertEquals(setOf("adapter", "application", "core", "domain"), actual.getValue("app"))
     }
 
     @Test
@@ -40,7 +39,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `persistence internals are not imported outside adapter composition`() {
-        val violations = listOf("core", "domain", "application", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "domain", "application", "app").flatMap { module ->
             persistenceInternalImportsFor(module)
         }
 
@@ -52,7 +51,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `exposed is only imported inside persistence adapter`() {
-        val violations = listOf("core", "domain", "application", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "domain", "application", "app").flatMap { module ->
             exposedImportsFor(module)
         } + exposedImportsOutsidePersistenceAdapter()
 
@@ -107,7 +106,6 @@ class ModuleDependencyBoundaryTest {
             "domain" -> setOf("application", "adapter", "nlp", "app")
             "application" -> setOf("adapter", "nlp", "app")
             "adapter" -> setOf("nlp", "app")
-            "nlp" -> setOf("app")
             "app" -> emptySet()
             else -> error("Unknown module $module")
         }
@@ -191,6 +189,6 @@ class ModuleDependencyBoundaryTest {
     }
 
     private companion object {
-        val MODULES = listOf("core", "domain", "application", "adapter", "nlp", "app")
+        val MODULES = listOf("core", "domain", "application", "adapter", "app")
     }
 }

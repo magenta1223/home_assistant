@@ -4,17 +4,17 @@ import com.homeassistant.app.slack.SlackConfig
 import com.homeassistant.app.slack.SlackRuntime
 import com.homeassistant.app.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
+import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
+import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.constants.Env
 import com.homeassistant.core.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.domain.memory.PayloadVectorStoreFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexFactory
-import com.homeassistant.nlp.embedding.EmbeddingServiceFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
@@ -47,10 +47,10 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_OLLAMA_BASE_URL
         log.info("Ollama embedding model={} baseUrl={}", embeddingModel, embeddingBaseUrl)
 
-        val embeddingService = EmbeddingServiceFactory.ollama(embeddingBaseUrl, embeddingModel)
+        val embeddingService = OllamaEmbeddingFactory.create(embeddingBaseUrl, embeddingModel)
         val topicClaimSearchIndex = TopicClaimSearchIndexFactory.create(
             embeddingService,
-            PayloadVectorStoreFactory.qdrant(
+            QdrantVectorStoreFactory.create(
                 baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
                 collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
             ),

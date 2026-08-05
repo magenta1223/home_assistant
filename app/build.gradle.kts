@@ -18,7 +18,6 @@ dependencies {
     implementation(project(":adapter"))
     implementation(project(":application"))
     implementation(project(":core"))
-    implementation(project(":nlp"))
     implementation(project(":domain"))
 
     // Ktor server

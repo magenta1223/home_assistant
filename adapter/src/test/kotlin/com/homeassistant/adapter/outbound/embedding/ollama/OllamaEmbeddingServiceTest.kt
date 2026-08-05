@@ -1,4 +1,4 @@
-package com.homeassistant.nlp.embedding
+package com.homeassistant.adapter.outbound.embedding.ollama
 
 import com.homeassistant.core.utils.JsonSerializer
 import com.sun.net.httpserver.HttpExchange

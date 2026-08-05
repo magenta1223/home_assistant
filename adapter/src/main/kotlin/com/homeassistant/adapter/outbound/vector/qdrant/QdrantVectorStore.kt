@@ -1,6 +1,15 @@
-package com.homeassistant.domain.memory
+package com.homeassistant.adapter.outbound.vector.qdrant
 
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
+import com.homeassistant.domain.memory.MemorySearchFilter
+import com.homeassistant.domain.memory.NumericRange
+import com.homeassistant.domain.memory.PayloadVectorPoint
+import com.homeassistant.domain.memory.PayloadVectorSearchFilter
+import com.homeassistant.domain.memory.PayloadVectorSearchResult
+import com.homeassistant.domain.memory.PayloadVectorStore
+import com.homeassistant.domain.memory.VectorPoint
+import com.homeassistant.domain.memory.VectorSearchResult
+import com.homeassistant.domain.memory.VectorStore
 import kotlinx.serialization.json.*
 
 internal class QdrantVectorStore(
@@ -99,8 +108,8 @@ internal class QdrantVectorStore(
     private data class QdrantHit(val id: Int, val score: Double, val payload: JsonObject = buildJsonObject {})
 }
 
-object PayloadVectorStoreFactory {
-    fun qdrant(
+object QdrantVectorStoreFactory {
+    fun create(
         baseUrl: String,
         collection: String,
     ): PayloadVectorStore =

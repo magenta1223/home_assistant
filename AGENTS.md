@@ -18,7 +18,6 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 ./gradlew :core:test
 ./gradlew :application:test
 ./gradlew :adapter:test
-./gradlew :nlp:test
 ./gradlew :domain:test
 ./gradlew :app:test
 ```
@@ -68,12 +67,11 @@ core/       - shared domain types, tool schemas, and constants
 domain/     - domain models, ports, and business/application policies
 application/ - target home for vertically sliced use cases and their ports
 adapter/     - target home for inbound and outbound technology adapters
-nlp/        - legacy local embedding adapter pending migration
 app/        - Ktor server wiring and HTTP routes
 ```
 
 The codebase is migrating toward `app -> adapter -> application -> domain`. During the migration,
-the legacy `core` and `nlp` modules remain until their responsibilities have moved.
+the legacy `core` module remains until its responsibilities have moved.
 Within `application`, keep commands, results, use-case orchestration, and use-case-specific output
 ports together by use case. Within `adapter`, classify external entry points under `inbound` and
 application-driven integrations under `outbound`.
@@ -87,10 +85,6 @@ Pure abstractions and shared types.
 - `memory/MemoryTypes.kt` - memory categories and candidate status.
 - `constants/AppConfig`, `Env` - configuration keys and defaults.
 
-### nlp
-
-- `embedding/` - legacy Ollama embedding implementation pending movement into `adapter/outbound`.
-
 ### application
 
 - `topicanalysis/` - vertically sliced analysis and save use cases with their output ports.
@@ -98,6 +92,8 @@ Pure abstractions and shared types.
 ### adapter
 
 - `outbound/codex/` - Codex CLI client, prompt contract, and `TopicExtractor` implementation.
+- `outbound/embedding/ollama/` - local Ollama text embedding implementation.
+- `outbound/vector/qdrant/` - Qdrant vector storage implementation.
 
 ### domain
 

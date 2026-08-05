@@ -53,7 +53,7 @@ class CodeQualityBoundaryTest {
 
     private companion object {
         const val MAX_LINES = 300
-        val MODULES = listOf("core", "domain", "application", "adapter", "nlp", "app")
+        val MODULES = listOf("core", "domain", "application", "adapter", "app")
         val PUBLIC_CLASS =
             Regex("""(?m)^(?:public\s+)?(?:(?:abstract|open)\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)""")
     }

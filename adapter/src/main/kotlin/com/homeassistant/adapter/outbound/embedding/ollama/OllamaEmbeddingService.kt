@@ -1,4 +1,4 @@
-package com.homeassistant.nlp.embedding
+package com.homeassistant.adapter.outbound.embedding.ollama
 
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.utils.JsonSerializer
@@ -53,8 +53,8 @@ internal class OllamaEmbeddingService(
         URI.create("${baseUrl.trimEnd('/')}/api/embed")
 }
 
-object EmbeddingServiceFactory {
-    fun ollama(baseUrl: String, model: String): EmbeddingService =
+object OllamaEmbeddingFactory {
+    fun create(baseUrl: String, model: String): EmbeddingService =
         OllamaEmbeddingService(baseUrl, model)
 }
 

@@ -16,6 +16,8 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 # Run tests for a specific module
 ./gradlew :core:test
+./gradlew :application:test
+./gradlew :adapter:test
 ./gradlew :nlp:test
 ./gradlew :domain:test
 ./gradlew :app:test
@@ -64,12 +66,18 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 ```text
 core/       - shared domain types, LLM interfaces, tool schemas, constants
 domain/     - domain models, ports, and business/application policies
+application/ - target home for vertically sliced use cases and their ports
+adapter/     - target home for inbound and outbound technology adapters
 repository/ - Exposed/SQLite persistence adapters
 nlp/        - LLM backends and source/topic analysis adapters
 app/        - Ktor server wiring and HTTP routes
 ```
 
-Dependency graph: `app` -> `{nlp, repository, domain, core}`; `{nlp, repository}` -> `domain` -> `core`
+The codebase is migrating toward `app -> adapter -> application -> domain`. During the migration,
+the legacy `core`, `repository`, and `nlp` modules remain until their responsibilities have moved.
+Within `application`, keep commands, results, use-case orchestration, and use-case-specific output
+ports together by use case. Within `adapter`, classify external entry points under `inbound` and
+application-driven integrations under `outbound`.
 
 ### core
 

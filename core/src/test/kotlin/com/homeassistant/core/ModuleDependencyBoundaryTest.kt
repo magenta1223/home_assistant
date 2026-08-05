@@ -12,12 +12,14 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `gradle project dependencies follow module direction`() {
-        val actual = listOf("core", "domain", "repository", "nlp", "app").associateWith { module ->
+        val actual = MODULES.associateWith { module ->
             projectDependencies(module)
         }
 
         assertEquals(emptySet(), actual.getValue("core"))
         assertEquals(setOf("core"), actual.getValue("domain"))
+        assertEquals(setOf("domain"), actual.getValue("application"))
+        assertEquals(setOf("application", "domain"), actual.getValue("adapter"))
         assertEquals(setOf("core", "domain"), actual.getValue("repository"))
         assertEquals(setOf("core", "domain"), actual.getValue("nlp"))
         assertEquals(setOf("core", "domain", "nlp", "repository"), actual.getValue("app"))
@@ -25,7 +27,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `source imports follow module direction`() {
-        val violations = listOf("core", "domain", "repository", "nlp", "app").flatMap { module ->
+        val violations = MODULES.flatMap { module ->
             forbiddenImports(module).map { forbidden ->
                 importsFor(module, forbidden)
             }.flatten()
@@ -51,13 +53,42 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `exposed is only imported inside repository module`() {
-        val violations = listOf("core", "domain", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "domain", "application", "adapter", "nlp", "app").flatMap { module ->
             exposedImportsFor(module)
         }
 
         assertTrue(
             violations.isEmpty(),
             "Exposed database APIs must not be imported outside repository module:\n${violations.joinToString("\n")}",
+        )
+    }
+
+    @Test
+    fun `application and domain do not import adapter frameworks`() {
+        val forbiddenPrefixes = listOf(
+            "io.ktor.",
+            "com.slack.api.",
+            "org.jetbrains.exposed.",
+        )
+        val violations = listOf("domain", "application").flatMap { module ->
+            forbiddenPrefixes.flatMap { prefix -> externalImportsFor(module, prefix) }
+        }
+
+        assertTrue(
+            violations.isEmpty(),
+            "Domain and application must remain framework independent:\n${violations.joinToString("\n")}",
+        )
+    }
+
+    @Test
+    fun `inbound and outbound adapters do not import each other`() {
+        val violations = externalImportsFor("adapter", "com.homeassistant.adapter.outbound.", "inbound") +
+            externalImportsFor("adapter", "com.homeassistant.adapter.inbound.", "outbound")
+
+        assertTrue(
+            violations.isEmpty(),
+            "Inbound and outbound adapters must communicate through application ports:\n" +
+                violations.joinToString("\n"),
         )
     }
 
@@ -73,8 +104,10 @@ class ModuleDependencyBoundaryTest {
 
     private fun forbiddenImports(module: String): Set<String> =
         when (module) {
-            "core" -> setOf("domain", "repository", "nlp", "app")
-            "domain" -> setOf("repository", "nlp", "app")
+            "core" -> setOf("domain", "application", "adapter", "repository", "nlp", "app")
+            "domain" -> setOf("application", "adapter", "repository", "nlp", "app")
+            "application" -> setOf("adapter", "repository", "nlp", "app")
+            "adapter" -> setOf("repository", "nlp", "app")
             "repository" -> setOf("nlp", "app")
             "nlp" -> setOf("repository", "app")
             "app" -> emptySet()
@@ -129,5 +162,24 @@ class ModuleDependencyBoundaryTest {
                     .map { "${projectRoot.relativize(file)}: $it" }
             }
             .toList()
+    }
+
+    private fun externalImportsFor(module: String, prefix: String, packageSegment: String? = null): List<String> {
+        val sourceRoot = projectRoot.resolve("$module/src/main/kotlin")
+        if (!sourceRoot.toFile().exists()) return emptyList()
+
+        return sourceRoot.walk()
+            .filter { it.toString().endsWith(".kt") }
+            .filter { packageSegment == null || it.toString().contains("${java.io.File.separator}$packageSegment${java.io.File.separator}") }
+            .flatMap { file ->
+                file.readText().lineSequence()
+                    .filter { it.startsWith("import $prefix") }
+                    .map { "${projectRoot.relativize(file)}: $it" }
+            }
+            .toList()
+    }
+
+    private companion object {
+        val MODULES = listOf("core", "domain", "application", "adapter", "repository", "nlp", "app")
     }
 }

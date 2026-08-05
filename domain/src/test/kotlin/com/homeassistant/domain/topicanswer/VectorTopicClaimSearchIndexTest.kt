@@ -5,9 +5,9 @@ import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
-import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.datamodel.topicanalysis.TopicClaim
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.TopicClaim
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.PayloadVectorPoint
 import com.homeassistant.domain.memory.PayloadVectorSearchFilter

@@ -1,7 +1,7 @@
 package com.homeassistant.domain.topicanswer
 
 import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.datamodel.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.PayloadVectorPoint
 import com.homeassistant.domain.memory.PayloadVectorSearchFilter

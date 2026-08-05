@@ -1,9 +1,9 @@
 package com.homeassistant.repository.kakao
 
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
-import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.repository.db.tables.TopicAnalysisPreviewTable
 import com.homeassistant.repository.repo.topicanalysis.TopicAnalysisPreviewRepository
 import org.jetbrains.exposed.sql.Database

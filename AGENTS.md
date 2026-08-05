@@ -25,14 +25,12 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 Copy `.env` to the project root (already present; gitignored). Key variables:
 
+Topic analysis always uses the Codex CLI resolved from `PATH` (`codex.cmd` on Windows). Hosted
+LLM providers and provider-selection environment variables are not supported.
+
 | Variable | Default | Notes |
 |---|---|---|
-| `AI_PROVIDER` | `ollama` | `ollama`, `openrouter`, or `anthropic` |
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Used by Ollama chat and embedding calls |
-| `OLLAMA_MODEL` | `llama3.2` | |
-| `OPENROUTER_API_KEY` | - | Required when `AI_PROVIDER=openrouter` |
-| `OPENROUTER_MODEL` | `openai/gpt-5.5` | |
-| `ANTHROPIC_API_KEY` | - | Required when `AI_PROVIDER=anthropic` |
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | Used only by local embedding calls |
 | `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Ollama embedding model; run `ollama pull qllama/multilingual-e5-base` before vector indexing |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
 | `QDRANT_COLLECTION` | `family_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
@@ -65,12 +63,13 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 
 ```text
 core/       - shared domain types, LLM interfaces, tool schemas, constants
-nlp/        - LLM backends and source/topic analysis
-domain/     - DB schema, Kakao import, memory repositories/tools/vector store
+domain/     - domain models, ports, and business/application policies
+repository/ - Exposed/SQLite persistence adapters
+nlp/        - LLM backends and source/topic analysis adapters
 app/        - Ktor server wiring and HTTP routes
 ```
 
-Dependency graph: `app` -> `nlp` + `domain` -> `core`
+Dependency graph: `app` -> `{nlp, repository, domain, core}`; `{nlp, repository}` -> `domain` -> `core`
 
 ### core
 
@@ -85,16 +84,21 @@ Pure abstractions and shared types.
 
 ### nlp
 
-- `backend/` - Ollama, OpenRouter, and Anthropic backend implementations.
+- `backend/codex/` - the only LLM backend, implemented through the Codex CLI.
 - `backend/utils/` - tool prompt injection and prompt-injection tool-call parsing.
 - `analysis/TopicAnalysisService` - turns source documents into validated topic candidates and stores them through `TopicAnalysisRepository`.
 
 ### domain
 
-- `db/` - database initialization and Exposed table definitions.
-- `kakao/` - Kakao export parsing, import, and persistence.
-- `memory/` - memory candidate/repository logic, tools, embeddings, and vector store.
+- `kakao/` - Kakao export models, parsing, import policy, and persistence ports.
+- `topicanalysis/` - topic domain models and persistence ports.
+- `memory/` - memory domain models, tools, embeddings, and vector-store ports.
 - `DomainToolRegistry` - single registration point for domain tools.
+
+### repository
+
+- `db/` - database initialization and Exposed table definitions.
+- `repo/` - SQLite implementations of domain persistence ports.
 
 ### app
 

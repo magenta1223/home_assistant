@@ -1,6 +1,6 @@
 package com.homeassistant.domain.kakao
 
-import com.homeassistant.datamodel.kakao.KakaoMessage
+import com.homeassistant.domain.kakao.KakaoMessage
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

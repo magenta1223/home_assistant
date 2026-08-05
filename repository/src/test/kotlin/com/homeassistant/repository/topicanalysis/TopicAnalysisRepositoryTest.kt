@@ -2,9 +2,9 @@ package com.homeassistant.repository.topicanalysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
-import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.repository.db.tables.TopicCandidateTable
 import com.homeassistant.repository.db.tables.IndexingOutboxTable
 import com.homeassistant.domain.indexing.IndexTargetType

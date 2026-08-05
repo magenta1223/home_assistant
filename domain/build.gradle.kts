@@ -5,7 +5,6 @@ plugins {
 
 dependencies {
     api(project(":core"))
-    api(project(":datamodel"))
 
     // Logging
     implementation(libs.logback.classic)

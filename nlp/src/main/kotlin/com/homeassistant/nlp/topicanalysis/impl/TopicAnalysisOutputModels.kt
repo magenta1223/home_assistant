@@ -5,7 +5,7 @@ import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.core.utils.JsonSerializer.encodeToString
 import com.homeassistant.core.utils.JsonSerializer.parseToJsonElement
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import kotlinx.schema.Schema
 import kotlinx.schema.generator.json.JsonSchemaConfig

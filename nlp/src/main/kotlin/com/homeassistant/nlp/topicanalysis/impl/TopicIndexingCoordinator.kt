@@ -1,6 +1,6 @@
 package com.homeassistant.nlp.topicanalysis.impl
 
-import com.homeassistant.datamodel.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore

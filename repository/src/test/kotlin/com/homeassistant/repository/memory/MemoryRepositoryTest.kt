@@ -3,8 +3,8 @@ package com.homeassistant.repository.memory
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.datamodel.memory.AuditAction
-import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
+import com.homeassistant.repository.repo.memory.AuditAction
+import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
 import com.homeassistant.repository.db.tables.*
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.repository.repo.indexing.IndexingOutboxRepository

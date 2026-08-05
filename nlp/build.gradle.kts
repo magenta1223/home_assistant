@@ -7,17 +7,9 @@ plugins {
 
 dependencies {
     api(project(":core"))
-    api(project(":datamodel"))
     api(project(":domain"))
 
-    // Anthropic Java SDK
-    implementation(libs.anthropic.java)
-
-    // Ktor HTTP client (OpenRouter)
-    implementation(libs.ktor.client.core)
-    implementation(libs.ktor.client.cio)
-    implementation(libs.ktor.client.content.negotiation)
-    implementation(libs.ktor.serialization.kotlinx.json)
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.schema.generator.json)
 
     // Logging

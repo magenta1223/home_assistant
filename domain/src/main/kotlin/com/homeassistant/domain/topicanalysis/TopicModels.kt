@@ -1,4 +1,4 @@
-package com.homeassistant.datamodel.topicanalysis
+package com.homeassistant.domain.topicanalysis
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType

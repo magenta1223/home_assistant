@@ -2,8 +2,8 @@ package com.homeassistant.repository.repo.topicanalysis
 
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.core.utils.JsonSerializer.encodeToString
-import com.homeassistant.datamodel.kakao.KakaoAnalysisPreview
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.domain.kakao.KakaoAnalysisPreview
+import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.repository.db.tables.TopicAnalysisPreviewTable
 import org.jetbrains.exposed.sql.Database

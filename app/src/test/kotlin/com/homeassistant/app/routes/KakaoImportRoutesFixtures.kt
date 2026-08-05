@@ -2,11 +2,11 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
-import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
-import com.homeassistant.datamodel.topicanalysis.TopicClaim
-import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaim
+import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.nlp.topicanalysis.api.DuplicateKakaoMessagesException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisRequest

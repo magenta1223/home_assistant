@@ -1,6 +1,6 @@
 package com.homeassistant.repository.repo.kakao
 
-import com.homeassistant.datamodel.kakao.KakaoMessage
+import com.homeassistant.domain.kakao.KakaoMessage
 import com.homeassistant.domain.kakao.KakaoMessageStore
 import com.homeassistant.domain.kakao.ParsedKakaoMessage
 import com.homeassistant.repository.db.tables.KakaoImportedMessageTable

@@ -12,21 +12,20 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `gradle project dependencies follow module direction`() {
-        val actual = listOf("core", "datamodel", "domain", "repository", "nlp", "app").associateWith { module ->
+        val actual = listOf("core", "domain", "repository", "nlp", "app").associateWith { module ->
             projectDependencies(module)
         }
 
         assertEquals(emptySet(), actual.getValue("core"))
-        assertEquals(setOf("core"), actual.getValue("datamodel"))
-        assertEquals(setOf("core", "datamodel"), actual.getValue("domain"))
-        assertEquals(setOf("core", "datamodel", "domain"), actual.getValue("repository"))
-        assertEquals(setOf("core", "datamodel", "domain"), actual.getValue("nlp"))
-        assertEquals(setOf("core", "datamodel", "domain", "nlp", "repository"), actual.getValue("app"))
+        assertEquals(setOf("core"), actual.getValue("domain"))
+        assertEquals(setOf("core", "domain"), actual.getValue("repository"))
+        assertEquals(setOf("core", "domain"), actual.getValue("nlp"))
+        assertEquals(setOf("core", "domain", "nlp", "repository"), actual.getValue("app"))
     }
 
     @Test
     fun `source imports follow module direction`() {
-        val violations = listOf("core", "datamodel", "domain", "repository", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "domain", "repository", "nlp", "app").flatMap { module ->
             forbiddenImports(module).map { forbidden ->
                 importsFor(module, forbidden)
             }.flatten()
@@ -40,7 +39,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `repository internals are not imported outside repository module`() {
-        val violations = listOf("core", "datamodel", "domain", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "domain", "nlp", "app").flatMap { module ->
             repositoryInternalImportsFor(module)
         }
 
@@ -52,7 +51,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `exposed is only imported inside repository module`() {
-        val violations = listOf("core", "datamodel", "domain", "nlp", "app").flatMap { module ->
+        val violations = listOf("core", "domain", "nlp", "app").flatMap { module ->
             exposedImportsFor(module)
         }
 
@@ -74,8 +73,7 @@ class ModuleDependencyBoundaryTest {
 
     private fun forbiddenImports(module: String): Set<String> =
         when (module) {
-            "core" -> setOf("datamodel", "domain", "repository", "nlp", "app")
-            "datamodel" -> setOf("domain", "repository", "nlp", "app")
+            "core" -> setOf("domain", "repository", "nlp", "app")
             "domain" -> setOf("repository", "nlp", "app")
             "repository" -> setOf("nlp", "app")
             "nlp" -> setOf("repository", "app")

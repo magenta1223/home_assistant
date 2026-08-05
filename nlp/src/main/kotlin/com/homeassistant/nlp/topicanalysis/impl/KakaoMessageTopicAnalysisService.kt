@@ -8,8 +8,8 @@ import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.nlp.LlmBackend
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
-import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.kakao.KakaoMessageParser

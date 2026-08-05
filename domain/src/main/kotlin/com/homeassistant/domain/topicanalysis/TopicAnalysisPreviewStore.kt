@@ -1,7 +1,6 @@
 package com.homeassistant.domain.topicanalysis
 
-import com.homeassistant.datamodel.kakao.KakaoAnalysisPreview
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.domain.kakao.KakaoAnalysisPreview
 
 interface TopicAnalysisPreviewStore {
     fun createPreview(

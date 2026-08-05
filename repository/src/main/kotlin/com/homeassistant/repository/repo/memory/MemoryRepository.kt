@@ -4,11 +4,9 @@ import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.utils.JsonSerializer
-import com.homeassistant.datamodel.memory.AuditAction
-import com.homeassistant.datamodel.memory.AuditLogRow
-import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
-import com.homeassistant.datamodel.memory.MemoryCandidateRow
-import com.homeassistant.datamodel.memory.MemoryRow
+import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
+import com.homeassistant.domain.memory.MemoryCandidateRow
+import com.homeassistant.domain.memory.MemoryRow
 import com.homeassistant.domain.memory.MemoryStore
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.repository.repo.indexing.enqueueIndex

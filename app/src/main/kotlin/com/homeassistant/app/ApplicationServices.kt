@@ -11,7 +11,6 @@ import com.homeassistant.domain.memory.PayloadVectorStoreFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexFactory
-import com.homeassistant.nlp.backend.AiProvider
 import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.nlp.embedding.EmbeddingServiceFactory
 import com.homeassistant.nlp.topicanalysis.api.TopicAnalysisFactory
@@ -42,9 +41,7 @@ private class DefaultApplicationServices(
 object ApplicationServicesFactory {
     fun create(dbPath: String): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
-        val llmBackend = LmBackendFactory.create(
-            AiProvider.from(Env[AppConfig.ENV_VAR_AI_PROVIDER] ?: AppConfig.DEFAULT_AI_PROVIDER),
-        )
+        val llmBackend = LmBackendFactory.create()
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val embeddingBaseUrl = Env[AppConfig.ENV_VAR_OLLAMA_BASE_URL]

@@ -1,6 +1,6 @@
 package com.homeassistant.app.slack
 
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicCandidate
 
 object SlackTopicBlocks {
     const val ACTION_OPEN_REVIEW = "topic_analysis_open_review"

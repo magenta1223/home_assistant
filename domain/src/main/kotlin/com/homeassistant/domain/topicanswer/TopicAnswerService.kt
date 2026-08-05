@@ -2,7 +2,7 @@ package com.homeassistant.domain.topicanswer
 
 import com.homeassistant.core.identity.HouseholdAccessDeniedException
 import com.homeassistant.core.identity.HouseholdAccessPolicy
-import com.homeassistant.datamodel.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
 
 internal class TopicAnswerService(

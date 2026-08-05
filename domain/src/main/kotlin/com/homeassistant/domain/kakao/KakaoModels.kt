@@ -1,6 +1,6 @@
-package com.homeassistant.datamodel.kakao
+package com.homeassistant.domain.kakao
 
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicCandidate
 
 /**
  * KakaoTalk message row stored in the local import database.

@@ -7,10 +7,10 @@ import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
-import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
-import com.homeassistant.datamodel.topicanalysis.TopicClaim
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaim
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import kotlin.test.Test
 import kotlin.test.assertEquals

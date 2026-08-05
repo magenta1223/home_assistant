@@ -1,8 +1,6 @@
 package com.homeassistant.domain.topicanalysis
 
 import com.homeassistant.core.identity.HouseholdAccessScope
-import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
 
 interface TopicAnalysisCommandStore {
     fun createTopic(candidate: TopicCandidate): Topic

@@ -5,11 +5,11 @@ import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.core.utils.JsonSerializer.encodeToString
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
-import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
-import com.homeassistant.datamodel.topicanalysis.TopicClaim
-import com.homeassistant.datamodel.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ClaimCertainty
+import com.homeassistant.domain.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.TopicClaim
+import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.repository.repo.indexing.enqueueIndex

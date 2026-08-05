@@ -1,7 +1,5 @@
 package com.homeassistant.domain.kakao
 
-import com.homeassistant.datamodel.kakao.KakaoMessage
-
 /** Imports a KakaoTalk export file into the Kakao message store. */
 interface KakaoImporter {
     fun findNewMessages(messages: List<ParsedKakaoMessage>): List<ParsedKakaoMessage>

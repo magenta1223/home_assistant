@@ -2,7 +2,6 @@ package com.homeassistant.domain.topicanalysis
 
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.core.source.SourceRecord
-import com.homeassistant.datamodel.topicanalysis.ClaimCertainty
 
 /**
  * New claim payload before persistence under a topic candidate.

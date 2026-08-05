@@ -1,6 +1,5 @@
 package com.homeassistant.domain.memory
 
-import com.homeassistant.datamodel.memory.MemoryRow
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import org.slf4j.LoggerFactory

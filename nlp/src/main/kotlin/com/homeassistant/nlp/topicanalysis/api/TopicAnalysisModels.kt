@@ -1,7 +1,7 @@
 package com.homeassistant.nlp.topicanalysis.api
 
-import com.homeassistant.datamodel.topicanalysis.Topic
-import com.homeassistant.datamodel.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.Topic
+import com.homeassistant.domain.topicanalysis.TopicCandidate
 import kotlinx.serialization.Serializable
 
 @Serializable

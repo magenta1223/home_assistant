@@ -1,6 +1,6 @@
 package com.homeassistant.repository.db.tables
 
-import com.homeassistant.datamodel.memory.DEFAULT_FAMILY_ID
+import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
 import org.jetbrains.exposed.sql.Table
 
 /** Stores source-agnostic topic candidates produced by NLP analysis. */

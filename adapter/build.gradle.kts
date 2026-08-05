@@ -15,7 +15,11 @@ dependencies {
     implementation(libs.exposed.dao)
     implementation(libs.sqlite.jdbc)
     implementation(libs.logback.classic)
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.content.negotiation)
+    implementation(libs.ktor.serialization.kotlinx.json)
 
+    testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)
     testImplementation(libs.mockk)
 }

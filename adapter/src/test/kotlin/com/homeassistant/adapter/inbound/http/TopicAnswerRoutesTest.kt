@@ -1,4 +1,4 @@
-package com.homeassistant.app.routes
+package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.domain.topicanswer.TopicAnswerMatch
 import com.homeassistant.domain.topicanswer.TopicAnswerRequest

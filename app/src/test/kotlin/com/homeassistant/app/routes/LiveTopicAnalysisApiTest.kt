@@ -1,6 +1,7 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
+import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.core.identity.FamilyId
 import com.homeassistant.core.identity.HouseholdAccessPolicies
 import com.homeassistant.core.identity.HouseholdAccessScope

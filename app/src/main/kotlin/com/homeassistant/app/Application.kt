@@ -1,6 +1,6 @@
 package com.homeassistant.app
 
-import com.homeassistant.app.routes.configureRoutes
+import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.core.constants.AppConfig
 import com.homeassistant.core.utils.JsonSerializer
 import io.ktor.serialization.kotlinx.json.json

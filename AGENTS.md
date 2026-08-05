@@ -91,6 +91,7 @@ Pure abstractions and shared types.
 
 ### adapter
 
+- `inbound/http/` - Ktor routes and HTTP request/response DTO mapping.
 - `outbound/codex/` - Codex CLI client, prompt contract, and `TopicExtractor` implementation.
 - `outbound/embedding/ollama/` - local Ollama text embedding implementation.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.

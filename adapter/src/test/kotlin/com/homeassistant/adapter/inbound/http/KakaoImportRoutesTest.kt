@@ -1,4 +1,4 @@
-package com.homeassistant.app.routes
+package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.core.memory.CandidateStatus
 import com.homeassistant.core.memory.MemoryType

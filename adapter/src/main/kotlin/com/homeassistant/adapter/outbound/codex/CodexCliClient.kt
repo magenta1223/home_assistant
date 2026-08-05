@@ -1,11 +1,5 @@
-package com.homeassistant.nlp.backend.codex
+package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmResponse
-import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.tools.Tool
-import com.homeassistant.nlp.backend.utils.parseToolCallOrText
-import com.homeassistant.nlp.backend.utils.withTools
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.nio.file.Files
@@ -14,25 +8,25 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
-internal class CodexCliBackend(
+internal fun interface CodexCompletionClient {
+    suspend fun complete(system: String, userMessage: String, outputSchema: String): String
+}
+
+internal class CodexCliClient(
     private val executable: String = defaultCodexExecutable(),
     private val timeoutMillis: Long = 180_000,
     private val processExecutor: CodexProcessExecutor = SystemCodexProcessExecutor,
-) : LlmBackend {
-
+) : CodexCompletionClient {
     override suspend fun complete(
         system: String,
-        messages: List<Message>,
-        tools: List<Tool>,
+        userMessage: String,
         outputSchema: String,
-    ): LlmResponse = withContext(Dispatchers.IO) {
+    ): String = withContext(Dispatchers.IO) {
         val workingDirectory = Files.createTempDirectory("homeassistant-codex-")
         try {
             val schemaFile = workingDirectory.resolve("output-schema.json")
             val outputFile = workingDirectory.resolve("output.json")
             schemaFile.writeText(outputSchema)
-            val prompt = buildPrompt(system, messages, tools)
-
             val command = listOf(
                 executable,
                 "exec",
@@ -43,25 +37,28 @@ internal class CodexCliBackend(
                 "--output-last-message", outputFile.toString(),
                 "-",
             )
-            val result = processExecutor.execute(command, workingDirectory, timeoutMillis, prompt)
+            val result = processExecutor.execute(
+                command,
+                workingDirectory,
+                timeoutMillis,
+                buildPrompt(system, userMessage),
+            )
             check(!result.timedOut) { "Codex CLI timed out after ${timeoutMillis}ms" }
             check(result.exitCode == 0) {
                 "Codex CLI exited with code ${result.exitCode}: ${result.stderr.trim()}"
             }
             check(Files.exists(outputFile)) { "Codex CLI did not write its final response" }
-            parseToolCallOrText(outputFile.readText())
+            outputFile.readText()
         } finally {
             workingDirectory.deleteRecursively()
         }
     }
 
-    private fun buildPrompt(system: String, messages: List<Message>, tools: List<Tool>): String = buildString {
-        appendLine(system.withTools(tools))
-        messages.forEach { message ->
-            appendLine()
-            appendLine("[${message.role.value}]")
-            append(message.content)
-        }
+    private fun buildPrompt(system: String, userMessage: String): String = buildString {
+        appendLine(system)
+        appendLine()
+        appendLine("[user]")
+        append(userMessage)
     }
 }
 

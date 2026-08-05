@@ -1,15 +1,10 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmResponse
-import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
-import com.homeassistant.core.tools.Tool
-import com.homeassistant.nlp.topicanalysis.impl.LlmTopicAnalyzer
 
-internal fun serviceFor(response: String): LlmTopicAnalyzer =
-    LlmTopicAnalyzer(StaticBackend(response))
+internal fun serviceFor(response: String): CodexTopicExtractor =
+    CodexTopicExtractor(StaticClient(response))
 
 internal fun singleRecordDocument(): SourceDocument =
     SourceDocument(
@@ -64,30 +59,28 @@ internal fun topicJson(
     }
 """.trimIndent()
 
-internal class StaticBackend(private val response: String) : LlmBackend {
+internal class StaticClient(private val response: String) : CodexCompletionClient {
     override suspend fun complete(
         system: String,
-        messages: List<Message>,
-        tools: List<Tool>,
+        userMessage: String,
         outputSchema: String,
-    ): LlmResponse = LlmResponse.Text(response)
+    ): String = response
 }
 
-internal class CapturingBackend(private val response: String) : LlmBackend {
+internal class CapturingClient(private val response: String) : CodexCompletionClient {
     var system = ""
-    lateinit var messages: List<Message>
+    var userMessage = ""
     var outputSchema = ""
 
     override suspend fun complete(
         system: String,
-        messages: List<Message>,
-        tools: List<Tool>,
+        userMessage: String,
         outputSchema: String,
-    ): LlmResponse {
+    ): String {
         this.system = system
-        this.messages = messages
+        this.userMessage = userMessage
         this.outputSchema = outputSchema
-        return LlmResponse.Text(response)
+        return response
     }
 }
 
@@ -97,17 +90,16 @@ internal data class BackendCall(
     val outputSchema: String,
 )
 
-internal class RecordingBackend(responses: List<String>) : LlmBackend {
+internal class RecordingClient(responses: List<String>) : CodexCompletionClient {
     private val responses = ArrayDeque(responses)
     val calls = mutableListOf<BackendCall>()
 
     override suspend fun complete(
         system: String,
-        messages: List<Message>,
-        tools: List<Tool>,
+        userMessage: String,
         outputSchema: String,
-    ): LlmResponse {
-        calls += BackendCall(system, messages.single().content, outputSchema)
-        return LlmResponse.Text(responses.removeFirst())
+    ): String {
+        calls += BackendCall(system, userMessage, outputSchema)
+        return responses.removeFirst()
     }
 }

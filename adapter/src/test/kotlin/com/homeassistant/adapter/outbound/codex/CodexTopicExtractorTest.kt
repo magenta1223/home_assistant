@@ -1,29 +1,20 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmResponse
-import com.homeassistant.core.nlp.Message
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
-import com.homeassistant.core.tools.Tool
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
-import com.homeassistant.nlp.topicanalysis.impl.LlmTopicAnalyzer
-import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse
-import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisOutputContract
-import com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse
-import com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.test.*
 
-class LlmTopicAnalyzerTest {
+class CodexTopicExtractorTest {
     @Test
     fun `analyzes datasource agnostic records into pending topics with evidence`() = runBlocking {
-        val service = LlmTopicAnalyzer(
-            StaticBackend(
+        val service = CodexTopicExtractor(
+            StaticClient(
                 """
                 {
                   "topics": [
@@ -83,8 +74,8 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `prompt tells model not to split topics by time or interrupted order`() = runBlocking {
-        val backend = CapturingBackend("""{"topics":[]}""")
-        val service = LlmTopicAnalyzer(backend)
+        val backend = CapturingClient("""{"topics":[]}""")
+        val service = CodexTopicExtractor(backend)
 
         service.analyze(
             SourceDocument(
@@ -100,8 +91,8 @@ class LlmTopicAnalyzerTest {
 
         assertContains(backend.system, "시간 간격으로 나누지 마세요")
         assertContains(backend.system, "A-B-A")
-        assertContains(backend.messages.single().content, "r1")
-        assertContains(backend.messages.single().content, "r3")
+        assertContains(backend.userMessage, "r1")
+        assertContains(backend.userMessage, "r3")
         assertContains(backend.outputSchema, "claims")
         assertContains(backend.outputSchema, "memoryTypes")
         assertContains(backend.outputSchema, "memoryType")
@@ -110,8 +101,8 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `prompt is generated from topic output schema`() = runBlocking {
-        val backend = CapturingBackend("""{"topics":[]}""")
-        val service = LlmTopicAnalyzer(backend)
+        val backend = CapturingClient("""{"topics":[]}""")
+        val service = CodexTopicExtractor(backend)
 
         service.analyze(singleRecordDocument())
 
@@ -123,7 +114,7 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `long documents are analyzed by chunk then merged`() = runBlocking {
-        val backend = RecordingBackend(
+        val backend = RecordingClient(
             listOf(
                 topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", claimEvidenceRecordIds = """["r1"]"""),
                 topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", claimEvidenceRecordIds = """["r201"]"""),
@@ -134,7 +125,7 @@ class LlmTopicAnalyzerTest {
                 ),
             ),
         )
-        val service = LlmTopicAnalyzer(backend)
+        val service = CodexTopicExtractor(backend)
 
         val result = service.analyze(documentWithRecords(201))
 
@@ -155,39 +146,34 @@ class LlmTopicAnalyzerTest {
     fun `long document chunks are analyzed concurrently before merge`() = runBlocking {
         val activeChunkCalls = AtomicInteger(0)
         val maxActiveChunkCalls = AtomicInteger(0)
-        val backend = object : LlmBackend {
+        val backend = object : CodexCompletionClient {
             override suspend fun complete(
                 system: String,
-                messages: List<Message>,
-                tools: List<Tool>,
+                userMessage: String,
                 outputSchema: String,
-            ): LlmResponse {
-                val message = messages.single().content
+            ): String {
+                val message = userMessage
                 if (message.contains("기록 ")) {
                     val active = activeChunkCalls.incrementAndGet()
                     maxActiveChunkCalls.updateAndGet { current -> maxOf(current, active) }
                     delay(200)
                     activeChunkCalls.decrementAndGet()
                     val firstRecordId = Regex("""r\d+""").find(message)?.value ?: "r1"
-                    return LlmResponse.Text(
-                        topicJson(
-                            title = "chunk $firstRecordId",
-                            evidenceRecordIds = """["$firstRecordId"]""",
-                            claimEvidenceRecordIds = """["$firstRecordId"]""",
-                        ),
+                    return topicJson(
+                        title = "chunk $firstRecordId",
+                        evidenceRecordIds = """["$firstRecordId"]""",
+                        claimEvidenceRecordIds = """["$firstRecordId"]""",
                     )
                 }
 
-                return LlmResponse.Text(
-                    topicJson(
-                        title = "merged",
-                        evidenceRecordIds = """["r1", "r201", "r401"]""",
-                        claimEvidenceRecordIds = """["r1", "r201", "r401"]""",
-                    ),
+                return topicJson(
+                    title = "merged",
+                    evidenceRecordIds = """["r1", "r201", "r401"]""",
+                    claimEvidenceRecordIds = """["r1", "r201", "r401"]""",
                 )
             }
         }
-        val service = LlmTopicAnalyzer(backend)
+        val service = CodexTopicExtractor(backend)
 
         service.analyze(documentWithRecords(401))
 
@@ -196,8 +182,8 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `chunk prompt has no topic count limit and keeps evidence and claim limits`() = runBlocking {
-        val backend = RecordingBackend(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
-        val service = LlmTopicAnalyzer(backend)
+        val backend = RecordingClient(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
+        val service = CodexTopicExtractor(backend)
 
         service.analyze(documentWithRecords(201))
 
@@ -212,8 +198,8 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `merge prompt preserves reusable topics without a final topic limit`() = runBlocking {
-        val backend = RecordingBackend(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
-        val service = LlmTopicAnalyzer(backend)
+        val backend = RecordingClient(listOf("""{"topics":[]}""", """{"topics":[]}""", """{"topics":[]}"""))
+        val service = CodexTopicExtractor(backend)
 
         service.analyze(documentWithRecords(201))
 
@@ -228,7 +214,7 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `merge evidence ids are validated against original source records`() = runBlocking {
-        val backend = RecordingBackend(
+        val backend = RecordingClient(
             listOf(
                 topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", claimEvidenceRecordIds = """["r1"]"""),
                 topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", claimEvidenceRecordIds = """["r201"]"""),
@@ -239,7 +225,7 @@ class LlmTopicAnalyzerTest {
                 ),
             ),
         )
-        val service = LlmTopicAnalyzer(backend)
+        val service = CodexTopicExtractor(backend)
 
         assertFailsWith<TopicAnalysisException> {
             service.analyze(documentWithRecords(201))
@@ -248,8 +234,8 @@ class LlmTopicAnalyzerTest {
 
     @Test
     fun `short documents use single analysis without merge`() = runBlocking {
-        val backend = RecordingBackend(listOf("""{"topics":[]}"""))
-        val service = LlmTopicAnalyzer(backend)
+        val backend = RecordingClient(listOf("""{"topics":[]}"""))
+        val service = CodexTopicExtractor(backend)
 
         service.analyze(documentWithRecords(200))
 

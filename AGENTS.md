@@ -64,12 +64,12 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 ## Module Architecture
 
 ```text
-core/       - shared domain types, LLM interfaces, tool schemas, constants
+core/       - shared domain types, tool schemas, and constants
 domain/     - domain models, ports, and business/application policies
 application/ - target home for vertically sliced use cases and their ports
 adapter/     - target home for inbound and outbound technology adapters
 repository/ - Exposed/SQLite persistence adapters
-nlp/        - LLM backends and source/topic analysis adapters
+nlp/        - legacy local embedding adapter pending migration
 app/        - Ktor server wiring and HTTP routes
 ```
 
@@ -83,8 +83,6 @@ application-driven integrations under `outbound`.
 
 Pure abstractions and shared types.
 
-- `nlp/LlmBackend` - provider-independent LLM completion interface.
-- `nlp/Message`, `MessageRole`, `LlmTypes` - LLM request/response domain types.
 - `tools/*` - JSON Schema based tool definitions and executor interface.
 - `identity/UserId` - user identity value type used by memory tools.
 - `memory/MemoryTypes.kt` - memory categories and candidate status.
@@ -92,9 +90,15 @@ Pure abstractions and shared types.
 
 ### nlp
 
-- `backend/codex/` - the only LLM backend, implemented through the Codex CLI.
-- `backend/utils/` - tool prompt injection and prompt-injection tool-call parsing.
-- `analysis/TopicAnalysisService` - turns source documents into validated topic candidates and stores them through `TopicAnalysisRepository`.
+- `embedding/` - legacy Ollama embedding implementation pending movement into `adapter/outbound`.
+
+### application
+
+- `topicanalysis/` - vertically sliced analysis and save use cases with their output ports.
+
+### adapter
+
+- `outbound/codex/` - Codex CLI client, prompt contract, and `TopicExtractor` implementation.
 
 ### domain
 

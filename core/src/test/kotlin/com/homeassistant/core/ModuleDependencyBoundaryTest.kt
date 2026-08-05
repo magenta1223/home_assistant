@@ -19,10 +19,10 @@ class ModuleDependencyBoundaryTest {
         assertEquals(emptySet(), actual.getValue("core"))
         assertEquals(setOf("core"), actual.getValue("domain"))
         assertEquals(setOf("core", "domain"), actual.getValue("application"))
-        assertEquals(setOf("application", "domain"), actual.getValue("adapter"))
+        assertEquals(setOf("application", "core", "domain"), actual.getValue("adapter"))
         assertEquals(setOf("core", "domain"), actual.getValue("repository"))
-        assertEquals(setOf("application", "core", "domain"), actual.getValue("nlp"))
-        assertEquals(setOf("application", "core", "domain", "nlp", "repository"), actual.getValue("app"))
+        assertEquals(setOf("core", "domain"), actual.getValue("nlp"))
+        assertEquals(setOf("adapter", "application", "core", "domain", "nlp", "repository"), actual.getValue("app"))
     }
 
     @Test

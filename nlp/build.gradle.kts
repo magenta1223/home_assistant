@@ -6,12 +6,8 @@ plugins {
 }
 
 dependencies {
-    api(project(":application"))
     api(project(":core"))
     api(project(":domain"))
-
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.schema.generator.json)
 
     // Logging
     implementation(libs.logback.classic)

@@ -1,4 +1,4 @@
-package com.homeassistant.nlp.topicanalysis.impl
+package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.core.memory.MemoryType
 

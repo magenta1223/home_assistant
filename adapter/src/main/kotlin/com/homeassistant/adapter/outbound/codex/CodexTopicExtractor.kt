@@ -1,11 +1,7 @@
-package com.homeassistant.nlp.topicanalysis.impl
+package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
 import com.homeassistant.core.memory.MemoryType
-import com.homeassistant.core.nlp.LlmBackend
-import com.homeassistant.core.nlp.LlmResponse
-import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.nlp.MessageRole
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
 import com.homeassistant.core.utils.JsonSerializer.encodeToString
@@ -19,8 +15,8 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 /** Runs LLM topic analysis for any source document and stores valid topic candidates. */
-internal class LlmTopicAnalyzer(
-    private val backend: LlmBackend,
+internal class CodexTopicExtractor(
+    private val client: CodexCompletionClient,
     private val chunkSize: Int = CHUNK_SIZE,
 ) : TopicExtractor {
     override suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
@@ -72,15 +68,11 @@ internal class LlmTopicAnalyzer(
         system: String,
         userMessage: String,
     ): List<ValidatedTopic> {
-        val response = backend.complete(
+        val raw = client.complete(
             system = system,
-            messages = listOf(Message(MessageRole.USER, userMessage)),
+            userMessage = userMessage,
             outputSchema = TopicAnalysisOutputContract.schema,
         )
-        val raw = when (response) {
-            is LlmResponse.Text -> response.content
-            is LlmResponse.ToolCall -> throw TopicAnalysisException("Topic analyzer returned a tool call")
-        }
         val dto = TopicAnalysisOutputContract.decode(raw)
         val topics = dto.topics.map { topic ->
             val memoryTypes = topic.memoryTypes.distinct()

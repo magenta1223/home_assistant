@@ -1,8 +1,5 @@
-package com.homeassistant.nlp.backend.codex
+package com.homeassistant.adapter.outbound.codex
 
-import com.homeassistant.core.nlp.LlmResponse
-import com.homeassistant.core.nlp.Message
-import com.homeassistant.core.nlp.MessageRole
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import kotlin.io.path.readText
@@ -13,7 +10,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
-class CodexCliBackendTest {
+class CodexCliClientTest {
     @Test
     fun `uses npm command shim on Windows`() {
         assertEquals("codex.cmd", defaultCodexExecutable("Windows 11"))
@@ -27,15 +24,15 @@ class CodexCliBackendTest {
             java.nio.file.Path.of(outputPath).writeText("""{"topics":[]}""")
             CodexProcessResult(exitCode = 0, stderr = "")
         }
-        val backend = CodexCliBackend(executable = "codex-test", processExecutor = executor)
+        val client = CodexCliClient(executable = "codex-test", processExecutor = executor)
 
-        val response = backend.complete(
+        val response = client.complete(
             system = "Analyze the source",
-            messages = listOf(Message(MessageRole.USER, "family message")),
+            userMessage = "family message",
             outputSchema = """{"type":"object"}""",
         )
 
-        assertEquals(LlmResponse.Text("""{"topics":[]}"""), response)
+        assertEquals("""{"topics":[]}""", response)
         assertEquals("codex-test", executor.command.first())
         assertContains(executor.command, "--ephemeral")
         assertContains(executor.command, "read-only")
@@ -50,14 +47,14 @@ class CodexCliBackendTest {
 
     @Test
     fun `reports codex process failures`() {
-        val backend = CodexCliBackend(
+        val client = CodexCliClient(
             processExecutor = RecordingExecutor { _, _ ->
                 CodexProcessResult(exitCode = 7, stderr = "authentication required")
             },
         )
 
         val error = assertFailsWith<IllegalStateException> {
-            runBlocking { backend.complete("system", emptyList(), outputSchema = "{}") }
+            runBlocking { client.complete("system", "message", outputSchema = "{}") }
         }
 
         assertContains(error.message.orEmpty(), "code 7")
@@ -66,7 +63,7 @@ class CodexCliBackendTest {
 
     @Test
     fun `reports codex process timeout`() {
-        val backend = CodexCliBackend(
+        val client = CodexCliClient(
             timeoutMillis = 1234,
             processExecutor = RecordingExecutor { _, _ ->
                 CodexProcessResult(exitCode = -1, stderr = "", timedOut = true)
@@ -74,7 +71,7 @@ class CodexCliBackendTest {
         )
 
         val error = assertFailsWith<IllegalStateException> {
-            runBlocking { backend.complete("system", emptyList(), outputSchema = "{}") }
+            runBlocking { client.complete("system", "message", outputSchema = "{}") }
         }
 
         assertContains(error.message.orEmpty(), "timed out after 1234ms")

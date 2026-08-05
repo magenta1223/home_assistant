@@ -1,11 +1,7 @@
-package com.homeassistant.nlp.analysis
+package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.core.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
-import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse
-import com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisOutputContract
-import com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse
-import com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -111,15 +107,15 @@ class LlmTopicOutputContractTest {
     @Test
     fun `dto names come from class names without overrides`() {
         assertEquals(
-            "com.homeassistant.nlp.topicanalysis.impl.TopicAnalysisLlmResponse",
+            "com.homeassistant.adapter.outbound.codex.TopicAnalysisLlmResponse",
             TopicAnalysisLlmResponse.serializer().descriptor.serialName,
         )
         assertEquals(
-            "com.homeassistant.nlp.topicanalysis.impl.TopicLlmResponse",
+            "com.homeassistant.adapter.outbound.codex.TopicLlmResponse",
             TopicLlmResponse.serializer().descriptor.serialName,
         )
         assertEquals(
-            "com.homeassistant.nlp.topicanalysis.impl.TopicClaimLlmResponse",
+            "com.homeassistant.adapter.outbound.codex.TopicClaimLlmResponse",
             TopicClaimLlmResponse.serializer().descriptor.serialName,
         )
     }

@@ -3,6 +3,7 @@ package com.homeassistant.app
 import com.homeassistant.app.slack.SlackConfig
 import com.homeassistant.app.slack.SlackRuntime
 import com.homeassistant.app.slack.SlackRuntimeFactory
+import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.application.topicanalysis.TopicAnalysisUseCase
 import com.homeassistant.core.constants.AppConfig
@@ -13,9 +14,7 @@ import com.homeassistant.domain.memory.PayloadVectorStoreFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerFactory
 import com.homeassistant.domain.topicanswer.TopicAnswerUseCase
 import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexFactory
-import com.homeassistant.nlp.backend.LmBackendFactory
 import com.homeassistant.nlp.embedding.EmbeddingServiceFactory
-import com.homeassistant.nlp.topicanalysis.api.TopicExtractorFactory
 import com.homeassistant.repository.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
@@ -42,7 +41,6 @@ private class DefaultApplicationServices(
 object ApplicationServicesFactory {
     fun create(dbPath: String): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
-        val llmBackend = LmBackendFactory.create()
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val embeddingBaseUrl = Env[AppConfig.ENV_VAR_OLLAMA_BASE_URL]
@@ -61,7 +59,7 @@ object ApplicationServicesFactory {
         val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
             ?: HouseholdAccessPolicies.denyAll()
         val topicAnalysis = TopicAnalysisFactory.kakao(
-            topicExtractor = TopicExtractorFactory.create(llmBackend),
+            topicExtractor = CodexTopicExtractorFactory.create(),
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,

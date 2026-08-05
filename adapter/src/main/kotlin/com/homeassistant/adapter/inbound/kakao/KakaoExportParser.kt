@@ -1,16 +1,19 @@
-package com.homeassistant.domain.kakao
+package com.homeassistant.adapter.inbound.kakao
+
+import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
+import com.homeassistant.domain.kakao.ParsedKakaoMessage
 
 import java.security.MessageDigest
 
 /** Parses KakaoTalk text exports into message records while preserving multiline payloads. */
-object KakaoMessageParser {
+object KakaoExportParser : SourceTextParser {
     private val bracketHeader = Regex("^\\[(.+)] \\[(오전|오후) (\\d{1,2}:\\d{2})] ?(.*)$")
     private val exportedHeader = Regex("^(\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}), (.+?) : ?(.*)$")
     private val dottedExportedHeader = Regex("^(\\d{4}\\.\\s*\\d{1,2}\\.\\s*\\d{1,2}\\.\\s*(?:오전|오후)\\s*\\d{1,2}:\\d{2}),\\s*(.+?) : ?(.*)$")
     private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
     private val dottedDateSeparator = Regex("^\\d{4}\\.\\s*\\d{1,2}\\.\\s*\\d{1,2}\\.\\s*(?:오전|오후)\\s*\\d{1,2}:\\d{2}$")
 
-    fun parse(sourceName: String, text: String): List<ParsedKakaoMessage> {
+    override fun parse(sourceName: String, text: String): List<ParsedKakaoMessage> {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
         lines.forEachIndexed { index, rawLine ->

@@ -1,9 +1,9 @@
-package com.homeassistant.domain.kakao
+package com.homeassistant.adapter.inbound.kakao
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class KakaoMessageParserTest {
+class KakaoExportParserTest {
     @Test
     fun `parser reads exported date sender lines and skips date separators`() {
         val text = """
@@ -20,7 +20,7 @@ class KakaoMessageParserTest {
             2026년 3월 16일 오전 7:20, 홍승민 : 가는즁
         """.trimIndent()
 
-        val messages = KakaoMessageParser.parse("home-second-brain-test.txt", text)
+        val messages = KakaoExportParser.parse("home-second-brain-test.txt", text)
 
         assertEquals(3, messages.size)
         assertEquals("동훈", messages[0].sender)
@@ -45,7 +45,7 @@ class KakaoMessageParserTest {
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
         """.trimIndent()
 
-        val messages = KakaoMessageParser.parse("2026-06-07.txt", text)
+        val messages = KakaoExportParser.parse("2026-06-07.txt", text)
 
         assertEquals(3, messages.size)
         assertEquals("홍승민", messages[1].sender)

@@ -1,4 +1,4 @@
-package com.homeassistant.domain.memory
+package com.homeassistant.adapter.inbound.tool
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
@@ -9,6 +9,7 @@ import com.homeassistant.domain.memory.MemoryCandidateRow
 import com.homeassistant.domain.memory.MemoryRow
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.domain.memory.*
 import kotlin.test.*
 
 class MemoryToolsTest {

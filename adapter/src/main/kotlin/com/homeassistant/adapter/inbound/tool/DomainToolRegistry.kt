@@ -1,10 +1,9 @@
-package com.homeassistant.domain
+package com.homeassistant.adapter.inbound.tool
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.tools.*
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.MemoryStore
-import com.homeassistant.domain.memory.MemoryTools
 import com.homeassistant.domain.memory.VectorStore
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 

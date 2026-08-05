@@ -3,6 +3,7 @@ package com.homeassistant.app
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
+import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
@@ -60,6 +61,7 @@ object ApplicationServicesFactory {
             ?: HouseholdAccessPolicies.denyAll()
         val topicAnalysis = TopicAnalysisFactory.kakao(
             topicExtractor = CodexTopicExtractorFactory.create(),
+            sourceTextParser = KakaoExportParser,
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,

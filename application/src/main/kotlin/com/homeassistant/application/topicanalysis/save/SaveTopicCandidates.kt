@@ -5,9 +5,9 @@ import com.homeassistant.core.identity.HouseholdAccessDeniedException
 import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.core.identity.HouseholdAccessScope
 import com.homeassistant.core.identity.UserId
+import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.kakao.KakaoImporter
-import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicCandidate
@@ -15,6 +15,7 @@ import com.homeassistant.domain.topicanswer.TopicClaimSearchIndex
 
 internal class SaveTopicCandidates(
     private val importService: KakaoImporter,
+    private val sourceTextParser: SourceTextParser,
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
     topicClaimSearchIndex: TopicClaimSearchIndex,
@@ -56,8 +57,8 @@ internal class SaveTopicCandidates(
     ): TopicAnalysisSaveResult {
         if (topics.isEmpty()) return TopicAnalysisSaveResult(previewId, emptyList())
 
-        val parsed = KakaoMessageParser.parse(sourceFileName, text)
-        val imported = importService.import(sourceFileName, text)
+        val parsed = sourceTextParser.parse(sourceFileName, text)
+        val imported = importService.import(sourceFileName, parsed)
         val refToStoredId = parsed.mapIndexed { index, message ->
             index + 1 to imported.messages.first { it.fingerprint == message.fingerprint }.id
         }.toMap()

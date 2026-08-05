@@ -1,4 +1,4 @@
-package com.homeassistant.domain
+package com.homeassistant.adapter.inbound.tool
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.CandidateStatus
@@ -21,7 +21,7 @@ class DomainToolRegistryTest {
     fun setup() {
         registry = DomainToolsFactory.create(
             FakeMemoryStore(),
-            DeterministicEmbeddingService("test-model"),
+            DeterministicEmbeddingService(),
             RecordingVectorStore(),
             IndexingOutboxes.noOp(),
         )
@@ -67,6 +67,10 @@ class DomainToolRegistryTest {
     private class RecordingVectorStore : VectorStore {
         override fun upsert(point: VectorPoint) = Unit
         override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> = emptyList()
+    }
+
+    private class DeterministicEmbeddingService : EmbeddingService {
+        override fun embed(text: String): List<Float> = listOf(1.0f)
     }
 
     private class FakeMemoryStore : MemoryStore {

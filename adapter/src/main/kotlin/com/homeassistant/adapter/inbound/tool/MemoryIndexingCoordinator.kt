@@ -1,7 +1,8 @@
-package com.homeassistant.domain.memory
+package com.homeassistant.adapter.inbound.tool
 
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.domain.memory.*
 import org.slf4j.LoggerFactory
 
 internal interface MemoryIndexingCoordinator {

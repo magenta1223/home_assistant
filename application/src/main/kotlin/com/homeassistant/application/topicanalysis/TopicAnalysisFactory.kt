@@ -2,6 +2,7 @@ package com.homeassistant.application.topicanalysis
 
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
+import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
 import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
 import com.homeassistant.core.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.indexing.IndexingOutboxStore
@@ -14,6 +15,7 @@ import com.homeassistant.domain.topicanswer.TopicClaimSearchIndexes
 object TopicAnalysisFactory {
     fun kakao(
         topicExtractor: TopicExtractor,
+        sourceTextParser: SourceTextParser,
         importer: KakaoImporter,
         topicStore: TopicAnalysisStore,
         previewStore: TopicAnalysisPreviewStore,
@@ -24,12 +26,14 @@ object TopicAnalysisFactory {
         DefaultTopicAnalysisUseCase(
             analyzeSource = AnalyzeSource(
                 topicExtractor = topicExtractor,
+                sourceTextParser = sourceTextParser,
                 importService = importer,
                 previewRepository = previewStore,
                 accessPolicy = accessPolicy,
             ),
             saveTopicCandidates = SaveTopicCandidates(
                 importService = importer,
+                sourceTextParser = sourceTextParser,
                 topicRepository = topicStore,
                 previewRepository = previewStore,
                 topicClaimSearchIndex = searchIndex,

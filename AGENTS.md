@@ -67,7 +67,7 @@ core/       - shared domain types, tool schemas, and constants
 domain/     - domain models, ports, and business/application policies
 application/ - target home for vertically sliced use cases and their ports
 adapter/     - target home for inbound and outbound technology adapters
-app/        - Ktor server wiring and HTTP routes
+app/        - composition root and Ktor server startup
 ```
 
 The codebase is migrating toward `app -> adapter -> application -> domain`. During the migration,
@@ -92,17 +92,19 @@ Pure abstractions and shared types.
 ### adapter
 
 - `inbound/http/` - Ktor routes and HTTP request/response DTO mapping.
+- `inbound/kakao/` - Kakao export parsing at the source-format boundary.
 - `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, and Slack-facing workflow.
+- `inbound/tool/` - memory tool schemas, dispatch, and tool-facing workflow.
 - `outbound/codex/` - Codex CLI client, prompt contract, and `TopicExtractor` implementation.
 - `outbound/embedding/ollama/` - local Ollama text embedding implementation.
+- `outbound/persistence/` - SQLite/Exposed repositories and schema implementations.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.
 
 ### domain
 
-- `kakao/` - Kakao export models, parsing, import policy, and persistence ports.
+- `kakao/` - Kakao source models, import policy, and persistence ports.
 - `topicanalysis/` - topic domain models and persistence ports.
-- `memory/` - memory domain models, tools, embeddings, and vector-store ports.
-- `DomainToolRegistry` - single registration point for domain tools.
+- `memory/` - memory domain models plus embedding and vector-store ports.
 
 ### app
 
@@ -111,7 +113,7 @@ Ktor + Netty server. Current routes:
 - `GET /health` -> `{"status":"ok"}`
 - `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text content and returns pending topic candidates.
 
-`Application.kt` wires the database, selected LLM backend, Kakao import service, topic analysis service, and routes.
+`Application.kt` wires repositories, Codex topic extraction, Kakao parsing/import, topic analysis, Slack, and HTTP routes.
 
 ## Coding Principles
 

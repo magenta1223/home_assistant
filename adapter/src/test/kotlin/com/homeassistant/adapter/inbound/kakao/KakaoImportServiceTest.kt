@@ -1,6 +1,6 @@
-package com.homeassistant.domain.kakao
+package com.homeassistant.adapter.inbound.kakao
 
-import com.homeassistant.domain.kakao.KakaoMessage
+import com.homeassistant.domain.kakao.*
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -8,7 +8,7 @@ class KakaoImportServiceTest {
     @Test
     fun `find new messages removes duplicate fingerprints within the request`() {
         val service = KakaoImporterFactory.create(FakeKakaoMessageStore())
-        val parsed = KakaoMessageParser.parse(
+        val parsed = KakaoExportParser.parse(
             "duplicate.txt",
             """
             [동훈] [오후 4:49] 같은 메시지
@@ -28,8 +28,9 @@ class KakaoImportServiceTest {
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
             """.trimIndent()
 
-        val result = service.import("2026-06-07.txt", text)
-        val repeated = service.import("2026-06-07.txt", text)
+        val messages = KakaoExportParser.parse("2026-06-07.txt", text)
+        val result = service.import("2026-06-07.txt", messages)
+        val repeated = service.import("2026-06-07.txt", messages)
 
         assertEquals(2, result.importedMessageCount)
         assertEquals(2, result.messages.size)

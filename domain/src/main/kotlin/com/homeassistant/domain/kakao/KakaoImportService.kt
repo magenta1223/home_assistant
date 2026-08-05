@@ -3,7 +3,7 @@ package com.homeassistant.domain.kakao
 /** Imports a KakaoTalk export file into the Kakao message store. */
 interface KakaoImporter {
     fun findNewMessages(messages: List<ParsedKakaoMessage>): List<ParsedKakaoMessage>
-    fun import(sourceFileName: String, text: String): KakaoImportResult
+    fun import(sourceFileName: String, messages: List<ParsedKakaoMessage>): KakaoImportResult
 }
 
 internal class DefaultKakaoImporter(
@@ -18,9 +18,8 @@ internal class DefaultKakaoImporter(
             .distinctBy { it.fingerprint }
     }
 
-    override fun import(sourceFileName: String, text: String): KakaoImportResult {
-        val parsed = KakaoMessageParser.parse(sourceFileName, text)
-        val imported = repository.importMessages(parsed)
+    override fun import(sourceFileName: String, messages: List<ParsedKakaoMessage>): KakaoImportResult {
+        val imported = repository.importMessages(messages)
         val messages = repository.listMessages(sourceFileName)
         return KakaoImportResult(imported.size, messages)
     }

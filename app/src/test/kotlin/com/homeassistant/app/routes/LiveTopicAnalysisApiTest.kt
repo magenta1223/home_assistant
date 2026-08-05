@@ -1,6 +1,7 @@
 package com.homeassistant.app.routes
 
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
+import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.core.identity.FamilyId
 import com.homeassistant.core.identity.HouseholdAccessPolicies
@@ -43,6 +44,7 @@ class LiveTopicAnalysisApiTest {
         val repositories = RepositoryFactory.create(databasePath.toString())
         val topicAnalysis = TopicAnalysisFactory.kakao(
             topicExtractor = CodexTopicExtractorFactory.create(),
+            sourceTextParser = KakaoExportParser,
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,

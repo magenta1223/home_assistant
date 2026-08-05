@@ -1,5 +1,6 @@
-package com.homeassistant.application.topicanalysis
+package com.homeassistant.adapter.inbound.kakao
 
+import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
@@ -38,11 +39,12 @@ class KakaoMessageTopicAnalysisServiceTest {
     @Test
     fun `analyze skips llm and preview when every message fingerprint already exists`() = runBlocking {
         val text = kakaoText()
-        val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
+        val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
         val previewStore = RecordingPreviewStore()
         val service = TopicAnalysisFactory.kakao(
             topicExtractor = extractor,
+            sourceTextParser = KakaoExportParser,
             importer = KakaoImporterFactory.create(
                 FakeKakaoMessageStore(parsed.mapTo(mutableSetOf()) { it.fingerprint }),
             ),

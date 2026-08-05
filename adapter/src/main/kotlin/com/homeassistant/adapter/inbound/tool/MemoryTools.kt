@@ -1,4 +1,4 @@
-package com.homeassistant.domain.memory
+package com.homeassistant.adapter.inbound.tool
 
 import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.memory.MemoryType
@@ -6,6 +6,7 @@ import com.homeassistant.core.tools.*
 import com.homeassistant.core.utils.JsonSerializer
 import com.homeassistant.core.utils.JsonSerializer.decodeFromString
 import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.domain.memory.*
 import kotlinx.serialization.Serializable
 
 internal class MemoryTools(

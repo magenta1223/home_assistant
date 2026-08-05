@@ -8,7 +8,6 @@ import com.homeassistant.core.identity.UserId
 import com.homeassistant.core.source.SourceDocument
 import com.homeassistant.core.source.SourceRecord
 import com.homeassistant.domain.kakao.KakaoImporter
-import com.homeassistant.domain.kakao.KakaoMessageParser
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
@@ -16,6 +15,7 @@ import com.homeassistant.domain.topicanalysis.TopicDraft
 
 internal class AnalyzeSource(
     private val topicExtractor: TopicExtractor,
+    private val sourceTextParser: SourceTextParser,
     private val importService: KakaoImporter,
     private val previewRepository: TopicAnalysisPreviewStore,
     private val accessPolicy: HouseholdAccessPolicy,
@@ -23,7 +23,7 @@ internal class AnalyzeSource(
     suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
         val scope = request.scope()
         requireAuthorized(scope)
-        val messages = KakaoMessageParser.parse(request.sourceName, request.text)
+        val messages = sourceTextParser.parse(request.sourceName, request.text)
         val newFingerprints = importService.findNewMessages(messages)
             .mapTo(mutableSetOf()) { it.fingerprint }
         if (messages.isNotEmpty() && newFingerprints.isEmpty()) {

@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.kakao
 
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.domain.kakao.KakaoMessageParser
+import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.outbound.persistence.db.tables.KakaoImportedMessageTable
 import com.homeassistant.adapter.outbound.persistence.repo.kakao.KakaoMessageRepository
 import org.jetbrains.exposed.sql.Database
@@ -36,15 +36,16 @@ class KakaoMessageRepositoryTest {
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
             """.trimIndent()
 
-        val result = service.import("2026-06-07.txt", text)
-        val repeated = service.import("2026-06-07.txt", text)
+        val messages = KakaoExportParser.parse("2026-06-07.txt", text)
+        val result = service.import("2026-06-07.txt", messages)
+        val repeated = service.import("2026-06-07.txt", messages)
 
         assertEquals(2, result.importedMessageCount)
         assertEquals(2, result.messages.size)
         assertEquals(0, repeated.importedMessageCount)
         assertEquals(
             emptyList(),
-            service.findNewMessages(KakaoMessageParser.parse("2026-06-07.txt", text)),
+            service.findNewMessages(messages),
         )
     }
 }

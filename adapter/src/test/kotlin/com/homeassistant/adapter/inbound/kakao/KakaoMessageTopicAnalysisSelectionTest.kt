@@ -1,5 +1,6 @@
-package com.homeassistant.application.topicanalysis
+package com.homeassistant.adapter.inbound.kakao
 
+import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.indexing.IndexTargetType
@@ -14,11 +15,12 @@ class KakaoMessageTopicAnalysisSelectionTest {
     @Test
     fun `analyze sends only new messages to llm while preserving original evidence refs`() = runBlocking {
         val text = kakaoText()
-        val parsed = com.homeassistant.domain.kakao.KakaoMessageParser.parse("family-kakao.txt", text)
+        val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
         val previewStore = RecordingPreviewStore()
         val service = TopicAnalysisFactory.kakao(
             topicExtractor = extractor,
+            sourceTextParser = KakaoExportParser,
             importer = KakaoImporterFactory.create(FakeKakaoMessageStore(setOf(parsed.first().fingerprint))),
             topicStore = FakeTopicStore(),
             previewStore = previewStore,
@@ -73,6 +75,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
         val outbox = FakeIndexingOutboxStore()
         val service = TopicAnalysisFactory.kakao(
             UnusedTopicExtractor,
+            KakaoExportParser,
             KakaoImporterFactory.create(FakeKakaoMessageStore()),
             FakeTopicStore(),
             FakePreviewStore(listOf(topic("후보", 1))),
@@ -94,6 +97,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
         index: RecordingTopicClaimSearchIndex = RecordingTopicClaimSearchIndex(),
     ) = TopicAnalysisFactory.kakao(
         UnusedTopicExtractor,
+        KakaoExportParser,
         KakaoImporterFactory.create(kakaoStore),
         topicStore,
         previewStore,

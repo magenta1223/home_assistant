@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.kakao
 
 import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
-import com.homeassistant.domain.kakao.ParsedKakaoMessage
+import com.homeassistant.domain.source.SourceRecordDraft
 
 import java.security.MessageDigest
 
@@ -13,19 +13,18 @@ object KakaoExportParser : SourceTextParser {
     private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
     private val dottedDateSeparator = Regex("^\\d{4}\\.\\s*\\d{1,2}\\.\\s*\\d{1,2}\\.\\s*(?:오전|오후)\\s*\\d{1,2}:\\d{2}$")
 
-    override fun parse(sourceName: String, text: String): List<ParsedKakaoMessage> {
+    override fun parse(sourceName: String, text: String): List<SourceRecordDraft> {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
-        lines.forEachIndexed { index, rawLine ->
-            val lineNumber = index + 1
+        lines.forEach { rawLine ->
             val line = rawLine.trimStart('\uFEFF')
             val bracketMatch = bracketHeader.matchEntire(line)
             val exportedMatch = exportedHeader.matchEntire(line)
             val dottedExportedMatch = dottedExportedHeader.matchEntire(line)
             if (bracketMatch == null && exportedMatch == null && dottedExportedMatch == null) {
-                if (exportedDateSeparator.matches(line) || dottedDateSeparator.matches(line)) return@forEachIndexed
-                if (messages.isNotEmpty()) messages.last().append(rawLine, lineNumber)
-                return@forEachIndexed
+                if (exportedDateSeparator.matches(line) || dottedDateSeparator.matches(line)) return@forEach
+                if (messages.isNotEmpty()) messages.last().append(rawLine)
+                return@forEach
             }
 
             val sender = bracketMatch?.groupValues?.get(1)
@@ -38,7 +37,7 @@ object KakaoExportParser : SourceTextParser {
             val content = bracketMatch?.groupValues?.get(4)
                 ?: exportedMatch?.groupValues?.get(3)
                 ?: dottedExportedMatch!!.groupValues[3]
-            messages += MessageBuilder(sourceName, sender, displayTime, content, lineNumber)
+            messages += MessageBuilder(sourceName, sender, displayTime, content)
         }
 
         return messages.map { it.build() }
@@ -49,27 +48,21 @@ object KakaoExportParser : SourceTextParser {
         private val sender: String,
         private val displayTime: String,
         initialContent: String,
-        private val lineStart: Int,
     ) {
         private val contentLines = mutableListOf(initialContent)
-        private var lineEnd = lineStart
 
-        fun append(line: String, lineNumber: Int) {
+        fun append(line: String) {
             contentLines += line
-            lineEnd = lineNumber
         }
 
-        fun build(): ParsedKakaoMessage {
+        fun build(): SourceRecordDraft {
             val content = contentLines.joinToString("\n").trimEnd()
             val fingerprintText = listOf(sourceFileName, sender, displayTime, content).joinToString("\u001F")
-            return ParsedKakaoMessage(
-                sourceFileName = sourceFileName,
-                sender = sender,
-                displayTime = displayTime,
-                text = content,
-                lineStart = lineStart,
-                lineEnd = lineEnd,
-                fingerprint = sha256(fingerprintText),
+            return SourceRecordDraft(
+                sourceType = "kakao",
+                sourceName = sourceFileName,
+                deduplicationKey = sha256(fingerprintText),
+                content = "$sender | $displayTime | $content",
             )
         }
     }

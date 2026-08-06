@@ -10,7 +10,7 @@ internal fun singleRecordDocument(): SourceDocument =
     SourceDocument(
         sourceType = "kakao",
         sourceName = "2026-06-07.txt",
-        records = listOf(SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해")),
+        records = listOf(sourceRecord(1, "동훈 | 오후 4:49 | 따랑해")),
     )
 
 internal fun documentWithRecords(count: Int): SourceDocument =
@@ -18,8 +18,17 @@ internal fun documentWithRecords(count: Int): SourceDocument =
         sourceType = "kakao",
         sourceName = "2026-06-07.txt",
         records = (1..count).map { index ->
-            SourceRecord("r$index", index, "동훈 | 오후 4:49 | 기록 $index")
+            sourceRecord(index, "동훈 | 오후 4:49 | 기록 $index")
         },
+    )
+
+internal fun sourceRecord(id: Int, content: String): SourceRecord =
+    SourceRecord(
+        id = id,
+        sourceType = "kakao",
+        sourceName = "2026-06-07.txt",
+        deduplicationKey = "key-$id",
+        content = content,
     )
 
 internal fun topicJson(

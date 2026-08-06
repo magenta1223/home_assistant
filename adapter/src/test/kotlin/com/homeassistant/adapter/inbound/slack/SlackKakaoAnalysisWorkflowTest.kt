@@ -6,7 +6,7 @@ import com.homeassistant.domain.slackconversation.SlackPrincipal
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.ProposedMemory
 import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
@@ -157,7 +157,7 @@ private object FailingAnalyzer : AnalyzeSourceUseCase {
 
 private object DuplicateAnalyzer : AnalyzeSourceUseCase {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
-        throw DuplicateKakaoMessagesException(request.sourceName, 1)
+        throw DuplicateSourceRecordsException(request.sourceName, 1)
 }
 
 private fun topic() =

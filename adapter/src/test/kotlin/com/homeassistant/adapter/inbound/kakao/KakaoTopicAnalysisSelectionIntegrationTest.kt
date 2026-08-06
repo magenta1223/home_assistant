@@ -3,7 +3,6 @@ package com.homeassistant.adapter.inbound.kakao
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxes
 import kotlinx.coroutines.runBlocking
@@ -12,9 +11,9 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-class KakaoMessageTopicAnalysisSelectionTest {
+class KakaoTopicAnalysisSelectionIntegrationTest {
     @Test
-    fun `analyze sends only new messages to llm while preserving original evidence refs`() = runBlocking {
+    fun `analyze stores and sends only new source records to llm`() = runBlocking {
         val text = kakaoText()
         val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
@@ -22,7 +21,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
         val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
-            importService = KakaoImporterFactory.create(FakeKakaoMessageStore(setOf(parsed.first().fingerprint))),
+            sourceRecords = FakeSourceRecordStore(setOf(parsed.first().deduplicationKey)),
             previewRepository = previewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -31,6 +30,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
 
         assertEquals(1, result.importedRecordCount)
         assertEquals(1, extractor.calls)
+        assertEquals(101, extractor.document!!.records.single().id)
         assertContains(extractor.document!!.records.single().content, "승민 | 2026년 6월 15일 오전 6:44 | 둘째 메시지")
         assertFalse(extractor.document!!.records.single().content.contains("첫 메시지"))
         assertEquals(1, previewStore.createCalls)
@@ -38,11 +38,9 @@ class KakaoMessageTopicAnalysisSelectionTest {
 
     @Test
     fun `save selected analysis persists only selected preview topics`() = runBlocking {
-        val kakaoStore = FakeKakaoMessageStore()
         val topicStore = FakeTopicStore()
         val index = RecordingMemorySearchIndex()
         val service = service(
-            kakaoStore,
             topicStore,
             FakePreviewStore(listOf(topic("첫 후보", 1), topic("둘째 후보", 2), topic("셋째 후보", 3))),
             index,
@@ -56,28 +54,22 @@ class KakaoMessageTopicAnalysisSelectionTest {
             listOf("첫 후보", "셋째 후보"),
             index.indexedDocuments.map { it.topicTitle },
         )
-        assertEquals(1, kakaoStore.importCalls)
     }
 
     @Test
-    fun `save selected analysis with empty selection does not import kakao messages`() = runBlocking {
-        val kakaoStore = FakeKakaoMessageStore()
+    fun `save selected analysis with empty selection creates no topics`() = runBlocking {
         val result = service(
-            kakaoStore,
             FakeTopicStore(),
             FakePreviewStore(listOf(topic("첫 후보", 1))),
         ).saveSelected(selection(emptySet()))
 
         assertEquals(emptyList(), result.topics)
-        assertEquals(0, kakaoStore.importCalls)
     }
 
     @Test
     fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
         val outbox = FakeIndexingOutboxStore()
         val service = SaveAnalyzedTopics(
-            importService = KakaoImporterFactory.create(FakeKakaoMessageStore()),
-            sourceTextParser = KakaoExportParser,
             topicRepository = FakeTopicStore(),
             previewRepository = FakePreviewStore(listOf(topic("후보", 1))),
             memorySearchIndex = FailingMemorySearchIndex,
@@ -92,13 +84,10 @@ class KakaoMessageTopicAnalysisSelectionTest {
     }
 
     private fun service(
-        kakaoStore: FakeKakaoMessageStore,
         topicStore: FakeTopicStore,
         previewStore: FakePreviewStore,
         index: RecordingMemorySearchIndex = RecordingMemorySearchIndex(),
     ) = SaveAnalyzedTopics(
-        importService = KakaoImporterFactory.create(kakaoStore),
-        sourceTextParser = KakaoExportParser,
         topicRepository = topicStore,
         previewRepository = previewStore,
         memorySearchIndex = index,

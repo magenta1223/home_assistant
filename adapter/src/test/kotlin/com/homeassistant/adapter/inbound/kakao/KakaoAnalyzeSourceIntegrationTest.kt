@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.kakao
 
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
-import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
@@ -11,18 +11,17 @@ import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
-import com.homeassistant.domain.kakao.KakaoAnalysisPreview
-import com.homeassistant.domain.kakao.KakaoMessage
+import com.homeassistant.domain.source.SourceRecord
+import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.ProposedMemory
 import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.domain.kakao.KakaoMessageStore
-import com.homeassistant.domain.kakao.ParsedKakaoMessage
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.indexing.IndexingOutboxes
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
+import com.homeassistant.domain.topicanalysis.TopicAnalysisPreview
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.application.memory.answer.MemorySearchDocument
 import com.homeassistant.application.memory.answer.MemorySearchHit
@@ -44,14 +43,14 @@ class KakaoAnalyzeSourceIntegrationTest {
         val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
-            importService = KakaoImporterFactory.create(
-                FakeKakaoMessageStore(parsed.mapTo(mutableSetOf()) { it.fingerprint }),
+            sourceRecords = FakeSourceRecordStore(
+                parsed.mapTo(mutableSetOf()) { it.deduplicationKey },
             ),
             previewRepository = previewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val error = assertFailsWith<DuplicateKakaoMessagesException> {
+        val error = assertFailsWith<DuplicateSourceRecordsException> {
             useCase.execute(request(text))
         }
 
@@ -69,13 +68,13 @@ internal class FakePreviewStore(
         sourceFileName: String,
         text: String,
         topics: List<ProposedTopic>,
-    ): KakaoAnalysisPreview =
+    ): TopicAnalysisPreview =
         error("not used")
 
-    override fun findPreview(previewId: String): KakaoAnalysisPreview? =
-        KakaoAnalysisPreview(
+    override fun findPreview(previewId: String): TopicAnalysisPreview? =
+        TopicAnalysisPreview(
             previewId = previewId,
-            sourceFileName = "family-kakao.txt",
+            sourceName = "family-kakao.txt",
             text = """
                 2026년 6월 15일 오전 6:43
                 2026년 6월 15일 오전 6:43, 동훈 : 첫 메시지
@@ -171,35 +170,30 @@ internal class FakeIndexingOutboxStore : IndexingOutboxStore {
     }
 }
 
-internal class FakeKakaoMessageStore(
-    private val existingFingerprints: Set<String> = emptySet(),
-) : KakaoMessageStore {
-    private var messages = emptyList<KakaoMessage>()
-    var importCalls = 0
+internal class FakeSourceRecordStore(
+    private val existingKeys: Set<String> = emptySet(),
+) : SourceRecordStore {
+    private val records = mutableListOf<SourceRecord>()
+    var saveCalls = 0
 
-    override fun findExistingFingerprints(fingerprints: Set<String>): Set<String> =
-        (existingFingerprints + messages.map { it.fingerprint })
-            .filterTo(mutableSetOf()) { it in fingerprints }
+    override fun findExistingDeduplicationKeys(sourceType: String, keys: Set<String>): Set<String> =
+        (existingKeys + records.map { it.deduplicationKey }).filterTo(mutableSetOf()) { it in keys }
 
-    override fun importMessages(messages: List<ParsedKakaoMessage>): List<KakaoMessage> {
-        importCalls += 1
-        this.messages = messages.mapIndexed { index, message ->
-            KakaoMessage(
+    override fun saveAll(records: List<SourceRecordDraft>): List<SourceRecord> {
+        saveCalls += 1
+        return records.mapIndexed { index, record ->
+            SourceRecord(
                 id = index + 101,
-                sourceFileName = message.sourceFileName,
-                sender = message.sender,
-                displayTime = message.displayTime,
-                text = message.text,
-                lineStart = message.lineStart,
-                lineEnd = message.lineEnd,
-                fingerprint = message.fingerprint,
-            )
+                sourceType = record.sourceType,
+                sourceName = record.sourceName,
+                deduplicationKey = record.deduplicationKey,
+                content = record.content,
+            ).also(this.records::add)
         }
-        return this.messages
     }
 
-    override fun listMessages(sourceFileName: String): List<KakaoMessage> =
-        messages
+    override fun findBySource(sourceType: String, sourceName: String): List<SourceRecord> =
+        records.filter { it.sourceType == sourceType && it.sourceName == sourceName }
 }
 
 internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
@@ -209,12 +203,12 @@ internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
         sourceFileName: String,
         text: String,
         topics: List<ProposedTopic>,
-    ): KakaoAnalysisPreview {
+    ): TopicAnalysisPreview {
         createCalls += 1
-        return KakaoAnalysisPreview("preview-1", sourceFileName, text, topics)
+        return TopicAnalysisPreview("preview-1", sourceFileName, text, topics)
     }
 
-    override fun findPreview(previewId: String): KakaoAnalysisPreview? = null
+    override fun findPreview(previewId: String): TopicAnalysisPreview? = null
 }
 
 internal class RecordingTopicExtractor : TopicExtractor {

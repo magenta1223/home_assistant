@@ -86,7 +86,7 @@ application-driven integrations under `outbound`.
 - `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
 - `outbound/codex/` - Codex topic extraction and conversation-turn implementations.
 - `outbound/embedding/ollama/` - local Ollama text embedding implementation.
-- `outbound/persistence/` - SQLite/Exposed repositories and schema implementations.
+- `outbound/persistence/` - SQLite/Exposed repositories for generic source records, topic analysis, memories, and Slack sessions.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.
 - `outbound/vector/memory/` - canonical-memory semantic index implementation.
 - `shared/config/` and `shared/json/` - runtime-only adapter/composition support; never domain APIs.
@@ -94,8 +94,7 @@ application-driven integrations under `outbound`.
 ### domain
 
 - `identity/` - single-household user identity and authorization policy. There is no family/subgroup scope.
-- `kakao/` - Kakao source models, import policy, and persistence ports.
-- `source/` - source-agnostic analysis documents and records.
+- `source/` - source-agnostic imported records, analysis documents, and persistence ports.
 - `topicanalysis/` - topic grouping/proposal models and persistence ports.
 - `memory/` - canonical memory, FAMILY/PRIVATE visibility policy, embedding, and vector-store ports. FAMILY is globally visible to authorized users; PRIVATE requires the requesting `userId` to match `createdByUserId`.
 

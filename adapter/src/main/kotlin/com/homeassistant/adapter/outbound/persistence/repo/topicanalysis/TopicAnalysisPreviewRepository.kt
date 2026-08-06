@@ -2,8 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.topicanalysis
 
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
-import com.homeassistant.domain.kakao.KakaoAnalysisPreview
 import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.TopicAnalysisPreview
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAnalysisPreviewTable
 import org.jetbrains.exposed.sql.Database
@@ -19,7 +19,7 @@ internal class TopicAnalysisPreviewRepository(private val db: Database) : TopicA
         sourceFileName: String,
         text: String,
         topics: List<ProposedTopic>,
-    ): KakaoAnalysisPreview = transaction(db) {
+    ): TopicAnalysisPreview = transaction(db) {
         val previewId = UUID.randomUUID().toString()
         TopicAnalysisPreviewTable.insert {
             it[TopicAnalysisPreviewTable.previewId] = previewId
@@ -28,20 +28,20 @@ internal class TopicAnalysisPreviewRepository(private val db: Database) : TopicA
             it[topicsJson] = topics.encodeToString()
             it[createdAt] = System.currentTimeMillis()
         }
-        KakaoAnalysisPreview(previewId, sourceFileName, text, topics)
+        TopicAnalysisPreview(previewId, sourceFileName, text, topics)
     }
 
-    override fun findPreview(previewId: String): KakaoAnalysisPreview? = transaction(db) {
+    override fun findPreview(previewId: String): TopicAnalysisPreview? = transaction(db) {
         TopicAnalysisPreviewTable.selectAll()
             .where { TopicAnalysisPreviewTable.previewId eq previewId }
             .singleOrNull()
             ?.toPreview()
     }
 
-    private fun ResultRow.toPreview(): KakaoAnalysisPreview =
-        KakaoAnalysisPreview(
+    private fun ResultRow.toPreview(): TopicAnalysisPreview =
+        TopicAnalysisPreview(
             previewId = this[TopicAnalysisPreviewTable.previewId],
-            sourceFileName = this[TopicAnalysisPreviewTable.sourceFileName],
+            sourceName = this[TopicAnalysisPreviewTable.sourceFileName],
             text = this[TopicAnalysisPreviewTable.text],
             topics = this[TopicAnalysisPreviewTable.topicsJson].decodeFromString(),
         )

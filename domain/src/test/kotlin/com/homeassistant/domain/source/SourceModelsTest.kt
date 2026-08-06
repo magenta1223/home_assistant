@@ -7,8 +7,8 @@ class SourceModelsTest {
     @Test
     fun `source document preserves ordered source records`() {
         val records = listOf(
-            SourceRecord(id = "r1", ref = 1, content = "first"),
-            SourceRecord(id = "r2", ref = 2, content = "second"),
+            sourceRecord(1, "first"),
+            sourceRecord(2, "second"),
         )
 
         val document = SourceDocument(
@@ -20,5 +20,15 @@ class SourceModelsTest {
         assertEquals("kakao", document.sourceType)
         assertEquals("family.txt", document.sourceName)
         assertEquals(records, document.records)
+        assertEquals("r1", document.records.first().promptId)
     }
+
+    private fun sourceRecord(id: Int, content: String) =
+        SourceRecord(
+            id = id,
+            sourceType = "kakao",
+            sourceName = "family.txt",
+            deduplicationKey = "key-$id",
+            content = content,
+        )
 }

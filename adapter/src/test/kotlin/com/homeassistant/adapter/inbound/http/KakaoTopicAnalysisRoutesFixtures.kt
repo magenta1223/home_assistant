@@ -6,7 +6,7 @@ import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.ProposedMemory
 import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
@@ -36,7 +36,7 @@ internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {
         text = request.text
         previewCalls += 1
         if (request.text == "duplicate") {
-            throw DuplicateKakaoMessagesException(request.sourceName, 1)
+            throw DuplicateSourceRecordsException(request.sourceName, 1)
         }
         return TopicAnalysisResult(
             previewId = "preview-1",

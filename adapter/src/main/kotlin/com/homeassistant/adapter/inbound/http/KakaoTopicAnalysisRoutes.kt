@@ -2,7 +2,7 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
-import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
@@ -49,7 +49,7 @@ internal fun Route.kakaoTopicAnalysisRoutes(
                     ),
                 ),
             )
-        } catch (_: DuplicateKakaoMessagesException) {
+        } catch (_: DuplicateSourceRecordsException) {
             call.respond(HttpStatusCode.Conflict, mapOf("error" to "all Kakao messages have already been analyzed"))
         } catch (_: HouseholdAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))

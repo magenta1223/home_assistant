@@ -20,7 +20,7 @@ data class TopicAnalysisResult(
     val topics: List<ProposedTopic>,
 )
 
-class DuplicateKakaoMessagesException(
+class DuplicateSourceRecordsException(
     val sourceName: String,
     val recordCount: Int,
-) : RuntimeException("All $recordCount Kakao messages already exist: $sourceName")
+) : RuntimeException("All $recordCount source records already exist: $sourceName")

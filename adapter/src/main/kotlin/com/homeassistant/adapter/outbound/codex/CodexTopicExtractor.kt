@@ -115,7 +115,7 @@ internal class CodexTopicExtractor(
 
     private fun parseEvidence(document: SourceDocument, evidenceRecordIds: List<String>): List<SourceRecord> =
         evidenceRecordIds.map { recordId ->
-            document.records.firstOrNull { it.id == recordId }
+            document.records.firstOrNull { it.promptId == recordId }
                 ?: throw TopicAnalysisException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
@@ -135,7 +135,7 @@ internal class CodexTopicExtractor(
         }
 
     private fun renderDocument(document: SourceDocument): String =
-        document.records.joinToString("\n") { "${it.id} | ${it.content}" }
+        document.records.joinToString("\n") { "${it.promptId} | ${it.content}" }
 
     private fun renderProposedTopics(topics: List<ValidatedTopic>): String {
         val payload = TopicAnalysisLlmResponse(
@@ -145,14 +145,14 @@ internal class CodexTopicExtractor(
                     summary = topic.summary,
                     memoryTypes = topic.memoryTypes,
                     categories = topic.categories,
-                    evidenceRecordIds = topic.evidence.map { it.id },
+                    evidenceRecordIds = topic.evidence.map { it.promptId },
                     memories = topic.memories.map { memory ->
                         MemoryLlmResponse(
                             text = memory.text,
                             subject = memory.subject,
                             memoryType = memory.memoryType,
                             certainty = memory.certainty,
-                            evidenceRecordIds = memory.evidence.map { it.id },
+                            evidenceRecordIds = memory.evidence.map { it.promptId },
                         )
                     },
                 )

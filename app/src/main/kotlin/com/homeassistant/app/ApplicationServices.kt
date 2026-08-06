@@ -18,7 +18,6 @@ import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCas
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.adapter.shared.config.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
-import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.adapter.outbound.vector.memory.MemorySearchIndexFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
@@ -65,19 +64,16 @@ object ApplicationServicesFactory {
         val slackConfig = SlackConfig.fromEnv()
         val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
             ?: HouseholdAccessPolicies.denyAll()
-        val kakaoImporter = KakaoImporterFactory.create(repositories.kakaoMessages)
         val analyzeSource = AnalyzeSource(
             topicExtractor = CodexTopicExtractorFactory.create(),
             sourceTextParser = KakaoExportParser,
-            importService = kakaoImporter,
-            previewRepository = repositories.kakaoAnalysisPreviews,
+            sourceRecords = repositories.sourceRecords,
+            previewRepository = repositories.topicAnalysisPreviews,
             accessPolicy = accessPolicy,
         )
         val saveAnalyzedTopics = SaveAnalyzedTopics(
-            importService = kakaoImporter,
-            sourceTextParser = KakaoExportParser,
             topicRepository = repositories.topicAnalysis,
-            previewRepository = repositories.kakaoAnalysisPreviews,
+            previewRepository = repositories.topicAnalysisPreviews,
             memorySearchIndex = memorySearchIndex,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,

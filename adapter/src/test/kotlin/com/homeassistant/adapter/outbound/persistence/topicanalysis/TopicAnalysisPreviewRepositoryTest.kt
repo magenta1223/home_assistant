@@ -43,7 +43,7 @@ class TopicAnalysisPreviewRepositoryTest {
         val loaded = repository.findPreview(stored.previewId)
 
         assertNotNull(loaded)
-        assertEquals("2026-06-07.txt", loaded.sourceFileName)
+        assertEquals("2026-06-07.txt", loaded.sourceName)
         assertEquals("[동훈] [오후 4:49] 따랑해", loaded.text)
         assertEquals("관계 표현", loaded.topics.single().title)
         assertEquals(listOf(1), loaded.topics.single().evidenceRefs)

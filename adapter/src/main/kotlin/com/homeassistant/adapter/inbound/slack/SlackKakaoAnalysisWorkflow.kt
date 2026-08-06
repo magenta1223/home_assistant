@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
-import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
+import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import org.slf4j.LoggerFactory
 
@@ -74,7 +74,7 @@ internal class SlackKakaoAnalysisWorkflow(
                 blocks = message["blocks"] as List<Map<String, Any>>,
                 threadTs = upload.messageTs,
             )
-        } catch (e: DuplicateKakaoMessagesException) {
+        } catch (e: DuplicateSourceRecordsException) {
             slackClient.postEphemeral(
                 channelId = upload.channelId,
                 userId = upload.principal.slackUserId,

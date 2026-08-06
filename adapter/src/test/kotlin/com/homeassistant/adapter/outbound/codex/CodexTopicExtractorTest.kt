@@ -45,9 +45,9 @@ class CodexTopicExtractorTest {
                 sourceType = "kakao",
                 sourceName = "2026-06-07.txt",
                 records = listOf(
-                    SourceRecord("r1", 1, "동훈 | 오후 4:49 | 따랑해"),
-                    SourceRecord("r2", 2, "홍승민 | 오후 5:38 | [네이버지도]\n카인드커피"),
-                    SourceRecord("r3", 3, "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
+                    sourceRecord(1, "동훈 | 오후 4:49 | 따랑해"),
+                    sourceRecord(2, "홍승민 | 오후 5:38 | [네이버지도]\n카인드커피"),
+                    sourceRecord(3, "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
                 ),
             ),
         )
@@ -62,14 +62,14 @@ class CodexTopicExtractorTest {
             result.topics.single().memoryTypes.toSet(),
         )
         assertEquals(setOf("location", "home"), result.topics.single().categories.toSet())
-        assertEquals(listOf(2, 3), result.topics.single().evidence.map { it.ref })
+        assertEquals(listOf(2, 3), result.topics.single().evidence.map { it.id })
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().memories.single().text)
         assertEquals(
             MemoryType.EVENT,
             result.topics.single().memories.single().memoryType,
         )
         assertEquals(MemoryCertainty.SAID, result.topics.single().memories.single().certainty)
-        assertEquals(listOf(2, 3), result.topics.single().memories.single().evidence.map { it.ref })
+        assertEquals(listOf(2, 3), result.topics.single().memories.single().evidence.map { it.id })
     }
 
     @Test
@@ -82,9 +82,9 @@ class CodexTopicExtractorTest {
                 sourceType = "kakao",
                 sourceName = "2026-06-07.txt",
                 records = listOf(
-                    SourceRecord("r1", 1, "병원 예약 내일이지?"),
-                    SourceRecord("r2", 2, "카페도 들르자"),
-                    SourceRecord("r3", 3, "병원 갈 때 아기수첩 챙길게"),
+                    sourceRecord(1, "병원 예약 내일이지?"),
+                    sourceRecord(2, "카페도 들르자"),
+                    sourceRecord(3, "병원 갈 때 아기수첩 챙길게"),
                 ),
             ),
         )
@@ -139,7 +139,7 @@ class CodexTopicExtractorTest {
         assertContains(backend.calls[2].messageContent, "r1")
         assertContains(backend.calls[2].messageContent, "r201")
         assertEquals(1, result.topics.size)
-        assertEquals(listOf(1, 201), result.topics.single().evidence.map { it.ref })
+        assertEquals(listOf(1, 201), result.topics.single().evidence.map { it.id })
     }
 
     @Test

@@ -15,7 +15,7 @@ internal object DatabaseFactory {
                 TopicCategoryTable,
                 MemoryTable,
                 MemoryEvidenceTable,
-                KakaoImportedMessageTable,
+                SourceRecordTable,
                 TopicAnalysisPreviewTable,
                 IndexingOutboxTable,
                 SlackCodexSessionTable,

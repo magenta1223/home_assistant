@@ -2,7 +2,6 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult

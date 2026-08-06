@@ -4,8 +4,7 @@ import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
-import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.kakao.KakaoImporter
+import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.ProposedMemory
 import com.homeassistant.domain.topicanalysis.ProposedTopic
@@ -18,34 +17,32 @@ interface AnalyzeSourceUseCase {
 class AnalyzeSource(
     private val topicExtractor: TopicExtractor,
     private val sourceTextParser: SourceTextParser,
-    private val importService: KakaoImporter,
+    private val sourceRecords: SourceRecordStore,
     private val previewRepository: TopicAnalysisPreviewStore,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : AnalyzeSourceUseCase {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
         val userId = UserId(request.userId)
         requireAuthorized(userId)
-        val messages = sourceTextParser.parse(request.sourceName, request.text)
-        val newFingerprints = importService.findNewMessages(messages)
-            .mapTo(mutableSetOf()) { it.fingerprint }
-        if (messages.isNotEmpty() && newFingerprints.isEmpty()) {
-            throw DuplicateKakaoMessagesException(request.sourceName, messages.size)
+        val parsedRecords = sourceTextParser.parse(request.sourceName, request.text)
+        require(parsedRecords.all { it.sourceType == request.sourceType && it.sourceName == request.sourceName }) {
+            "Source parser returned records for a different source"
         }
-        val includedFingerprints = mutableSetOf<String>()
+        val existingKeys = sourceRecords.findExistingDeduplicationKeys(
+            request.sourceType,
+            parsedRecords.mapTo(mutableSetOf()) { it.deduplicationKey },
+        )
+        val newRecords = parsedRecords
+            .filterNot { it.deduplicationKey in existingKeys }
+            .distinctBy { it.deduplicationKey }
+        if (parsedRecords.isNotEmpty() && newRecords.isEmpty()) {
+            throw DuplicateSourceRecordsException(request.sourceName, parsedRecords.size)
+        }
+        val storedRecords = sourceRecords.saveAll(newRecords)
         val document = SourceDocument(
-            sourceType = "kakao",
+            sourceType = request.sourceType,
             sourceName = request.sourceName,
-            records = messages.mapIndexedNotNull { index, message ->
-                if (message.fingerprint !in newFingerprints || !includedFingerprints.add(message.fingerprint)) {
-                    return@mapIndexedNotNull null
-                }
-                val recordNumber = index + 1
-                SourceRecord(
-                    id = "r$recordNumber",
-                    ref = recordNumber,
-                    content = "${message.sender} | ${message.displayTime} | ${message.text}",
-                )
-            },
+            records = storedRecords,
         )
         val topics = topicExtractor.analyze(document).topics.map { topic ->
             topic.toProposal(document, userId)
@@ -55,7 +52,7 @@ class AnalyzeSource(
             previewId = preview.previewId,
             sourceType = request.sourceType,
             sourceName = request.sourceName,
-            importedRecordCount = document.records.size,
+            importedRecordCount = storedRecords.size,
             topics = topics,
         )
     }
@@ -72,14 +69,14 @@ class AnalyzeSource(
             summary = summary,
             memoryTypes = memoryTypes,
             categories = categories,
-            evidenceRefs = evidence.map { it.ref },
+            evidenceRefs = evidence.map { it.id },
             memories = memories.map { memory ->
                 ProposedMemory(
                     text = memory.text,
                     subject = memory.subject,
                     memoryType = memory.memoryType,
                     certainty = memory.certainty,
-                    evidenceRefs = memory.evidence.map { it.ref },
+                    evidenceRefs = memory.evidence.map { it.id },
                 )
             },
         )

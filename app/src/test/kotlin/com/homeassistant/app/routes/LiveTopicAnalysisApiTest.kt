@@ -9,7 +9,6 @@ import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.application.memory.answer.MemorySearchIndexes
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
-import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -41,20 +40,17 @@ class LiveTopicAnalysisApiTest {
         databasePath.toFile().deleteOnExit()
 
         val repositories = RepositoryFactory.create(databasePath.toString())
-        val importer = KakaoImporterFactory.create(repositories.kakaoMessages)
         val accessPolicy = HouseholdAccessPolicies.fixed(listOf(UserId(USER_ID)))
         val analyzeSource = AnalyzeSource(
             topicExtractor = CodexTopicExtractorFactory.create(),
             sourceTextParser = KakaoExportParser,
-            importService = importer,
-            previewRepository = repositories.kakaoAnalysisPreviews,
+            sourceRecords = repositories.sourceRecords,
+            previewRepository = repositories.topicAnalysisPreviews,
             accessPolicy = accessPolicy,
         )
         val saveAnalyzedTopics = SaveAnalyzedTopics(
-            importService = importer,
-            sourceTextParser = KakaoExportParser,
             topicRepository = repositories.topicAnalysis,
-            previewRepository = repositories.kakaoAnalysisPreviews,
+            previewRepository = repositories.topicAnalysisPreviews,
             memorySearchIndex = MemorySearchIndexes.unavailable(),
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,

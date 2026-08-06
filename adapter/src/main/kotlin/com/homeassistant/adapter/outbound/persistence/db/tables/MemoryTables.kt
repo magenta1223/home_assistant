@@ -52,7 +52,7 @@ internal object MemoryTable : Table("memories") {
 
 internal object MemoryEvidenceTable : Table("memory_evidence") {
     val memoryId = integer("memory_id").references(MemoryTable.id)
-    val sourceRecordId = integer("source_record_id").references(KakaoImportedMessageTable.id)
+    val sourceRecordId = integer("source_record_id").references(SourceRecordTable.id)
     override val primaryKey = PrimaryKey(memoryId, sourceRecordId)
 
     init {

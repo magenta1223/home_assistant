@@ -1,14 +1,18 @@
 package com.homeassistant.domain.source
 
-/**
- * One analyzable source item with prompt id, source reference, and rendered content.
- *
- * @property id Prompt-local record id used for evidence references.
- * @property ref Stable source reference returned to callers and stored as evidence.
- * @property content Rendered source content sent to the topic analyzer.
- */
-data class SourceRecord(
-    val id: String,
-    val ref: Int,
+data class SourceRecordDraft(
+    val sourceType: String,
+    val sourceName: String,
+    val deduplicationKey: String,
     val content: String,
 )
+
+data class SourceRecord(
+    val id: Int,
+    val sourceType: String,
+    val sourceName: String,
+    val deduplicationKey: String,
+    val content: String,
+) {
+    val promptId: String get() = "r$id"
+}

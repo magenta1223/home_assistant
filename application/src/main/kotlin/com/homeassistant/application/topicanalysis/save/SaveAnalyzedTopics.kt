@@ -3,9 +3,7 @@ package com.homeassistant.application.topicanalysis.save
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
 import com.homeassistant.domain.indexing.IndexingOutboxStore
-import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.ProposedTopic
@@ -17,8 +15,6 @@ interface SaveAnalyzedTopicsUseCase {
 }
 
 class SaveAnalyzedTopics(
-    private val importService: KakaoImporter,
-    private val sourceTextParser: SourceTextParser,
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
     memorySearchIndex: MemorySearchIndex,
@@ -37,7 +33,7 @@ class SaveAnalyzedTopics(
         val preview = previewRepository.findPreview(request.previewId)
             ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
         requirePreviewOwner(preview.topics, userId)
-        return savePreviewTopics(request.previewId, preview.sourceFileName, preview.text, preview.topics)
+        return savePreviewTopics(request.previewId, preview.topics)
     }
 
     override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
@@ -49,39 +45,22 @@ class SaveAnalyzedTopics(
         val selectedTopics = request.selectedTopicIndices
             .sorted()
             .mapNotNull { index -> preview.topics.getOrNull(index) }
-        return savePreviewTopics(request.previewId, preview.sourceFileName, preview.text, selectedTopics)
+        return savePreviewTopics(request.previewId, selectedTopics)
     }
 
     private fun savePreviewTopics(
         previewId: String,
-        sourceFileName: String,
-        text: String,
         topics: List<ProposedTopic>,
     ): TopicAnalysisSaveResult {
         if (topics.isEmpty()) return TopicAnalysisSaveResult(previewId, emptyList())
 
-        val parsed = sourceTextParser.parse(sourceFileName, text)
-        val imported = importService.import(sourceFileName, parsed)
-        val refToStoredId = parsed.mapIndexed { index, message ->
-            index + 1 to imported.messages.first { it.fingerprint == message.fingerprint }.id
-        }.toMap()
-        val savedTopics = topics.map { topic ->
-            topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
-        }
+        val savedTopics = topics.map(topicRepository::createTopic)
         savedTopics.forEach(memoryIndexing::index)
         memoryIndexing.retryPending(
             savedTopics.flatMapTo(mutableSetOf()) { topic -> topic.memories.map { it.id } },
         )
         return TopicAnalysisSaveResult(previewId, savedTopics)
     }
-
-    private fun ProposedTopic.remapEvidenceRefs(refToStoredId: Map<Int, Int>): ProposedTopic =
-        copy(
-            evidenceRefs = evidenceRefs.map { refToStoredId.getValue(it) },
-            memories = memories.map { memory ->
-                memory.copy(evidenceRefs = memory.evidenceRefs.map { refToStoredId.getValue(it) })
-            },
-        )
 
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()

@@ -218,10 +218,8 @@ private fun topic(
         sourceName = "family-kakao.txt",
         title = title,
         summary = "$title 요약",
-        memoryTypes = listOf(MemoryType.REFERENCE),
         categories = listOf("home"),
-        evidenceRefs = listOf(id * 10),
-        claims = claimTexts.mapIndexed { index, claimText ->
+        memories = claimTexts.mapIndexed { index, claimText ->
             TopicClaim(
                 id = index + 1,
                 text = claimText,

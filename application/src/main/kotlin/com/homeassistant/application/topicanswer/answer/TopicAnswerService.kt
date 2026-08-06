@@ -31,17 +31,17 @@ internal class TopicAnswerService(
     }
 
     private fun Topic.toMatch(hit: TopicClaimSearchHit): TopicAnswerMatch {
-        val selectedClaims = claims
+        val selectedMemories = memories
             .filter { it.id == hit.claimId }
-            .ifEmpty { claims }
+            .ifEmpty { memories }
             .take(3)
 
         return TopicAnswerMatch(
             topicId = id,
             title = title,
             summary = summary,
-            claims = selectedClaims.map { it.text }.distinct(),
-            evidenceRefs = selectedClaims.flatMap { it.evidenceRefs }.distinct(),
+            claims = selectedMemories.map { it.content }.distinct(),
+            evidenceRefs = selectedMemories.flatMap { it.evidenceRefs }.distinct(),
         )
     }
 

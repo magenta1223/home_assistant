@@ -1,22 +1,17 @@
 package com.homeassistant.domain.topicanalysis
 
 import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import kotlinx.serialization.Serializable
 
-/** How directly the source evidence supports a claim. */
-@Serializable
-enum class ClaimCertainty { OBSERVED, SAID, INFERRED, UNCERTAIN }
+@Deprecated("Use MemoryCertainty")
+typealias ClaimCertainty = MemoryCertainty
 
-@Serializable
-data class TopicClaim(
-    val id: Int,
-    val text: String,
-    val subject: String,
-    val memoryType: MemoryType,
-    val certainty: ClaimCertainty,
-    val evidenceRefs: List<Int>,
-)
+@Deprecated("Use Memory")
+typealias TopicClaim = Memory
 
 @Serializable
 data class Topic(
@@ -26,12 +21,16 @@ data class Topic(
     val sourceName: String,
     val title: String,
     val summary: String,
-    val memoryTypes: List<MemoryType>,
     val categories: List<String>,
-    val evidenceRefs: List<Int>,
-    val claims: List<TopicClaim>,
+    val memories: List<Memory>,
     val status: CandidateStatus,
 ) {
+    val memoryTypes: List<MemoryType> get() = memories.map { it.memoryType }.distinct()
+    val evidenceRefs: List<Int> get() = memories.flatMap { it.evidenceRefs }.distinct()
+
+    @Deprecated("Use memories")
+    val claims: List<Memory> get() = memories
+
     @Deprecated("Use categories")
     val domains: List<String> get() = categories
 
@@ -50,7 +49,7 @@ data class Topic(
         memoryTypes: List<MemoryType>,
         domains: List<String>,
         evidenceRefs: List<Int>,
-        claims: List<TopicClaim>,
+        claims: List<Memory>,
         status: CandidateStatus,
     ) : this(
         id,
@@ -59,9 +58,7 @@ data class Topic(
         sourceName,
         title,
         summary,
-        memoryTypes,
         domains,
-        evidenceRefs,
         claims,
         status,
     )
@@ -74,6 +71,7 @@ data class ProposedMemory(
     val memoryType: MemoryType,
     val certainty: ClaimCertainty,
     val evidenceRefs: List<Int>,
+    val visibility: MemoryVisibility = MemoryVisibility.FAMILY,
 )
 
 @Serializable

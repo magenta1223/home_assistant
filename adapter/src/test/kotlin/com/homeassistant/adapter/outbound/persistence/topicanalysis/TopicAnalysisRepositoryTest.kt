@@ -74,7 +74,7 @@ class TopicAnalysisRepositoryTest {
             ),
         )
 
-        assertEquals(setOf(MemoryType.EVENT, MemoryType.LOCATION), topic.memoryTypes.toSet())
+        assertEquals(setOf(MemoryType.EVENT), topic.memoryTypes.toSet())
         assertEquals(setOf("location", "home"), topic.domains.toSet())
         assertEquals(listOf(2, 3), topic.evidenceRefs)
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", topic.claims.single().text)

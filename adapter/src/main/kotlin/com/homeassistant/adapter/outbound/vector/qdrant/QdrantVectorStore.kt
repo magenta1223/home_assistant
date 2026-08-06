@@ -1,57 +1,21 @@
 package com.homeassistant.adapter.outbound.vector.qdrant
 
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
-import com.homeassistant.domain.memory.MemorySearchFilter
-import com.homeassistant.domain.memory.NumericRange
 import com.homeassistant.domain.memory.PayloadVectorPoint
 import com.homeassistant.domain.memory.PayloadVectorSearchFilter
 import com.homeassistant.domain.memory.PayloadVectorSearchResult
 import com.homeassistant.domain.memory.PayloadVectorStore
-import com.homeassistant.domain.memory.VectorPoint
-import com.homeassistant.domain.memory.VectorSearchResult
-import com.homeassistant.domain.memory.VectorStore
 import kotlinx.serialization.json.*
 
 internal class QdrantVectorStore(
     private val collection: String,
     private val transport: QdrantTransport,
-) : VectorStore, PayloadVectorStore {
+) : PayloadVectorStore {
     @Volatile private var collectionReady = false
-
-    override fun upsert(point: VectorPoint) {
-        upsert(
-            PayloadVectorPoint(
-                id = point.memoryId,
-                vector = point.vector,
-                payload = point.payload,
-                numericPayload = point.numericPayload,
-            ),
-        )
-    }
 
     override fun upsert(point: PayloadVectorPoint) {
         ensureCollection(point.vector.size)
         transport.request("PUT", "/collections/$collection/points?wait=true", qdrantUpsertBody(point))
-    }
-
-    override fun search(vector: List<Float>, filter: MemorySearchFilter, limit: Int): List<VectorSearchResult> {
-        val must = buildMap {
-            put("familyId", filter.familyId)
-            filter.createdBy?.let { put("createdBy", it) }
-            filter.memoryType?.let { put("memoryType", it.code) }
-            filter.domain?.let { put("domain", it.uppercase()) }
-            filter.memberId?.let { put("memberId", it) }
-        }
-        val ranges = if (filter.createdAfter != null || filter.createdBefore != null) {
-            mapOf("createdAt" to NumericRange(gte = filter.createdAfter, lte = filter.createdBefore))
-        } else {
-            emptyMap()
-        }
-        return search(vector, PayloadVectorSearchFilter(must, ranges), limit)
-            .map { hit ->
-                val memoryId = hit.payload["memoryId"]?.toIntOrNull() ?: hit.id
-                VectorSearchResult(memoryId, hit.score)
-            }
     }
 
     override fun search(

@@ -1,14 +1,15 @@
 package com.homeassistant.adapter.outbound.persistence.repo.topicanalysis
 
 import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.domain.topicanalysis.TopicClaim
 import com.homeassistant.domain.topicanalysis.ProposedMemory
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.indexing.IndexTargetType
@@ -121,12 +122,12 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
     private fun scoreTopic(topic: Topic, queryTokens: Set<String>): Int {
         val title = topic.title.lowercase()
         val summary = topic.summary.lowercase()
-        val claims = topic.claims.joinToString(" ") { it.text }.lowercase()
+        val memories = topic.memories.joinToString(" ") { it.content }.lowercase()
         return queryTokens.sumOf { token ->
             var score = 0
             if (title.contains(token)) score += 4
             if (summary.contains(token)) score += 2
-            if (claims.contains(token)) score += 3
+            if (memories.contains(token)) score += 3
             score
         }
     }
@@ -158,36 +159,38 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             sourceName = row[TopicCandidateTable.sourceName],
             title = row[TopicCandidateTable.title],
             summary = row[TopicCandidateTable.summary],
-            memoryTypes = row[TopicCandidateTable.memoryTypesJson].decodeFromString(),
             categories = row[TopicCandidateTable.domainsJson].decodeFromString(),
-            evidenceRefs = row[TopicCandidateTable.evidenceJson].decodeFromString(),
-            claims = decodeClaims(row),
+            memories = decodeMemories(row),
             status = CandidateStatus.valueOf(row[TopicCandidateTable.status]),
         )
     }
 
-    private fun decodeClaims(row: ResultRow): List<TopicClaim> =
+    private fun decodeMemories(row: ResultRow): List<Memory> =
         row[TopicCandidateTable.claimsJson]
-            .decodeFromString<List<PersistedTopicClaim>>()
-            .mapIndexed { index, claim ->
-                TopicClaim(
+            .decodeFromString<List<PersistedMemory>>()
+            .mapIndexed { index, memory ->
+                Memory(
                     id = index + 1,
-                    text = claim.text,
-                    subject = claim.subject,
-                    memoryType = claim.memoryType,
-                    certainty = claim.certainty,
-                    evidenceRefs = claim.evidenceRefs,
+                    topicId = row[TopicCandidateTable.id],
+                    createdByUserId = row[TopicCandidateTable.createdByUserId],
+                    content = memory.text,
+                    subject = memory.subject,
+                    memoryType = memory.memoryType,
+                    certainty = memory.certainty,
+                    visibility = memory.visibility,
+                    evidenceRefs = memory.evidenceRefs,
                 )
             }
 
-    private fun List<ProposedMemory>.toPersistedClaims(): List<PersistedTopicClaim> =
-        map { claim ->
-            PersistedTopicClaim(
-                text = claim.text,
-                subject = claim.subject,
-                memoryType = claim.memoryType,
-                certainty = claim.certainty,
-                evidenceRefs = claim.evidenceRefs.distinct(),
+    private fun List<ProposedMemory>.toPersistedClaims(): List<PersistedMemory> =
+        map { memory ->
+            PersistedMemory(
+                text = memory.text,
+                subject = memory.subject,
+                memoryType = memory.memoryType,
+                certainty = memory.certainty,
+                evidenceRefs = memory.evidenceRefs.distinct(),
+                visibility = memory.visibility,
             )
         }
 }
@@ -195,12 +198,13 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
 private data class ScoredTopic(val topic: Topic, val score: Int)
 
 @Serializable
-private data class PersistedTopicClaim(
+private data class PersistedMemory(
     val text: String,
     val subject: String,
     val memoryType: MemoryType,
-    val certainty: ClaimCertainty,
+    val certainty: MemoryCertainty,
     val evidenceRefs: List<Int>,
+    val visibility: MemoryVisibility = MemoryVisibility.FAMILY,
 )
 
 private const val LEGACY_HOUSEHOLD_ID = "household"

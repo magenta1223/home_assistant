@@ -1,12 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.db.tables
 
-import com.homeassistant.domain.memory.DEFAULT_FAMILY_ID
 import org.jetbrains.exposed.sql.Table
 
 /** Stores source-agnostic topic candidates produced by NLP analysis. */
 internal object TopicCandidateTable : Table("topic_candidates") {
     val id = integer("id").autoIncrement()
-    val familyId = text("family_id").default(DEFAULT_FAMILY_ID)
+    val familyId = text("family_id").default("household")
     val createdByUserId = text("created_by_user_id").default("legacy")
     val sourceType = text("source_type")
     val sourceName = text("source_name")

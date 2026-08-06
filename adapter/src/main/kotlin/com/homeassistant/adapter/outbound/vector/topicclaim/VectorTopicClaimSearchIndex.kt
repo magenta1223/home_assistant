@@ -14,20 +14,20 @@ internal class VectorTopicClaimSearchIndex(
     private val vectorStore: PayloadVectorStore,
 ) : TopicClaimSearchIndex {
     override fun index(topic: Topic) {
-        topic.claims.forEach { claim ->
+        topic.memories.forEach { memory ->
             vectorStore.upsert(
                 PayloadVectorPoint(
-                    id = pointId(topic.id, claim.id),
-                    vector = embeddingService.embed("passage: ${topic.title}\n${topic.summary}\n${claim.text}"),
+                    id = pointId(topic.id, memory.id),
+                    vector = embeddingService.embed("passage: ${topic.title}\n${topic.summary}\n${memory.content}"),
                     payload = mapOf(
                         "kind" to TOPIC_CLAIM_KIND,
                         "createdByUserId" to topic.createdByUserId,
                         "topicId" to topic.id.toString(),
-                        "claimId" to claim.id.toString(),
+                        "claimId" to memory.id.toString(),
                         "sourceType" to topic.sourceType,
                         "sourceName" to topic.sourceName,
-                        "memoryType" to claim.memoryType.code,
-                        "subject" to claim.subject,
+                        "memoryType" to memory.memoryType.code,
+                        "subject" to memory.subject,
                     ),
                 ),
             )

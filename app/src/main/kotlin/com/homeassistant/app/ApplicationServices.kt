@@ -3,8 +3,7 @@ package com.homeassistant.app
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
-import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
+import com.homeassistant.adapter.outbound.topicanalysis.TopicExtractorFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
@@ -12,13 +11,13 @@ import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.answer.AnswerFromMemories
 import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
 import com.homeassistant.application.memory.search.SearchMemories
-import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
-import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
 import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReview
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
-import com.homeassistant.adapter.shared.config.AppConfig
-import com.homeassistant.adapter.shared.config.Env
+import com.homeassistant.configuration.AppConfig
+import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.adapter.outbound.vector.memory.MemoryIndexerFactory
 import com.homeassistant.adapter.outbound.vector.memory.MemorySearcherFactory
@@ -26,14 +25,14 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
 interface ApplicationServices : AutoCloseable {
-    val analyzeSource: AnalyzeSourceUseCase
+    val topicAnalysis: TopicAnalysisUseCase
     val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase
     val memoryAnswer: AnswerFromMemoriesUseCase
     fun start()
 }
 
 private class DefaultApplicationServices(
-    override val analyzeSource: AnalyzeSourceUseCase,
+    override val topicAnalysis: TopicAnalysisUseCase,
     override val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
     override val memoryAnswer: AnswerFromMemoriesUseCase,
     private val slackRuntime: SlackRuntime?,
@@ -66,9 +65,8 @@ object ApplicationServicesFactory {
         val slackConfig = SlackConfig.fromEnv()
         val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
             ?: HouseholdAccessPolicies.denyAll()
-        val analyzeSource = AnalyzeSource(
-            topicExtractor = CodexTopicExtractorFactory.create(),
-            sourceTextParser = KakaoExportParser,
+        val topicAnalysis = TopicAnalysis(
+            topicExtractor = TopicExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
             reviewStore = repositories.topicAnalysisReviews,
             accessPolicy = accessPolicy,
@@ -94,7 +92,7 @@ object ApplicationServicesFactory {
         val slackRuntime = slackConfig?.let {
             SlackRuntimeFactory.create(
                 it,
-                analyzeSource,
+                topicAnalysis,
                 getTopicAnalysisReview,
                 saveAnalyzedTopics,
                 searchMemories,
@@ -105,7 +103,7 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(analyzeSource, saveAnalyzedTopics, memoryAnswer, slackRuntime)
+        return DefaultApplicationServices(topicAnalysis, saveAnalyzedTopics, memoryAnswer, slackRuntime)
     }
 }
 

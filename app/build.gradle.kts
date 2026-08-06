@@ -14,7 +14,10 @@ tasks.named<JavaExec>("run") {
 }
 
 dependencies {
-    implementation(project(":adapter"))
+    implementation(project(":adapter-inbound"))
+    implementation(project(":adapter-outbound"))
+    implementation(project(":common"))
+    implementation(project(":configuration"))
     implementation(project(":application"))
     implementation(project(":domain"))
 

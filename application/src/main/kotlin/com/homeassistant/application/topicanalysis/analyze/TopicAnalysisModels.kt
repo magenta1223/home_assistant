@@ -1,0 +1,24 @@
+package com.homeassistant.application.topicanalysis.analyze
+
+import com.homeassistant.domain.source.ParsedSource
+import com.homeassistant.domain.topicanalysis.TopicProposal
+import kotlinx.serialization.Serializable
+
+data class TopicAnalysisRequest(
+    val userId: String,
+    val source: ParsedSource,
+)
+
+@Serializable
+data class TopicAnalysisResult(
+    val previewId: String,
+    val sourceType: String,
+    val sourceName: String,
+    val importedRecordCount: Int,
+    val topics: List<TopicProposal>,
+)
+
+class DuplicateSourceRecordsException(
+    val sourceName: String,
+    val recordCount: Int,
+) : RuntimeException("All $recordCount source records already exist: $sourceName")

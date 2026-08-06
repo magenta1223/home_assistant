@@ -1,8 +1,8 @@
 package com.homeassistant.app
 
 import com.homeassistant.adapter.inbound.http.configureRoutes
-import com.homeassistant.adapter.shared.config.AppConfig
-import com.homeassistant.adapter.shared.json.JsonSerializer
+import com.homeassistant.configuration.AppConfig
+import com.homeassistant.common.json.JsonSerializer
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped
@@ -45,7 +45,7 @@ fun Application.module() {
     services.start()
     monitor.subscribe(ApplicationStopped) { services.close() }
     configureRoutes(
-        services.analyzeSource,
+        services.topicAnalysis,
         services.saveAnalyzedTopics,
         services.memoryAnswer,
     )

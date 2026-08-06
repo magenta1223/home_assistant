@@ -1,14 +1,13 @@
 package com.homeassistant.app.routes
 
-import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
-import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
+import com.homeassistant.adapter.outbound.topicanalysis.TopicExtractorFactory
 import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.adapter.shared.json.JsonSerializer
+import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.application.memory.CanonicalMemoryContext
 import com.homeassistant.application.memory.index.MemoryIndexer
-import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
@@ -42,9 +41,8 @@ class LiveTopicAnalysisApiTest {
 
         val repositories = RepositoryFactory.create(databasePath.toString())
         val accessPolicy = HouseholdAccessPolicies.fixed(listOf(UserId(USER_ID)))
-        val analyzeSource = AnalyzeSource(
-            topicExtractor = CodexTopicExtractorFactory.create(),
-            sourceTextParser = KakaoExportParser,
+        val topicAnalysis = TopicAnalysis(
+            topicExtractor = TopicExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
             reviewStore = repositories.topicAnalysisReviews,
             accessPolicy = accessPolicy,
@@ -61,7 +59,7 @@ class LiveTopicAnalysisApiTest {
         testApplication {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
-                configureRoutes(analyzeSource, saveAnalyzedTopics)
+                configureRoutes(topicAnalysis, saveAnalyzedTopics)
             }
 
             val response = client.post("/api/kakao/import/analyze") {

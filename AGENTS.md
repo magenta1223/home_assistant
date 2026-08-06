@@ -16,7 +16,10 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 # Run tests for a specific module
 ./gradlew :application:test
-./gradlew :adapter:test
+./gradlew :adapter-inbound:test
+./gradlew :adapter-outbound:test
+./gradlew :common:test
+./gradlew :configuration:test
 ./gradlew :domain:test
 ./gradlew :app:test
 ```
@@ -62,16 +65,21 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 ## Module Architecture
 
 ```text
-domain/      - domain concepts, invariants, and domain-owned ports
-application/ - vertically sliced use cases and use-case-owned ports
-adapter/     - inbound and outbound technology adapters
-app/        - composition root and Ktor server startup
+domain/            - domain concepts, invariants, and domain-owned ports
+application/       - vertically sliced use cases and use-case-owned ports
+common/            - adapter-independent shared utilities such as JSON serialization
+configuration/     - runtime environment and server configuration
+adapter-inbound/   - HTTP, Slack, and source-format inbound adapters
+adapter-outbound/  - Codex, persistence, embedding, and vector outbound adapters
+app/               - composition root and Ktor server startup
 ```
 
-The dependency direction is `app -> adapter -> application -> domain`.
+The dependency direction is `app -> adapter-inbound/adapter-outbound -> application -> domain`.
+Both adapter modules may depend on `common` and `configuration`; inbound and outbound must not
+depend on each other.
 Within `application`, keep commands, results, use-case orchestration, and use-case-specific output
-ports together by use case. Within `adapter`, classify external entry points under `inbound` and
-application-driven integrations under `outbound`.
+ports together by use case. Within the adapter modules, keep external entry points in
+`adapter-inbound` and application-driven integrations in `adapter-outbound`.
 
 ### application
 
@@ -81,17 +89,25 @@ application-driven integrations under `outbound`.
 - `memory/index/` - canonical-memory indexing ports used by save orchestration.
 - `slackconversation/handle/` - authorized Slack conversation/session orchestration and its ports.
 
-### adapter
+### adapter-inbound
 
-- `inbound/http/` - Ktor routes and HTTP request/response DTO mapping.
-- `inbound/kakao/` - Kakao export parsing at the source-format boundary.
-- `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
-- `outbound/codex/` - Codex topic extraction and conversation-turn implementations.
-- `outbound/embedding/ollama/` - local Ollama text embedding implementation.
-- `outbound/persistence/` - SQLite/Exposed repositories for source records, topic-analysis reviews, topics, canonical memories, indexing outbox, and Slack sessions.
-- `outbound/vector/qdrant/` - Qdrant vector storage implementation.
-- `outbound/vector/memory/` - canonical-memory semantic index implementation.
-- `shared/config/` and `shared/json/` - runtime-only adapter/composition support; never domain APIs.
+- `http/` - Ktor routes and HTTP request/response DTO mapping.
+- `kakao/` - Kakao export parsing at the source-format boundary.
+- `slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
+
+### adapter-outbound
+
+- `codex/` - Codex CLI transport and conversation-turn implementations.
+- `topicanalysis/` - Codex-backed topic extraction implementations.
+- `embedding/ollama/` - local Ollama text embedding implementation.
+- `persistence/` - SQLite/Exposed repositories for source records, topic-analysis reviews, topics, canonical memories, indexing outbox, and Slack sessions.
+- `vector/qdrant/` - Qdrant vector storage implementation.
+- `vector/memory/` - canonical-memory semantic index implementation.
+
+### common and configuration
+
+- `common/json/` - adapter-independent JSON serialization utility.
+- `configuration/` - environment lookup and runtime/server configuration constants.
 
 ### domain
 

@@ -17,9 +17,21 @@ class ModuleDependencyBoundaryTest {
         }
 
         assertEquals(emptySet(), actual.getValue("domain"))
+        assertEquals(emptySet(), actual.getValue("common"))
+        assertEquals(emptySet(), actual.getValue("configuration"))
         assertEquals(setOf("domain"), actual.getValue("application"))
-        assertEquals(setOf("application", "domain"), actual.getValue("adapter"))
-        assertEquals(setOf("adapter", "application", "domain"), actual.getValue("app"))
+        assertEquals(
+            setOf("application", "domain", "common", "configuration"),
+            actual.getValue("adapter-inbound"),
+        )
+        assertEquals(
+            setOf("application", "domain", "common", "configuration"),
+            actual.getValue("adapter-outbound"),
+        )
+        assertEquals(
+            setOf("adapter-inbound", "adapter-outbound", "application", "domain", "common", "configuration"),
+            actual.getValue("app"),
+        )
     }
 
     @Test
@@ -38,7 +50,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `persistence internals are not imported outside adapter composition`() {
-        val violations = listOf("domain", "application", "app").flatMap { module ->
+        val violations = listOf("domain", "application", "adapter-inbound", "app").flatMap { module ->
             persistenceInternalImportsFor(module)
         }
 
@@ -50,7 +62,7 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `exposed is only imported inside persistence adapter`() {
-        val violations = listOf("domain", "application", "app").flatMap { module ->
+        val violations = listOf("domain", "application", "adapter-inbound", "app").flatMap { module ->
             exposedImportsFor(module)
         } + exposedImportsOutsidePersistenceAdapter()
 
@@ -79,8 +91,8 @@ class ModuleDependencyBoundaryTest {
 
     @Test
     fun `inbound and outbound adapters do not import each other`() {
-        val violations = externalImportsFor("adapter", "com.homeassistant.adapter.outbound.", "inbound") +
-            externalImportsFor("adapter", "com.homeassistant.adapter.inbound.", "outbound")
+        val violations = externalImportsFor("adapter-inbound", "com.homeassistant.adapter.outbound.") +
+            externalImportsFor("adapter-outbound", "com.homeassistant.adapter.inbound.")
 
         assertTrue(
             violations.isEmpty(),
@@ -101,10 +113,12 @@ class ModuleDependencyBoundaryTest {
 
     private fun forbiddenImports(module: String): Set<String> =
         when (module) {
-            "domain" -> setOf("application", "adapter", "nlp", "app")
-            "application" -> setOf("adapter", "nlp", "app")
-            "adapter" -> setOf("nlp", "app")
+            "domain" -> setOf("application", "common", "configuration", "adapter.inbound", "adapter.outbound", "app")
+            "application" -> setOf("common", "configuration", "adapter.inbound", "adapter.outbound", "app")
+            "adapter-inbound" -> setOf("adapter.outbound", "app")
+            "adapter-outbound" -> setOf("adapter.inbound", "app")
             "app" -> emptySet()
+            "common", "configuration" -> emptySet()
             else -> error("Unknown module $module")
         }
 
@@ -157,12 +171,12 @@ class ModuleDependencyBoundaryTest {
     }
 
     private fun exposedImportsOutsidePersistenceAdapter(): List<String> {
-        val sourceRoot = projectRoot.resolve("adapter/src/main/kotlin")
+        val sourceRoot = projectRoot.resolve("adapter-outbound/src/main/kotlin")
         if (!sourceRoot.toFile().exists()) return emptyList()
 
         return sourceRoot.walk()
             .filter { it.toString().endsWith(".kt") }
-            .filterNot { it.toString().contains("${java.io.File.separator}outbound${java.io.File.separator}persistence${java.io.File.separator}") }
+            .filterNot { it.toString().contains("${java.io.File.separator}persistence${java.io.File.separator}") }
             .flatMap { file ->
                 file.readText().lineSequence()
                     .filter { it.startsWith("import org.jetbrains.exposed.") }
@@ -187,6 +201,14 @@ class ModuleDependencyBoundaryTest {
     }
 
     private companion object {
-        val MODULES = listOf("domain", "application", "adapter", "app")
+        val MODULES = listOf(
+            "domain",
+            "common",
+            "configuration",
+            "application",
+            "adapter-inbound",
+            "adapter-outbound",
+            "app",
+        )
     }
 }

@@ -22,19 +22,4 @@ interface MemorySearchIndex {
     fun search(userId: UserId, question: String, limit: Int): List<MemorySearchHit>
 }
 
-private object UnavailableMemorySearchIndex : MemorySearchIndex {
-    override fun index(document: MemorySearchDocument) = Unit
-
-    override fun search(
-        userId: UserId,
-        question: String,
-        limit: Int,
-    ): List<MemorySearchHit> =
-        throw MemorySearchIndexUnavailableException("memory vector index is not configured")
-}
-
-object MemorySearchIndexes {
-    fun unavailable(): MemorySearchIndex = UnavailableMemorySearchIndex
-}
-
 class MemorySearchIndexUnavailableException(message: String) : RuntimeException(message)

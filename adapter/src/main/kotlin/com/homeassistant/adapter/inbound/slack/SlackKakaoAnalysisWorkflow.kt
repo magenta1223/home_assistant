@@ -56,7 +56,6 @@ internal class SlackKakaoAnalysisWorkflow(
                     principal = upload.principal,
                     status = SlackTopicReviewStatus.AWAITING_CONFIRMATION,
                     channelId = upload.channelId,
-                    messageTs = upload.messageTs,
                     topics = result.topics,
                 ),
             )

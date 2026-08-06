@@ -13,7 +13,6 @@ dependencies {
     implementation(libs.kotlinx.schema.generator.json)
     implementation(libs.exposed.core)
     implementation(libs.exposed.jdbc)
-    implementation(libs.exposed.dao)
     implementation(libs.sqlite.jdbc)
     implementation(libs.logback.classic)
     implementation(libs.ktor.server.core)
@@ -25,5 +24,4 @@ dependencies {
 
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)
-    testImplementation(libs.mockk)
 }

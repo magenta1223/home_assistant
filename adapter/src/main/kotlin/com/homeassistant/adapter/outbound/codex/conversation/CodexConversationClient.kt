@@ -14,7 +14,7 @@ interface CodexConversationClient : ConversationTurnClient {
 
 internal class ProcessCodexConversationClient(
     private val config: CodexConversationConfig,
-    private val eventParser: CodexJsonlEventParser = CodexJsonlEventParserFactory.create(),
+    private val eventParser: CodexJsonlEventParser = CodexJsonlEventParser(),
 ) : CodexConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
 

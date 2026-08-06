@@ -22,7 +22,7 @@ class SaveAnalyzedTopics(
     indexingOutbox: IndexingOutboxStore,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : SaveAnalyzedTopicsUseCase {
-    private val memoryIndexing = MemoryIndexingCoordinatorFactory.create(
+    private val memoryIndexing = MemoryIndexingCoordinator(
         topicRepository,
         memorySearchIndex,
         indexingOutbox,

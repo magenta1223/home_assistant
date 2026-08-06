@@ -14,21 +14,8 @@ internal data class CodexEventState(
     val threadStarted: AtomicBoolean = AtomicBoolean(false),
 )
 
-internal interface CodexJsonlEventParser {
+internal class CodexJsonlEventParser {
     fun parse(
-        line: String,
-        state: CodexEventState,
-        onThreadStarted: (String) -> Unit,
-    )
-}
-
-internal object CodexJsonlEventParserFactory {
-    fun create(): CodexJsonlEventParser =
-        DefaultCodexJsonlEventParser()
-}
-
-private class DefaultCodexJsonlEventParser : CodexJsonlEventParser {
-    override fun parse(
         line: String,
         state: CodexEventState,
         onThreadStarted: (String) -> Unit,

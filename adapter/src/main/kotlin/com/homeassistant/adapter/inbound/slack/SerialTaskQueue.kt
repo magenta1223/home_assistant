@@ -3,22 +3,13 @@ package com.homeassistant.adapter.inbound.slack
 import java.util.ArrayDeque
 import java.util.concurrent.Executor
 
-internal interface SerialTaskQueue {
-    fun execute(task: () -> Unit)
-}
-
-internal object SerialTaskQueueFactory {
-    fun create(executor: Executor): SerialTaskQueue =
-        ExecutorSerialTaskQueue(executor)
-}
-
-private class ExecutorSerialTaskQueue(
+internal class SerialTaskQueue(
     private val executor: Executor,
-) : SerialTaskQueue {
+) {
     private val tasks = ArrayDeque<Runnable>()
     private var running = false
 
-    override fun execute(task: () -> Unit) {
+    fun execute(task: () -> Unit) {
         val shouldSchedule = synchronized(this) {
             tasks.addLast(Runnable(task))
             if (running) false else {

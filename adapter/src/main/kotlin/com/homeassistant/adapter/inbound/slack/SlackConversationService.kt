@@ -19,7 +19,7 @@ internal class SlackConversationService(
 
     override fun submit(message: SlackConversationMessage) {
         val actor = SlackActorKey(message.teamId, message.slackUserId)
-        queues.computeIfAbsent(actor) { SerialTaskQueueFactory.create(executor) }
+        queues.computeIfAbsent(actor) { SerialTaskQueue(executor) }
             .execute { handle(message) }
     }
 

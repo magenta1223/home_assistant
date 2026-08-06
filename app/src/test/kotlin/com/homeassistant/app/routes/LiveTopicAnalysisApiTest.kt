@@ -6,7 +6,9 @@ import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer
-import com.homeassistant.application.memory.answer.MemorySearchIndexes
+import com.homeassistant.application.memory.answer.MemorySearchDocument
+import com.homeassistant.application.memory.answer.MemorySearchHit
+import com.homeassistant.application.memory.answer.MemorySearchIndex
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
@@ -51,7 +53,7 @@ class LiveTopicAnalysisApiTest {
         val saveAnalyzedTopics = SaveAnalyzedTopics(
             topicRepository = repositories.topicAnalysis,
             previewRepository = repositories.topicAnalysisPreviews,
-            memorySearchIndex = MemorySearchIndexes.unavailable(),
+            memorySearchIndex = NoOpMemorySearchIndex,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,
         )
@@ -87,4 +89,11 @@ class LiveTopicAnalysisApiTest {
         const val LIVE_TEST_ENV = "RUN_LIVE_CODEX_API_TEST"
         const val USER_ID = "api-smoke-user"
     }
+}
+
+private object NoOpMemorySearchIndex : MemorySearchIndex {
+    override fun index(document: MemorySearchDocument) = Unit
+
+    override fun search(userId: UserId, question: String, limit: Int): List<MemorySearchHit> =
+        emptyList()
 }

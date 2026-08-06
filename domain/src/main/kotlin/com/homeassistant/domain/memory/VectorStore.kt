@@ -31,20 +31,3 @@ interface PayloadVectorStore {
 interface EmbeddingService {
     fun embed(text: String): List<Float>
 }
-
-internal class DeterministicEmbeddingService(model: String) : EmbeddingService {
-    private val modelName = model.ifBlank { error("EMBEDDING_MODEL must not be blank") }
-
-    override fun embed(text: String): List<Float> {
-        val seed = "$modelName:$text"
-        return List(16) { index ->
-            val byte = seed.getOrElse(index % seed.length) { '0' }.code
-            ((byte % 31) / 31.0f)
-        }
-    }
-}
-
-object DomainEmbeddingServiceFactory {
-    fun deterministic(model: String): EmbeddingService =
-        DeterministicEmbeddingService(model)
-}

@@ -33,5 +33,4 @@ dependencies {
     // Testing
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)
-    testImplementation(libs.mockk)
 }

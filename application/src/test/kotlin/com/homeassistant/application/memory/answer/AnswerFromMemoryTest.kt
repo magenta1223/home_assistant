@@ -188,13 +188,6 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
     ): Topic =
         error("not used")
 
-    override fun searchApprovedTopics(
-        userId: UserId,
-        query: String,
-        limit: Int,
-    ): List<Topic> =
-        topics.take(limit.coerceIn(1, 10))
-
     override fun getApprovedTopics(
         userId: UserId,
         topicIds: Collection<Int>,

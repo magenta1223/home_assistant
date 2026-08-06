@@ -19,7 +19,6 @@ import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
-import com.homeassistant.domain.indexing.IndexingOutboxes
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreview
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
@@ -115,13 +114,6 @@ internal class FakeTopicStore : TopicAnalysisStore {
             },
         )
     }
-
-    override fun searchApprovedTopics(
-        userId: UserId,
-        query: String,
-        limit: Int,
-    ): List<Topic> =
-        emptyList()
 
     override fun getApprovedTopics(
         userId: UserId,

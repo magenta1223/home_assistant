@@ -9,14 +9,3 @@ interface IndexingOutboxStore {
     fun markIndexed(targetType: IndexTargetType, targetId: Int)
     fun markFailed(targetType: IndexTargetType, targetId: Int, error: String)
 }
-
-private object NoOpIndexingOutboxStore : IndexingOutboxStore {
-    override fun pending(targetType: IndexTargetType, limit: Int): List<Int> = emptyList()
-    override fun markIndexed(targetType: IndexTargetType, targetId: Int) = Unit
-    override fun markFailed(targetType: IndexTargetType, targetId: Int, error: String) = Unit
-}
-
-object IndexingOutboxes {
-    fun noOp(): IndexingOutboxStore =
-        NoOpIndexingOutboxStore
-}

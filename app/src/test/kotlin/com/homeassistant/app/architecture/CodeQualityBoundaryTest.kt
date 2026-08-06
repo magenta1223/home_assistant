@@ -27,24 +27,6 @@ class CodeQualityBoundaryTest {
     }
 
     @Test
-    fun `outer and domain implementation classes are not public`() {
-        val violations = kotlinSources(mainOnly = true)
-            .filterNot { path -> projectRoot.relativize(path).startsWith("application") }
-            .flatMap { path ->
-                PUBLIC_CLASS.findAll(path.readText())
-                    .map { match -> projectRoot.relativize(path) to match.groupValues[1] }
-            }
-            .filterNot { (_, name) -> name.endsWith("Exception") }
-            .toList()
-
-        assertTrue(
-            violations.isEmpty(),
-            "Outer and domain implementation classes must be hidden behind interfaces and factories:\n" +
-                violations.joinToString("\n") { (path, name) -> "$path: $name" },
-        )
-    }
-
-    @Test
     fun `domain model names do not expose persistence row terminology`() {
         val domainSource = projectRoot.resolve("domain/src/main/kotlin")
         val violations = domainSource.walk()
@@ -73,8 +55,6 @@ class CodeQualityBoundaryTest {
     private companion object {
         const val MAX_LINES = 300
         val MODULES = listOf("domain", "application", "adapter", "app")
-        val PUBLIC_CLASS =
-            Regex("""(?m)^(?:public\s+)?(?:(?:abstract|open)\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*)""")
         val ROW_MODEL =
             Regex("""(?m)^(?:data\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*Row)\b""")
     }

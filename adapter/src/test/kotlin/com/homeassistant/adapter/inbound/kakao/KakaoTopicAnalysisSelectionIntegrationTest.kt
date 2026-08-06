@@ -4,7 +4,6 @@ import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.indexing.IndexTargetType
-import com.homeassistant.domain.indexing.IndexingOutboxes
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -91,7 +90,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         topicRepository = topicStore,
         previewRepository = previewStore,
         memorySearchIndex = index,
-        indexingOutbox = IndexingOutboxes.noOp(),
+        indexingOutbox = FakeIndexingOutboxStore(),
         accessPolicy = TEST_ACCESS_POLICY,
     )
 

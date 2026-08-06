@@ -8,28 +8,15 @@ import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
 import org.slf4j.LoggerFactory
 
-internal interface MemoryIndexingCoordinator {
-    fun index(topic: Topic): Boolean
-    fun retryPending(currentMemoryIds: Set<Int>)
-}
-
-internal object MemoryIndexingCoordinatorFactory {
-    fun create(
-        topicStore: TopicAnalysisQueryStore,
-        searchIndex: MemorySearchIndex,
-        outbox: IndexingOutboxStore,
-    ): MemoryIndexingCoordinator = DefaultMemoryIndexingCoordinator(topicStore, searchIndex, outbox)
-}
-
-private class DefaultMemoryIndexingCoordinator(
+internal class MemoryIndexingCoordinator(
     private val topicStore: TopicAnalysisQueryStore,
     private val searchIndex: MemorySearchIndex,
     private val outbox: IndexingOutboxStore,
-) : MemoryIndexingCoordinator {
-    override fun index(topic: Topic): Boolean =
+) {
+    fun index(topic: Topic): Boolean =
         topic.memories.map { memory -> index(topic, memory.id) }.all { it }
 
-    override fun retryPending(currentMemoryIds: Set<Int>) {
+    fun retryPending(currentMemoryIds: Set<Int>) {
         runCatching {
             val pending = outbox.pending(IndexTargetType.MEMORY).filterNot(currentMemoryIds::contains).toSet()
             topicStore.getTopicsForMemoryIndexing(pending).forEach { topic ->

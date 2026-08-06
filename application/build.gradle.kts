@@ -11,5 +11,4 @@ dependencies {
 
     testImplementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
-    testImplementation(libs.mockk)
 }

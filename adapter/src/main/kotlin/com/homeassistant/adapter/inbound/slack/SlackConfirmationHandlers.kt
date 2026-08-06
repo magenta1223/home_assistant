@@ -75,7 +75,6 @@ data class SlackTopicReviewSession(
     val principal: SlackPrincipal,
     val status: SlackTopicReviewStatus,
     val channelId: String = "",
-    val messageTs: String? = null,
     val topics: List<com.homeassistant.domain.topicanalysis.TopicProposal>,
 )
 

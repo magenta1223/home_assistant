@@ -41,17 +41,6 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         getTopic(topicId) ?: error("Created topic not found: $topicId")
     }
 
-    override fun searchApprovedTopics(userId: UserId, query: String, limit: Int): List<Topic> = transaction(db) {
-        val tokens = tokenize(query)
-        if (tokens.isEmpty()) return@transaction emptyList()
-        TopicTable.selectAll()
-            .mapNotNull { getTopic(it[TopicTable.id], userId) }
-            .mapNotNull { topic -> scoreTopic(topic, tokens).takeIf { it > 0 }?.let { ScoredTopic(topic, it) } }
-            .sortedWith(compareByDescending<ScoredTopic> { it.score }.thenBy { it.topic.id })
-            .take(limit.coerceIn(1, 10))
-            .map { it.topic }
-    }
-
     override fun getApprovedTopics(userId: UserId, topicIds: Collection<Int>): List<Topic> = transaction(db) {
         topicIds.distinct().mapNotNull { getTopic(it, userId) }
     }
@@ -162,22 +151,4 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         )
     }
 
-    private fun tokenize(text: String): Set<String> =
-        Regex("[\\p{L}\\p{N}]+").findAll(text.lowercase())
-            .map { it.value }
-            .filter { it.length >= 2 }
-            .toSet()
-
-    private fun scoreTopic(topic: Topic, tokens: Set<String>): Int {
-        val title = topic.title.lowercase()
-        val summary = topic.summary.lowercase()
-        val memories = topic.memories.joinToString(" ") { it.content }.lowercase()
-        return tokens.sumOf { token ->
-            (if (title.contains(token)) 4 else 0) +
-                (if (summary.contains(token)) 2 else 0) +
-                (if (memories.contains(token)) 3 else 0)
-        }
-    }
 }
-
-private data class ScoredTopic(val topic: Topic, val score: Int)

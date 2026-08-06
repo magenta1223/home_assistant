@@ -4,16 +4,18 @@ import com.homeassistant.application.slackconversation.handle.HandleSlackConvers
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
 import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
-import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCases
+import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 
 object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
-        topicAnalysis: TopicAnalysisUseCases,
-        topicAnswer: TopicAnswerUseCase,
+        analyzeSource: AnalyzeSourceUseCase,
+        saveTopicCandidates: SaveTopicCandidatesUseCase,
+        memoryAnswer: MemoryAnswerUseCase,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
     ): SlackRuntime {
@@ -22,18 +24,18 @@ object SlackRuntimeFactory {
         val executor = Executors.newFixedThreadPool(2)
         val conversationListeners = createConversationListeners(
             config,
-            topicAnswer,
+            memoryAnswer,
             codexSessions,
             slackClient,
             conversationClient,
         )
         val workflow = SlackKakaoAnalysisWorkflow(
                 slackClient = slackClient,
-                analyzeSource = topicAnalysis.analyzeSource,
+                analyzeSource = analyzeSource,
                 reviewSessions = reviewSessions,
                 maxFileSizeBytes = config.maxFileSizeBytes,
             )
-        val confirmationHandlers = SlackConfirmationHandlers(topicAnalysis.saveTopicCandidates, reviewSessions)
+        val confirmationHandlers = SlackConfirmationHandlers(saveTopicCandidates, reviewSessions)
         val listeners = buildList {
             add(SlackKakaoListeners(config, workflow, executor))
             add(SlackConfirmationListeners(config, confirmationHandlers, reviewSessions, slackClient, executor))
@@ -48,7 +50,7 @@ object SlackRuntimeFactory {
 
     private fun createConversationListeners(
         config: SlackConfig,
-        topicAnswer: TopicAnswerUseCase,
+        memoryAnswer: MemoryAnswerUseCase,
         sessions: SlackCodexSessionStore,
         slackClient: SlackMessageClient,
         conversationClient: ConversationTurnClient?,
@@ -65,7 +67,7 @@ object SlackRuntimeFactory {
                 HandleSlackConversation(
                     identities = config.identityDirectory,
                     sessions = sessions,
-                    contextProvider = HouseholdContextProvider(topicAnswer),
+                    contextProvider = HouseholdContextProvider(memoryAnswer),
                     conversationClient = client,
                     answerPublisher = SlackConversationAnswerPublisher(slackClient),
                 ),

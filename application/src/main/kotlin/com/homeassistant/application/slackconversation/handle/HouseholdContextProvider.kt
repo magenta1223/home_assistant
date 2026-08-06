@@ -1,19 +1,19 @@
 package com.homeassistant.application.slackconversation.handle
 
 import com.homeassistant.domain.slackconversation.SlackPrincipal
-import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
-import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
+import com.homeassistant.application.memory.answer.MemoryAnswerRequest
+import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 
 interface HouseholdContextSource {
     fun context(principal: SlackPrincipal, question: String): HouseholdContext
 }
 
 class HouseholdContextProvider(
-    private val topicAnswer: TopicAnswerUseCase,
+    private val memoryAnswer: MemoryAnswerUseCase,
 ) : HouseholdContextSource {
     override fun context(principal: SlackPrincipal, question: String): HouseholdContext {
-        val result = topicAnswer.answer(
-            TopicAnswerRequest(
+        val result = memoryAnswer.answer(
+            MemoryAnswerRequest(
                 userId = principal.userId.value,
                 question = question,
                 limit = MAX_MATCHES,
@@ -23,13 +23,9 @@ class HouseholdContextProvider(
             reference = result.matches.joinToString("\n") { match ->
                 buildString {
                     append("- ")
-                    append(match.title)
+                    append(match.topicTitle)
                     append(": ")
-                    append(match.summary)
-                    if (match.claims.isNotEmpty()) {
-                        append(" | ")
-                        append(match.claims.take(MAX_CLAIMS_PER_MATCH).joinToString(" "))
-                    }
+                    append(match.content)
                 }
             }.take(MAX_CONTEXT_CHARS),
             hasMatches = result.matches.isNotEmpty(),
@@ -39,7 +35,6 @@ class HouseholdContextProvider(
     companion object {
         const val MAX_CONTEXT_CHARS = 8_000
         const val MAX_MATCHES = 5
-        const val MAX_CLAIMS_PER_MATCH = 3
     }
 }
 

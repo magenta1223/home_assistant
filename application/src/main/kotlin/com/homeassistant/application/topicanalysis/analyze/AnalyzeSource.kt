@@ -15,7 +15,7 @@ interface AnalyzeSourceUseCase {
     suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult
 }
 
-internal class AnalyzeSource(
+class AnalyzeSource(
     private val topicExtractor: TopicExtractor,
     private val sourceTextParser: SourceTextParser,
     private val importService: KakaoImporter,

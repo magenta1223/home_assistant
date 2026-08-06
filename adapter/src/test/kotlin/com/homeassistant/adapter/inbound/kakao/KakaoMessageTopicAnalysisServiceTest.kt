@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.kakao
 
-import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
@@ -24,9 +24,9 @@ import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.indexing.IndexingOutboxes
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.application.topicanswer.answer.MemorySearchDocument
-import com.homeassistant.application.topicanswer.answer.MemorySearchHit
-import com.homeassistant.application.topicanswer.answer.MemorySearchIndex
+import com.homeassistant.application.memory.answer.MemorySearchDocument
+import com.homeassistant.application.memory.answer.MemorySearchHit
+import com.homeassistant.application.memory.answer.MemorySearchIndex
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -41,20 +41,18 @@ class KakaoMessageTopicAnalysisServiceTest {
         val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
         val previewStore = RecordingPreviewStore()
-        val service = TopicAnalysisFactory.kakao(
+        val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
-            importer = KakaoImporterFactory.create(
+            importService = KakaoImporterFactory.create(
                 FakeKakaoMessageStore(parsed.mapTo(mutableSetOf()) { it.fingerprint }),
             ),
-            topicStore = FakeTopicStore(),
-            previewStore = previewStore,
-            indexingOutbox = IndexingOutboxes.noOp(),
+            previewRepository = previewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
         val error = assertFailsWith<DuplicateKakaoMessagesException> {
-            service.analyzeSource.execute(request(text))
+            useCase.execute(request(text))
         }
 
         assertEquals(2, error.recordCount)

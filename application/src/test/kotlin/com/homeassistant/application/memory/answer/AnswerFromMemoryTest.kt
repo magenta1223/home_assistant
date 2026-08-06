@@ -1,4 +1,4 @@
-package com.homeassistant.application.topicanswer.answer
+package com.homeassistant.application.memory.answer
 
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
@@ -15,10 +15,10 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertFailsWith
 
-class TopicAnswerServiceTest {
+class AnswerFromMemoryTest {
     @Test
     fun `answers from vector topic claim hits`() {
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(
                     topic(
@@ -43,12 +43,12 @@ class TopicAnswerServiceTest {
         assertTrue(!result.answer.contains("집안일 체크리스트"))
         assertEquals(1, result.matches.size)
         assertEquals(7, result.matches.single().topicId)
-        assertEquals(listOf("주차장 차단기 리모컨은 벽장 제일 위칸에 있다."), result.matches.single().claims)
+        assertEquals("주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", result.matches.single().content)
     }
 
     @Test
     fun `returns no match answer when approved topics do not match`() {
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(emptyList()),
             memorySearchIndex = FakeMemorySearchIndex(emptyList()),
             accessPolicy = TEST_ACCESS_POLICY,
@@ -62,7 +62,7 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `answer text uses strongest match only`() {
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(
                     topic(1, "리모컨 위치", "리모컨은 벽장 제일 위칸에 있다."),
@@ -87,7 +87,7 @@ class TopicAnswerServiceTest {
     @Test
     fun `clamps requested limit`() {
         val topics = List(12) { topic(it + 1, "후보 $it", "리모컨 claim $it") }
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(topics),
             memorySearchIndex = FakeMemorySearchIndex(
                 topics.map { MemorySearchHit(topicId = it.id, memoryId = 1, score = 1.0) },
@@ -102,7 +102,7 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `preserves vector hit ordering when hydrating topics`() {
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(
                     topic(1, "첫번째", "첫번째 claim"),
@@ -127,7 +127,7 @@ class TopicAnswerServiceTest {
     @Test
     fun `rejects an unauthorized user and family pair before vector search`() {
         val index = FakeMemorySearchIndex(emptyList())
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(emptyList()),
             memorySearchIndex = index,
             accessPolicy = TEST_ACCESS_POLICY,
@@ -135,7 +135,7 @@ class TopicAnswerServiceTest {
 
         assertFailsWith<HouseholdAccessDeniedException> {
             service.answer(
-                TopicAnswerRequest(
+                MemoryAnswerRequest(
                     userId = "attacker",
                     question = "비밀",
                 ),
@@ -146,7 +146,7 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `keeps a globally visible household hit during sql hydration`() {
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(topic(7, "가족 공용", "전역에서 보여야 함")),
             ),
@@ -163,7 +163,7 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `does not substitute another memory when a vector hit is stale or invisible`() {
-        val service = TopicAnswerService(
+        val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(topic(7, "가족 공용", "보이는 다른 기억")),
             ),
@@ -253,8 +253,8 @@ private fun topic(
         status = CandidateStatus.APPROVED,
     )
 
-private fun request(question: String, limit: Int): TopicAnswerRequest =
-    TopicAnswerRequest(
+private fun request(question: String, limit: Int): MemoryAnswerRequest =
+    MemoryAnswerRequest(
         userId = TEST_USER.value,
         question = question,
         limit = limit,

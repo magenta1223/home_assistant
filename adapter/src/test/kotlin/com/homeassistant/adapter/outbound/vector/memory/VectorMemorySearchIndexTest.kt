@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.vector.memory
 
-import com.homeassistant.application.topicanswer.answer.MemorySearchDocument
-import com.homeassistant.application.topicanswer.answer.MemorySearchHit
+import com.homeassistant.application.memory.answer.MemorySearchDocument
+import com.homeassistant.application.memory.answer.MemorySearchHit
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.Memory

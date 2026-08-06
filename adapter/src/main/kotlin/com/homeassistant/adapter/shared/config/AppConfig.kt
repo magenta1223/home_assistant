@@ -29,5 +29,5 @@ object AppConfig {
     const val ROUTE_HEALTH              = "/health"
     const val ROUTE_KAKAO_IMPORT_ANALYZE = "/api/kakao/import/analyze"
     const val ROUTE_KAKAO_IMPORT_SAVE = "/api/kakao/import/save"
-    const val ROUTE_TOPIC_ANSWER = "/api/topics/answer"
+    const val ROUTE_MEMORY_ANSWER = "/api/memories/answer"
 }

@@ -7,10 +7,10 @@ import com.homeassistant.domain.slackconversation.SlackMessageKey
 import com.homeassistant.domain.slackconversation.SlackMessageReceipt
 import com.homeassistant.domain.slackconversation.SlackMessageReceiptStatus
 import com.homeassistant.domain.slackconversation.SlackPrincipal
-import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
-import com.homeassistant.application.topicanswer.answer.TopicAnswerResult
-import com.homeassistant.application.topicanswer.answer.TopicAnswerMatch
-import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
+import com.homeassistant.application.memory.answer.MemoryAnswerRequest
+import com.homeassistant.application.memory.answer.MemoryAnswerResult
+import com.homeassistant.application.memory.answer.MemoryAnswerMatch
+import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -29,7 +29,7 @@ class SlackConversationServiceTest {
     @Test
     fun `uses server mapped scope and completes only with the Slack response timestamp`() {
         val store = MemorySessionStore()
-        val answer = CapturingTopicAnswer()
+        val answer = CapturingMemoryAnswer()
         val service = service(store, answer, SuccessfulSlack())
 
         service.handle(message)
@@ -42,7 +42,7 @@ class SlackConversationServiceTest {
     @Test
     fun `keeps answer ready when Slack rejects delivery`() {
         val store = MemorySessionStore()
-        val service = service(store, CapturingTopicAnswer(), RejectingSlack)
+        val service = service(store, CapturingMemoryAnswer(), RejectingSlack)
 
         service.handle(message)
 
@@ -54,7 +54,7 @@ class SlackConversationServiceTest {
     @Test
     fun `ignores an unmapped Slack actor before claiming a message`() {
         val store = MemorySessionStore()
-        service(store, CapturingTopicAnswer(), SuccessfulSlack()).handle(
+        service(store, CapturingMemoryAnswer(), SuccessfulSlack()).handle(
             message.copy(slackUserId = "ATTACKER"),
         )
 
@@ -65,9 +65,9 @@ class SlackConversationServiceTest {
     fun `does not invoke Codex when no authorized topic matches`() {
         val store = MemorySessionStore()
         val codex = CountingCodex()
-        val noMatches = object : TopicAnswerUseCase {
-            override fun answer(request: TopicAnswerRequest) =
-                TopicAnswerResult(request.question, "", emptyList())
+        val noMatches = object : MemoryAnswerUseCase {
+            override fun answer(request: MemoryAnswerRequest) =
+                MemoryAnswerResult(request.question, "", emptyList())
         }
         val service = SlackConversationService(
             HandleSlackConversation(
@@ -89,7 +89,7 @@ class SlackConversationServiceTest {
 
     private fun service(
         store: MemorySessionStore,
-        answer: CapturingTopicAnswer,
+        answer: CapturingMemoryAnswer,
         slack: SlackClient,
         codex: ConversationTurnClient = SuccessfulCodex,
     ) = SlackConversationService(
@@ -106,15 +106,24 @@ class SlackConversationServiceTest {
     private fun key() = SlackMessageKey("D1", "100.1")
 }
 
-private class CapturingTopicAnswer : TopicAnswerUseCase {
-    var request: TopicAnswerRequest? = null
+private class CapturingMemoryAnswer : MemoryAnswerUseCase {
+    var request: MemoryAnswerRequest? = null
 
-    override fun answer(request: TopicAnswerRequest): TopicAnswerResult {
+    override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult {
         this.request = request
-        return TopicAnswerResult(
+        return MemoryAnswerResult(
             request.question,
             "",
-            listOf(TopicAnswerMatch(1, "리모컨", "벽장에 있음", listOf("위칸"), listOf(1))),
+            listOf(
+                MemoryAnswerMatch(
+                    memoryId = 1,
+                    topicId = 1,
+                    topicTitle = "리모컨",
+                    topicSummary = "벽장에 있음",
+                    content = "위칸",
+                    evidenceRefs = listOf(1),
+                ),
+            ),
         )
     }
 }

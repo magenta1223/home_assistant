@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.topicanswer.answer.TopicAnswerMatch
-import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
-import com.homeassistant.application.topicanswer.answer.TopicAnswerResult
-import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
-import com.homeassistant.application.topicanswer.answer.MemorySearchIndexUnavailableException
+import com.homeassistant.application.memory.answer.MemoryAnswerMatch
+import com.homeassistant.application.memory.answer.MemoryAnswerRequest
+import com.homeassistant.application.memory.answer.MemoryAnswerResult
+import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.memory.answer.MemorySearchIndexUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
@@ -26,19 +26,19 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class TopicAnswerRoutesTest {
+class MemoryAnswerRoutesTest {
     @Test
-    fun `topic answer route returns answer from approved topics`() = testApplication {
+    fun `memory answer route returns answer from approved memories`() = testApplication {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 analyzeSource = UnusedTopicAnalysis,
                 saveTopicCandidates = UnusedTopicAnalysis,
-                topicAnswer = FakeTopicAnswer,
+                memoryAnswer = FakeMemoryAnswer,
             )
         }
 
-        val response = client.post("/api/topics/answer") {
+        val response = client.post("/api/memories/answer") {
             contentType(ContentType.Application.Json)
             setBody("""{"userId":"dad","question":"리모컨 어디 있어?","limit":5}""")
         }
@@ -50,17 +50,17 @@ class TopicAnswerRoutesTest {
     }
 
     @Test
-    fun `topic answer route rejects blank question`() = testApplication {
+    fun `memory answer route rejects blank question`() = testApplication {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 analyzeSource = UnusedTopicAnalysis,
                 saveTopicCandidates = UnusedTopicAnalysis,
-                topicAnswer = FakeTopicAnswer,
+                memoryAnswer = FakeMemoryAnswer,
             )
         }
 
-        val response = client.post("/api/topics/answer") {
+        val response = client.post("/api/memories/answer") {
             contentType(ContentType.Application.Json)
             setBody("""{"userId":"dad","question":"   ","limit":5}""")
         }
@@ -69,17 +69,17 @@ class TopicAnswerRoutesTest {
     }
 
     @Test
-    fun `topic answer route returns service unavailable when vector index is not configured`() = testApplication {
+    fun `memory answer route returns service unavailable when vector index is not configured`() = testApplication {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 analyzeSource = UnusedTopicAnalysis,
                 saveTopicCandidates = UnusedTopicAnalysis,
-                topicAnswer = UnavailableTopicAnswer,
+                memoryAnswer = UnavailableMemoryAnswer,
             )
         }
 
-        val response = client.post("/api/topics/answer") {
+        val response = client.post("/api/memories/answer") {
             contentType(ContentType.Application.Json)
             setBody("""{"userId":"dad","question":"리모컨 어디 있어?","limit":5}""")
         }
@@ -89,25 +89,26 @@ class TopicAnswerRoutesTest {
     }
 }
 
-private object FakeTopicAnswer : TopicAnswerUseCase {
-    override fun answer(request: TopicAnswerRequest): TopicAnswerResult =
-        TopicAnswerResult(
+private object FakeMemoryAnswer : MemoryAnswerUseCase {
+    override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult =
+        MemoryAnswerResult(
             question = request.question.trim(),
             answer = "저장된 기억 기준으로는 리모컨은 벽장 제일 위칸에 있다.",
             matches = listOf(
-                TopicAnswerMatch(
+                MemoryAnswerMatch(
+                    memoryId = 11,
                     topicId = 1,
-                    title = "집 물건 위치",
-                    summary = "리모컨 위치",
-                    claims = listOf("리모컨은 벽장 제일 위칸에 있다."),
+                    topicTitle = "집 물건 위치",
+                    topicSummary = "리모컨 위치",
+                    content = "리모컨은 벽장 제일 위칸에 있다.",
                     evidenceRefs = listOf(10),
                 ),
             ),
         )
 }
 
-private object UnavailableTopicAnswer : TopicAnswerUseCase {
-    override fun answer(request: TopicAnswerRequest): TopicAnswerResult =
+private object UnavailableMemoryAnswer : MemoryAnswerUseCase {
+    override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult =
         throw MemorySearchIndexUnavailableException("memory vector index is not configured")
 }
 

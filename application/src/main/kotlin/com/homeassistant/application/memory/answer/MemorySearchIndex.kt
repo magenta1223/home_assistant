@@ -1,4 +1,4 @@
-package com.homeassistant.application.topicanswer.answer
+package com.homeassistant.application.memory.answer
 
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
@@ -23,9 +23,7 @@ interface MemorySearchIndex {
 }
 
 private object UnavailableMemorySearchIndex : MemorySearchIndex {
-    override fun index(document: MemorySearchDocument) {
-        // Indexing is skipped until a real embedding provider is wired.
-    }
+    override fun index(document: MemorySearchDocument) = Unit
 
     override fun search(
         userId: UserId,
@@ -36,8 +34,7 @@ private object UnavailableMemorySearchIndex : MemorySearchIndex {
 }
 
 object MemorySearchIndexes {
-    fun unavailable(): MemorySearchIndex =
-        UnavailableMemorySearchIndex
+    fun unavailable(): MemorySearchIndex = UnavailableMemorySearchIndex
 }
 
 class MemorySearchIndexUnavailableException(message: String) : RuntimeException(message)

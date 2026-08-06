@@ -6,9 +6,10 @@ import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer
-import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
+import com.homeassistant.application.memory.answer.MemorySearchIndexes
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.application.topicanswer.answer.MemorySearchIndexes
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -40,23 +41,29 @@ class LiveTopicAnalysisApiTest {
         databasePath.toFile().deleteOnExit()
 
         val repositories = RepositoryFactory.create(databasePath.toString())
-        val topicAnalysis = TopicAnalysisFactory.kakao(
+        val importer = KakaoImporterFactory.create(repositories.kakaoMessages)
+        val accessPolicy = HouseholdAccessPolicies.fixed(listOf(UserId(USER_ID)))
+        val analyzeSource = AnalyzeSource(
             topicExtractor = CodexTopicExtractorFactory.create(),
             sourceTextParser = KakaoExportParser,
-            importer = KakaoImporterFactory.create(repositories.kakaoMessages),
-            topicStore = repositories.topicAnalysis,
-            previewStore = repositories.kakaoAnalysisPreviews,
-            searchIndex = MemorySearchIndexes.unavailable(),
+            importService = importer,
+            previewRepository = repositories.kakaoAnalysisPreviews,
+            accessPolicy = accessPolicy,
+        )
+        val saveTopicCandidates = SaveTopicCandidates(
+            importService = importer,
+            sourceTextParser = KakaoExportParser,
+            topicRepository = repositories.topicAnalysis,
+            previewRepository = repositories.kakaoAnalysisPreviews,
+            memorySearchIndex = MemorySearchIndexes.unavailable(),
             indexingOutbox = repositories.indexingOutbox,
-            accessPolicy = HouseholdAccessPolicies.fixed(
-                listOf(UserId(USER_ID)),
-            ),
+            accessPolicy = accessPolicy,
         )
 
         testApplication {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
-                configureRoutes(topicAnalysis.analyzeSource, topicAnalysis.saveTopicCandidates)
+                configureRoutes(analyzeSource, saveTopicCandidates)
             }
 
             val response = client.post("/api/kakao/import/analyze") {

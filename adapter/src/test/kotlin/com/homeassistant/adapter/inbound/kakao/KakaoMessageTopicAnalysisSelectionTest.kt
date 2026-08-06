@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.inbound.kakao
 
-import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.indexing.IndexTargetType
@@ -18,17 +19,15 @@ class KakaoMessageTopicAnalysisSelectionTest {
         val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
         val previewStore = RecordingPreviewStore()
-        val service = TopicAnalysisFactory.kakao(
+        val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
-            importer = KakaoImporterFactory.create(FakeKakaoMessageStore(setOf(parsed.first().fingerprint))),
-            topicStore = FakeTopicStore(),
-            previewStore = previewStore,
-            indexingOutbox = IndexingOutboxes.noOp(),
+            importService = KakaoImporterFactory.create(FakeKakaoMessageStore(setOf(parsed.first().fingerprint))),
+            previewRepository = previewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.analyzeSource.execute(request(text))
+        val result = useCase.execute(request(text))
 
         assertEquals(1, result.importedRecordCount)
         assertEquals(1, extractor.calls)
@@ -49,7 +48,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             index,
         )
 
-        val result = service.saveTopicCandidates.saveSelected(selection(setOf(2, 0, 99)))
+        val result = service.saveSelected(selection(setOf(2, 0, 99)))
 
         assertEquals(listOf("첫 후보", "셋째 후보"), result.topics.map { it.title })
         assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
@@ -67,7 +66,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             kakaoStore,
             FakeTopicStore(),
             FakePreviewStore(listOf(topic("첫 후보", 1))),
-        ).saveTopicCandidates.saveSelected(selection(emptySet()))
+        ).saveSelected(selection(emptySet()))
 
         assertEquals(emptyList(), result.topics)
         assertEquals(0, kakaoStore.importCalls)
@@ -76,18 +75,17 @@ class KakaoMessageTopicAnalysisSelectionTest {
     @Test
     fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
         val outbox = FakeIndexingOutboxStore()
-        val service = TopicAnalysisFactory.kakao(
-            UnusedTopicExtractor,
-            KakaoExportParser,
-            KakaoImporterFactory.create(FakeKakaoMessageStore()),
-            FakeTopicStore(),
-            FakePreviewStore(listOf(topic("후보", 1))),
-            FailingMemorySearchIndex,
-            outbox,
-            TEST_ACCESS_POLICY,
+        val service = SaveTopicCandidates(
+            importService = KakaoImporterFactory.create(FakeKakaoMessageStore()),
+            sourceTextParser = KakaoExportParser,
+            topicRepository = FakeTopicStore(),
+            previewRepository = FakePreviewStore(listOf(topic("후보", 1))),
+            memorySearchIndex = FailingMemorySearchIndex,
+            indexingOutbox = outbox,
+            accessPolicy = TEST_ACCESS_POLICY,
         )
 
-        val result = service.saveTopicCandidates.saveSelected(selection(setOf(0)))
+        val result = service.saveSelected(selection(setOf(0)))
 
         assertEquals(listOf("후보"), result.topics.map { it.title })
         assertEquals(listOf(1), outbox.pending(IndexTargetType.MEMORY))
@@ -98,15 +96,14 @@ class KakaoMessageTopicAnalysisSelectionTest {
         topicStore: FakeTopicStore,
         previewStore: FakePreviewStore,
         index: RecordingMemorySearchIndex = RecordingMemorySearchIndex(),
-    ) = TopicAnalysisFactory.kakao(
-        UnusedTopicExtractor,
-        KakaoExportParser,
-        KakaoImporterFactory.create(kakaoStore),
-        topicStore,
-        previewStore,
-        index,
-        IndexingOutboxes.noOp(),
-        TEST_ACCESS_POLICY,
+    ) = SaveTopicCandidates(
+        importService = KakaoImporterFactory.create(kakaoStore),
+        sourceTextParser = KakaoExportParser,
+        topicRepository = topicStore,
+        previewRepository = previewStore,
+        memorySearchIndex = index,
+        indexingOutbox = IndexingOutboxes.noOp(),
+        accessPolicy = TEST_ACCESS_POLICY,
     )
 
     private fun selection(indices: Set<Int>) =

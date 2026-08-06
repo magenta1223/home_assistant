@@ -45,8 +45,8 @@ fun Application.module() {
     services.start()
     monitor.subscribe(ApplicationStopped) { services.close() }
     configureRoutes(
-        services.topicAnalysis.analyzeSource,
-        services.topicAnalysis.saveTopicCandidates,
-        services.topicAnswer,
+        services.analyzeSource,
+        services.saveTopicCandidates,
+        services.memoryAnswer,
     )
 }

@@ -9,14 +9,14 @@ import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.application.topicanswer.answer.MemorySearchIndex
+import com.homeassistant.application.memory.answer.MemorySearchIndex
 
 interface SaveTopicCandidatesUseCase {
     fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
     fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult
 }
 
-internal class SaveTopicCandidates(
+class SaveTopicCandidates(
     private val importService: KakaoImporter,
     private val sourceTextParser: SourceTextParser,
     private val topicRepository: TopicAnalysisStore,

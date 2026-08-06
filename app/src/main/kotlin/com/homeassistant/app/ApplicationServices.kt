@@ -9,27 +9,31 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCl
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
-import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
-import com.homeassistant.application.topicanalysis.TopicAnalysisUseCases
+import com.homeassistant.application.memory.answer.AnswerFromMemory
+import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
+import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
+import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.adapter.shared.config.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.application.topicanswer.answer.TopicAnswerFactory
-import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
 import com.homeassistant.adapter.outbound.vector.memory.MemorySearchIndexFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
 interface ApplicationServices : AutoCloseable {
-    val topicAnalysis: TopicAnalysisUseCases
-    val topicAnswer: TopicAnswerUseCase
+    val analyzeSource: AnalyzeSourceUseCase
+    val saveTopicCandidates: SaveTopicCandidatesUseCase
+    val memoryAnswer: MemoryAnswerUseCase
     fun start()
 }
 
 private class DefaultApplicationServices(
-    override val topicAnalysis: TopicAnalysisUseCases,
-    override val topicAnswer: TopicAnswerUseCase,
+    override val analyzeSource: AnalyzeSourceUseCase,
+    override val saveTopicCandidates: SaveTopicCandidatesUseCase,
+    override val memoryAnswer: MemoryAnswerUseCase,
     private val slackRuntime: SlackRuntime?,
 ) : ApplicationServices {
     override fun start() {
@@ -61,20 +65,27 @@ object ApplicationServicesFactory {
         val slackConfig = SlackConfig.fromEnv()
         val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
             ?: HouseholdAccessPolicies.denyAll()
-        val topicAnalysis = TopicAnalysisFactory.kakao(
+        val kakaoImporter = KakaoImporterFactory.create(repositories.kakaoMessages)
+        val analyzeSource = AnalyzeSource(
             topicExtractor = CodexTopicExtractorFactory.create(),
             sourceTextParser = KakaoExportParser,
-            importer = KakaoImporterFactory.create(repositories.kakaoMessages),
-            topicStore = repositories.topicAnalysis,
-            previewStore = repositories.kakaoAnalysisPreviews,
-            searchIndex = memorySearchIndex,
+            importService = kakaoImporter,
+            previewRepository = repositories.kakaoAnalysisPreviews,
+            accessPolicy = accessPolicy,
+        )
+        val saveTopicCandidates = SaveTopicCandidates(
+            importService = kakaoImporter,
+            sourceTextParser = KakaoExportParser,
+            topicRepository = repositories.topicAnalysis,
+            previewRepository = repositories.kakaoAnalysisPreviews,
+            memorySearchIndex = memorySearchIndex,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,
         )
-        val topicAnswer = TopicAnswerFactory.create(
+        val memoryAnswer = AnswerFromMemory(
             topicStore = repositories.topicAnalysis,
-            memorySearchIndex = memorySearchIndex,
             accessPolicy = accessPolicy,
+            memorySearchIndex = memorySearchIndex,
         )
         val conversationClient = CodexConversationConfig.fromEnv()
             ?.let(CodexConversationClientFactory::create)
@@ -82,8 +93,9 @@ object ApplicationServicesFactory {
         val slackRuntime = slackConfig?.let {
             SlackRuntimeFactory.create(
                 it,
-                topicAnalysis,
-                topicAnswer,
+                analyzeSource,
+                saveTopicCandidates,
+                memoryAnswer,
                 repositories.slackCodexSessions,
                 conversationClient,
             )
@@ -91,7 +103,7 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(topicAnalysis, topicAnswer, slackRuntime)
+        return DefaultApplicationServices(analyzeSource, saveTopicCandidates, memoryAnswer, slackRuntime)
     }
 }
 

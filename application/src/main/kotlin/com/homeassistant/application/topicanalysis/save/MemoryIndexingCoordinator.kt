@@ -1,7 +1,7 @@
 package com.homeassistant.application.topicanalysis.save
 
-import com.homeassistant.application.topicanswer.answer.MemorySearchDocument
-import com.homeassistant.application.topicanswer.answer.MemorySearchIndex
+import com.homeassistant.application.memory.answer.MemorySearchDocument
+import com.homeassistant.application.memory.answer.MemorySearchIndex
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.Topic

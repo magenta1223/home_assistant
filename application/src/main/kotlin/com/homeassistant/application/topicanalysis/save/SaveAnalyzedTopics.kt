@@ -11,12 +11,12 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.application.memory.answer.MemorySearchIndex
 
-interface SaveTopicCandidatesUseCase {
+interface SaveAnalyzedTopicsUseCase {
     fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
     fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult
 }
 
-class SaveTopicCandidates(
+class SaveAnalyzedTopics(
     private val importService: KakaoImporter,
     private val sourceTextParser: SourceTextParser,
     private val topicRepository: TopicAnalysisStore,
@@ -24,7 +24,7 @@ class SaveTopicCandidates(
     memorySearchIndex: MemorySearchIndex,
     indexingOutbox: IndexingOutboxStore,
     private val accessPolicy: HouseholdAccessPolicy,
-) : SaveTopicCandidatesUseCase {
+) : SaveAnalyzedTopicsUseCase {
     private val memoryIndexing = MemoryIndexingCoordinatorFactory.create(
         topicRepository,
         memorySearchIndex,

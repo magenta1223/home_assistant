@@ -3,12 +3,11 @@ package com.homeassistant.application.memory.answer
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaim
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,14 +16,14 @@ import kotlin.test.assertFailsWith
 
 class AnswerFromMemoryTest {
     @Test
-    fun `answers from vector topic claim hits`() {
+    fun `answers from vector memory hits`() {
         val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(
                     topic(
                         id = 7,
                         title = "집 물건 위치",
-                        claimTexts = listOf(
+                        memoryContents = listOf(
                             "주차장 차단기 리모컨은 벽장 제일 위칸에 있다.",
                             "동훈은 집안일 체크리스트를 나열했다.",
                         ),
@@ -86,7 +85,7 @@ class AnswerFromMemoryTest {
 
     @Test
     fun `clamps requested limit`() {
-        val topics = List(12) { topic(it + 1, "후보 $it", "리모컨 claim $it") }
+        val topics = List(12) { topic(it + 1, "후보 $it", "리모컨 기억 $it") }
         val service = AnswerFromMemory(
             topicStore = FakeTopicStore(topics),
             memorySearchIndex = FakeMemorySearchIndex(
@@ -105,8 +104,8 @@ class AnswerFromMemoryTest {
         val service = AnswerFromMemory(
             topicStore = FakeTopicStore(
                 listOf(
-                    topic(1, "첫번째", "첫번째 claim"),
-                    topic(2, "두번째", "두번째 claim"),
+                    topic(1, "첫번째", "첫번째 기억"),
+                    topic(2, "두번째", "두번째 기억"),
                 ),
             ),
             memorySearchIndex = FakeMemorySearchIndex(
@@ -121,7 +120,7 @@ class AnswerFromMemoryTest {
         val result = service.answer(request("순서", 5))
 
         assertEquals(listOf(2, 1), result.matches.map { it.topicId })
-        assertEquals("저장된 기억 기준으로는 두번째 claim", result.answer)
+        assertEquals("저장된 기억 기준으로는 두번째 기억", result.answer)
     }
 
     @Test
@@ -181,7 +180,7 @@ class AnswerFromMemoryTest {
 }
 
 private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisStore {
-    override fun createTopic(candidate: TopicCandidate): Topic =
+    override fun createTopic(proposal: ProposedTopic): Topic =
         error("not used")
 
     override fun searchApprovedTopics(
@@ -224,13 +223,13 @@ private class FakeMemorySearchIndex(
 private fun topic(
     id: Int,
     title: String,
-    claimText: String,
-) = topic(id, title, listOf(claimText))
+    memoryContent: String,
+) = topic(id, title, listOf(memoryContent))
 
 private fun topic(
     id: Int,
     title: String,
-    claimTexts: List<String>,
+    memoryContents: List<String>,
 ) =
     Topic(
         id = id,
@@ -240,17 +239,19 @@ private fun topic(
         title = title,
         summary = "$title 요약",
         categories = listOf("home"),
-        memories = claimTexts.mapIndexed { index, claimText ->
-            TopicClaim(
+        memories = memoryContents.mapIndexed { index, content ->
+            Memory(
                 id = index + 1,
-                text = claimText,
+                topicId = id,
+                createdByUserId = TEST_USER.value,
+                content = content,
                 subject = title,
                 memoryType = MemoryType.REFERENCE,
-                certainty = ClaimCertainty.SAID,
+                certainty = MemoryCertainty.SAID,
+                visibility = com.homeassistant.domain.memory.MemoryVisibility.FAMILY,
                 evidenceRefs = listOf(id * 10),
             )
         },
-        status = CandidateStatus.APPROVED,
     )
 
 private fun request(question: String, limit: Int): MemoryAnswerRequest =

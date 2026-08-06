@@ -7,7 +7,6 @@ internal object SlackCodexSessionTable : Table("slack_codex_sessions") {
     val teamId = text("team_id")
     val slackUserId = text("slack_user_id")
     val userId = text("user_id")
-    val familyId = text("family_id")
     val codexThreadId = text("codex_thread_id").uniqueIndex()
     val createdAt = long("created_at")
     val lastActiveAt = long("last_active_at")

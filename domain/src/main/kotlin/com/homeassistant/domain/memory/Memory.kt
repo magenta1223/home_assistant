@@ -28,27 +28,4 @@ data class Memory(
 
     fun isVisibleTo(requester: UserId): Boolean =
         visibility.isVisibleTo(UserId(createdByUserId), requester)
-
-    @Deprecated("Use content")
-    val text: String get() = content
-
-    @Deprecated("Use the canonical constructor")
-    constructor(
-        id: Int,
-        text: String,
-        subject: String,
-        memoryType: MemoryType,
-        certainty: MemoryCertainty,
-        evidenceRefs: List<Int>,
-    ) : this(
-        id = id,
-        topicId = null,
-        createdByUserId = "legacy",
-        content = text,
-        subject = subject,
-        memoryType = memoryType,
-        certainty = certainty,
-        visibility = MemoryVisibility.FAMILY,
-        evidenceRefs = evidenceRefs,
-    )
 }

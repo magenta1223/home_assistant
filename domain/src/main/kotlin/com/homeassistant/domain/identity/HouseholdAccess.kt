@@ -1,15 +1,5 @@
 package com.homeassistant.domain.identity
 
-@Deprecated("The application has one household; use UserId directly")
-@JvmInline
-value class FamilyId(val value: String)
-
-@Deprecated("The application has one household; use UserId directly")
-data class HouseholdAccessScope(
-    val userId: UserId,
-    val familyId: FamilyId,
-)
-
 fun interface HouseholdAccessPolicy {
     fun isAuthorized(userId: UserId): Boolean
 }

@@ -61,14 +61,14 @@ class LlmTopicOutputContractTest {
     }
 
     @Test
-    fun `rejects invalid topic claims`() = runBlocking {
+    fun `rejects invalid topic memories`() = runBlocking {
         val invalid = listOf(
-            topicJson(claims = "[]"),
-            topicJson(claimText = ""),
-            topicJson(claimSubject = ""),
-            topicJson(claimMemoryType = "UNKNOWN"),
-            topicJson(claimCertainty = "GUESSED"),
-            topicJson(claimEvidenceRecordIds = """["missing"]"""),
+            topicJson(memories = "[]"),
+            topicJson(memoryText = ""),
+            topicJson(memorySubject = ""),
+            topicJson(memoryType = "UNKNOWN"),
+            topicJson(memoryCertainty = "GUESSED"),
+            topicJson(memoryEvidenceRecordIds = """["missing"]"""),
         )
 
         invalid.forEach { response ->
@@ -83,18 +83,18 @@ class LlmTopicOutputContractTest {
         val schema = TopicAnalysisOutputContract.schema
         listOf(
             "topics",
-            "claims",
+            "memories",
             "memoryTypes",
             "memoryType",
             "certainty",
             "evidenceRecordIds",
-            "Topic candidates extracted from the source document",
+            "Proposed topics extracted from the source document",
             "Short review-facing title for one grouped household memory topic",
             "Concise summary of why the grouped records belong together",
             "Allowed MemoryType enum values represented by this topic",
-            "Evidence-backed atomic claims under this topic",
+            "Evidence-backed canonical-memory proposals under this topic",
             "Atomic memory statement supported by the cited evidence",
-            "How directly the source evidence supports this claim",
+            "How directly the source evidence supports this memory",
             "\"enum\"",
             "\"STATE\"",
         ).forEach { assertContains(schema, it) }
@@ -115,8 +115,8 @@ class LlmTopicOutputContractTest {
             TopicLlmResponse.serializer().descriptor.serialName,
         )
         assertEquals(
-            "com.homeassistant.adapter.outbound.codex.TopicClaimLlmResponse",
-            TopicClaimLlmResponse.serializer().descriptor.serialName,
+            "com.homeassistant.adapter.outbound.codex.MemoryLlmResponse",
+            MemoryLlmResponse.serializer().descriptor.serialName,
         )
     }
 }

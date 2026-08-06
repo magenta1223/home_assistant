@@ -6,7 +6,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.KakaoImportedMes
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SchemaMigrationTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.TopicCandidateTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.LegacyTopicCandidateTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicCategoryTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicTable
 import org.jetbrains.exposed.sql.Database
@@ -35,7 +35,7 @@ class CanonicalMemoryMigrationTest {
         transaction(db) {
             SchemaUtils.create(
                 KakaoImportedMessageTable,
-                TopicCandidateTable,
+                LegacyTopicCandidateTable,
                 IndexingOutboxTable,
             )
             exec(
@@ -59,7 +59,7 @@ class CanonicalMemoryMigrationTest {
                 it[fingerprint] = "migration-evidence-41"
                 it[createdAt] = 1_000L
             }
-            TopicCandidateTable.insert {
+            LegacyTopicCandidateTable.insert {
                 it[id] = 23
                 it[familyId] = "legacy-family"
                 it[createdByUserId] = "dad"

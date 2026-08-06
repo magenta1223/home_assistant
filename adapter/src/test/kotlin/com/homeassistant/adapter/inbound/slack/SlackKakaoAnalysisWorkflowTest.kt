@@ -1,12 +1,11 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.slackconversation.SlackPrincipal
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
@@ -79,7 +78,7 @@ class SlackKakaoAnalysisWorkflowTest {
 
     private fun upload() =
         SlackKakaoFileUpload(
-            principal = SlackPrincipal("T1", "U1", "dad", "family-1"),
+            principal = SlackPrincipal("T1", "U1", com.homeassistant.domain.identity.UserId("dad")),
             channelId = "D1",
             messageTs = "1710000000.000100",
             fileId = null,
@@ -162,22 +161,21 @@ private object DuplicateAnalyzer : AnalyzeSourceUseCase {
 }
 
 private fun topic() =
-    TopicCandidate(
-        familyId = "family-1",
+    ProposedTopic(
         createdByUserId = "dad",
         sourceType = "kakao",
         sourceName = "kakao.txt",
         title = "이사 준비",
         summary = "관리사무소 질문을 모았다.",
         memoryTypes = listOf(MemoryType.STATE),
-        domains = listOf("family"),
+        categories = listOf("family"),
         evidenceRefs = listOf(1),
-        claims = listOf(
-            TopicClaimCandidate(
+        memories = listOf(
+            ProposedMemory(
                 text = "claim",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
-                certainty = ClaimCertainty.OBSERVED,
+                certainty = MemoryCertainty.OBSERVED,
                 evidenceRefs = listOf(1),
             ),
         ),

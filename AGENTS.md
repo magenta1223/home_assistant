@@ -35,7 +35,7 @@ LLM providers and provider-selection environment variables are not supported.
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
 | `QDRANT_COLLECTION` | `family_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
-| `SLACK_MEMBER_SCOPES_JSON` | - | Server-owned mapping of Slack members to immutable `userId`/`familyId` scopes |
+| `SLACK_MEMBER_SCOPES_JSON` | - | Server-owned mapping of Slack members to immutable application `userId` values |
 | `CODEX_EXECUTABLE` | - | Absolute path to the version-specific service Codex executable |
 | `CODEX_EXPECTED_VERSION` | `0.144.5` | Exact service CLI version validated at startup |
 | `CODEX_WORK_DIR` | - | Dedicated minimal service workspace; must not contain the application DB |
@@ -50,9 +50,9 @@ Server port and DB path are configured in `AppConfig` and Ktor application confi
 The project is now a **home second brain**, not a general chat assistant. The primary flow is:
 
 1. Import source records, currently Kakao exports.
-2. Analyze source records into topic candidates with an LLM.
-3. Store pending memory candidates and evidence.
-4. Approve, reject, search, and retrieve memories through domain tools or future purpose-built APIs.
+2. Analyze source records into proposed topics containing proposed memories.
+3. Save approved topics as groupings and their memories as independently searchable canonical records.
+4. Search and retrieve canonical memories with their source evidence and optional topic context.
 5. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
@@ -76,8 +76,7 @@ application-driven integrations under `outbound`.
 ### application
 
 - `topicanalysis/{analyze,save}/` - independent vertical use-case slices with their inputs, outputs, and ports.
-- `topicanswer/answer/` - topic-answer input, output, use case, and claim-search port.
-- `memory/{create,list,approve,reject,search}/` - memory use cases grouped with their inputs and outputs.
+- `memory/answer/` - memory-answer input, output, use case, and memory-search port.
 - `slackconversation/handle/` - authorized Slack conversation/session orchestration and its ports.
 
 ### adapter
@@ -85,30 +84,31 @@ application-driven integrations under `outbound`.
 - `inbound/http/` - Ktor routes and HTTP request/response DTO mapping.
 - `inbound/kakao/` - Kakao export parsing at the source-format boundary.
 - `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
-- `inbound/tool/` - memory tool contracts, JSON mapping, dispatch, and result formatting.
 - `outbound/codex/` - Codex topic extraction and conversation-turn implementations.
 - `outbound/embedding/ollama/` - local Ollama text embedding implementation.
 - `outbound/persistence/` - SQLite/Exposed repositories and schema implementations.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.
-- `outbound/vector/topicclaim/` - topic-claim semantic index implementation.
+- `outbound/vector/memory/` - canonical-memory semantic index implementation.
 - `shared/config/` and `shared/json/` - runtime-only adapter/composition support; never domain APIs.
 
 ### domain
 
-- `identity/` - household identity, authorization scope, and access policy.
+- `identity/` - single-household user identity and authorization policy. There is no family/subgroup scope.
 - `kakao/` - Kakao source models, import policy, and persistence ports.
 - `source/` - source-agnostic analysis documents and records.
-- `topicanalysis/` - topic domain models and persistence ports.
-- `memory/` - memory domain models plus embedding and vector-store ports.
+- `topicanalysis/` - topic grouping/proposal models and persistence ports.
+- `memory/` - canonical memory, FAMILY/PRIVATE visibility policy, embedding, and vector-store ports. FAMILY is globally visible to authorized users; PRIVATE requires the requesting `userId` to match `createdByUserId`.
 
 ### app
 
 Ktor + Netty server. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
-- `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text content and returns pending topic candidates.
+- `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text and returns a review preview of proposed topics/memories.
+- `POST /api/kakao/import/save` -> saves the preview as topics and canonical memories.
+- `POST /api/memories/answer` -> retrieves visible canonical memories and builds a direct answer.
 
-`Application.kt` wires repositories, Codex topic extraction, Kakao parsing/import, topic analysis, Slack, and HTTP routes.
+`ApplicationServices.kt` is the composition root for repositories, use cases, Codex extraction, embeddings, vector search, Slack, and HTTP adapters.
 
 ## Coding Principles
 

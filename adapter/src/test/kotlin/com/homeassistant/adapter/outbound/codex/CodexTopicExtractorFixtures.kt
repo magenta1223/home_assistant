@@ -26,21 +26,21 @@ internal fun topicJson(
     title: String = "관계 표현",
     summary: String = "애정 표현을 주고받았다.",
     memoryTypes: String = """["STATE"]""",
-    domains: String = """["relationship"]""",
+    categories: String = """["relationship"]""",
     evidenceRecordIds: String = """["r1"]""",
-    claimText: String = "동훈은 애정 표현을 했다.",
-    claimSubject: String = "동훈",
-    claimMemoryType: String = "STATE",
-    claimCertainty: String = "OBSERVED",
-    claimEvidenceRecordIds: String = """["r1"]""",
-    claims: String = """
+    memoryText: String = "동훈은 애정 표현을 했다.",
+    memorySubject: String = "동훈",
+    memoryType: String = "STATE",
+    memoryCertainty: String = "OBSERVED",
+    memoryEvidenceRecordIds: String = """["r1"]""",
+    memories: String = """
         [
           {
-            "text": "$claimText",
-            "subject": "$claimSubject",
-            "memoryType": "$claimMemoryType",
-            "certainty": "$claimCertainty",
-            "evidenceRecordIds": $claimEvidenceRecordIds
+            "text": "$memoryText",
+            "subject": "$memorySubject",
+            "memoryType": "$memoryType",
+            "certainty": "$memoryCertainty",
+            "evidenceRecordIds": $memoryEvidenceRecordIds
           }
         ]
     """.trimIndent(),
@@ -51,9 +51,9 @@ internal fun topicJson(
           "title": "$title",
           "summary": "$summary",
           "memoryTypes": $memoryTypes,
-          "domains": $domains,
+          "categories": $categories,
           "evidenceRecordIds": $evidenceRecordIds,
-          "claims": $claims
+          "memories": $memories
         }
       ]
     }

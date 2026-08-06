@@ -1,17 +1,16 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaim
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlinx.coroutines.runBlocking
@@ -99,7 +98,11 @@ class SlackConfirmationHandlersTest {
     )
 
     private fun principal(slackUserId: String) =
-        SlackPrincipal("T1", slackUserId, if (slackUserId == "U1") "dad" else "mom", "family-1")
+        SlackPrincipal(
+            "T1",
+            slackUserId,
+            com.homeassistant.domain.identity.UserId(if (slackUserId == "U1") "dad" else "mom"),
+        )
 }
 
 private class FakeSessionStore(
@@ -119,7 +122,7 @@ private class FakeSessionStore(
     }
 }
 
-private object FakeTopicAnalysis : SaveTopicCandidatesUseCase {
+private object FakeTopicAnalysis : SaveAnalyzedTopicsUseCase {
     lateinit var selectionRequest: TopicAnalysisSelectionSaveRequest
 
     fun reset() {
@@ -139,22 +142,21 @@ private object FakeTopicAnalysis : SaveTopicCandidatesUseCase {
 }
 
 private fun topic(id: Int) =
-    TopicCandidate(
-        familyId = "family-1",
+    ProposedTopic(
         createdByUserId = "dad",
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = "후보 $id",
         summary = "요약 $id",
         memoryTypes = listOf(MemoryType.STATE),
-        domains = listOf("family"),
+        categories = listOf("family"),
         evidenceRefs = listOf(id),
-        claims = listOf(
-            TopicClaimCandidate(
+        memories = listOf(
+            ProposedMemory(
                 text = "claim $id",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
-                certainty = ClaimCertainty.OBSERVED,
+                certainty = MemoryCertainty.OBSERVED,
                 evidenceRefs = listOf(id),
             ),
         ),
@@ -163,24 +165,23 @@ private fun topic(id: Int) =
 private fun persistedTopic(id: Int) =
     Topic(
         id = id,
-        familyId = "family-1",
         createdByUserId = "dad",
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = "후보 $id",
         summary = "요약 $id",
-        memoryTypes = listOf(MemoryType.STATE),
-        domains = listOf("family"),
-        evidenceRefs = listOf(id),
-        claims = listOf(
-            TopicClaim(
+        categories = listOf("family"),
+        memories = listOf(
+            Memory(
                 id = id,
-                text = "claim $id",
+                topicId = id,
+                createdByUserId = "dad",
+                content = "claim $id",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
-                certainty = ClaimCertainty.OBSERVED,
+                certainty = MemoryCertainty.OBSERVED,
+                visibility = com.homeassistant.domain.memory.MemoryVisibility.FAMILY,
                 evidenceRefs = listOf(id),
             ),
         ),
-        status = CandidateStatus.PENDING,
     )

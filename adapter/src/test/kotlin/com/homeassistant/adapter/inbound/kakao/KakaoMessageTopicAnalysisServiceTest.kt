@@ -6,16 +6,16 @@ import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.kakao.KakaoAnalysisPreview
 import com.homeassistant.domain.kakao.KakaoMessage
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaim
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.kakao.KakaoMessageStore
 import com.homeassistant.domain.kakao.ParsedKakaoMessage
@@ -63,12 +63,12 @@ class KakaoMessageTopicAnalysisServiceTest {
 }
 
 internal class FakePreviewStore(
-    private val topics: List<TopicCandidate>,
+    private val topics: List<ProposedTopic>,
 ) : TopicAnalysisPreviewStore {
     override fun createPreview(
         sourceFileName: String,
         text: String,
-        topics: List<TopicCandidate>,
+        topics: List<ProposedTopic>,
     ): KakaoAnalysisPreview =
         error("not used")
 
@@ -87,32 +87,31 @@ internal class FakePreviewStore(
 }
 
 internal class FakeTopicStore : TopicAnalysisStore {
-    val createdTopics = mutableListOf<TopicCandidate>()
+    val createdTopics = mutableListOf<ProposedTopic>()
 
-    override fun createTopic(candidate: TopicCandidate): Topic {
-        createdTopics += candidate
+    override fun createTopic(proposal: ProposedTopic): Topic {
+        createdTopics += proposal
         return Topic(
             id = createdTopics.size,
-            familyId = candidate.familyId,
-            createdByUserId = candidate.createdByUserId,
-            sourceType = candidate.sourceType,
-            sourceName = candidate.sourceName,
-            title = candidate.title,
-            summary = candidate.summary,
-            memoryTypes = candidate.memoryTypes,
-            domains = candidate.domains,
-            evidenceRefs = candidate.evidenceRefs,
-            claims = candidate.claims.mapIndexed { index, claim ->
-                TopicClaim(
+            createdByUserId = proposal.createdByUserId,
+            sourceType = proposal.sourceType,
+            sourceName = proposal.sourceName,
+            title = proposal.title,
+            summary = proposal.summary,
+            categories = proposal.categories,
+            memories = proposal.memories.mapIndexed { index, memory ->
+                Memory(
                     id = index + 1,
-                    text = claim.text,
-                    subject = claim.subject,
-                    memoryType = claim.memoryType,
-                    certainty = claim.certainty,
-                    evidenceRefs = claim.evidenceRefs,
+                    topicId = createdTopics.size,
+                    createdByUserId = proposal.createdByUserId,
+                    content = memory.text,
+                    subject = memory.subject,
+                    memoryType = memory.memoryType,
+                    certainty = memory.certainty,
+                    visibility = memory.visibility,
+                    evidenceRefs = memory.evidenceRefs,
                 )
             },
-            status = CandidateStatus.PENDING,
         )
     }
 
@@ -209,7 +208,7 @@ internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
     override fun createPreview(
         sourceFileName: String,
         text: String,
-        topics: List<TopicCandidate>,
+        topics: List<ProposedTopic>,
     ): KakaoAnalysisPreview {
         createCalls += 1
         return KakaoAnalysisPreview("preview-1", sourceFileName, text, topics)
@@ -241,22 +240,21 @@ internal fun kakaoText(): String =
     """.trimIndent()
 
 internal fun topic(title: String, evidenceRef: Int) =
-    TopicCandidate(
-        familyId = "household",
+    ProposedTopic(
         createdByUserId = TEST_USER.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = title,
         summary = "요약",
         memoryTypes = listOf(MemoryType.STATE),
-        domains = listOf("family"),
+        categories = listOf("family"),
         evidenceRefs = listOf(evidenceRef),
-        claims = listOf(
-            TopicClaimCandidate(
+        memories = listOf(
+            ProposedMemory(
                 text = "claim",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
-                certainty = ClaimCertainty.OBSERVED,
+                certainty = MemoryCertainty.OBSERVED,
                 evidenceRefs = listOf(evidenceRef),
             ),
         ),

@@ -10,6 +10,7 @@ internal object DatabaseFactory {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
             archiveLegacyMemoryTable()
+            migrateLegacySlackSessionSchema()
             SchemaUtils.createMissingTablesAndColumns(
                 TopicTable,
                 CategoryTable,

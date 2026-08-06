@@ -69,5 +69,5 @@ class SlackFileIngressTest {
     }
 
     private fun principal() =
-        SlackPrincipal("T1", "U1", "dad", "family-1")
+        SlackPrincipal("T1", "U1", com.homeassistant.domain.identity.UserId("dad"))
 }

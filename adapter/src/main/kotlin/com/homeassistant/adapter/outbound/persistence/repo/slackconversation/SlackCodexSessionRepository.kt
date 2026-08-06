@@ -88,7 +88,6 @@ internal class SlackCodexSessionRepository(
             it[teamId] = principal.teamId
             it[slackUserId] = principal.slackUserId
             it[userId] = principal.userId.value
-            it[familyId] = LEGACY_HOUSEHOLD_ID
             it[SlackCodexSessionTable.codexThreadId] = codexThreadId
             it[createdAt] = now
             it[lastActiveAt] = now
@@ -229,5 +228,3 @@ internal class SlackCodexSessionRepository(
             updatedAt = this[SlackMessageReceiptTable.updatedAt],
         )
 }
-
-private const val LEGACY_HOUSEHOLD_ID = "household"

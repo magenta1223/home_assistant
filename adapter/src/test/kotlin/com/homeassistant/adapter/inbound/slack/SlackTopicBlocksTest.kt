@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -82,7 +82,7 @@ class SlackTopicBlocksTest {
     }
 
     @Test
-    fun `selection option label and description do not include evidence or claim text`() {
+    fun `selection option label and description do not include evidence or memory content`() {
         val result = SlackTopicBlocks.selectionModal(
             previewId = "preview-1",
             topics = listOf(topic("첫 후보", "비밀 원문 메시지")),
@@ -100,22 +100,21 @@ class SlackTopicBlocksTest {
     }
 
     private fun topic(title: String, summary: String) =
-        TopicCandidate(
-            familyId = "family-1",
+        ProposedTopic(
             createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = "family-kakao.txt",
             title = title,
             summary = summary,
             memoryTypes = listOf(MemoryType.STATE),
-            domains = listOf("family"),
+            categories = listOf("family"),
             evidenceRefs = listOf(1, 2),
-            claims = listOf(
-                TopicClaimCandidate(
+            memories = listOf(
+                ProposedMemory(
                     text = "동훈은 비밀 원문을 말했다.",
                     subject = "동훈",
                     memoryType = MemoryType.STATE,
-                    certainty = ClaimCertainty.OBSERVED,
+                    certainty = MemoryCertainty.OBSERVED,
                     evidenceRefs = listOf(1),
                 ),
             ),

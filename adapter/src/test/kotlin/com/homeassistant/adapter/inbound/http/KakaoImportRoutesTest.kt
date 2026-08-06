@@ -1,12 +1,7 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaim
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult

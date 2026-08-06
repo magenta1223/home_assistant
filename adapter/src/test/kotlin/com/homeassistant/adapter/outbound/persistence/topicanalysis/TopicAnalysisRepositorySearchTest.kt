@@ -2,10 +2,10 @@ package com.homeassistant.adapter.outbound.persistence.topicanalysis
 
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryVisibility
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
@@ -47,7 +47,7 @@ class TopicAnalysisRepositorySearchTest {
     }
 
     @Test
-    fun `search approved topics returns matching approved topic claims`() {
+    fun `search approved topics returns matching canonical memories`() {
         val remote = repository.createTopic(topic("주차장 리모컨 위치", "주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", 10))
         repository.createTopic(topic("점심 기록", "점심으로 쭈꾸미 덮밥을 먹었다.", 20))
 
@@ -55,7 +55,7 @@ class TopicAnalysisRepositorySearchTest {
 
         assertEquals(listOf(remote.id), results.map { it.id })
         assertEquals("주차장 리모컨 위치", results.single().title)
-        assertEquals("주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", results.single().claims.single().text)
+        assertEquals("주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", results.single().memories.single().content)
     }
 
     @Test
@@ -77,7 +77,7 @@ class TopicAnalysisRepositorySearchTest {
     @Test
     fun `search approved topics clamps limit to ten`() {
         repeat(12) { index ->
-            repository.createTopic(topic("리모컨 후보 $index", "리모컨 관련 claim $index", index + 1))
+            repository.createTopic(topic("리모컨 후보 $index", "리모컨 관련 기억 $index", index + 1))
         }
 
         val results = repository.searchApprovedTopics(TEST_USER, "리모컨", limit = 50)
@@ -87,26 +87,25 @@ class TopicAnalysisRepositorySearchTest {
 
     private fun topic(
         title: String,
-        claimText: String,
+        memoryContent: String,
         evidenceRef: Int,
         visibility: MemoryVisibility = MemoryVisibility.FAMILY,
     ) =
-        TopicCandidate(
-            familyId = "household",
+        ProposedTopic(
             createdByUserId = TEST_USER.value,
             sourceType = "kakao",
             sourceName = "family-kakao.txt",
             title = title,
             summary = "$title 요약",
             memoryTypes = listOf(MemoryType.REFERENCE),
-            domains = listOf("home"),
+            categories = listOf("home"),
             evidenceRefs = listOf(evidenceRef),
-            claims = listOf(
-                TopicClaimCandidate(
-                    text = claimText,
+            memories = listOf(
+                ProposedMemory(
+                    text = memoryContent,
                     subject = title,
                     memoryType = MemoryType.REFERENCE,
-                    certainty = ClaimCertainty.SAID,
+                    certainty = MemoryCertainty.SAID,
                     evidenceRefs = listOf(evidenceRef),
                     visibility = visibility,
                 ),

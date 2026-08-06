@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.domain.indexing.IndexTargetType
-import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
@@ -30,8 +29,8 @@ internal fun Transaction.migrateLegacyTopics() {
     }
 
     if (tableExists("topic_candidates")) {
-        TopicCandidateTable.selectAll()
-            .where { TopicCandidateTable.status eq CandidateStatus.APPROVED.name }
+        LegacyTopicCandidateTable.selectAll()
+            .where { LegacyTopicCandidateTable.status eq LEGACY_APPROVED_STATUS }
             .forEach(::migrateLegacyTopic)
     }
 
@@ -42,38 +41,38 @@ internal fun Transaction.migrateLegacyTopics() {
 }
 
 private fun Transaction.migrateLegacyTopic(row: ResultRow) {
-    val legacyTopicId = row[TopicCandidateTable.id]
+    val legacyTopicId = row[LegacyTopicCandidateTable.id]
     if (TopicTable.selectAll().where { TopicTable.id eq legacyTopicId }.any()) return
 
     TopicTable.insert {
         it[id] = legacyTopicId
-        it[createdByUserId] = row[TopicCandidateTable.createdByUserId]
-        it[sourceType] = row[TopicCandidateTable.sourceType]
-        it[sourceName] = row[TopicCandidateTable.sourceName]
-        it[title] = row[TopicCandidateTable.title]
-        it[summary] = row[TopicCandidateTable.summary]
-        it[createdAt] = row[TopicCandidateTable.createdAt]
-        it[updatedAt] = row[TopicCandidateTable.updatedAt]
+        it[createdByUserId] = row[LegacyTopicCandidateTable.createdByUserId]
+        it[sourceType] = row[LegacyTopicCandidateTable.sourceType]
+        it[sourceName] = row[LegacyTopicCandidateTable.sourceName]
+        it[title] = row[LegacyTopicCandidateTable.title]
+        it[summary] = row[LegacyTopicCandidateTable.summary]
+        it[createdAt] = row[LegacyTopicCandidateTable.createdAt]
+        it[updatedAt] = row[LegacyTopicCandidateTable.updatedAt]
     }
 
-    row[TopicCandidateTable.domainsJson]
+    row[LegacyTopicCandidateTable.domainsJson]
         .decodeFromString<List<String>>()
         .distinct()
         .forEach { category -> linkCategory(legacyTopicId, category) }
 
-    row[TopicCandidateTable.claimsJson]
+    row[LegacyTopicCandidateTable.claimsJson]
         .decodeFromString<List<LegacyPersistedMemory>>()
         .forEach { memory ->
             val memoryId = MemoryTable.insert {
                 it[topicId] = legacyTopicId
-                it[createdByUserId] = row[TopicCandidateTable.createdByUserId]
+                it[createdByUserId] = row[LegacyTopicCandidateTable.createdByUserId]
                 it[content] = memory.text
                 it[subject] = memory.subject
                 it[memoryType] = memory.memoryType.code
                 it[certainty] = memory.certainty.name
                 it[visibility] = memory.visibility.name
-                it[createdAt] = row[TopicCandidateTable.createdAt]
-                it[updatedAt] = row[TopicCandidateTable.updatedAt]
+                it[createdAt] = row[LegacyTopicCandidateTable.createdAt]
+                it[updatedAt] = row[LegacyTopicCandidateTable.updatedAt]
             }[MemoryTable.id]
             memory.evidenceRefs.distinct().forEach { sourceRecordId ->
                 MemoryEvidenceTable.insert {
@@ -130,3 +129,4 @@ private data class LegacyPersistedMemory(
 )
 
 private const val CANONICAL_MEMORY_VERSION = 1
+private const val LEGACY_APPROVED_STATUS = "APPROVED"

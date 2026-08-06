@@ -137,7 +137,6 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             summary = row[TopicTable.summary],
             categories = categories,
             memories = memories,
-            status = CandidateStatus.APPROVED,
         )
     }
 

@@ -8,7 +8,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.application.memory.answer.MemorySearchIndexes
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
@@ -50,7 +50,7 @@ class LiveTopicAnalysisApiTest {
             previewRepository = repositories.kakaoAnalysisPreviews,
             accessPolicy = accessPolicy,
         )
-        val saveTopicCandidates = SaveTopicCandidates(
+        val saveAnalyzedTopics = SaveAnalyzedTopics(
             importService = importer,
             sourceTextParser = KakaoExportParser,
             topicRepository = repositories.topicAnalysis,
@@ -63,7 +63,7 @@ class LiveTopicAnalysisApiTest {
         testApplication {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
-                configureRoutes(analyzeSource, saveTopicCandidates)
+                configureRoutes(analyzeSource, saveAnalyzedTopics)
             }
 
             val response = client.post("/api/kakao/import/analyze") {

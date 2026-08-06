@@ -1,7 +1,6 @@
 package com.homeassistant.domain.slackconversation
 
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.identity.FamilyId
 
 data class SlackPrincipal(
     val teamId: String,
@@ -12,16 +11,6 @@ data class SlackPrincipal(
         require(teamId.isNotBlank()) { "teamId is required" }
         require(slackUserId.isNotBlank()) { "slackUserId is required" }
     }
-
-    @Deprecated("familyId is ignored because the application has one household")
-    constructor(teamId: String, slackUserId: String, userId: String, familyId: String) : this(
-        teamId = teamId,
-        slackUserId = slackUserId,
-        userId = UserId(userId),
-    )
-
-    @Deprecated("The application has one household")
-    val familyId: FamilyId get() = FamilyId("household")
 }
 
 data class SlackMessageKey(

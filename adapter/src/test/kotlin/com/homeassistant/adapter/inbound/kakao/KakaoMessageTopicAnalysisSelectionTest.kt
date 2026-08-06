@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.kakao
 
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.domain.indexing.IndexTargetType
@@ -75,7 +75,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
     @Test
     fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
         val outbox = FakeIndexingOutboxStore()
-        val service = SaveTopicCandidates(
+        val service = SaveAnalyzedTopics(
             importService = KakaoImporterFactory.create(FakeKakaoMessageStore()),
             sourceTextParser = KakaoExportParser,
             topicRepository = FakeTopicStore(),
@@ -96,7 +96,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
         topicStore: FakeTopicStore,
         previewStore: FakePreviewStore,
         index: RecordingMemorySearchIndex = RecordingMemorySearchIndex(),
-    ) = SaveTopicCandidates(
+    ) = SaveAnalyzedTopics(
         importService = KakaoImporterFactory.create(kakaoStore),
         sourceTextParser = KakaoExportParser,
         topicRepository = topicStore,

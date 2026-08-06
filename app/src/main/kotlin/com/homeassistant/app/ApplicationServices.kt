@@ -13,8 +13,8 @@ import com.homeassistant.application.memory.answer.AnswerFromMemory
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidates
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.adapter.shared.config.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -25,14 +25,14 @@ import org.slf4j.LoggerFactory
 
 interface ApplicationServices : AutoCloseable {
     val analyzeSource: AnalyzeSourceUseCase
-    val saveTopicCandidates: SaveTopicCandidatesUseCase
+    val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase
     val memoryAnswer: MemoryAnswerUseCase
     fun start()
 }
 
 private class DefaultApplicationServices(
     override val analyzeSource: AnalyzeSourceUseCase,
-    override val saveTopicCandidates: SaveTopicCandidatesUseCase,
+    override val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
     override val memoryAnswer: MemoryAnswerUseCase,
     private val slackRuntime: SlackRuntime?,
 ) : ApplicationServices {
@@ -73,7 +73,7 @@ object ApplicationServicesFactory {
             previewRepository = repositories.kakaoAnalysisPreviews,
             accessPolicy = accessPolicy,
         )
-        val saveTopicCandidates = SaveTopicCandidates(
+        val saveAnalyzedTopics = SaveAnalyzedTopics(
             importService = kakaoImporter,
             sourceTextParser = KakaoExportParser,
             topicRepository = repositories.topicAnalysis,
@@ -94,7 +94,7 @@ object ApplicationServicesFactory {
             SlackRuntimeFactory.create(
                 it,
                 analyzeSource,
-                saveTopicCandidates,
+                saveAnalyzedTopics,
                 memoryAnswer,
                 repositories.slackCodexSessions,
                 conversationClient,
@@ -103,7 +103,7 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(analyzeSource, saveTopicCandidates, memoryAnswer, slackRuntime)
+        return DefaultApplicationServices(analyzeSource, saveAnalyzedTopics, memoryAnswer, slackRuntime)
     }
 }
 

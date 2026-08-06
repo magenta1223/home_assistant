@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 
@@ -14,7 +14,7 @@ interface SlackConfirmationHandler {
 }
 
 internal class SlackConfirmationHandlers(
-    private val saveTopicCandidates: SaveTopicCandidatesUseCase,
+    private val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
     private val reviewSessions: SlackTopicReviewSessionStore,
 ) : SlackConfirmationHandler {
     override fun buildReviewModal(
@@ -52,7 +52,7 @@ internal class SlackConfirmationHandlers(
             return SlackReviewSubmitResult.Rejected("이미 처리되었거나 만료된 검토 요청입니다.")
         }
 
-        val result = saveTopicCandidates.saveSelected(
+        val result = saveAnalyzedTopics.saveSelected(
             TopicAnalysisSelectionSaveRequest(
                 previewId = previewId,
                 userId = session.principal.userId.value,

@@ -6,7 +6,7 @@ import com.homeassistant.application.slackconversation.handle.ConversationTurnCl
 import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 
@@ -14,7 +14,7 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         analyzeSource: AnalyzeSourceUseCase,
-        saveTopicCandidates: SaveTopicCandidatesUseCase,
+        saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
         memoryAnswer: MemoryAnswerUseCase,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
@@ -35,7 +35,7 @@ object SlackRuntimeFactory {
                 reviewSessions = reviewSessions,
                 maxFileSizeBytes = config.maxFileSizeBytes,
             )
-        val confirmationHandlers = SlackConfirmationHandlers(saveTopicCandidates, reviewSessions)
+        val confirmationHandlers = SlackConfirmationHandlers(saveAnalyzedTopics, reviewSessions)
         val listeners = buildList {
             add(SlackKakaoListeners(config, workflow, executor))
             add(SlackConfirmationListeners(config, confirmationHandlers, reviewSessions, slackClient, executor))

@@ -73,13 +73,13 @@ class AnalyzeSource(
             memoryTypes = memoryTypes,
             categories = categories,
             evidenceRefs = evidence.map { it.ref },
-            memories = claims.map { claim ->
+            memories = memories.map { memory ->
                 ProposedMemory(
-                    text = claim.text,
-                    subject = claim.subject,
-                    memoryType = claim.memoryType,
-                    certainty = claim.certainty,
-                    evidenceRefs = claim.evidence.map { it.ref },
+                    text = memory.text,
+                    subject = memory.subject,
+                    memoryType = memory.memoryType,
+                    certainty = memory.certainty,
+                    evidenceRefs = memory.evidence.map { it.ref },
                 )
             },
         )

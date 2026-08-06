@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.outbound.persistence.kakao
 
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAnalysisPreviewTable
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisPreviewRepository
 import org.jetbrains.exposed.sql.Database
@@ -50,22 +50,21 @@ class TopicAnalysisPreviewRepositoryTest {
     }
 
     private fun topic() =
-        TopicCandidate(
-            familyId = "family-1",
+        ProposedTopic(
             createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = "2026-06-07.txt",
             title = "관계 표현",
             summary = "애정 표현을 주고받았다.",
             memoryTypes = listOf(MemoryType.STATE),
-            domains = listOf("relationship"),
+            categories = listOf("relationship"),
             evidenceRefs = listOf(1),
-            claims = listOf(
-                TopicClaimCandidate(
+            memories = listOf(
+                ProposedMemory(
                     text = "동훈은 애정 표현을 했다.",
                     subject = "동훈",
                     memoryType = MemoryType.STATE,
-                    certainty = ClaimCertainty.OBSERVED,
+                    certainty = MemoryCertainty.OBSERVED,
                     evidenceRefs = listOf(1),
                 ),
             ),

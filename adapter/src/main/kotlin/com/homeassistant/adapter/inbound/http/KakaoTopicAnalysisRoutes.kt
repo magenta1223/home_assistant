@@ -4,7 +4,7 @@ import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
@@ -17,7 +17,7 @@ import kotlinx.serialization.Serializable
 
 internal fun Route.kakaoTopicAnalysisRoutes(
     analyzeSource: AnalyzeSourceUseCase,
-    saveTopicCandidates: SaveTopicCandidatesUseCase,
+    saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
 ) {
     post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {
         val request = call.receive<KakaoImportAnalyzeRequest>()
@@ -64,7 +64,7 @@ internal fun Route.kakaoTopicAnalysisRoutes(
         }
 
         try {
-            call.respond(HttpStatusCode.OK, saveTopicCandidates.saveAll(request))
+            call.respond(HttpStatusCode.OK, saveAnalyzedTopics.saveAll(request))
         } catch (_: TopicAnalysisPreviewNotFoundException) {
             call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
         } catch (_: HouseholdAccessDeniedException) {

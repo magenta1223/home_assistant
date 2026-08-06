@@ -1,12 +1,11 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.domain.memory.CandidateStatus
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaim
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
@@ -15,9 +14,9 @@ import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 
-internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase {
+internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {
     var sourceFileName = ""
     var text = ""
     var previewId = ""
@@ -63,50 +62,48 @@ internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase 
         saveAll(TopicAnalysisSaveRequest(request.previewId, request.userId))
 
     private fun newTopic(sourceName: String, evidenceRef: Int) =
-        TopicCandidate(
-            familyId = "family-1",
+        ProposedTopic(
             createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = sourceName,
             title = "관계 표현",
             summary = "애정 표현을 주고받았다.",
             memoryTypes = listOf(MemoryType.STATE),
-            domains = listOf("relationship"),
+            categories = listOf("relationship"),
             evidenceRefs = listOf(evidenceRef),
-            claims = listOf(candidateClaim(evidenceRef)),
+            memories = listOf(candidateMemory(evidenceRef)),
         )
 
     private fun topic(sourceName: String, evidenceRef: Int) =
         Topic(
             id = 7,
-            familyId = "family-1",
             createdByUserId = "dad",
             sourceType = "kakao",
             sourceName = sourceName,
             title = "관계 표현",
             summary = "애정 표현을 주고받았다.",
-            memoryTypes = listOf(MemoryType.STATE),
-            domains = listOf("relationship"),
-            evidenceRefs = listOf(evidenceRef),
-            claims = listOf(
-                TopicClaim(
+            categories = listOf("relationship"),
+            memories = listOf(
+                Memory(
                     id = 8,
-                    text = "동훈은 애정 표현을 했다.",
+                    topicId = 7,
+                    createdByUserId = "dad",
+                    content = "동훈은 애정 표현을 했다.",
                     subject = "동훈",
                     memoryType = MemoryType.STATE,
-                    certainty = ClaimCertainty.OBSERVED,
+                    certainty = MemoryCertainty.OBSERVED,
+                    visibility = com.homeassistant.domain.memory.MemoryVisibility.FAMILY,
                     evidenceRefs = listOf(evidenceRef),
                 ),
             ),
-            status = CandidateStatus.PENDING,
         )
 
-    private fun candidateClaim(evidenceRef: Int) =
-        TopicClaimCandidate(
+    private fun candidateMemory(evidenceRef: Int) =
+        ProposedMemory(
             text = "동훈은 애정 표현을 했다.",
             subject = "동훈",
             memoryType = MemoryType.STATE,
-            certainty = ClaimCertainty.OBSERVED,
+            certainty = MemoryCertainty.OBSERVED,
             evidenceRefs = listOf(evidenceRef),
         )
 }

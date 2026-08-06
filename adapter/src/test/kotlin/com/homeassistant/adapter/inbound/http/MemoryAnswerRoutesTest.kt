@@ -11,7 +11,7 @@ import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.application.topicanalysis.save.SaveTopicCandidatesUseCase
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -33,7 +33,7 @@ class MemoryAnswerRoutesTest {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 analyzeSource = UnusedTopicAnalysis,
-                saveTopicCandidates = UnusedTopicAnalysis,
+                saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
             )
         }
@@ -55,7 +55,7 @@ class MemoryAnswerRoutesTest {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 analyzeSource = UnusedTopicAnalysis,
-                saveTopicCandidates = UnusedTopicAnalysis,
+                saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
             )
         }
@@ -74,7 +74,7 @@ class MemoryAnswerRoutesTest {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 analyzeSource = UnusedTopicAnalysis,
-                saveTopicCandidates = UnusedTopicAnalysis,
+                saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = UnavailableMemoryAnswer,
             )
         }
@@ -112,7 +112,7 @@ private object UnavailableMemoryAnswer : MemoryAnswerUseCase {
         throw MemorySearchIndexUnavailableException("memory vector index is not configured")
 }
 
-private object UnusedTopicAnalysis : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase {
+private object UnusedTopicAnalysis : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("not used")
 

@@ -9,19 +9,7 @@ data class TopicAnalysisRequest(
     val sourceType: String,
     val sourceName: String,
     val text: String,
-) {
-    @Deprecated("familyId is ignored because the application has one household")
-    constructor(
-        userId: String,
-        familyId: String,
-        sourceType: String,
-        sourceName: String,
-        text: String,
-    ) : this(userId, sourceType, sourceName, text)
-
-    @Deprecated("The application has one household")
-    val familyId: String get() = "household"
-}
+)
 
 @Serializable
 data class TopicAnalysisResult(

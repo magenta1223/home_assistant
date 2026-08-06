@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -22,9 +22,9 @@ class CodexTopicExtractorTest {
                       "title": "카인드커피에서 만나기",
                       "summary": "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
                       "memoryTypes": ["EVENT", "LOCATION"],
-                      "domains": ["location", "home"],
+                      "categories": ["location", "home"],
                       "evidenceRecordIds": ["r2", "r3"],
-                      "claims": [
+                      "memories": [
                         {
                           "text": "홍승민은 카인드커피로 오라고 말했다.",
                           "subject": "홍승민",
@@ -61,15 +61,15 @@ class CodexTopicExtractorTest {
             ),
             result.topics.single().memoryTypes.toSet(),
         )
-        assertEquals(setOf("location", "home"), result.topics.single().domains.toSet())
+        assertEquals(setOf("location", "home"), result.topics.single().categories.toSet())
         assertEquals(listOf(2, 3), result.topics.single().evidence.map { it.ref })
-        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().claims.single().text)
+        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().memories.single().text)
         assertEquals(
             MemoryType.EVENT,
-            result.topics.single().claims.single().memoryType,
+            result.topics.single().memories.single().memoryType,
         )
-        assertEquals(ClaimCertainty.SAID, result.topics.single().claims.single().certainty)
-        assertEquals(listOf(2, 3), result.topics.single().claims.single().evidence.map { it.ref })
+        assertEquals(MemoryCertainty.SAID, result.topics.single().memories.single().certainty)
+        assertEquals(listOf(2, 3), result.topics.single().memories.single().evidence.map { it.ref })
     }
 
     @Test
@@ -93,7 +93,7 @@ class CodexTopicExtractorTest {
         assertContains(backend.system, "A-B-A")
         assertContains(backend.userMessage, "r1")
         assertContains(backend.userMessage, "r3")
-        assertContains(backend.outputSchema, "claims")
+        assertContains(backend.outputSchema, "memories")
         assertContains(backend.outputSchema, "memoryTypes")
         assertContains(backend.outputSchema, "memoryType")
         assertContains(backend.outputSchema, "certainty")
@@ -116,12 +116,12 @@ class CodexTopicExtractorTest {
     fun `long documents are analyzed by chunk then merged`() = runBlocking {
         val backend = RecordingClient(
             listOf(
-                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", claimEvidenceRecordIds = """["r1"]"""),
-                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", claimEvidenceRecordIds = """["r201"]"""),
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", memoryEvidenceRecordIds = """["r1"]"""),
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", memoryEvidenceRecordIds = """["r201"]"""),
                 topicJson(
                     title = "가족 병원 일정",
                     evidenceRecordIds = """["r1", "r201"]""",
-                    claimEvidenceRecordIds = """["r1", "r201"]""",
+                    memoryEvidenceRecordIds = """["r1", "r201"]""",
                 ),
             ),
         )
@@ -162,14 +162,14 @@ class CodexTopicExtractorTest {
                     return topicJson(
                         title = "chunk $firstRecordId",
                         evidenceRecordIds = """["$firstRecordId"]""",
-                        claimEvidenceRecordIds = """["$firstRecordId"]""",
+                        memoryEvidenceRecordIds = """["$firstRecordId"]""",
                     )
                 }
 
                 return topicJson(
                     title = "merged",
                     evidenceRecordIds = """["r1", "r201", "r401"]""",
-                    claimEvidenceRecordIds = """["r1", "r201", "r401"]""",
+                    memoryEvidenceRecordIds = """["r1", "r201", "r401"]""",
                 )
             }
         }
@@ -189,7 +189,7 @@ class CodexTopicExtractorTest {
 
         assertFalse(backend.calls.first().system.contains("후보 topic은 최대"))
         assertContains(backend.calls.first().system, "evidenceRecordIds는 topic당 최대 5개")
-        assertContains(backend.calls.first().system, "claims는 topic당 최대 3개")
+        assertContains(backend.calls.first().system, "memories는 topic당 최대 3개")
         assertContains(backend.calls.first().system, "한 번만 짧게 언급된 정보")
         assertContains(backend.calls.first().system, "누락되지 않았는지 다시 점검")
         assertContains(backend.calls.first().system, "최대 200 records씩 내부 검토 구간")
@@ -216,12 +216,12 @@ class CodexTopicExtractorTest {
     fun `merge evidence ids are validated against original source records`() = runBlocking {
         val backend = RecordingClient(
             listOf(
-                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", claimEvidenceRecordIds = """["r1"]"""),
-                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", claimEvidenceRecordIds = """["r201"]"""),
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r1"]""", memoryEvidenceRecordIds = """["r1"]"""),
+                topicJson(title = "가족 병원 일정", evidenceRecordIds = """["r201"]""", memoryEvidenceRecordIds = """["r201"]"""),
                 topicJson(
                     title = "가족 병원 일정",
                     evidenceRecordIds = """["missing"]""",
-                    claimEvidenceRecordIds = """["missing"]""",
+                    memoryEvidenceRecordIds = """["missing"]""",
                 ),
             ),
         )

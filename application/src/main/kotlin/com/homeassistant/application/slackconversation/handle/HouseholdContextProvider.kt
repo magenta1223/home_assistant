@@ -1,6 +1,6 @@
 package com.homeassistant.application.slackconversation.handle
 
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 

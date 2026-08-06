@@ -2,7 +2,7 @@ package com.homeassistant.adapter.inbound.slack
 
 import com.slack.api.model.File
 import com.slack.api.model.event.MessageFileShareEvent
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

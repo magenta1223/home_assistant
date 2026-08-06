@@ -1,12 +1,12 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.slackconversation.handle.*
-import com.homeassistant.domain.slackconversation.SlackCodexSession
-import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
-import com.homeassistant.domain.slackconversation.SlackMessageKey
-import com.homeassistant.domain.slackconversation.SlackMessageReceipt
-import com.homeassistant.domain.slackconversation.SlackMessageReceiptStatus
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.handle.SlackCodexSession
+import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
+import com.homeassistant.application.slackconversation.handle.SlackMessageKey
+import com.homeassistant.application.slackconversation.handle.SlackMessageReceipt
+import com.homeassistant.application.slackconversation.handle.SlackMessageReceiptStatus
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerResult
 import com.homeassistant.application.memory.answer.MemoryAnswerMatch

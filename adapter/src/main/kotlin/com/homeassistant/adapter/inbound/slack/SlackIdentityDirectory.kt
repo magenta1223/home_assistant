@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.slackconversation.handle.SlackPrincipalResolver
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
 

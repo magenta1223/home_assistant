@@ -1,6 +1,6 @@
 package com.homeassistant.application.slackconversation.handle
 
-import com.homeassistant.domain.slackconversation.*
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.util.concurrent.atomic.AtomicReference

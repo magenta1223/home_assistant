@@ -2,7 +2,7 @@ package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal

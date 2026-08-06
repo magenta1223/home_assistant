@@ -1,17 +1,6 @@
-package com.homeassistant.domain.slackconversation
+package com.homeassistant.application.slackconversation.handle
 
-import com.homeassistant.domain.identity.UserId
-
-data class SlackPrincipal(
-    val teamId: String,
-    val slackUserId: String,
-    val userId: UserId,
-) {
-    init {
-        require(teamId.isNotBlank()) { "teamId is required" }
-        require(slackUserId.isNotBlank()) { "slackUserId is required" }
-    }
-}
+import com.homeassistant.application.slackconversation.SlackPrincipal
 
 data class SlackMessageKey(
     val channelId: String,

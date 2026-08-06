@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.slack.api.model.event.MessageFileShareEvent
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.SlackPrincipal
 
 data class SlackKakaoFileUpload(
     val principal: SlackPrincipal,

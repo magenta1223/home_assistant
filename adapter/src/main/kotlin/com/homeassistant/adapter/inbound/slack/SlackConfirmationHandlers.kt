@@ -2,7 +2,7 @@ package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.SlackPrincipal
 
 interface SlackConfirmationHandler {
     fun buildReviewModal(previewId: String, actingPrincipal: SlackPrincipal): SlackReviewActionResult

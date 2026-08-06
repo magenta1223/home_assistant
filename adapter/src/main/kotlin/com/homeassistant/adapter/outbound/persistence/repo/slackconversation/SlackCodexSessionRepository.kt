@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.repo.slackconversation
 
-import com.homeassistant.domain.slackconversation.SlackCodexSession
-import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
-import com.homeassistant.domain.slackconversation.SlackMessageKey
-import com.homeassistant.domain.slackconversation.SlackMessageReceipt
-import com.homeassistant.domain.slackconversation.SlackMessageReceiptStatus
-import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.application.slackconversation.handle.SlackCodexSession
+import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
+import com.homeassistant.application.slackconversation.handle.SlackMessageKey
+import com.homeassistant.application.slackconversation.handle.SlackMessageReceipt
+import com.homeassistant.application.slackconversation.handle.SlackMessageReceiptStatus
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexActiveSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexSessionTable

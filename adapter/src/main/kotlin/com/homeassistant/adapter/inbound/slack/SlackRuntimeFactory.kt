@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.slack
 import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
-import com.homeassistant.domain.slackconversation.SlackCodexSessionStore
+import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase

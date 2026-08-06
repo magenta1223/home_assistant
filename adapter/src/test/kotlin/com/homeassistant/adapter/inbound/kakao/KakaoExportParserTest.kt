@@ -20,11 +20,12 @@ class KakaoExportParserTest {
             2026년 3월 16일 오전 7:20, 홍승민 : 가는즁
         """.trimIndent()
 
-        val records = KakaoExportParser.parse("home-second-brain-test.txt", text)
+        val parsedSource = KakaoExportParser.parse("home-second-brain-test.txt", text)
+        val records = parsedSource.records
 
         assertEquals(3, records.size)
-        assertEquals("kakao", records[0].sourceType)
-        assertEquals("home-second-brain-test.txt", records[0].sourceName)
+        assertEquals("kakao", parsedSource.source.type)
+        assertEquals("home-second-brain-test.txt", parsedSource.source.name)
         assertEquals("동훈 | 2026년 3월 15일 오후 1:58 | 우리은행 1002266102280", records[0].content)
         assertEquals(
             "홍승민 | 2026년 3월 15일 오후 5:48 | " +
@@ -46,7 +47,7 @@ class KakaoExportParserTest {
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
         """.trimIndent()
 
-        val records = KakaoExportParser.parse("2026-06-07.txt", text)
+        val records = KakaoExportParser.parse("2026-06-07.txt", text).records
 
         assertEquals(3, records.size)
         assertEquals(

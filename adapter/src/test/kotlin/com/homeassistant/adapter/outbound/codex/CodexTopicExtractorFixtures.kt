@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 
 internal fun serviceFor(response: String): CodexTopicExtractor =
@@ -8,15 +9,13 @@ internal fun serviceFor(response: String): CodexTopicExtractor =
 
 internal fun singleRecordDocument(): SourceDocument =
     SourceDocument(
-        sourceType = "kakao",
-        sourceName = "2026-06-07.txt",
+        source = SourceDescriptor("kakao", "2026-06-07.txt"),
         records = listOf(sourceRecord(1, "동훈 | 오후 4:49 | 따랑해")),
     )
 
 internal fun documentWithRecords(count: Int): SourceDocument =
     SourceDocument(
-        sourceType = "kakao",
-        sourceName = "2026-06-07.txt",
+        source = SourceDescriptor("kakao", "2026-06-07.txt"),
         records = (1..count).map { index ->
             sourceRecord(index, "동훈 | 오후 4:49 | 기록 $index")
         },
@@ -25,8 +24,6 @@ internal fun documentWithRecords(count: Int): SourceDocument =
 internal fun sourceRecord(id: Int, content: String): SourceRecord =
     SourceRecord(
         id = id,
-        sourceType = "kakao",
-        sourceName = "2026-06-07.txt",
         deduplicationKey = "key-$id",
         content = content,
     )

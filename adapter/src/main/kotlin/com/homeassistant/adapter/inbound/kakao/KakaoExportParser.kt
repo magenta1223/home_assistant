@@ -1,7 +1,9 @@
 package com.homeassistant.adapter.inbound.kakao
 
 import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
-import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.source.ParsedSource
+import com.homeassistant.domain.source.ParsedSourceRecord
+import com.homeassistant.domain.source.SourceDescriptor
 
 import java.security.MessageDigest
 
@@ -13,7 +15,7 @@ object KakaoExportParser : SourceTextParser {
     private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
     private val dottedDateSeparator = Regex("^\\d{4}\\.\\s*\\d{1,2}\\.\\s*\\d{1,2}\\.\\s*(?:오전|오후)\\s*\\d{1,2}:\\d{2}$")
 
-    override fun parse(sourceName: String, text: String): List<SourceRecordDraft> {
+    override fun parse(sourceName: String, text: String): ParsedSource {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
         lines.forEach { rawLine ->
@@ -37,14 +39,16 @@ object KakaoExportParser : SourceTextParser {
             val content = bracketMatch?.groupValues?.get(4)
                 ?: exportedMatch?.groupValues?.get(3)
                 ?: dottedExportedMatch!!.groupValues[3]
-            messages += MessageBuilder(sourceName, sender, displayTime, content)
+            messages += MessageBuilder(sender, displayTime, content)
         }
 
-        return messages.map { it.build() }
+        return ParsedSource(
+            source = SourceDescriptor("kakao", sourceName),
+            records = messages.map { it.build(sourceName) },
+        )
     }
 
     private class MessageBuilder(
-        private val sourceFileName: String,
         private val sender: String,
         private val displayTime: String,
         initialContent: String,
@@ -55,12 +59,10 @@ object KakaoExportParser : SourceTextParser {
             contentLines += line
         }
 
-        fun build(): SourceRecordDraft {
+        fun build(sourceName: String): ParsedSourceRecord {
             val content = contentLines.joinToString("\n").trimEnd()
-            val fingerprintText = listOf(sourceFileName, sender, displayTime, content).joinToString("\u001F")
-            return SourceRecordDraft(
-                sourceType = "kakao",
-                sourceName = sourceFileName,
+            val fingerprintText = listOf(sourceName, sender, displayTime, content).joinToString("\u001F")
+            return ParsedSourceRecord(
                 deduplicationKey = sha256(fingerprintText),
                 content = "$sender | $displayTime | $content",
             )

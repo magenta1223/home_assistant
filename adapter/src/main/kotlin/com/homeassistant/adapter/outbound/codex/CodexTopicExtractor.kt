@@ -180,3 +180,6 @@ private data class ValidatedTopic(
     val evidence: List<SourceRecord>,
     val memories: List<MemoryProposal>,
 )
+
+private val SourceRecord.promptId: String
+    get() = "r$id"

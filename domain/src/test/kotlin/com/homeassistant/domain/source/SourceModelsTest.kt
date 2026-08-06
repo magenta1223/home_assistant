@@ -12,22 +12,18 @@ class SourceModelsTest {
         )
 
         val document = SourceDocument(
-            sourceType = "kakao",
-            sourceName = "family.txt",
+            source = SourceDescriptor("kakao", "family.txt"),
             records = records,
         )
 
-        assertEquals("kakao", document.sourceType)
-        assertEquals("family.txt", document.sourceName)
+        assertEquals("kakao", document.source.type)
+        assertEquals("family.txt", document.source.name)
         assertEquals(records, document.records)
-        assertEquals("r1", document.records.first().promptId)
     }
 
     private fun sourceRecord(id: Int, content: String) =
         SourceRecord(
             id = id,
-            sourceType = "kakao",
-            sourceName = "family.txt",
             deduplicationKey = "key-$id",
             content = content,
         )

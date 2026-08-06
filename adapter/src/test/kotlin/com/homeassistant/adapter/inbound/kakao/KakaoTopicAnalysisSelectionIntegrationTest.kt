@@ -20,7 +20,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
-            sourceRecords = FakeSourceRecordStore(setOf(parsed.first().deduplicationKey)),
+            sourceRecords = FakeSourceRecordStore(setOf(parsed.records.first().deduplicationKey)),
             previewRepository = previewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )

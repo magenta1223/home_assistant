@@ -12,7 +12,8 @@ import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.source.ParsedSourceRecord
+import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.MemoryProposal
@@ -43,7 +44,7 @@ class KakaoAnalyzeSourceIntegrationTest {
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
             sourceRecords = FakeSourceRecordStore(
-                parsed.mapTo(mutableSetOf()) { it.deduplicationKey },
+                parsed.records.mapTo(mutableSetOf()) { it.deduplicationKey },
             ),
             previewRepository = previewStore,
             accessPolicy = TEST_ACCESS_POLICY,
@@ -173,21 +174,18 @@ internal class FakeSourceRecordStore(
     override fun findExistingDeduplicationKeys(sourceType: String, keys: Set<String>): Set<String> =
         (existingKeys + records.map { it.deduplicationKey }).filterTo(mutableSetOf()) { it in keys }
 
-    override fun saveAll(records: List<SourceRecordDraft>): List<SourceRecord> {
+    override fun saveAll(source: SourceDescriptor, records: List<ParsedSourceRecord>): List<SourceRecord> {
         saveCalls += 1
         return records.mapIndexed { index, record ->
             SourceRecord(
                 id = index + 101,
-                sourceType = record.sourceType,
-                sourceName = record.sourceName,
                 deduplicationKey = record.deduplicationKey,
                 content = record.content,
             ).also(this.records::add)
         }
     }
 
-    override fun findBySource(sourceType: String, sourceName: String): List<SourceRecord> =
-        records.filter { it.sourceType == sourceType && it.sourceName == sourceName }
+    override fun findBySource(source: SourceDescriptor): List<SourceRecord> = records
 }
 
 internal class RecordingPreviewStore : TopicAnalysisPreviewStore {

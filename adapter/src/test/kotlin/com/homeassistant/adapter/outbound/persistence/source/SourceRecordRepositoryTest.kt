@@ -35,18 +35,18 @@ class SourceRecordRepositoryTest {
             [홍승민] [오후 5:38] 여기루 와용 ㅎㅎ
             """.trimIndent()
 
-        val records = KakaoExportParser.parse("2026-06-07.txt", text)
-        val result = repository.saveAll(records)
-        val repeated = repository.saveAll(records)
+        val source = KakaoExportParser.parse("2026-06-07.txt", text)
+        val result = repository.saveAll(source.source, source.records)
+        val repeated = repository.saveAll(source.source, source.records)
 
         assertEquals(2, result.size)
         assertEquals(result.map { it.id }, repeated.map { it.id })
-        assertEquals(2, repository.findBySource("kakao", "2026-06-07.txt").size)
+        assertEquals(2, repository.findBySource(source.source).size)
         assertEquals(
-            records.mapTo(mutableSetOf()) { it.deduplicationKey },
+            source.records.mapTo(mutableSetOf()) { it.deduplicationKey },
             repository.findExistingDeduplicationKeys(
                 "kakao",
-                records.mapTo(mutableSetOf()) { it.deduplicationKey },
+                source.records.mapTo(mutableSetOf()) { it.deduplicationKey },
             ),
         )
     }

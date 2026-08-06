@@ -3,6 +3,7 @@ package com.homeassistant.adapter.outbound.codex
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
 import kotlinx.coroutines.delay
@@ -42,8 +43,7 @@ class CodexTopicExtractorTest {
 
         val result = service.analyze(
             SourceDocument(
-                sourceType = "kakao",
-                sourceName = "2026-06-07.txt",
+                source = SourceDescriptor("kakao", "2026-06-07.txt"),
                 records = listOf(
                     sourceRecord(1, "동훈 | 오후 4:49 | 따랑해"),
                     sourceRecord(2, "홍승민 | 오후 5:38 | [네이버지도]\n카인드커피"),
@@ -79,8 +79,7 @@ class CodexTopicExtractorTest {
 
         service.analyze(
             SourceDocument(
-                sourceType = "kakao",
-                sourceName = "2026-06-07.txt",
+                source = SourceDescriptor("kakao", "2026-06-07.txt"),
                 records = listOf(
                     sourceRecord(1, "병원 예약 내일이지?"),
                     sourceRecord(2, "카페도 들르자"),

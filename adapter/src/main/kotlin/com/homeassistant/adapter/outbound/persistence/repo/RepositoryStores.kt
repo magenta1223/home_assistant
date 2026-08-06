@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
-import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.application.topicanalysis.save.IndexingOutboxStore
 import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore

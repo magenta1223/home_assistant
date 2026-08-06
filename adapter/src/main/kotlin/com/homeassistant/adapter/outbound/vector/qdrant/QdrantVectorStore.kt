@@ -1,28 +1,28 @@
 package com.homeassistant.adapter.outbound.vector.qdrant
 
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
-import com.homeassistant.domain.memory.PayloadVectorPoint
-import com.homeassistant.domain.memory.PayloadVectorSearchFilter
-import com.homeassistant.domain.memory.PayloadVectorSearchResult
-import com.homeassistant.domain.memory.PayloadVectorStore
+import com.homeassistant.adapter.outbound.vector.VectorPoint
+import com.homeassistant.adapter.outbound.vector.VectorSearchFilter
+import com.homeassistant.adapter.outbound.vector.VectorSearchResult
+import com.homeassistant.adapter.outbound.vector.VectorStore
 import kotlinx.serialization.json.*
 
 internal class QdrantVectorStore(
     private val collection: String,
     private val transport: QdrantTransport,
-) : PayloadVectorStore {
+) : VectorStore {
     @Volatile private var collectionReady = false
 
-    override fun upsert(point: PayloadVectorPoint) {
+    override fun upsert(point: VectorPoint) {
         ensureCollection(point.vector.size)
         transport.request("PUT", "/collections/$collection/points?wait=true", qdrantUpsertBody(point))
     }
 
     override fun search(
         vector: List<Float>,
-        filter: PayloadVectorSearchFilter,
+        filter: VectorSearchFilter,
         limit: Int,
-    ): List<PayloadVectorSearchResult> {
+    ): List<VectorSearchResult> {
         ensureCollection(vector.size)
         val body = qdrantSearchBody(vector, filter, limit)
         val response = transport.request("POST", "/collections/$collection/points/search", body)
@@ -30,7 +30,7 @@ internal class QdrantVectorStore(
             .decodeFromString<QdrantSearchResponse>()
             .result
             .map { hit ->
-                PayloadVectorSearchResult(
+                VectorSearchResult(
                     hit.id,
                     hit.score,
                     hit.payload.mapValues { (_, value) -> value.jsonPrimitive.content },
@@ -76,11 +76,11 @@ object QdrantVectorStoreFactory {
     fun create(
         baseUrl: String,
         collection: String,
-    ): PayloadVectorStore =
+    ): VectorStore =
         QdrantVectorStore(collection, QdrantTransportFactory.http(baseUrl))
 }
 
-internal fun qdrantUpsertBody(point: PayloadVectorPoint): String =
+internal fun qdrantUpsertBody(point: VectorPoint): String =
     buildJsonObject {
         put("points", buildJsonArray {
             add(buildJsonObject {
@@ -96,7 +96,7 @@ internal fun qdrantUpsertBody(point: PayloadVectorPoint): String =
 
 internal fun qdrantSearchBody(
     vector: List<Float>,
-    filter: PayloadVectorSearchFilter,
+    filter: VectorSearchFilter,
     limit: Int,
 ): String =
     buildJsonObject {

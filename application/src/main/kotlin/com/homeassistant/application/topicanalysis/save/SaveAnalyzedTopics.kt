@@ -3,7 +3,6 @@ package com.homeassistant.application.topicanalysis.save
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreview
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore

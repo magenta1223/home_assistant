@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.embedding.ollama
 
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.adapter.shared.json.JsonSerializer
-import com.homeassistant.domain.memory.EmbeddingService
+import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import java.net.URI
@@ -19,7 +19,7 @@ internal class OllamaEmbeddingService(
     private val client: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(30))
         .build(),
-) : EmbeddingService {
+) : TextEmbedder {
     override fun embed(text: String): List<Float> {
         val normalizedText = text.trim()
         require(normalizedText.isNotEmpty()) { "Embedding text must not be blank" }
@@ -54,7 +54,7 @@ internal class OllamaEmbeddingService(
 }
 
 object OllamaEmbeddingFactory {
-    fun create(baseUrl: String, model: String): EmbeddingService =
+    fun create(baseUrl: String, model: String): TextEmbedder =
         OllamaEmbeddingService(baseUrl, model)
 }
 

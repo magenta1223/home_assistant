@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.vector.qdrant
 
-import com.homeassistant.domain.memory.NumericRange
-import com.homeassistant.domain.memory.PayloadVectorPoint
-import com.homeassistant.domain.memory.PayloadVectorSearchFilter
+import com.homeassistant.adapter.outbound.vector.NumericRange
+import com.homeassistant.adapter.outbound.vector.VectorPoint
+import com.homeassistant.adapter.outbound.vector.VectorSearchFilter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -15,7 +15,7 @@ class QdrantVectorStoreTest {
     @Test
     fun `upsert body stores createdAt as a number`() {
         val body = qdrantUpsertBody(
-            PayloadVectorPoint(
+            VectorPoint(
                 id = 1,
                 vector = listOf(0.1f),
                 payload = mapOf("createdBy" to "dad"),
@@ -35,7 +35,7 @@ class QdrantVectorStoreTest {
     fun `search body includes match and numeric range conditions`() {
         val body = qdrantSearchBody(
             vector = listOf(0.1f),
-            filter = PayloadVectorSearchFilter(
+            filter = VectorSearchFilter(
                 must = mapOf("createdBy" to "dad"),
                 ranges = mapOf("createdAt" to NumericRange(gte = 100L, lte = 200L)),
             ),

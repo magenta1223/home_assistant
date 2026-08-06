@@ -2,8 +2,8 @@ package com.homeassistant.application.topicanalysis.save
 
 import com.homeassistant.application.memory.answer.MemorySearchDocument
 import com.homeassistant.application.memory.answer.MemorySearchIndex
-import com.homeassistant.domain.indexing.IndexTargetType
-import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.application.memory.answer.MemorySearchTopic
+import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
 import org.slf4j.LoggerFactory
@@ -33,10 +33,11 @@ internal class MemoryIndexingCoordinator(
             searchIndex.index(
                 MemorySearchDocument(
                     memory = memory,
-                    topicTitle = topic.title,
-                    topicSummary = topic.summary,
-                    sourceType = topic.sourceType,
-                    sourceName = topic.sourceName,
+                    topic = MemorySearchTopic(
+                        title = topic.title,
+                        summary = topic.summary,
+                        source = SourceDescriptor(topic.sourceType, topic.sourceName),
+                    ),
                 ),
             )
             outbox.markIndexed(IndexTargetType.MEMORY, memory.id)

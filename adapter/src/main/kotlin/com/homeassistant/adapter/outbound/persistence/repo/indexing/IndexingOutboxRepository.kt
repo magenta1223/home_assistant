@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.indexing
 
-import com.homeassistant.domain.indexing.IndexTargetType
-import com.homeassistant.domain.indexing.IndexingOutboxStore
+import com.homeassistant.application.topicanalysis.save.IndexTargetType
+import com.homeassistant.application.topicanalysis.save.IndexingOutboxStore
 import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SortOrder

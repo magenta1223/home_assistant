@@ -7,7 +7,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
-import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.application.topicanalysis.save.IndexTargetType
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database

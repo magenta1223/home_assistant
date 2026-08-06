@@ -16,7 +16,7 @@ class AnswerFromMemory(
         val question = request.question.trim()
         val hits = memorySearchIndex.search(userId, question, request.limit.coerceIn(1, 10))
         val topicsById = topicStore
-            .getApprovedTopics(userId, hits.map { it.topicId })
+            .getApprovedTopics(userId, hits.mapNotNull { it.topicId })
             .associateBy { it.id }
         val matches = hits.mapNotNull { hit -> topicsById[hit.topicId]?.toMatch(hit) }
 

@@ -1,4 +1,4 @@
-package com.homeassistant.domain.indexing
+package com.homeassistant.application.topicanalysis.save
 
 enum class IndexTargetType {
     MEMORY,

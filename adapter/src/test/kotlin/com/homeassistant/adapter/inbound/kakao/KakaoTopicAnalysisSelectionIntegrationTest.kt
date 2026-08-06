@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.kakao
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.domain.indexing.IndexTargetType
+import com.homeassistant.application.topicanalysis.save.IndexTargetType
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -51,7 +51,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
         assertEquals(
             listOf("첫 후보", "셋째 후보"),
-            index.indexedDocuments.map { it.topicTitle },
+            index.indexedDocuments.map { it.topic?.title },
         )
     }
 

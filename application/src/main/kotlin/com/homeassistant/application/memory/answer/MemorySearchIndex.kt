@@ -2,17 +2,21 @@ package com.homeassistant.application.memory.answer
 
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.source.SourceDescriptor
 
 data class MemorySearchDocument(
     val memory: Memory,
-    val topicTitle: String,
-    val topicSummary: String,
-    val sourceType: String,
-    val sourceName: String,
+    val topic: MemorySearchTopic? = null,
+)
+
+data class MemorySearchTopic(
+    val title: String,
+    val summary: String,
+    val source: SourceDescriptor,
 )
 
 data class MemorySearchHit(
-    val topicId: Int,
+    val topicId: Int?,
     val memoryId: Int,
     val score: Double,
 )

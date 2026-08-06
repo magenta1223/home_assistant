@@ -1,9 +1,7 @@
 package com.homeassistant.application.topicanswer.answer
 
-import com.homeassistant.domain.identity.FamilyId
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
@@ -139,19 +137,18 @@ class TopicAnswerServiceTest {
             service.answer(
                 TopicAnswerRequest(
                     userId = "attacker",
-                    familyId = TEST_SCOPE.familyId.value,
                     question = "비밀",
                 ),
             )
         }
-        assertEquals(null, index.lastScope)
+        assertEquals(null, index.lastUserId)
     }
 
     @Test
-    fun `drops a cross-family vector hit during sql hydration`() {
+    fun `keeps a globally visible household hit during sql hydration`() {
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(
-                listOf(topic(7, "다른 가족", "노출되면 안 됨", familyId = "other-family")),
+                listOf(topic(7, "가족 공용", "전역에서 보여야 함")),
             ),
             topicClaimSearchIndex = FakeTopicClaimSearchIndex(
                 listOf(TopicClaimSearchHit(7, 1, 1.0)),
@@ -161,7 +158,7 @@ class TopicAnswerServiceTest {
 
         val result = service.answer(request("비밀", 5))
 
-        assertEquals(emptyList(), result.matches)
+        assertEquals(1, result.matches.size)
     }
 }
 
@@ -170,17 +167,17 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
         error("not used")
 
     override fun searchApprovedTopics(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         query: String,
         limit: Int,
     ): List<Topic> =
-        topics.filter { it.familyId == scope.familyId.value }.take(limit.coerceIn(1, 10))
+        topics.take(limit.coerceIn(1, 10))
 
     override fun getApprovedTopics(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         topicIds: Collection<Int>,
     ): List<Topic> =
-        topics.filter { it.familyId == scope.familyId.value && it.id in topicIds.toSet() }
+        topics.filter { it.id in topicIds.toSet() }
 
     override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> =
         topics.filter { it.id in topicIds.toSet() }
@@ -189,16 +186,16 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
 private class FakeTopicClaimSearchIndex(
     private val hits: List<TopicClaimSearchHit>,
 ) : TopicClaimSearchIndex {
-    var lastScope: HouseholdAccessScope? = null
+    var lastUserId: UserId? = null
 
     override fun index(topic: Topic) = Unit
 
     override fun search(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         question: String,
         limit: Int,
     ): List<TopicClaimSearchHit> {
-        lastScope = scope
+        lastUserId = userId
         return hits.take(limit.coerceIn(1, 10))
     }
 }
@@ -207,25 +204,22 @@ private fun topic(
     id: Int,
     title: String,
     claimText: String,
-    familyId: String = TEST_SCOPE.familyId.value,
-) = topic(id, title, listOf(claimText), familyId)
+) = topic(id, title, listOf(claimText))
 
 private fun topic(
     id: Int,
     title: String,
     claimTexts: List<String>,
-    familyId: String = TEST_SCOPE.familyId.value,
 ) =
     Topic(
         id = id,
-        familyId = familyId,
-        createdByUserId = TEST_SCOPE.userId.value,
+        createdByUserId = TEST_USER.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = title,
         summary = "$title 요약",
         memoryTypes = listOf(MemoryType.REFERENCE),
-        domains = listOf("home"),
+        categories = listOf("home"),
         evidenceRefs = listOf(id * 10),
         claims = claimTexts.mapIndexed { index, claimText ->
             TopicClaim(
@@ -242,11 +236,10 @@ private fun topic(
 
 private fun request(question: String, limit: Int): TopicAnswerRequest =
     TopicAnswerRequest(
-        userId = TEST_SCOPE.userId.value,
-        familyId = TEST_SCOPE.familyId.value,
+        userId = TEST_USER.value,
         question = question,
         limit = limit,
     )
 
-private val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
-private val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_SCOPE }
+private val TEST_USER = UserId("dad")
+private val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_USER }

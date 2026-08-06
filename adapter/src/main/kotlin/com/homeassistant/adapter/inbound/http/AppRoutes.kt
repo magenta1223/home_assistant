@@ -43,9 +43,8 @@ fun Application.configureRoutes(
                 return@post
             }
             val userId = req.userId
-            val familyId = req.familyId
-            if (userId.isNullOrBlank() || familyId.isNullOrBlank()) {
-                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "userId and familyId are required"))
+            if (userId.isNullOrBlank()) {
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "userId is required"))
                 return@post
             }
 
@@ -53,7 +52,6 @@ fun Application.configureRoutes(
                 val result = analyzeSource.execute(
                     TopicAnalysisRequest(
                         userId = userId,
-                        familyId = familyId,
                         sourceType = "kakao",
                         sourceName = sourceName,
                         text = text
@@ -73,10 +71,10 @@ fun Application.configureRoutes(
         post(AppConfig.ROUTE_KAKAO_IMPORT_SAVE) {
 
             val req = call.receive<TopicAnalysisSaveRequest>()
-            if (req.previewId.isBlank() || req.userId.isBlank() || req.familyId.isBlank()) {
+            if (req.previewId.isBlank() || req.userId.isBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
-                    mapOf("error" to "previewId, userId, and familyId are required"),
+                    mapOf("error" to "previewId and userId are required"),
                 )
                 return@post
             }
@@ -98,10 +96,10 @@ fun Application.configureRoutes(
             }
 
             val req = call.receive<TopicAnswerRequest>()
-            if (req.userId.isBlank() || req.familyId.isBlank() || req.question.isBlank()) {
+            if (req.userId.isBlank() || req.question.isBlank()) {
                 call.respond(
                     HttpStatusCode.BadRequest,
-                    mapOf("error" to "userId, familyId, and question are required"),
+                    mapOf("error" to "userId and question are required"),
                 )
                 return@post
             }
@@ -126,7 +124,6 @@ fun Application.configureRoutes(
 @Serializable
 private data class KakaoImportAnalyzeRequest(
     val userId: String? = null,
-    val familyId: String? = null,
     val sourceName: String? = null,
     val text: String? = null,
 )

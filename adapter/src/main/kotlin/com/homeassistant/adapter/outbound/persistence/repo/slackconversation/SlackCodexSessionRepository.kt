@@ -6,6 +6,7 @@ import com.homeassistant.domain.slackconversation.SlackMessageKey
 import com.homeassistant.domain.slackconversation.SlackMessageReceipt
 import com.homeassistant.domain.slackconversation.SlackMessageReceiptStatus
 import com.homeassistant.domain.slackconversation.SlackPrincipal
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexActiveSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackMessageReceiptTable
@@ -87,7 +88,7 @@ internal class SlackCodexSessionRepository(
             it[teamId] = principal.teamId
             it[slackUserId] = principal.slackUserId
             it[userId] = principal.userId.value
-            it[familyId] = principal.familyId.value
+            it[familyId] = LEGACY_HOUSEHOLD_ID
             it[SlackCodexSessionTable.codexThreadId] = codexThreadId
             it[createdAt] = now
             it[lastActiveAt] = now
@@ -141,8 +142,7 @@ internal class SlackCodexSessionRepository(
                 (SlackCodexSessionTable.id eq sessionId) and
                     (SlackCodexSessionTable.teamId eq principal.teamId) and
                     (SlackCodexSessionTable.slackUserId eq principal.slackUserId) and
-                    (SlackCodexSessionTable.userId eq principal.userId.value) and
-                    (SlackCodexSessionTable.familyId eq principal.familyId.value)
+                    (SlackCodexSessionTable.userId eq principal.userId.value)
             }) {
                 it[lastActiveAt] = now
             }
@@ -200,8 +200,7 @@ internal class SlackCodexSessionRepository(
     private fun ResultRow.matches(principal: SlackPrincipal): Boolean =
         this[SlackCodexSessionTable.teamId] == principal.teamId &&
             this[SlackCodexSessionTable.slackUserId] == principal.slackUserId &&
-            this[SlackCodexSessionTable.userId] == principal.userId.value &&
-            this[SlackCodexSessionTable.familyId] == principal.familyId.value
+            this[SlackCodexSessionTable.userId] == principal.userId.value
 
     private fun ResultRow.toSession(): SlackCodexSession =
         SlackCodexSession(
@@ -209,8 +208,7 @@ internal class SlackCodexSessionRepository(
             principal = SlackPrincipal(
                 teamId = this[SlackCodexSessionTable.teamId],
                 slackUserId = this[SlackCodexSessionTable.slackUserId],
-                userId = this[SlackCodexSessionTable.userId],
-                familyId = this[SlackCodexSessionTable.familyId],
+                userId = UserId(this[SlackCodexSessionTable.userId]),
             ),
             codexThreadId = this[SlackCodexSessionTable.codexThreadId],
             createdAt = this[SlackCodexSessionTable.createdAt],
@@ -231,3 +229,5 @@ internal class SlackCodexSessionRepository(
             updatedAt = this[SlackMessageReceiptTable.updatedAt],
         )
 }
+
+private const val LEGACY_HOUSEHOLD_ID = "household"

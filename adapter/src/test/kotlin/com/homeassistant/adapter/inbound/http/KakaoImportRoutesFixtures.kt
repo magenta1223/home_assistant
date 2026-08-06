@@ -60,7 +60,7 @@ internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase 
     }
 
     override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult =
-        saveAll(TopicAnalysisSaveRequest(request.previewId, request.userId, request.familyId))
+        saveAll(TopicAnalysisSaveRequest(request.previewId, request.userId))
 
     private fun newTopic(sourceName: String, evidenceRef: Int) =
         TopicCandidate(

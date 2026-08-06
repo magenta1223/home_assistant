@@ -1,7 +1,5 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.domain.identity.HouseholdAccessScope
-import com.homeassistant.domain.identity.FamilyId
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -11,21 +9,20 @@ import kotlin.test.assertTrue
 
 class SlackIdentityDirectoryTest {
     @Test
-    fun `resolves only the server configured immutable household scope`() {
+    fun `resolves only a server configured user`() {
         val directory = SlackIdentityDirectoryFactory.fromJson(
             configuredTeamId = "T1",
-            json = """[{"teamId":"T1","slackUserId":"U1","userId":"dad","familyId":"family-1"}]""",
+            json = """[{"teamId":"T1","slackUserId":"U1","userId":"dad"}]""",
         )
 
         val principal = directory.resolve("T1", "U1")!!
 
         assertEquals("dad", principal.userId.value)
-        assertEquals("family-1", principal.familyId.value)
         assertNull(directory.resolve("T1", "U2"))
         assertNull(directory.resolve("T2", "U1"))
         assertTrue(
             directory.accessPolicy.isAuthorized(
-                HouseholdAccessScope(UserId("dad"), FamilyId("family-1")),
+                UserId("dad"),
             ),
         )
     }
@@ -36,15 +33,15 @@ class SlackIdentityDirectoryTest {
             SlackIdentityDirectoryFactory.fromJson(
                 "T1",
                 """[
-                    {"teamId":"T1","slackUserId":"U1","userId":"dad","familyId":"family-1"},
-                    {"teamId":"T1","slackUserId":"U1","userId":"other","familyId":"family-2"}
+                    {"teamId":"T1","slackUserId":"U1","userId":"dad"},
+                    {"teamId":"T1","slackUserId":"U1","userId":"other"}
                 ]""",
             )
         }
         assertFailsWith<IllegalArgumentException> {
             SlackIdentityDirectoryFactory.fromJson(
                 "T1",
-                """[{"teamId":"T2","slackUserId":"U1","userId":"dad","familyId":"family-1"}]""",
+                """[{"teamId":"T2","slackUserId":"U1","userId":"dad"}]""",
             )
         }
     }

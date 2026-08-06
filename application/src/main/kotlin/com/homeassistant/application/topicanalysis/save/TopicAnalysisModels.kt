@@ -7,8 +7,13 @@ import kotlinx.serialization.Serializable
 data class TopicAnalysisSaveRequest(
     val previewId: String,
     val userId: String,
-    val familyId: String,
-)
+) {
+    @Deprecated("familyId is ignored because the application has one household")
+    constructor(previewId: String, userId: String, familyId: String) : this(previewId, userId)
+
+    @Deprecated("The application has one household")
+    val familyId: String get() = "household"
+}
 
 @Serializable
 data class TopicAnalysisSaveResult(
@@ -20,9 +25,19 @@ data class TopicAnalysisSaveResult(
 data class TopicAnalysisSelectionSaveRequest(
     val previewId: String,
     val userId: String,
-    val familyId: String,
     val selectedTopicIndices: Set<Int>,
-)
+) {
+    @Deprecated("familyId is ignored because the application has one household")
+    constructor(
+        previewId: String,
+        userId: String,
+        familyId: String,
+        selectedTopicIndices: Set<Int>,
+    ) : this(previewId, userId, selectedTopicIndices)
+
+    @Deprecated("The application has one household")
+    val familyId: String get() = "household"
+}
 
 class TopicAnalysisPreviewNotFoundException(
     val previewId: String,

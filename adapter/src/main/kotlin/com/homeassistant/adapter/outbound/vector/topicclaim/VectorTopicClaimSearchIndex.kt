@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.vector.topicclaim
 
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchHit
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
-import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.memory.EmbeddingService
 import com.homeassistant.domain.memory.PayloadVectorPoint
@@ -21,7 +21,6 @@ internal class VectorTopicClaimSearchIndex(
                     vector = embeddingService.embed("passage: ${topic.title}\n${topic.summary}\n${claim.text}"),
                     payload = mapOf(
                         "kind" to TOPIC_CLAIM_KIND,
-                        "familyId" to topic.familyId,
                         "createdByUserId" to topic.createdByUserId,
                         "topicId" to topic.id.toString(),
                         "claimId" to claim.id.toString(),
@@ -36,7 +35,7 @@ internal class VectorTopicClaimSearchIndex(
     }
 
     override fun search(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         question: String,
         limit: Int,
     ): List<TopicClaimSearchHit> =
@@ -44,10 +43,7 @@ internal class VectorTopicClaimSearchIndex(
             .search(
                 vector = embeddingService.embed("query: $question"),
                 filter = PayloadVectorSearchFilter(
-                    must = mapOf(
-                        "kind" to TOPIC_CLAIM_KIND,
-                        "familyId" to scope.familyId.value,
-                    ),
+                    must = mapOf("kind" to TOPIC_CLAIM_KIND),
                 ),
                 limit = limit.coerceIn(1, 10),
             )

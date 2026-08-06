@@ -4,9 +4,7 @@ import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.application.topicanalysis.analyze.DuplicateKakaoMessagesException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
-import com.homeassistant.domain.identity.FamilyId
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
@@ -120,14 +118,14 @@ internal class FakeTopicStore : TopicAnalysisStore {
     }
 
     override fun searchApprovedTopics(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         query: String,
         limit: Int,
     ): List<Topic> =
         emptyList()
 
     override fun getApprovedTopics(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         topicIds: Collection<Int>,
     ): List<Topic> =
         emptyList()
@@ -144,7 +142,7 @@ internal class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
     }
 
     override fun search(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         question: String,
         limit: Int,
     ): List<TopicClaimSearchHit> =
@@ -154,7 +152,7 @@ internal class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
 internal object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
     override fun index(topic: Topic) = error("qdrant unavailable")
     override fun search(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         question: String,
         limit: Int,
     ): List<TopicClaimSearchHit> = emptyList()
@@ -245,8 +243,8 @@ internal fun kakaoText(): String =
 
 internal fun topic(title: String, evidenceRef: Int) =
     TopicCandidate(
-        familyId = TEST_SCOPE.familyId.value,
-        createdByUserId = TEST_SCOPE.userId.value,
+        familyId = "household",
+        createdByUserId = TEST_USER.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         title = title,
@@ -267,12 +265,11 @@ internal fun topic(title: String, evidenceRef: Int) =
 
 internal fun request(text: String): TopicAnalysisRequest =
     TopicAnalysisRequest(
-        userId = TEST_SCOPE.userId.value,
-        familyId = TEST_SCOPE.familyId.value,
+        userId = TEST_USER.value,
         sourceType = "kakao",
         sourceName = "family-kakao.txt",
         text = text,
     )
 
-internal val TEST_SCOPE = HouseholdAccessScope(UserId("dad"), FamilyId("family-1"))
-internal val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_SCOPE }
+internal val TEST_USER = UserId("dad")
+internal val TEST_ACCESS_POLICY = HouseholdAccessPolicy { it == TEST_USER }

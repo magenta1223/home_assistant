@@ -9,7 +9,7 @@ import com.homeassistant.domain.topicanalysis.NewTopicClaim
 import com.homeassistant.domain.topicanalysis.TopicAnalysisException
 import com.homeassistant.domain.topicanalysis.TopicAnalysisResult
 import com.homeassistant.domain.topicanalysis.TopicDraft
-import com.homeassistant.domain.topicanalysis.normalizeDomainTag
+import com.homeassistant.domain.topicanalysis.normalizeCategory
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -25,7 +25,7 @@ internal class CodexTopicExtractor(
                 title = topic.title,
                 summary = topic.summary,
                 memoryTypes = topic.memoryTypes,
-                domains = topic.domains,
+                categories = topic.domains,
                 evidence = topic.evidence,
                 claims = topic.claims,
             )
@@ -107,7 +107,7 @@ internal class CodexTopicExtractor(
     private fun parseDomains(domains: List<String>): List<String> =
         domains.map { domain ->
             try {
-                normalizeDomainTag(domain)
+                normalizeCategory(domain)
             } catch (_: IllegalArgumentException) {
                 throw TopicAnalysisException("Domain tag must not be blank")
             }

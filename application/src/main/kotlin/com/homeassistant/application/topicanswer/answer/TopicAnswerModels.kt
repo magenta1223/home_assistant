@@ -1,19 +1,19 @@
 package com.homeassistant.application.topicanswer.answer
 
-import com.homeassistant.domain.identity.FamilyId
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class TopicAnswerRequest(
     val userId: String,
-    val familyId: String,
     val question: String,
     val limit: Int = 5,
 ) {
-    fun scope(): HouseholdAccessScope =
-        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
+    fun requester(): UserId = UserId(userId)
+
+    @Deprecated("familyId is ignored because the application has one household")
+    constructor(userId: String, familyId: String, question: String, limit: Int = 5) :
+        this(userId, question, limit)
 }
 
 @Serializable

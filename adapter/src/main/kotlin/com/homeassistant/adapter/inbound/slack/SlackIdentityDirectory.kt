@@ -4,6 +4,7 @@ import com.homeassistant.application.slackconversation.handle.SlackPrincipalReso
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.adapter.shared.json.JsonSerializer
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -13,7 +14,6 @@ data class SlackMemberScopeConfig(
     val teamId: String,
     val slackUserId: String,
     val userId: String,
-    val familyId: String,
 )
 
 interface SlackIdentityDirectory : SlackPrincipalResolver {
@@ -25,7 +25,7 @@ private class ConfiguredSlackIdentityDirectory(
     private val principals: Map<SlackActor, SlackPrincipal>,
 ) : SlackIdentityDirectory {
     override val accessPolicy: HouseholdAccessPolicy =
-        HouseholdAccessPolicies.fixed(principals.values.map { it.scope })
+        HouseholdAccessPolicies.fixed(principals.values.map { it.userId })
 
     override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal? {
         if (teamId.isNullOrBlank() || slackUserId.isNullOrBlank()) return null
@@ -50,8 +50,7 @@ object SlackIdentityDirectoryFactory {
                 val principal = SlackPrincipal(
                     teamId = record.teamId,
                     slackUserId = record.slackUserId,
-                    userId = record.userId,
-                    familyId = record.familyId,
+                    userId = UserId(record.userId),
                 )
                 val previous = principals.put(
                     SlackActor(record.teamId, record.slackUserId),

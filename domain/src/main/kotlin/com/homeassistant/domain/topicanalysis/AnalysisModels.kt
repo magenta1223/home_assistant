@@ -26,7 +26,7 @@ data class NewTopicClaim(
  * @property title Short topic title.
  * @property summary Review-facing topic summary.
  * @property memoryTypes Memory categories represented by the topic.
- * @property domains Normalized domain tags attached to the topic.
+ * @property categories Normalized category tags attached to the topic.
  * @property evidence Source records that support the topic.
  * @property claims Evidence-backed claims grouped under the topic.
  */
@@ -34,10 +34,13 @@ data class TopicDraft(
     val title: String,
     val summary: String,
     val memoryTypes: List<MemoryType>,
-    val domains: List<String>,
+    val categories: List<String>,
     val evidence: List<SourceRecord>,
     val claims: List<NewTopicClaim>,
-)
+) {
+    @Deprecated("Use categories")
+    val domains: List<String> get() = categories
+}
 
 /**
  * Result of analyzing a source document into topic candidates.
@@ -49,8 +52,8 @@ data class TopicAnalysisResult(val topics: List<TopicDraft>)
 /** Raised when an LLM response or topic candidate violates the analysis contract. */
 class TopicAnalysisException(message: String) : RuntimeException(message)
 
-fun normalizeDomainTag(value: String): String {
+fun normalizeCategory(value: String): String {
     val normalized = value.trim().lowercase().replace(Regex("\\s+"), "-")
-    require(normalized.isNotBlank()) { "Domain tag must not be blank" }
+    require(normalized.isNotBlank()) { "Category must not be blank" }
     return normalized
 }

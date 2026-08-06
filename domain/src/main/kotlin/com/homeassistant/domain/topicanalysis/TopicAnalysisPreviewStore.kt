@@ -6,7 +6,7 @@ interface TopicAnalysisPreviewStore {
     fun createPreview(
         sourceFileName: String,
         text: String,
-        topics: List<TopicCandidate>,
+        topics: List<ProposedTopic>,
     ): KakaoAnalysisPreview
 
     fun findPreview(previewId: String): KakaoAnalysisPreview?

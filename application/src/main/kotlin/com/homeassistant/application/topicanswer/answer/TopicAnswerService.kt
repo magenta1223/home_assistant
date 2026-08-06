@@ -11,13 +11,13 @@ internal class TopicAnswerService(
     private val accessPolicy: HouseholdAccessPolicy,
 ) : TopicAnswerUseCase {
     override fun answer(request: TopicAnswerRequest): TopicAnswerResult {
-        val scope = request.scope()
-        if (!accessPolicy.isAuthorized(scope)) throw HouseholdAccessDeniedException()
+        val userId = request.requester()
+        if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
         val question = request.question.trim()
         val limit = request.limit.coerceIn(1, 10)
-        val hits = topicClaimSearchIndex.search(scope, question, limit)
+        val hits = topicClaimSearchIndex.search(userId, question, limit)
         val topicsById = topicStore
-            .getApprovedTopics(scope, hits.map { it.topicId })
+            .getApprovedTopics(userId, hits.map { it.topicId })
             .associateBy { it.id }
         val matches = hits.mapNotNull { hit ->
             topicsById[hit.topicId]?.toMatch(hit)

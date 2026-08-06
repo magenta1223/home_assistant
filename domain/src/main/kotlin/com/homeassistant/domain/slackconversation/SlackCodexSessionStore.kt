@@ -1,32 +1,27 @@
 package com.homeassistant.domain.slackconversation
 
-import com.homeassistant.domain.identity.FamilyId
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.identity.FamilyId
 
 data class SlackPrincipal(
     val teamId: String,
     val slackUserId: String,
-    val scope: HouseholdAccessScope,
+    val userId: UserId,
 ) {
     init {
         require(teamId.isNotBlank()) { "teamId is required" }
         require(slackUserId.isNotBlank()) { "slackUserId is required" }
     }
 
-    constructor(
-        teamId: String,
-        slackUserId: String,
-        userId: String,
-        familyId: String,
-    ) : this(
+    @Deprecated("familyId is ignored because the application has one household")
+    constructor(teamId: String, slackUserId: String, userId: String, familyId: String) : this(
         teamId = teamId,
         slackUserId = slackUserId,
-        scope = HouseholdAccessScope(UserId(userId), FamilyId(familyId)),
+        userId = UserId(userId),
     )
 
-    val userId: UserId get() = scope.userId
-    val familyId: FamilyId get() = scope.familyId
+    @Deprecated("The application has one household")
+    val familyId: FamilyId get() = FamilyId("household")
 }
 
 data class SlackMessageKey(

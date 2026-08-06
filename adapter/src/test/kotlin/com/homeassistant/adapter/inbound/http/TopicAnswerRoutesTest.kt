@@ -40,7 +40,7 @@ class TopicAnswerRoutesTest {
 
         val response = client.post("/api/topics/answer") {
             contentType(ContentType.Application.Json)
-            setBody("""{"userId":"dad","familyId":"family-1","question":"리모컨 어디 있어?","limit":5}""")
+            setBody("""{"userId":"dad","question":"리모컨 어디 있어?","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -62,7 +62,7 @@ class TopicAnswerRoutesTest {
 
         val response = client.post("/api/topics/answer") {
             contentType(ContentType.Application.Json)
-            setBody("""{"userId":"dad","familyId":"family-1","question":"   ","limit":5}""")
+            setBody("""{"userId":"dad","question":"   ","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -81,7 +81,7 @@ class TopicAnswerRoutesTest {
 
         val response = client.post("/api/topics/answer") {
             contentType(ContentType.Application.Json)
-            setBody("""{"userId":"dad","familyId":"family-1","question":"리모컨 어디 있어?","limit":5}""")
+            setBody("""{"userId":"dad","question":"리모컨 어디 있어?","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.ServiceUnavailable, response.status)

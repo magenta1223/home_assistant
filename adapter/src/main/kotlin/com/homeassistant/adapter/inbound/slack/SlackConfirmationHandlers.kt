@@ -56,7 +56,6 @@ internal class SlackConfirmationHandlers(
             TopicAnalysisSelectionSaveRequest(
                 previewId = previewId,
                 userId = session.principal.userId.value,
-                familyId = session.principal.familyId.value,
                 selectedTopicIndices = selectedTopicIndices,
             ),
         )
@@ -77,7 +76,7 @@ data class SlackTopicReviewSession(
     val status: SlackTopicReviewStatus,
     val channelId: String = "",
     val messageTs: String? = null,
-    val topics: List<com.homeassistant.domain.topicanalysis.TopicCandidate>,
+    val topics: List<com.homeassistant.domain.topicanalysis.ProposedTopic>,
 )
 
 enum class SlackTopicReviewStatus {

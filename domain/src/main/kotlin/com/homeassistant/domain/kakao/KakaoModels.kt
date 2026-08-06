@@ -1,6 +1,6 @@
 package com.homeassistant.domain.kakao
 
-import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 
 /**
  * KakaoTalk message row stored in the local import database.
@@ -20,5 +20,5 @@ data class KakaoAnalysisPreview(
     val previewId: String,
     val sourceFileName: String,
     val text: String,
-    val topics: List<TopicCandidate>,
+    val topics: List<ProposedTopic>,
 )

@@ -1,16 +1,14 @@
 package com.homeassistant.application.topicanalysis.analyze
 
-import com.homeassistant.domain.identity.FamilyId
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
-import com.homeassistant.domain.topicanalysis.TopicCandidate
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.domain.topicanalysis.TopicDraft
 
 interface AnalyzeSourceUseCase {
@@ -25,8 +23,8 @@ internal class AnalyzeSource(
     private val accessPolicy: HouseholdAccessPolicy,
 ) : AnalyzeSourceUseCase {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
-        val scope = request.scope()
-        requireAuthorized(scope)
+        val userId = UserId(request.userId)
+        requireAuthorized(userId)
         val messages = sourceTextParser.parse(request.sourceName, request.text)
         val newFingerprints = importService.findNewMessages(messages)
             .mapTo(mutableSetOf()) { it.fingerprint }
@@ -50,7 +48,7 @@ internal class AnalyzeSource(
             },
         )
         val topics = topicExtractor.analyze(document).topics.map { topic ->
-            topic.toCandidate(document, scope)
+            topic.toProposal(document, userId)
         }
         val preview = previewRepository.createPreview(request.sourceName, request.text, topics)
         return TopicAnalysisResult(
@@ -62,22 +60,21 @@ internal class AnalyzeSource(
         )
     }
 
-    private fun TopicDraft.toCandidate(
+    private fun TopicDraft.toProposal(
         document: SourceDocument,
-        scope: HouseholdAccessScope,
-    ): TopicCandidate =
-        TopicCandidate(
-            familyId = scope.familyId.value,
-            createdByUserId = scope.userId.value,
+        userId: UserId,
+    ): ProposedTopic =
+        ProposedTopic(
+            createdByUserId = userId.value,
             sourceType = document.sourceType,
             sourceName = document.sourceName,
             title = title,
             summary = summary,
             memoryTypes = memoryTypes,
-            domains = domains,
+            categories = categories,
             evidenceRefs = evidence.map { it.ref },
-            claims = claims.map { claim ->
-                TopicClaimCandidate(
+            memories = claims.map { claim ->
+                ProposedMemory(
                     text = claim.text,
                     subject = claim.subject,
                     memoryType = claim.memoryType,
@@ -87,10 +84,7 @@ internal class AnalyzeSource(
             },
         )
 
-    private fun TopicAnalysisRequest.scope(): HouseholdAccessScope =
-        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
-
-    private fun requireAuthorized(scope: HouseholdAccessScope) {
-        if (!accessPolicy.isAuthorized(scope)) throw HouseholdAccessDeniedException()
+    private fun requireAuthorized(userId: UserId) {
+        if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
     }
 }

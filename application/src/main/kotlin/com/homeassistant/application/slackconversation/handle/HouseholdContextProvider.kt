@@ -15,7 +15,6 @@ class HouseholdContextProvider(
         val result = topicAnswer.answer(
             TopicAnswerRequest(
                 userId = principal.userId.value,
-                familyId = principal.familyId.value,
                 question = question,
                 limit = MAX_MATCHES,
             ),

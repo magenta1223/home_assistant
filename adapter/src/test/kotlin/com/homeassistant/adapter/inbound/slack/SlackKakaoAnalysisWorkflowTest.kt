@@ -38,7 +38,6 @@ class SlackKakaoAnalysisWorkflowTest {
         assertEquals(SlackTopicReviewStatus.AWAITING_CONFIRMATION, sessions.find("preview-1")?.status)
         assertEquals("U1", sessions.find("preview-1")?.principal?.slackUserId)
         assertEquals("dad", analyzer.userId)
-        assertEquals("family-1", analyzer.familyId)
         assertEquals(2, slack.messages.size)
         assertEquals("D1", slack.messages.last().channelId)
         assertEquals("1710000000.000100", slack.messages.last().threadTs)
@@ -136,13 +135,11 @@ private class FakeAnalyzer : AnalyzeSourceUseCase {
     var sourceName = ""
     var text = ""
     var userId = ""
-    var familyId = ""
 
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
         sourceName = request.sourceName
         text = request.text
         userId = request.userId
-        familyId = request.familyId
         return TopicAnalysisResult(
             previewId = "preview-1",
             sourceType = request.sourceType,

@@ -3,9 +3,7 @@ package com.homeassistant.app.routes
 import com.homeassistant.adapter.outbound.codex.CodexTopicExtractorFactory
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.inbound.http.configureRoutes
-import com.homeassistant.domain.identity.FamilyId
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
@@ -51,12 +49,7 @@ class LiveTopicAnalysisApiTest {
             searchIndex = TopicClaimSearchIndexes.unavailable(),
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = HouseholdAccessPolicies.fixed(
-                listOf(
-                    HouseholdAccessScope(
-                        userId = UserId(USER_ID),
-                        familyId = FamilyId(FAMILY_ID),
-                    ),
-                ),
+                listOf(UserId(USER_ID)),
             ),
         )
 
@@ -72,7 +65,6 @@ class LiveTopicAnalysisApiTest {
                     """
                     {
                       "userId": "$USER_ID",
-                      "familyId": "$FAMILY_ID",
                       "sourceName": "live-api-smoke.txt",
                       "text": "[동훈] [오후 5:30] 오늘 저녁 7시에 카인드커피에서 만나자\n[승민] [오후 5:31] 좋아, 카인드커피는 서울역 2번 출구 앞이야\n[동훈] [오후 5:32] 도착하면 전화할게"
                     }
@@ -91,6 +83,5 @@ class LiveTopicAnalysisApiTest {
     private companion object {
         const val LIVE_TEST_ENV = "RUN_LIVE_CODEX_API_TEST"
         const val USER_ID = "api-smoke-user"
-        const val FAMILY_ID = "api-smoke-family"
     }
 }

@@ -1,16 +1,14 @@
 package com.homeassistant.application.topicanalysis.save
 
-import com.homeassistant.domain.identity.FamilyId
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
-import com.homeassistant.domain.identity.HouseholdAccessScope
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.topicanalysis.analyze.SourceTextParser
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
 
 interface SaveTopicCandidatesUseCase {
@@ -34,20 +32,20 @@ internal class SaveTopicCandidates(
     )
 
     override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
-        val scope = request.scope()
-        requireAuthorized(scope)
+        val userId = UserId(request.userId)
+        requireAuthorized(userId)
         val preview = previewRepository.findPreview(request.previewId)
             ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
-        requirePreviewScope(preview.topics, scope)
+        requirePreviewOwner(preview.topics, userId)
         return savePreviewTopics(request.previewId, preview.sourceFileName, preview.text, preview.topics)
     }
 
     override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
-        val scope = request.scope()
-        requireAuthorized(scope)
+        val userId = UserId(request.userId)
+        requireAuthorized(userId)
         val preview = previewRepository.findPreview(request.previewId)
             ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
-        requirePreviewScope(preview.topics, scope)
+        requirePreviewOwner(preview.topics, userId)
         val selectedTopics = request.selectedTopicIndices
             .sorted()
             .mapNotNull { index -> preview.topics.getOrNull(index) }
@@ -58,7 +56,7 @@ internal class SaveTopicCandidates(
         previewId: String,
         sourceFileName: String,
         text: String,
-        topics: List<TopicCandidate>,
+        topics: List<ProposedTopic>,
     ): TopicAnalysisSaveResult {
         if (topics.isEmpty()) return TopicAnalysisSaveResult(previewId, emptyList())
 
@@ -75,26 +73,20 @@ internal class SaveTopicCandidates(
         return TopicAnalysisSaveResult(previewId, savedTopics)
     }
 
-    private fun TopicCandidate.remapEvidenceRefs(refToStoredId: Map<Int, Int>): TopicCandidate =
+    private fun ProposedTopic.remapEvidenceRefs(refToStoredId: Map<Int, Int>): ProposedTopic =
         copy(
             evidenceRefs = evidenceRefs.map { refToStoredId.getValue(it) },
-            claims = claims.map { claim ->
-                claim.copy(evidenceRefs = claim.evidenceRefs.map { refToStoredId.getValue(it) })
+            memories = memories.map { memory ->
+                memory.copy(evidenceRefs = memory.evidenceRefs.map { refToStoredId.getValue(it) })
             },
         )
 
-    private fun TopicAnalysisSaveRequest.scope(): HouseholdAccessScope =
-        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
-
-    private fun TopicAnalysisSelectionSaveRequest.scope(): HouseholdAccessScope =
-        HouseholdAccessScope(UserId(userId), FamilyId(familyId))
-
-    private fun requireAuthorized(scope: HouseholdAccessScope) {
-        if (!accessPolicy.isAuthorized(scope)) throw HouseholdAccessDeniedException()
+    private fun requireAuthorized(userId: UserId) {
+        if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
     }
 
-    private fun requirePreviewScope(topics: List<TopicCandidate>, scope: HouseholdAccessScope) {
-        if (topics.any { it.familyId != scope.familyId.value || it.createdByUserId != scope.userId.value }) {
+    private fun requirePreviewOwner(topics: List<ProposedTopic>, userId: UserId) {
+        if (topics.any { it.createdByUserId != userId.value }) {
             throw HouseholdAccessDeniedException()
         }
     }

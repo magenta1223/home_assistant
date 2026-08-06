@@ -68,7 +68,6 @@ class SlackConfirmationHandlersTest {
         assertEquals("preview-1", FakeTopicAnalysis.selectionRequest.previewId)
         assertEquals(setOf(0, 2), FakeTopicAnalysis.selectionRequest.selectedTopicIndices)
         assertEquals("dad", FakeTopicAnalysis.selectionRequest.userId)
-        assertEquals("family-1", FakeTopicAnalysis.selectionRequest.familyId)
         assertEquals(SlackTopicReviewStatus.COMPLETED, sessions.find("preview-1")?.status)
     }
 
@@ -124,7 +123,7 @@ private object FakeTopicAnalysis : SaveTopicCandidatesUseCase {
     lateinit var selectionRequest: TopicAnalysisSelectionSaveRequest
 
     fun reset() {
-        selectionRequest = TopicAnalysisSelectionSaveRequest("", "dad", "family-1", emptySet())
+        selectionRequest = TopicAnalysisSelectionSaveRequest("", "dad", emptySet())
     }
 
     override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =

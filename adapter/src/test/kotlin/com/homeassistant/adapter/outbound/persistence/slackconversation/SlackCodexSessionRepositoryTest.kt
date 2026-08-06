@@ -46,7 +46,7 @@ class SlackCodexSessionRepositoryTest {
     }
 
     @Test
-    fun `active session requires the exact persisted user and family and expires at ten minutes`() {
+    fun `active session requires the exact persisted user and expires at ten minutes`() {
         val principal = SlackPrincipal("T1", "U1", "dad", "family-1")
         repository.createAndActivate(
             principal,
@@ -55,7 +55,7 @@ class SlackCodexSessionRepositoryTest {
         )
 
         assertNotNull(repository.active(principal, 600_999, 600_000))
-        assertNull(repository.active(SlackPrincipal("T1", "U1", "dad", "family-2"), 1_001, 600_000))
+        assertNull(repository.active(SlackPrincipal("T1", "U1", "other", "ignored"), 1_001, 600_000))
 
         repository.createAndActivate(
             principal,

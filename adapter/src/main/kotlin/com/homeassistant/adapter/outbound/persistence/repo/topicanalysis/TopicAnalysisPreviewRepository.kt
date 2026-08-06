@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.topicanalysis
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.kakao.KakaoAnalysisPreview
-import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAnalysisPreviewTable
 import org.jetbrains.exposed.sql.Database
@@ -18,7 +18,7 @@ internal class TopicAnalysisPreviewRepository(private val db: Database) : TopicA
     override fun createPreview(
         sourceFileName: String,
         text: String,
-        topics: List<TopicCandidate>,
+        topics: List<ProposedTopic>,
     ): KakaoAnalysisPreview = transaction(db) {
         val previewId = UUID.randomUUID().toString()
         TopicAnalysisPreviewTable.insert {

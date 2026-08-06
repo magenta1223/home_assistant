@@ -128,7 +128,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"preview-1","userId":"dad","familyId":"family-1"}""")
+            setBody("""{"previewId":"preview-1","userId":"dad"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -150,7 +150,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"   ","userId":"dad","familyId":"family-1"}""")
+            setBody("""{"previewId":"   ","userId":"dad"}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -168,7 +168,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"missing","userId":"dad","familyId":"family-1"}""")
+            setBody("""{"previewId":"missing","userId":"dad"}""")
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
@@ -186,7 +186,7 @@ class KakaoImportRoutesTest {
 
         val response = client.post("/api/kakao/import/save") {
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"broken","userId":"dad","familyId":"family-1"}""")
+            setBody("""{"previewId":"broken","userId":"dad"}""")
         }
 
         assertEquals(HttpStatusCode.InternalServerError, response.status)
@@ -226,5 +226,5 @@ class KakaoImportRoutesTest {
     }
 
     private fun scoped(json: String): String =
-        json.dropLast(1) + ""","userId":"dad","familyId":"family-1"}"""
+        json.dropLast(1) + ""","userId":"dad"}"""
 }

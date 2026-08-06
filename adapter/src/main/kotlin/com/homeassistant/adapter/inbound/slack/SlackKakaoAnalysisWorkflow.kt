@@ -34,7 +34,6 @@ internal class SlackKakaoAnalysisWorkflow(
             val result = analyzeSource.execute(
                 TopicAnalysisRequest(
                     userId = upload.principal.userId.value,
-                    familyId = upload.principal.familyId.value,
                     sourceType = "kakao",
                     sourceName = upload.fileName,
                     text = text,

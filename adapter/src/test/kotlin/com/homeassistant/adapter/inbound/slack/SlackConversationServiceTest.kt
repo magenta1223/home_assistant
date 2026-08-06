@@ -21,7 +21,7 @@ import kotlin.test.assertNull
 class SlackConversationServiceTest {
     private val identities = SlackIdentityDirectoryFactory.fromJson(
         "T1",
-        """[{"teamId":"T1","slackUserId":"U1","userId":"dad","familyId":"family-1"}]""",
+        """[{"teamId":"T1","slackUserId":"U1","userId":"dad"}]""",
     )
     private val message = SlackConversationMessage("T1", "U1", "D1", "100.1", "리모컨 어디 있어?")
     private val clock = Clock.fixed(Instant.ofEpochMilli(1_000), ZoneOffset.UTC)
@@ -35,7 +35,6 @@ class SlackConversationServiceTest {
         service.handle(message)
 
         assertEquals("dad", answer.request?.userId)
-        assertEquals("family-1", answer.request?.familyId)
         assertEquals(SlackMessageReceiptStatus.COMPLETED, store.receipt(key())?.status)
         assertEquals("200.2", store.receipt(key())?.responseTs)
     }

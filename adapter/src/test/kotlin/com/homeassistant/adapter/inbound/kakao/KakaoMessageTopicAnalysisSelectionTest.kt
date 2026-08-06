@@ -109,8 +109,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
     private fun selection(indices: Set<Int>) =
         TopicAnalysisSelectionSaveRequest(
             "preview-1",
-            TEST_SCOPE.userId.value,
-            TEST_SCOPE.familyId.value,
+            TEST_USER.value,
             indices,
         )
 }

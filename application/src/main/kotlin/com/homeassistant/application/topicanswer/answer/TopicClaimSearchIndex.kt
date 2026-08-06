@@ -1,6 +1,6 @@
 package com.homeassistant.application.topicanswer.answer
 
-import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.topicanalysis.Topic
 
 data class TopicClaimSearchHit(
@@ -11,7 +11,7 @@ data class TopicClaimSearchHit(
 
 interface TopicClaimSearchIndex {
     fun index(topic: Topic)
-    fun search(scope: HouseholdAccessScope, question: String, limit: Int): List<TopicClaimSearchHit>
+    fun search(userId: UserId, question: String, limit: Int): List<TopicClaimSearchHit>
 }
 
 private object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
@@ -20,7 +20,7 @@ private object UnavailableTopicClaimSearchIndex : TopicClaimSearchIndex {
     }
 
     override fun search(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         question: String,
         limit: Int,
     ): List<TopicClaimSearchHit> =

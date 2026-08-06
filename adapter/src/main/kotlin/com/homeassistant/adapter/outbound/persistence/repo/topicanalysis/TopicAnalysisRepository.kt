@@ -2,14 +2,14 @@ package com.homeassistant.adapter.outbound.persistence.repo.topicanalysis
 
 import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicCandidate
+import com.homeassistant.domain.topicanalysis.ProposedTopic
 import com.homeassistant.domain.topicanalysis.TopicClaim
-import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
+import com.homeassistant.domain.topicanalysis.ProposedMemory
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
@@ -26,27 +26,26 @@ import org.jetbrains.exposed.sql.update
 /** Persists source-agnostic topic candidates and their memory types/evidence. */
 internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysisStore {
 
-    override fun createTopic(candidate: TopicCandidate): Topic = transaction(db) {
-        require(candidate.familyId.isNotBlank()) { "familyId is required" }
-        require(candidate.createdByUserId.isNotBlank()) { "createdByUserId is required" }
-        val existing = findExistingTopic(candidate)
+    override fun createTopic(proposal: ProposedTopic): Topic = transaction(db) {
+        require(proposal.createdByUserId.isNotBlank()) { "createdByUserId is required" }
+        val existing = findExistingTopic(proposal)
         if (existing != null) return@transaction approveTopic(existing.id)
 
         val now = System.currentTimeMillis()
-        val distinctEvidenceRefs = candidate.evidenceRefs.distinct()
-        val distinctClaims = candidate.claims.distinctBy { it.text to it.evidenceRefs.toSet() }
+        val distinctEvidenceRefs = proposal.evidenceRefs.distinct()
+        val distinctMemories = proposal.memories.distinctBy { it.text to it.evidenceRefs.toSet() }
         val topicId = TopicCandidateTable.insert {
-            it[familyId] = candidate.familyId
-            it[createdByUserId] = candidate.createdByUserId
-            it[sourceType] = candidate.sourceType
-            it[sourceName] = candidate.sourceName
-            it[TopicCandidateTable.title] = candidate.title
-            it[TopicCandidateTable.summary] = candidate.summary
+            it[familyId] = LEGACY_HOUSEHOLD_ID
+            it[createdByUserId] = proposal.createdByUserId
+            it[sourceType] = proposal.sourceType
+            it[sourceName] = proposal.sourceName
+            it[TopicCandidateTable.title] = proposal.title
+            it[TopicCandidateTable.summary] = proposal.summary
             it[status] = CandidateStatus.APPROVED.name
-            it[memoryTypesJson] = candidate.memoryTypes.distinct().encodeToString()
-            it[domainsJson] = candidate.domains.distinct().encodeToString()
+            it[memoryTypesJson] = proposal.memoryTypes.distinct().encodeToString()
+            it[domainsJson] = proposal.categories.distinct().encodeToString()
             it[evidenceJson] = distinctEvidenceRefs.encodeToString()
-            it[claimsJson] = distinctClaims.toPersistedClaims().encodeToString()
+            it[claimsJson] = distinctMemories.toPersistedClaims().encodeToString()
             it[createdAt] = now
             it[updatedAt] = now
         }[TopicCandidateTable.id]
@@ -56,7 +55,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
     }
 
     override fun searchApprovedTopics(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         query: String,
         limit: Int,
     ): List<Topic> = transaction(db) {
@@ -65,10 +64,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         if (queryTokens.isEmpty()) return@transaction emptyList()
 
         TopicCandidateTable.selectAll()
-            .where {
-                (TopicCandidateTable.familyId eq scope.familyId.value) and
-                    (TopicCandidateTable.status eq CandidateStatus.APPROVED.name)
-            }
+            .where { TopicCandidateTable.status eq CandidateStatus.APPROVED.name }
             .map { row -> getTopic(row[TopicCandidateTable.id]) }
             .mapNotNull { topic ->
                 val score = scoreTopic(topic, queryTokens)
@@ -80,7 +76,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
     }
 
     override fun getApprovedTopics(
-        scope: HouseholdAccessScope,
+        userId: UserId,
         topicIds: Collection<Int>,
     ): List<Topic> = transaction(db) {
         val distinctIds = topicIds.distinct()
@@ -89,7 +85,6 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         TopicCandidateTable.selectAll()
             .where {
                 (TopicCandidateTable.id inList distinctIds) and
-                    (TopicCandidateTable.familyId eq scope.familyId.value) and
                     (TopicCandidateTable.status eq CandidateStatus.APPROVED.name)
             }
             .map { row -> getTopic(row[TopicCandidateTable.id]) }
@@ -136,14 +131,13 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         }
     }
 
-    private fun findExistingTopic(candidate: TopicCandidate): Topic? {
-        val evidenceRefs = candidate.evidenceRefs.toSet()
+    private fun findExistingTopic(proposal: ProposedTopic): Topic? {
+        val evidenceRefs = proposal.evidenceRefs.toSet()
         val candidates = TopicCandidateTable.selectAll()
             .where {
-                (TopicCandidateTable.familyId eq candidate.familyId) and
-                    (TopicCandidateTable.sourceType eq candidate.sourceType) and
-                    (TopicCandidateTable.sourceName eq candidate.sourceName) and
-                    (TopicCandidateTable.title eq candidate.title)
+                (TopicCandidateTable.sourceType eq proposal.sourceType) and
+                    (TopicCandidateTable.sourceName eq proposal.sourceName) and
+                    (TopicCandidateTable.title eq proposal.title)
             }
         return candidates.firstOrNull { row ->
             row[TopicCandidateTable.evidenceJson]
@@ -159,14 +153,13 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
 
         return Topic(
             id = topicId,
-            familyId = row[TopicCandidateTable.familyId],
             createdByUserId = row[TopicCandidateTable.createdByUserId],
             sourceType = row[TopicCandidateTable.sourceType],
             sourceName = row[TopicCandidateTable.sourceName],
             title = row[TopicCandidateTable.title],
             summary = row[TopicCandidateTable.summary],
             memoryTypes = row[TopicCandidateTable.memoryTypesJson].decodeFromString(),
-            domains = row[TopicCandidateTable.domainsJson].decodeFromString(),
+            categories = row[TopicCandidateTable.domainsJson].decodeFromString(),
             evidenceRefs = row[TopicCandidateTable.evidenceJson].decodeFromString(),
             claims = decodeClaims(row),
             status = CandidateStatus.valueOf(row[TopicCandidateTable.status]),
@@ -187,7 +180,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
                 )
             }
 
-    private fun List<TopicClaimCandidate>.toPersistedClaims(): List<PersistedTopicClaim> =
+    private fun List<ProposedMemory>.toPersistedClaims(): List<PersistedTopicClaim> =
         map { claim ->
             PersistedTopicClaim(
                 text = claim.text,
@@ -209,3 +202,5 @@ private data class PersistedTopicClaim(
     val certainty: ClaimCertainty,
     val evidenceRefs: List<Int>,
 )
+
+private const val LEGACY_HOUSEHOLD_ID = "household"

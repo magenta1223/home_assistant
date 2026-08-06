@@ -1,14 +1,14 @@
 package com.homeassistant.domain.topicanalysis
 
-import com.homeassistant.domain.identity.HouseholdAccessScope
+import com.homeassistant.domain.identity.UserId
 
 interface TopicAnalysisCommandStore {
-    fun createTopic(candidate: TopicCandidate): Topic
+    fun createTopic(proposal: ProposedTopic): Topic
 }
 
 interface TopicAnalysisQueryStore {
-    fun searchApprovedTopics(scope: HouseholdAccessScope, query: String, limit: Int): List<Topic>
-    fun getApprovedTopics(scope: HouseholdAccessScope, topicIds: Collection<Int>): List<Topic>
+    fun searchApprovedTopics(userId: UserId, query: String, limit: Int): List<Topic>
+    fun getApprovedTopics(userId: UserId, topicIds: Collection<Int>): List<Topic>
     fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic>
 }
 

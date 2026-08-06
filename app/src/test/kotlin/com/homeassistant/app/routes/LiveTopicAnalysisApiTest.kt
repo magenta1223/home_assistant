@@ -6,9 +6,8 @@ import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer
-import com.homeassistant.application.memory.answer.MemorySearchDocument
-import com.homeassistant.application.memory.answer.MemorySearchHit
-import com.homeassistant.application.memory.answer.MemorySearchIndex
+import com.homeassistant.application.memory.CanonicalMemoryContext
+import com.homeassistant.application.memory.index.MemoryIndexer
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
@@ -51,9 +50,10 @@ class LiveTopicAnalysisApiTest {
             accessPolicy = accessPolicy,
         )
         val saveAnalyzedTopics = SaveAnalyzedTopics(
-            topicRepository = repositories.topicAnalysis,
+            topicCreator = repositories.topicCreator,
             reviewStore = repositories.topicAnalysisReviews,
-            memorySearchIndex = NoOpMemorySearchIndex,
+            memoryIndexer = NoOpMemoryIndexer,
+            memoryIndexingSource = repositories.memoryIndexingSource,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,
         )
@@ -91,9 +91,6 @@ class LiveTopicAnalysisApiTest {
     }
 }
 
-private object NoOpMemorySearchIndex : MemorySearchIndex {
-    override fun index(document: MemorySearchDocument) = Unit
-
-    override fun search(userId: UserId, question: String, limit: Int): List<MemorySearchHit> =
-        emptyList()
+private object NoOpMemoryIndexer : MemoryIndexer {
+    override fun index(context: CanonicalMemoryContext) = Unit
 }

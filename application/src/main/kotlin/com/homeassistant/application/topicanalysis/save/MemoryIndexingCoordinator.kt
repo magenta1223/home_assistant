@@ -1,45 +1,46 @@
 package com.homeassistant.application.topicanalysis.save
 
-import com.homeassistant.application.memory.answer.MemorySearchDocument
-import com.homeassistant.application.memory.answer.MemorySearchIndex
-import com.homeassistant.application.memory.answer.MemorySearchTopic
+import com.homeassistant.application.memory.CanonicalMemoryContext
+import com.homeassistant.application.memory.MemoryTopicContext
+import com.homeassistant.application.memory.index.MemoryIndexer
+import com.homeassistant.application.memory.index.MemoryIndexingSource
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
 import org.slf4j.LoggerFactory
 
 internal class MemoryIndexingCoordinator(
-    private val topicStore: TopicAnalysisQueryStore,
-    private val searchIndex: MemorySearchIndex,
+    private val memories: MemoryIndexingSource,
+    private val indexer: MemoryIndexer,
     private val outbox: IndexingOutboxStore,
 ) {
     fun index(topic: Topic): Boolean =
-        topic.memories.map { memory -> index(topic, memory.id) }.all { it }
+        topic.memories.map { memory ->
+            index(
+                CanonicalMemoryContext(
+                    memory,
+                    MemoryTopicContext(
+                        topic.id,
+                        topic.title,
+                        topic.summary,
+                        SourceDescriptor(topic.sourceType, topic.sourceName),
+                    ),
+                ),
+            )
+        }.all { it }
 
     fun retryPending(currentMemoryIds: Set<Int>) {
         runCatching {
             val pending = outbox.pending(IndexTargetType.MEMORY).filterNot(currentMemoryIds::contains).toSet()
-            topicStore.getTopicsForMemoryIndexing(pending).forEach { topic ->
-                topic.memories.forEach { memory -> index(topic, memory.id) }
-            }
+            memories.findByIds(pending).forEach(::index)
         }.onFailure { error ->
             log.warn("Failed to dispatch pending memory indexes", error)
         }
     }
 
-    private fun index(topic: Topic, memoryId: Int): Boolean {
-        val memory = topic.memories.single { it.id == memoryId }
+    private fun index(context: CanonicalMemoryContext): Boolean {
+        val memory = context.memory
         return try {
-            searchIndex.index(
-                MemorySearchDocument(
-                    memory = memory,
-                    topic = MemorySearchTopic(
-                        title = topic.title,
-                        summary = topic.summary,
-                        source = SourceDescriptor(topic.sourceType, topic.sourceName),
-                    ),
-                ),
-            )
+            indexer.index(context)
             outbox.markIndexed(IndexTargetType.MEMORY, memory.id)
             true
         } catch (error: Exception) {

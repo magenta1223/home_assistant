@@ -38,7 +38,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
     @Test
     fun `save selected analysis persists only selected preview topics`() = runBlocking {
         val topicStore = FakeTopicStore()
-        val index = RecordingMemorySearchIndex()
+        val index = RecordingMemoryIndexer()
         val service = service(
             topicStore,
             FakeReviewStore(listOf(topic("첫 후보", 1), topic("둘째 후보", 2), topic("셋째 후보", 3))),
@@ -51,7 +51,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
         assertEquals(
             listOf("첫 후보", "셋째 후보"),
-            index.indexedDocuments.map { it.topic?.title },
+            index.indexedMemories.map { it.topic?.title },
         )
     }
 
@@ -69,9 +69,10 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
     fun `save selected analysis keeps topics pending when vector indexing fails`() = runBlocking {
         val outbox = FakeIndexingOutboxStore()
         val service = SaveAnalyzedTopics(
-            topicRepository = FakeTopicStore(),
+            topicCreator = FakeTopicStore(),
             reviewStore = FakeReviewStore(listOf(topic("후보", 1))),
-            memorySearchIndex = FailingMemorySearchIndex,
+            memoryIndexer = FailingMemoryIndexer,
+            memoryIndexingSource = EmptyMemoryIndexingSource,
             indexingOutbox = outbox,
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -85,11 +86,12 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
     private fun service(
         topicStore: FakeTopicStore,
         reviewStore: FakeReviewStore,
-        index: RecordingMemorySearchIndex = RecordingMemorySearchIndex(),
+        index: RecordingMemoryIndexer = RecordingMemoryIndexer(),
     ) = SaveAnalyzedTopics(
-        topicRepository = topicStore,
+        topicCreator = topicStore,
         reviewStore = reviewStore,
-        memorySearchIndex = index,
+        memoryIndexer = index,
+        memoryIndexingSource = EmptyMemoryIndexingSource,
         indexingOutbox = FakeIndexingOutboxStore(),
         accessPolicy = TEST_ACCESS_POLICY,
     )

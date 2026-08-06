@@ -1,21 +1,21 @@
 package com.homeassistant.application.slackconversation.handle
 
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.memory.answer.MemoryAnswerRequest
-import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.memory.search.SearchMemoriesRequest
+import com.homeassistant.application.memory.search.SearchMemoriesUseCase
 
 interface HouseholdContextSource {
     fun context(principal: SlackPrincipal, question: String): HouseholdContext
 }
 
 class HouseholdContextProvider(
-    private val memoryAnswer: MemoryAnswerUseCase,
+    private val searchMemories: SearchMemoriesUseCase,
 ) : HouseholdContextSource {
     override fun context(principal: SlackPrincipal, question: String): HouseholdContext {
-        val result = memoryAnswer.answer(
-            MemoryAnswerRequest(
+        val result = searchMemories.search(
+            SearchMemoriesRequest(
                 userId = principal.userId.value,
-                question = question,
+                query = question,
                 limit = MAX_MATCHES,
             ),
         )
@@ -23,8 +23,10 @@ class HouseholdContextProvider(
             reference = result.matches.joinToString("\n") { match ->
                 buildString {
                     append("- ")
-                    append(match.topicTitle)
-                    append(": ")
+                    match.topicTitle?.let {
+                        append(it)
+                        append(": ")
+                    }
                     append(match.content)
                 }
             }.take(MAX_CONTEXT_CHARS),

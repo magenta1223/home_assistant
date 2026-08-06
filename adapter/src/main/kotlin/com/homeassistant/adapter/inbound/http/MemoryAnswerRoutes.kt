@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
-import com.homeassistant.application.memory.answer.MemorySearchIndexUnavailableException
+import com.homeassistant.application.memory.search.MemorySearchUnavailableException
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.request.receive
@@ -25,7 +25,7 @@ internal fun Route.memoryAnswerRoutes(memoryAnswer: MemoryAnswerUseCase?) {
 
         try {
             call.respond(HttpStatusCode.OK, memoryAnswer.answer(request))
-        } catch (error: MemorySearchIndexUnavailableException) {
+        } catch (error: MemorySearchUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: HouseholdAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))

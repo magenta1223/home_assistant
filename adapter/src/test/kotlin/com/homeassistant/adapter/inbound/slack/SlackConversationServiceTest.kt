@@ -7,10 +7,10 @@ import com.homeassistant.application.slackconversation.handle.SlackMessageKey
 import com.homeassistant.application.slackconversation.handle.SlackMessageReceipt
 import com.homeassistant.application.slackconversation.handle.SlackMessageReceiptStatus
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.memory.answer.MemoryAnswerRequest
-import com.homeassistant.application.memory.answer.MemoryAnswerResult
-import com.homeassistant.application.memory.answer.MemoryAnswerMatch
-import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.memory.search.MemorySearchMatch
+import com.homeassistant.application.memory.search.SearchMemoriesRequest
+import com.homeassistant.application.memory.search.SearchMemoriesResult
+import com.homeassistant.application.memory.search.SearchMemoriesUseCase
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -29,12 +29,12 @@ class SlackConversationServiceTest {
     @Test
     fun `uses server mapped scope and completes only with the Slack response timestamp`() {
         val store = MemorySessionStore()
-        val answer = CapturingMemoryAnswer()
-        val service = service(store, answer, SuccessfulSlack())
+        val search = CapturingMemorySearch()
+        val service = service(store, search, SuccessfulSlack())
 
         service.handle(message)
 
-        assertEquals("dad", answer.request?.userId)
+        assertEquals("dad", search.request?.userId)
         assertEquals(SlackMessageReceiptStatus.COMPLETED, store.receipt(key())?.status)
         assertEquals("200.2", store.receipt(key())?.responseTs)
     }
@@ -42,7 +42,7 @@ class SlackConversationServiceTest {
     @Test
     fun `keeps answer ready when Slack rejects delivery`() {
         val store = MemorySessionStore()
-        val service = service(store, CapturingMemoryAnswer(), RejectingSlack)
+        val service = service(store, CapturingMemorySearch(), RejectingSlack)
 
         service.handle(message)
 
@@ -54,7 +54,7 @@ class SlackConversationServiceTest {
     @Test
     fun `ignores an unmapped Slack actor before claiming a message`() {
         val store = MemorySessionStore()
-        service(store, CapturingMemoryAnswer(), SuccessfulSlack()).handle(
+        service(store, CapturingMemorySearch(), SuccessfulSlack()).handle(
             message.copy(slackUserId = "ATTACKER"),
         )
 
@@ -65,9 +65,8 @@ class SlackConversationServiceTest {
     fun `does not invoke Codex when no authorized topic matches`() {
         val store = MemorySessionStore()
         val codex = CountingCodex()
-        val noMatches = object : MemoryAnswerUseCase {
-            override fun answer(request: MemoryAnswerRequest) =
-                MemoryAnswerResult(request.question, "", emptyList())
+        val noMatches = SearchMemoriesUseCase { request ->
+            SearchMemoriesResult(request.query, emptyList())
         }
         val service = SlackConversationService(
             HandleSlackConversation(
@@ -89,14 +88,14 @@ class SlackConversationServiceTest {
 
     private fun service(
         store: MemorySessionStore,
-        answer: CapturingMemoryAnswer,
+        search: CapturingMemorySearch,
         slack: SlackClient,
         codex: ConversationTurnClient = SuccessfulCodex,
     ) = SlackConversationService(
         HandleSlackConversation(
             identities = identities,
             sessions = store,
-            contextProvider = HouseholdContextProvider(answer),
+            contextProvider = HouseholdContextProvider(search),
             conversationClient = codex,
             answerPublisher = SlackConversationAnswerPublisher(slack),
             clock = clock,
@@ -106,16 +105,15 @@ class SlackConversationServiceTest {
     private fun key() = SlackMessageKey("D1", "100.1")
 }
 
-private class CapturingMemoryAnswer : MemoryAnswerUseCase {
-    var request: MemoryAnswerRequest? = null
+private class CapturingMemorySearch : SearchMemoriesUseCase {
+    var request: SearchMemoriesRequest? = null
 
-    override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult {
+    override fun search(request: SearchMemoriesRequest): SearchMemoriesResult {
         this.request = request
-        return MemoryAnswerResult(
-            request.question,
-            "",
+        return SearchMemoriesResult(
+            request.query,
             listOf(
-                MemoryAnswerMatch(
+                MemorySearchMatch(
                     memoryId = 1,
                     topicId = 1,
                     topicTitle = "리모컨",

@@ -4,22 +4,24 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.topicanalysis.save.IndexTargetType
+import com.homeassistant.application.topicanalysis.save.TopicCreator
 import com.homeassistant.domain.memory.*
 import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
+import com.homeassistant.domain.source.SourceDescriptor
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
 /** Stores approved topic groups and canonical memories in normalized tables. */
-internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysisStore {
-    override fun createTopic(
+internal class TopicRepository(private val db: Database) : TopicCreator {
+    override fun create(
         proposal: TopicProposal,
         createdBy: UserId,
-        sourceType: String,
-        sourceName: String,
+        source: SourceDescriptor,
     ): Topic = transaction(db) {
+        val sourceType = source.type
+        val sourceName = source.name
         require(proposal.memories.isNotEmpty()) { "topic must contain at least one memory" }
         findExistingTopic(proposal, sourceType, sourceName)?.let { return@transaction it }
 
@@ -39,23 +41,6 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             .distinctBy { it.content to it.evidenceIds.toSet() }
             .forEach { memory -> insertMemory(topicId, createdBy.value, memory, now) }
         getTopic(topicId) ?: error("Created topic not found: $topicId")
-    }
-
-    override fun getApprovedTopics(userId: UserId, topicIds: Collection<Int>): List<Topic> = transaction(db) {
-        topicIds.distinct().mapNotNull { getTopic(it, userId) }
-    }
-
-    override fun getTopicsForMemoryIndexing(memoryIds: Collection<Int>): List<Topic> = transaction(db) {
-        val requestedIds = memoryIds.toSet()
-        if (requestedIds.isEmpty()) return@transaction emptyList()
-        MemoryTable.selectAll()
-            .where { MemoryTable.id inList requestedIds }
-            .groupBy { it[MemoryTable.topicId] }
-            .mapNotNull { (topicId, rows) ->
-                topicId?.let(::getTopic)?.copy(
-                    memories = rows.map { it.toMemory() },
-                )
-            }
     }
 
     private fun findExistingTopic(proposal: TopicProposal, sourceType: String, sourceName: String): Topic? {
@@ -110,13 +95,11 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         }
     }
 
-    private fun getTopic(topicId: Int, requester: UserId? = null): Topic? {
+    private fun getTopic(topicId: Int): Topic? {
         val row = TopicTable.selectAll().where { TopicTable.id eq topicId }.singleOrNull() ?: return null
         val memories = MemoryTable.selectAll()
             .where { MemoryTable.topicId eq topicId }
             .map { it.toMemory() }
-            .filter { requester == null || it.isVisibleTo(requester) }
-        if (requester != null && memories.isEmpty()) return null
         val categories = (TopicCategoryTable innerJoin CategoryTable)
             .select(CategoryTable.name)
             .where { TopicCategoryTable.topicId eq topicId }

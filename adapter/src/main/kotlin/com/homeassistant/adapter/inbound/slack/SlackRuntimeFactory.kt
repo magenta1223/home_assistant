@@ -4,7 +4,7 @@ import com.homeassistant.application.slackconversation.handle.HandleSlackConvers
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
 import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
-import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.memory.search.SearchMemoriesUseCase
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
@@ -17,7 +17,7 @@ object SlackRuntimeFactory {
         analyzeSource: AnalyzeSourceUseCase,
         getTopicAnalysisReview: GetTopicAnalysisReviewUseCase,
         saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
-        memoryAnswer: MemoryAnswerUseCase,
+        searchMemories: SearchMemoriesUseCase,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
     ): SlackRuntime {
@@ -26,7 +26,7 @@ object SlackRuntimeFactory {
         val executor = Executors.newFixedThreadPool(2)
         val conversationListeners = createConversationListeners(
             config,
-            memoryAnswer,
+            searchMemories,
             codexSessions,
             slackClient,
             conversationClient,
@@ -52,7 +52,7 @@ object SlackRuntimeFactory {
 
     private fun createConversationListeners(
         config: SlackConfig,
-        memoryAnswer: MemoryAnswerUseCase,
+        searchMemories: SearchMemoriesUseCase,
         sessions: SlackCodexSessionStore,
         slackClient: SlackMessageClient,
         conversationClient: ConversationTurnClient?,
@@ -69,7 +69,7 @@ object SlackRuntimeFactory {
                 HandleSlackConversation(
                     identities = config.identityDirectory,
                     sessions = sessions,
-                    contextProvider = HouseholdContextProvider(memoryAnswer),
+                    contextProvider = HouseholdContextProvider(searchMemories),
                     conversationClient = client,
                     answerPublisher = SlackConversationAnswerPublisher(slackClient),
                 ),

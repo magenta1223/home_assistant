@@ -6,9 +6,9 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReview
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
-import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicProposal
-import com.homeassistant.application.memory.answer.MemorySearchIndex
+import com.homeassistant.application.memory.index.MemoryIndexer
+import com.homeassistant.application.memory.index.MemoryIndexingSource
 
 interface SaveAnalyzedTopicsUseCase {
     fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
@@ -16,15 +16,16 @@ interface SaveAnalyzedTopicsUseCase {
 }
 
 class SaveAnalyzedTopics(
-    private val topicRepository: TopicAnalysisStore,
+    private val topicCreator: TopicCreator,
     private val reviewStore: TopicAnalysisReviewStore,
-    memorySearchIndex: MemorySearchIndex,
+    memoryIndexer: MemoryIndexer,
     indexingOutbox: IndexingOutboxStore,
+    memoryIndexingSource: MemoryIndexingSource,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : SaveAnalyzedTopicsUseCase {
     private val memoryIndexing = MemoryIndexingCoordinator(
-        topicRepository,
-        memorySearchIndex,
+        memoryIndexingSource,
+        memoryIndexer,
         indexingOutbox,
     )
 
@@ -57,7 +58,7 @@ class SaveAnalyzedTopics(
         if (topics.isEmpty()) return TopicAnalysisSaveResult(review.id, emptyList())
 
         val savedTopics = topics.map { proposal ->
-            topicRepository.createTopic(proposal, userId, review.source.type, review.source.name)
+            topicCreator.create(proposal, userId, review.source)
         }
         savedTopics.forEach(memoryIndexing::index)
         memoryIndexing.retryPending(

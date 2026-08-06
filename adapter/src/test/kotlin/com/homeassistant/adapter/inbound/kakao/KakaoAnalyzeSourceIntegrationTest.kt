@@ -22,10 +22,10 @@ import com.homeassistant.application.topicanalysis.save.IndexTargetType
 import com.homeassistant.application.topicanalysis.save.IndexingOutboxStore
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReview
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
-import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.application.memory.answer.MemorySearchDocument
-import com.homeassistant.application.memory.answer.MemorySearchHit
-import com.homeassistant.application.memory.answer.MemorySearchIndex
+import com.homeassistant.application.memory.CanonicalMemoryContext
+import com.homeassistant.application.memory.index.MemoryIndexer
+import com.homeassistant.application.memory.index.MemoryIndexingSource
+import com.homeassistant.application.topicanalysis.save.TopicCreator
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -80,21 +80,20 @@ internal class FakeReviewStore(
         )
 }
 
-internal class FakeTopicStore : TopicAnalysisStore {
+internal class FakeTopicStore : TopicCreator {
     val createdTopics = mutableListOf<TopicProposal>()
 
-    override fun createTopic(
+    override fun create(
         proposal: TopicProposal,
         createdBy: UserId,
-        sourceType: String,
-        sourceName: String,
+        source: SourceDescriptor,
     ): Topic {
         createdTopics += proposal
         return Topic(
             id = createdTopics.size,
             createdByUserId = createdBy.value,
-            sourceType = sourceType,
-            sourceName = sourceName,
+            sourceType = source.type,
+            sourceName = source.name,
             title = proposal.title,
             summary = proposal.summary,
             categories = proposal.categories,
@@ -114,38 +113,22 @@ internal class FakeTopicStore : TopicAnalysisStore {
         )
     }
 
-    override fun getApprovedTopics(
-        userId: UserId,
-        topicIds: Collection<Int>,
-    ): List<Topic> =
-        emptyList()
-
-    override fun getTopicsForMemoryIndexing(memoryIds: Collection<Int>): List<Topic> =
-        emptyList()
 }
 
-internal class RecordingMemorySearchIndex : MemorySearchIndex {
-    val indexedDocuments = mutableListOf<MemorySearchDocument>()
+internal class RecordingMemoryIndexer : MemoryIndexer {
+    val indexedMemories = mutableListOf<CanonicalMemoryContext>()
 
-    override fun index(document: MemorySearchDocument) {
-        indexedDocuments += document
+    override fun index(context: CanonicalMemoryContext) {
+        indexedMemories += context
     }
-
-    override fun search(
-        userId: UserId,
-        question: String,
-        limit: Int,
-    ): List<MemorySearchHit> =
-        emptyList()
 }
 
-internal object FailingMemorySearchIndex : MemorySearchIndex {
-    override fun index(document: MemorySearchDocument) = error("qdrant unavailable")
-    override fun search(
-        userId: UserId,
-        question: String,
-        limit: Int,
-    ): List<MemorySearchHit> = emptyList()
+internal object FailingMemoryIndexer : MemoryIndexer {
+    override fun index(context: CanonicalMemoryContext) = error("qdrant unavailable")
+}
+
+internal object EmptyMemoryIndexingSource : MemoryIndexingSource {
+    override fun findByIds(memoryIds: Collection<Int>): List<CanonicalMemoryContext> = emptyList()
 }
 
 internal class FakeIndexingOutboxStore : IndexingOutboxStore {

@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.memory.answer.MemoryAnswerMatch
+import com.homeassistant.application.memory.search.MemorySearchMatch
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerResult
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
-import com.homeassistant.application.memory.answer.MemorySearchIndexUnavailableException
+import com.homeassistant.application.memory.search.MemorySearchUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
@@ -95,7 +95,7 @@ private object FakeMemoryAnswer : MemoryAnswerUseCase {
             question = request.question.trim(),
             answer = "저장된 기억 기준으로는 리모컨은 벽장 제일 위칸에 있다.",
             matches = listOf(
-                MemoryAnswerMatch(
+                MemorySearchMatch(
                     memoryId = 11,
                     topicId = 1,
                     topicTitle = "집 물건 위치",
@@ -109,7 +109,7 @@ private object FakeMemoryAnswer : MemoryAnswerUseCase {
 
 private object UnavailableMemoryAnswer : MemoryAnswerUseCase {
     override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult =
-        throw MemorySearchIndexUnavailableException("memory vector index is not configured")
+        throw MemorySearchUnavailableException("memory vector index is not configured")
 }
 
 private object UnusedTopicAnalysis : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {

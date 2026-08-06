@@ -3,8 +3,9 @@ package com.homeassistant.application.topicanalysis.save
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
-import com.homeassistant.domain.topicanalysis.TopicAnalysisPreview
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReview
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.memory.answer.MemorySearchIndex
@@ -16,7 +17,7 @@ interface SaveAnalyzedTopicsUseCase {
 
 class SaveAnalyzedTopics(
     private val topicRepository: TopicAnalysisStore,
-    private val previewRepository: TopicAnalysisPreviewStore,
+    private val reviewStore: TopicAnalysisReviewStore,
     memorySearchIndex: MemorySearchIndex,
     indexingOutbox: IndexingOutboxStore,
     private val accessPolicy: HouseholdAccessPolicy,
@@ -30,46 +31,46 @@ class SaveAnalyzedTopics(
     override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
         val userId = UserId(request.userId)
         requireAuthorized(userId)
-        val preview = previewRepository.findPreview(request.previewId)
-            ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
-        requirePreviewOwner(preview, userId)
-        return savePreviewTopics(preview, preview.topics, userId)
+        val review = reviewStore.find(request.previewId)
+            ?: throw TopicAnalysisReviewNotFoundException(request.previewId)
+        requireReviewOwner(review, userId)
+        return saveReviewProposals(review, review.proposals, userId)
     }
 
     override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
         val userId = UserId(request.userId)
         requireAuthorized(userId)
-        val preview = previewRepository.findPreview(request.previewId)
-            ?: throw TopicAnalysisPreviewNotFoundException(request.previewId)
-        requirePreviewOwner(preview, userId)
+        val review = reviewStore.find(request.previewId)
+            ?: throw TopicAnalysisReviewNotFoundException(request.previewId)
+        requireReviewOwner(review, userId)
         val selectedTopics = request.selectedTopicIndices
             .sorted()
-            .mapNotNull { index -> preview.topics.getOrNull(index) }
-        return savePreviewTopics(preview, selectedTopics, userId)
+            .mapNotNull { index -> review.proposals.getOrNull(index) }
+        return saveReviewProposals(review, selectedTopics, userId)
     }
 
-    private fun savePreviewTopics(
-        preview: TopicAnalysisPreview,
+    private fun saveReviewProposals(
+        review: TopicAnalysisReview,
         topics: List<TopicProposal>,
         userId: UserId,
     ): TopicAnalysisSaveResult {
-        if (topics.isEmpty()) return TopicAnalysisSaveResult(preview.previewId, emptyList())
+        if (topics.isEmpty()) return TopicAnalysisSaveResult(review.id, emptyList())
 
         val savedTopics = topics.map { proposal ->
-            topicRepository.createTopic(proposal, userId, preview.sourceType, preview.sourceName)
+            topicRepository.createTopic(proposal, userId, review.source.type, review.source.name)
         }
         savedTopics.forEach(memoryIndexing::index)
         memoryIndexing.retryPending(
             savedTopics.flatMapTo(mutableSetOf()) { topic -> topic.memories.map { it.id } },
         )
-        return TopicAnalysisSaveResult(preview.previewId, savedTopics)
+        return TopicAnalysisSaveResult(review.id, savedTopics)
     }
 
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
     }
 
-    private fun requirePreviewOwner(preview: TopicAnalysisPreview, userId: UserId) {
-        if (preview.requestedByUserId != userId.value) throw HouseholdAccessDeniedException()
+    private fun requireReviewOwner(review: TopicAnalysisReview, userId: UserId) {
+        if (review.requestedBy != userId) throw HouseholdAccessDeniedException()
     }
 }

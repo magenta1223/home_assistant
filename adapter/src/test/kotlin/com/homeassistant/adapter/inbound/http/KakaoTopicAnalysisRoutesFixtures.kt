@@ -7,7 +7,7 @@ import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
@@ -50,7 +50,7 @@ internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {
     override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
         previewId = request.previewId
         saveCalls += 1
-        if (request.previewId == "missing") throw TopicAnalysisPreviewNotFoundException(request.previewId)
+        if (request.previewId == "missing") throw TopicAnalysisReviewNotFoundException(request.previewId)
         if (request.previewId == "broken") error("database unavailable")
         return TopicAnalysisSaveResult(
             previewId = request.previewId,

@@ -6,6 +6,7 @@ import com.homeassistant.application.slackconversation.handle.ConversationTurnCl
 import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
+import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
@@ -14,13 +15,14 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         analyzeSource: AnalyzeSourceUseCase,
+        getTopicAnalysisReview: GetTopicAnalysisReviewUseCase,
         saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
         memoryAnswer: MemoryAnswerUseCase,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
     ): SlackRuntime {
         val slackClient = SlackClientFactory.create(config.botToken)
-        val reviewSessions = SlackTopicReviewSessionStoreFactory.inMemory()
+        val reviewContexts = SlackReviewContextStoreFactory.inMemory()
         val executor = Executors.newFixedThreadPool(2)
         val conversationListeners = createConversationListeners(
             config,
@@ -32,13 +34,13 @@ object SlackRuntimeFactory {
         val workflow = SlackKakaoAnalysisWorkflow(
                 slackClient = slackClient,
                 analyzeSource = analyzeSource,
-                reviewSessions = reviewSessions,
+                reviewContexts = reviewContexts,
                 maxFileSizeBytes = config.maxFileSizeBytes,
             )
-        val confirmationHandlers = SlackConfirmationHandlers(saveAnalyzedTopics, reviewSessions)
+        val confirmationHandlers = SlackConfirmationHandlers(saveAnalyzedTopics, getTopicAnalysisReview, reviewContexts)
         val listeners = buildList {
             add(SlackKakaoListeners(config, workflow, executor))
-            add(SlackConfirmationListeners(config, confirmationHandlers, reviewSessions, slackClient, executor))
+            add(SlackConfirmationListeners(config, confirmationHandlers, reviewContexts, slackClient, executor))
             conversationListeners?.let(::add)
         }
         return SlackSocketRuntime(

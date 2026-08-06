@@ -22,11 +22,11 @@ class SlackKakaoAnalysisWorkflowTest {
     fun `process downloads file analyzes kakao text stores review session and posts approval message`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "kakao export")
         val analyzer = FakeAnalyzer()
-        val sessions = InMemorySlackTopicReviewSessionStore()
+        val contexts = InMemorySlackReviewContextStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             analyzeSource = analyzer,
-            reviewSessions = sessions,
+            reviewContexts = contexts,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -34,8 +34,8 @@ class SlackKakaoAnalysisWorkflowTest {
 
         assertEquals("kakao export", analyzer.text)
         assertEquals("kakao.txt", analyzer.sourceName)
-        assertEquals(SlackTopicReviewStatus.AWAITING_CONFIRMATION, sessions.find("preview-1")?.status)
-        assertEquals("U1", sessions.find("preview-1")?.principal?.slackUserId)
+        assertEquals(SlackReviewStatus.AWAITING_CONFIRMATION, contexts.find("preview-1")?.status)
+        assertEquals("D1", contexts.find("preview-1")?.channelId)
         assertEquals("dad", analyzer.userId)
         assertEquals(2, slack.messages.size)
         assertEquals("D1", slack.messages.last().channelId)
@@ -48,7 +48,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             analyzeSource = FailingAnalyzer,
-            reviewSessions = InMemorySlackTopicReviewSessionStore(),
+            reviewContexts = InMemorySlackReviewContextStore(),
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -61,11 +61,11 @@ class SlackKakaoAnalysisWorkflowTest {
     @Test
     fun `process reports already analyzed kakao data without creating review session`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "kakao export")
-        val sessions = InMemorySlackTopicReviewSessionStore()
+        val contexts = InMemorySlackReviewContextStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             analyzeSource = DuplicateAnalyzer,
-            reviewSessions = sessions,
+            reviewContexts = contexts,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -73,7 +73,7 @@ class SlackKakaoAnalysisWorkflowTest {
 
         assertEquals(1, slack.ephemeralMessages.size)
         assertContains(slack.ephemeralMessages.single().text, "이미 분석된")
-        assertEquals(null, sessions.find("preview-1"))
+        assertEquals(null, contexts.find("preview-1"))
     }
 
     private fun upload() =

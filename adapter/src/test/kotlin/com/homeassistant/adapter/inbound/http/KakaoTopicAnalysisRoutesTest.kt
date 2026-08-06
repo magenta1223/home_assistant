@@ -5,7 +5,6 @@ import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import io.ktor.client.request.get
 import io.ktor.client.request.post

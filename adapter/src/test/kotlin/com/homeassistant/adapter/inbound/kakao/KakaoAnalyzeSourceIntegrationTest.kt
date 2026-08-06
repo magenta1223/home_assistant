@@ -20,8 +20,8 @@ import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.topicanalysis.save.IndexTargetType
 import com.homeassistant.application.topicanalysis.save.IndexingOutboxStore
-import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
-import com.homeassistant.domain.topicanalysis.TopicAnalysisPreview
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReview
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.application.memory.answer.MemorySearchDocument
 import com.homeassistant.application.memory.answer.MemorySearchHit
@@ -39,14 +39,14 @@ class KakaoAnalyzeSourceIntegrationTest {
         val text = kakaoText()
         val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
-        val previewStore = RecordingPreviewStore()
+        val reviewStore = RecordingReviewStore()
         val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
             sourceRecords = FakeSourceRecordStore(
                 parsed.records.mapTo(mutableSetOf()) { it.deduplicationKey },
             ),
-            previewRepository = previewStore,
+            reviewStore = reviewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
@@ -56,29 +56,27 @@ class KakaoAnalyzeSourceIntegrationTest {
 
         assertEquals(2, error.recordCount)
         assertEquals(0, extractor.calls)
-        assertEquals(0, previewStore.createCalls)
+        assertEquals(0, reviewStore.createCalls)
     }
 
 }
 
-internal class FakePreviewStore(
+internal class FakeReviewStore(
     private val topics: List<TopicProposal>,
-) : TopicAnalysisPreviewStore {
-    override fun createPreview(
-        requestedByUserId: String,
-        sourceType: String,
-        sourceName: String,
-        topics: List<TopicProposal>,
-    ): TopicAnalysisPreview =
+) : TopicAnalysisReviewStore {
+    override fun create(
+        requestedBy: UserId,
+        source: SourceDescriptor,
+        proposals: List<TopicProposal>,
+    ): TopicAnalysisReview =
         error("not used")
 
-    override fun findPreview(previewId: String): TopicAnalysisPreview? =
-        TopicAnalysisPreview(
-            previewId = previewId,
-            requestedByUserId = TEST_USER.value,
-            sourceType = "kakao",
-            sourceName = "family-kakao.txt",
-            topics = topics,
+    override fun find(reviewId: String): TopicAnalysisReview? =
+        TopicAnalysisReview(
+            id = reviewId,
+            requestedBy = TEST_USER,
+            source = SourceDescriptor("kakao", "family-kakao.txt"),
+            proposals = topics,
         )
 }
 
@@ -188,20 +186,19 @@ internal class FakeSourceRecordStore(
     override fun findBySource(source: SourceDescriptor): List<SourceRecord> = records
 }
 
-internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
+internal class RecordingReviewStore : TopicAnalysisReviewStore {
     var createCalls = 0
 
-    override fun createPreview(
-        requestedByUserId: String,
-        sourceType: String,
-        sourceName: String,
-        topics: List<TopicProposal>,
-    ): TopicAnalysisPreview {
+    override fun create(
+        requestedBy: UserId,
+        source: SourceDescriptor,
+        proposals: List<TopicProposal>,
+    ): TopicAnalysisReview {
         createCalls += 1
-        return TopicAnalysisPreview("preview-1", requestedByUserId, sourceType, sourceName, topics)
+        return TopicAnalysisReview("preview-1", requestedBy, source, proposals)
     }
 
-    override fun findPreview(previewId: String): TopicAnalysisPreview? = null
+    override fun find(reviewId: String): TopicAnalysisReview? = null
 }
 
 internal class RecordingTopicExtractor : TopicExtractor {

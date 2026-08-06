@@ -13,6 +13,7 @@ import com.homeassistant.application.memory.answer.AnswerFromMemory
 import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
+import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReview
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.adapter.shared.config.AppConfig
@@ -68,12 +69,12 @@ object ApplicationServicesFactory {
             topicExtractor = CodexTopicExtractorFactory.create(),
             sourceTextParser = KakaoExportParser,
             sourceRecords = repositories.sourceRecords,
-            previewRepository = repositories.topicAnalysisPreviews,
+            reviewStore = repositories.topicAnalysisReviews,
             accessPolicy = accessPolicy,
         )
         val saveAnalyzedTopics = SaveAnalyzedTopics(
             topicRepository = repositories.topicAnalysis,
-            previewRepository = repositories.topicAnalysisPreviews,
+            reviewStore = repositories.topicAnalysisReviews,
             memorySearchIndex = memorySearchIndex,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,
@@ -83,6 +84,7 @@ object ApplicationServicesFactory {
             accessPolicy = accessPolicy,
             memorySearchIndex = memorySearchIndex,
         )
+        val getTopicAnalysisReview = GetTopicAnalysisReview(repositories.topicAnalysisReviews, accessPolicy)
         val conversationClient = CodexConversationConfig.fromEnv()
             ?.let(CodexConversationClientFactory::create)
             ?.takeIf { it.validateVersion() }
@@ -90,6 +92,7 @@ object ApplicationServicesFactory {
             SlackRuntimeFactory.create(
                 it,
                 analyzeSource,
+                getTopicAnalysisReview,
                 saveAnalyzedTopics,
                 memoryAnswer,
                 repositories.slackCodexSessions,

@@ -21,7 +21,3 @@ data class TopicAnalysisSelectionSaveRequest(
     val userId: String,
     val selectedTopicIndices: Set<Int>,
 )
-
-class TopicAnalysisPreviewNotFoundException(
-    val previewId: String,
-) : RuntimeException("Topic analysis preview not found: $previewId")

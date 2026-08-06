@@ -16,7 +16,7 @@ internal object DatabaseFactory {
                 MemoryTable,
                 MemoryEvidenceTable,
                 SourceRecordTable,
-                TopicAnalysisPreviewTable,
+                TopicAnalysisReviewTable,
                 IndexingOutboxTable,
                 SlackCodexSessionTable,
                 SlackCodexActiveSessionTable,

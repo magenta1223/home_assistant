@@ -5,7 +5,7 @@ import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
@@ -65,7 +65,7 @@ internal fun Route.kakaoTopicAnalysisRoutes(
 
         try {
             call.respond(HttpStatusCode.OK, saveAnalyzedTopics.saveAll(request))
-        } catch (_: TopicAnalysisPreviewNotFoundException) {
+        } catch (_: TopicAnalysisReviewNotFoundException) {
             call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
         } catch (_: HouseholdAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))

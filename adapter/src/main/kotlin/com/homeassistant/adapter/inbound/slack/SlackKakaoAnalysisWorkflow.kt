@@ -12,7 +12,7 @@ interface SlackKakaoWorkflow {
 internal class SlackKakaoAnalysisWorkflow(
     private val slackClient: SlackKakaoClient,
     private val analyzeSource: AnalyzeSourceUseCase,
-    private val reviewSessions: SlackTopicReviewSessionStore,
+    private val reviewContexts: SlackReviewContextStore,
     private val maxFileSizeBytes: Long,
 ) : SlackKakaoWorkflow {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -50,13 +50,11 @@ internal class SlackKakaoAnalysisWorkflow(
                 return
             }
 
-            reviewSessions.save(
-                SlackTopicReviewSession(
-                    previewId = result.previewId,
-                    principal = upload.principal,
-                    status = SlackTopicReviewStatus.AWAITING_CONFIRMATION,
+            reviewContexts.save(
+                SlackReviewContext(
+                    reviewId = result.previewId,
+                    status = SlackReviewStatus.AWAITING_CONFIRMATION,
                     channelId = upload.channelId,
-                    topics = result.topics,
                 ),
             )
 

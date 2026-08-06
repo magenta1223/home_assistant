@@ -1,18 +1,23 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.slackconversation.SlackPrincipal
+import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewRequest
+import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReview
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
+import com.homeassistant.domain.identity.HouseholdAccessDeniedException
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.Topic
+import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicProposal
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
-import com.homeassistant.application.slackconversation.SlackPrincipal
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -21,8 +26,7 @@ import kotlin.test.assertIs
 class SlackConfirmationHandlersTest {
     @Test
     fun `uploader can open review modal`() {
-        val sessions = FakeSessionStore(session(principal = principal("U1")))
-        val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
+        val handlers = handlers(FakeContextStore(context()))
 
         val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U1"))
 
@@ -32,8 +36,7 @@ class SlackConfirmationHandlersTest {
 
     @Test
     fun `other user cannot open review modal`() {
-        val sessions = FakeSessionStore(session(principal = principal("U1")))
-        val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
+        val handlers = handlers(FakeContextStore(context()))
 
         val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U2"))
 
@@ -41,9 +44,8 @@ class SlackConfirmationHandlersTest {
     }
 
     @Test
-    fun `completed session cannot open review modal`() {
-        val sessions = FakeSessionStore(session(status = SlackTopicReviewStatus.COMPLETED))
-        val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
+    fun `completed context cannot open review modal`() {
+        val handlers = handlers(FakeContextStore(context(status = SlackReviewStatus.COMPLETED)))
 
         val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U1"))
 
@@ -51,10 +53,10 @@ class SlackConfirmationHandlersTest {
     }
 
     @Test
-    fun `modal submit saves selected topic indices and completes session`() = runBlocking {
+    fun `modal submit saves selected topic indices and completes context`() = runBlocking {
         FakeTopicAnalysis.reset()
-        val sessions = FakeSessionStore(session())
-        val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
+        val contexts = FakeContextStore(context())
+        val handlers = handlers(contexts)
 
         val result = handlers.submitSelection(
             previewId = "preview-1",
@@ -67,14 +69,13 @@ class SlackConfirmationHandlersTest {
         assertEquals("preview-1", FakeTopicAnalysis.selectionRequest.previewId)
         assertEquals(setOf(0, 2), FakeTopicAnalysis.selectionRequest.selectedTopicIndices)
         assertEquals("dad", FakeTopicAnalysis.selectionRequest.userId)
-        assertEquals(SlackTopicReviewStatus.COMPLETED, sessions.find("preview-1")?.status)
+        assertEquals(SlackReviewStatus.COMPLETED, contexts.find("preview-1")?.status)
     }
 
     @Test
     fun `empty selection is treated as saving zero topics`() = runBlocking {
         FakeTopicAnalysis.reset()
-        val sessions = FakeSessionStore(session())
-        val handlers = SlackConfirmationHandlers(FakeTopicAnalysis, sessions)
+        val handlers = handlers(FakeContextStore(context()))
 
         val result = handlers.submitSelection(
             previewId = "preview-1",
@@ -87,38 +88,44 @@ class SlackConfirmationHandlersTest {
         assertEquals(emptySet(), FakeTopicAnalysis.selectionRequest.selectedTopicIndices)
     }
 
-    private fun session(
-        principal: SlackPrincipal = principal("U1"),
-        status: SlackTopicReviewStatus = SlackTopicReviewStatus.AWAITING_CONFIRMATION,
-    ) = SlackTopicReviewSession(
-        previewId = "preview-1",
-        principal = principal,
-        status = status,
-        topics = listOf(topic(1), topic(2), topic(3)),
-    )
+    private fun handlers(contexts: SlackReviewContextStore) =
+        SlackConfirmationHandlers(FakeTopicAnalysis, FakeGetReview, contexts)
+
+    private fun context(status: SlackReviewStatus = SlackReviewStatus.AWAITING_CONFIRMATION) =
+        SlackReviewContext("preview-1", status, "D1")
 
     private fun principal(slackUserId: String) =
         SlackPrincipal(
             "T1",
             slackUserId,
-            com.homeassistant.domain.identity.UserId(if (slackUserId == "U1") "dad" else "mom"),
+            UserId(if (slackUserId == "U1") "dad" else "mom"),
         )
 }
 
-private class FakeSessionStore(
-    session: SlackTopicReviewSession,
-) : SlackTopicReviewSessionStore {
-    private var session: SlackTopicReviewSession? = session
+private class FakeContextStore(context: SlackReviewContext) : SlackReviewContextStore {
+    private var context: SlackReviewContext? = context
 
-    override fun save(session: SlackTopicReviewSession) {
-        this.session = session
+    override fun save(context: SlackReviewContext) {
+        this.context = context
     }
 
-    override fun find(previewId: String): SlackTopicReviewSession? =
-        session?.takeIf { it.previewId == previewId }
+    override fun find(reviewId: String): SlackReviewContext? =
+        context?.takeIf { it.reviewId == reviewId }
 
     override fun markCompleted(previewId: String) {
-        session = session?.copy(status = SlackTopicReviewStatus.COMPLETED)
+        context = context?.copy(status = SlackReviewStatus.COMPLETED)
+    }
+}
+
+private object FakeGetReview : GetTopicAnalysisReviewUseCase {
+    override fun get(request: GetTopicAnalysisReviewRequest): TopicAnalysisReview {
+        if (request.userId != "dad") throw HouseholdAccessDeniedException()
+        return TopicAnalysisReview(
+            id = request.reviewId,
+            requestedBy = UserId("dad"),
+            source = SourceDescriptor("kakao", "family-kakao.txt"),
+            proposals = listOf(topic(1), topic(2), topic(3)),
+        )
     }
 }
 
@@ -129,8 +136,7 @@ private object FakeTopicAnalysis : SaveAnalyzedTopicsUseCase {
         selectionRequest = TopicAnalysisSelectionSaveRequest("", "dad", emptySet())
     }
 
-    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
-        error("not used")
+    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult = error("not used")
 
     override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult {
         selectionRequest = request
@@ -175,7 +181,7 @@ private fun persistedTopic(id: Int) =
                 subject = "subject",
                 memoryType = MemoryType.STATE,
                 certainty = MemoryCertainty.OBSERVED,
-                visibility = com.homeassistant.domain.memory.MemoryVisibility.FAMILY,
+                visibility = MemoryVisibility.FAMILY,
                 evidenceRefs = listOf(id),
             ),
         ),

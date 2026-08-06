@@ -31,7 +31,7 @@ internal class SlackKakaoListeners(
 internal class SlackConfirmationListeners(
     private val config: SlackConfig,
     private val handlers: SlackConfirmationHandler,
-    private val reviewSessions: SlackTopicReviewSessionStore,
+    private val reviewContexts: SlackReviewContextStore,
     private val slackClient: SlackInteractionClient,
     private val executor: ExecutorService,
 ) : SlackListenerRegistrar {
@@ -69,14 +69,14 @@ internal class SlackConfirmationListeners(
             if (previewId.isNullOrBlank() || userId.isNullOrBlank()) return@viewSubmission ctx.ack()
             val principal = config.identityDirectory.resolve(payload.team?.id, userId)
                 ?: return@viewSubmission ctx.ack()
-            val session = reviewSessions.find(previewId)
+            val context = reviewContexts.find(previewId)
             val selectedIndices = selectedTopicIndices(payload.view.state?.values.orEmpty())
 
             executor.submit {
                 runBlocking {
                     deliverResult(
                         handlers.submitSelection(previewId, selectedIndices, principal),
-                        session,
+                        context,
                         userId,
                     )
                 }
@@ -87,10 +87,10 @@ internal class SlackConfirmationListeners(
 
     private fun deliverResult(
         result: SlackReviewSubmitResult,
-        session: SlackTopicReviewSession?,
+        context: SlackReviewContext?,
         userId: String,
     ) {
-        val channelId = session?.channelId?.takeIf(String::isNotBlank) ?: return
+        val channelId = context?.channelId?.takeIf(String::isNotBlank) ?: return
         val message = when (result) {
             is SlackReviewSubmitResult.Saved -> "선택한 후보 ${result.savedTopicCount}개를 승인했습니다."
             is SlackReviewSubmitResult.Rejected -> result.message

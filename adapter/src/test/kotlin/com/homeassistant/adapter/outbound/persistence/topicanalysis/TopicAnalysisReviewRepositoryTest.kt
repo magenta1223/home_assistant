@@ -1,30 +1,36 @@
 package com.homeassistant.adapter.outbound.persistence.topicanalysis
 
-import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAnalysisReviewTable
+import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisReviewRepository
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
-import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAnalysisPreviewTable
-import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisPreviewRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.DriverManager
 import java.util.UUID
-import kotlin.test.*
+import kotlin.test.AfterTest
+import kotlin.test.BeforeTest
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
 
-class TopicAnalysisPreviewRepositoryTest {
+class TopicAnalysisReviewRepositoryTest {
     private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
     private lateinit var keepAlive: java.sql.Connection
     private lateinit var db: Database
-    private lateinit var repository: TopicAnalysisPreviewRepository
+    private lateinit var repository: TopicAnalysisReviewRepository
 
     @BeforeTest
     fun setup() {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
-        transaction(db) { SchemaUtils.create(TopicAnalysisPreviewTable) }
-        repository = TopicAnalysisPreviewRepository(db)
+        transaction(db) { SchemaUtils.create(TopicAnalysisReviewTable) }
+        repository = TopicAnalysisReviewRepository(db)
     }
 
     @AfterTest
@@ -33,22 +39,21 @@ class TopicAnalysisPreviewRepositoryTest {
     }
 
     @Test
-    fun `stores and loads preview context and topics`() {
-        val stored = repository.createPreview(
-            requestedByUserId = "dad",
-            sourceType = "kakao",
-            sourceName = "2026-06-07.txt",
-            topics = listOf(topic()),
+    fun `stores and loads review context and proposals`() {
+        val stored = repository.create(
+            requestedBy = UserId("dad"),
+            source = SourceDescriptor("kakao", "2026-06-07.txt"),
+            proposals = listOf(topic()),
         )
 
-        val loaded = repository.findPreview(stored.previewId)
+        val loaded = repository.find(stored.id)
 
         assertNotNull(loaded)
-        assertEquals("dad", loaded.requestedByUserId)
-        assertEquals("kakao", loaded.sourceType)
-        assertEquals("2026-06-07.txt", loaded.sourceName)
-        assertEquals("관계 표현", loaded.topics.single().title)
-        assertEquals(listOf(1), loaded.topics.single().evidenceIds)
+        assertEquals(UserId("dad"), loaded.requestedBy)
+        assertEquals("kakao", loaded.source.type)
+        assertEquals("2026-06-07.txt", loaded.source.name)
+        assertEquals("관계 표현", loaded.proposals.single().title)
+        assertEquals(listOf(1), loaded.proposals.single().evidenceIds)
     }
 
     private fun topic() =

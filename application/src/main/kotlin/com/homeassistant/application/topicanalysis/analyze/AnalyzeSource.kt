@@ -6,7 +6,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordStore
-import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
 
 interface AnalyzeSourceUseCase {
     suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult
@@ -16,7 +16,7 @@ class AnalyzeSource(
     private val topicExtractor: TopicExtractor,
     private val sourceTextParser: SourceTextParser,
     private val sourceRecords: SourceRecordStore,
-    private val previewRepository: TopicAnalysisPreviewStore,
+    private val reviewStore: TopicAnalysisReviewStore,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : AnalyzeSourceUseCase {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
@@ -42,14 +42,13 @@ class AnalyzeSource(
             records = storedRecords,
         )
         val topics = topicExtractor.analyze(document)
-        val preview = previewRepository.createPreview(
-            requestedByUserId = userId.value,
-            sourceType = request.sourceType,
-            sourceName = request.sourceName,
-            topics = topics,
+        val review = reviewStore.create(
+            requestedBy = userId,
+            source = parsedSource.source,
+            proposals = topics,
         )
         return TopicAnalysisResult(
-            previewId = preview.previewId,
+            previewId = review.id,
             sourceType = request.sourceType,
             sourceName = request.sourceName,
             importedRecordCount = storedRecords.size,

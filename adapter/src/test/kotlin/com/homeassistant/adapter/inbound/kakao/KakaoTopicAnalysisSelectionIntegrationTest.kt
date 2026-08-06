@@ -16,12 +16,12 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         val text = kakaoText()
         val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
-        val previewStore = RecordingPreviewStore()
+        val reviewStore = RecordingReviewStore()
         val useCase = AnalyzeSource(
             topicExtractor = extractor,
             sourceTextParser = KakaoExportParser,
             sourceRecords = FakeSourceRecordStore(setOf(parsed.records.first().deduplicationKey)),
-            previewRepository = previewStore,
+            reviewStore = reviewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
@@ -32,7 +32,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         assertEquals(101, extractor.document!!.records.single().id)
         assertContains(extractor.document!!.records.single().content, "승민 | 2026년 6월 15일 오전 6:44 | 둘째 메시지")
         assertFalse(extractor.document!!.records.single().content.contains("첫 메시지"))
-        assertEquals(1, previewStore.createCalls)
+        assertEquals(1, reviewStore.createCalls)
     }
 
     @Test
@@ -41,7 +41,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         val index = RecordingMemorySearchIndex()
         val service = service(
             topicStore,
-            FakePreviewStore(listOf(topic("첫 후보", 1), topic("둘째 후보", 2), topic("셋째 후보", 3))),
+            FakeReviewStore(listOf(topic("첫 후보", 1), topic("둘째 후보", 2), topic("셋째 후보", 3))),
             index,
         )
 
@@ -59,7 +59,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
     fun `save selected analysis with empty selection creates no topics`() = runBlocking {
         val result = service(
             FakeTopicStore(),
-            FakePreviewStore(listOf(topic("첫 후보", 1))),
+            FakeReviewStore(listOf(topic("첫 후보", 1))),
         ).saveSelected(selection(emptySet()))
 
         assertEquals(emptyList(), result.topics)
@@ -70,7 +70,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         val outbox = FakeIndexingOutboxStore()
         val service = SaveAnalyzedTopics(
             topicRepository = FakeTopicStore(),
-            previewRepository = FakePreviewStore(listOf(topic("후보", 1))),
+            reviewStore = FakeReviewStore(listOf(topic("후보", 1))),
             memorySearchIndex = FailingMemorySearchIndex,
             indexingOutbox = outbox,
             accessPolicy = TEST_ACCESS_POLICY,
@@ -84,11 +84,11 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
 
     private fun service(
         topicStore: FakeTopicStore,
-        previewStore: FakePreviewStore,
+        reviewStore: FakeReviewStore,
         index: RecordingMemorySearchIndex = RecordingMemorySearchIndex(),
     ) = SaveAnalyzedTopics(
         topicRepository = topicStore,
-        previewRepository = previewStore,
+        reviewStore = reviewStore,
         memorySearchIndex = index,
         indexingOutbox = FakeIndexingOutboxStore(),
         accessPolicy = TEST_ACCESS_POLICY,

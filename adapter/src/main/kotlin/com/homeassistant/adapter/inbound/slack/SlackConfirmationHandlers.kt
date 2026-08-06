@@ -3,6 +3,10 @@ package com.homeassistant.adapter.inbound.slack
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.application.slackconversation.SlackPrincipal
+import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewRequest
+import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
+import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
+import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 
 interface SlackConfirmationHandler {
     fun buildReviewModal(previewId: String, actingPrincipal: SlackPrincipal): SlackReviewActionResult
@@ -15,22 +19,27 @@ interface SlackConfirmationHandler {
 
 internal class SlackConfirmationHandlers(
     private val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
-    private val reviewSessions: SlackTopicReviewSessionStore,
+    private val getReview: GetTopicAnalysisReviewUseCase,
+    private val reviewContexts: SlackReviewContextStore,
 ) : SlackConfirmationHandler {
     override fun buildReviewModal(
         previewId: String,
         actingPrincipal: SlackPrincipal,
     ): SlackReviewActionResult {
-        val session = reviewSessions.find(previewId)
+        val context = reviewContexts.find(previewId)
             ?: return SlackReviewActionResult.Ephemeral("검토 요청을 찾을 수 없습니다.")
-        if (session.principal != actingPrincipal) {
-            return SlackReviewActionResult.Ephemeral("업로드한 사용자만 이 후보를 검토할 수 있습니다.")
-        }
-        if (session.status != SlackTopicReviewStatus.AWAITING_CONFIRMATION) {
+        if (context.status != SlackReviewStatus.AWAITING_CONFIRMATION) {
             return SlackReviewActionResult.Ephemeral("이미 처리되었거나 만료된 검토 요청입니다.")
         }
+        val review = try {
+            getReview.get(GetTopicAnalysisReviewRequest(previewId, actingPrincipal.userId.value))
+        } catch (_: HouseholdAccessDeniedException) {
+            return SlackReviewActionResult.Ephemeral("업로드한 사용자만 이 후보를 검토할 수 있습니다.")
+        } catch (_: TopicAnalysisReviewNotFoundException) {
+            return SlackReviewActionResult.Ephemeral("검토 요청을 찾을 수 없습니다.")
+        }
 
-        return when (val modal = SlackTopicBlocks.selectionModal(previewId, session.topics)) {
+        return when (val modal = SlackTopicBlocks.selectionModal(previewId, review.proposals)) {
             is SlackModalBuildResult.Modal -> SlackReviewActionResult.OpenModal(modal.view)
             is SlackModalBuildResult.TooManyTopics -> SlackReviewActionResult.Ephemeral(
                 "후보가 ${modal.actualCount}개입니다. Slack 모달에서는 ${modal.maxCount}개까지만 검토할 수 있습니다.",
@@ -43,42 +52,44 @@ internal class SlackConfirmationHandlers(
         selectedTopicIndices: Set<Int>,
         actingPrincipal: SlackPrincipal,
     ): SlackReviewSubmitResult {
-        val session = reviewSessions.find(previewId)
+        val context = reviewContexts.find(previewId)
             ?: return SlackReviewSubmitResult.Rejected("검토 요청을 찾을 수 없습니다.")
-        if (session.principal != actingPrincipal) {
-            return SlackReviewSubmitResult.Rejected("업로드한 사용자만 이 후보를 승인할 수 있습니다.")
-        }
-        if (session.status != SlackTopicReviewStatus.AWAITING_CONFIRMATION) {
+        if (context.status != SlackReviewStatus.AWAITING_CONFIRMATION) {
             return SlackReviewSubmitResult.Rejected("이미 처리되었거나 만료된 검토 요청입니다.")
+        }
+        try {
+            getReview.get(GetTopicAnalysisReviewRequest(previewId, actingPrincipal.userId.value))
+        } catch (_: HouseholdAccessDeniedException) {
+            return SlackReviewSubmitResult.Rejected("업로드한 사용자만 이 후보를 승인할 수 있습니다.")
+        } catch (_: TopicAnalysisReviewNotFoundException) {
+            return SlackReviewSubmitResult.Rejected("검토 요청을 찾을 수 없습니다.")
         }
 
         val result = saveAnalyzedTopics.saveSelected(
             TopicAnalysisSelectionSaveRequest(
                 previewId = previewId,
-                userId = session.principal.userId.value,
+                userId = actingPrincipal.userId.value,
                 selectedTopicIndices = selectedTopicIndices,
             ),
         )
-        reviewSessions.markCompleted(previewId)
+        reviewContexts.markCompleted(previewId)
         return SlackReviewSubmitResult.Saved(result.topics.size)
     }
 }
 
-interface SlackTopicReviewSessionStore {
-    fun save(session: SlackTopicReviewSession)
-    fun find(previewId: String): SlackTopicReviewSession?
+interface SlackReviewContextStore {
+    fun save(context: SlackReviewContext)
+    fun find(reviewId: String): SlackReviewContext?
     fun markCompleted(previewId: String)
 }
 
-data class SlackTopicReviewSession(
-    val previewId: String,
-    val principal: SlackPrincipal,
-    val status: SlackTopicReviewStatus,
-    val channelId: String = "",
-    val topics: List<com.homeassistant.domain.topicanalysis.TopicProposal>,
+data class SlackReviewContext(
+    val reviewId: String,
+    val status: SlackReviewStatus,
+    val channelId: String,
 )
 
-enum class SlackTopicReviewStatus {
+enum class SlackReviewStatus {
     AWAITING_CONFIRMATION,
     COMPLETED,
 }

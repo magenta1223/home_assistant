@@ -47,12 +47,12 @@ class LiveTopicAnalysisApiTest {
             topicExtractor = CodexTopicExtractorFactory.create(),
             sourceTextParser = KakaoExportParser,
             sourceRecords = repositories.sourceRecords,
-            previewRepository = repositories.topicAnalysisPreviews,
+            reviewStore = repositories.topicAnalysisReviews,
             accessPolicy = accessPolicy,
         )
         val saveAnalyzedTopics = SaveAnalyzedTopics(
             topicRepository = repositories.topicAnalysis,
-            previewRepository = repositories.topicAnalysisPreviews,
+            reviewStore = repositories.topicAnalysisReviews,
             memorySearchIndex = NoOpMemorySearchIndex,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,

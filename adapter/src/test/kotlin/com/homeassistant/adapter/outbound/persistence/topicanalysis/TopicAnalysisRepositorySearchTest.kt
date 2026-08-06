@@ -1,18 +1,16 @@
 package com.homeassistant.adapter.outbound.persistence.topicanalysis
 
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
-import com.homeassistant.adapter.outbound.persistence.db.tables.TopicCandidateTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import java.sql.DriverManager
 import java.util.UUID
 import kotlin.test.AfterTest
@@ -31,7 +29,14 @@ class TopicAnalysisRepositorySearchTest {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(TopicCandidateTable, IndexingOutboxTable)
+            SchemaUtils.create(
+                TopicTable,
+                CategoryTable,
+                TopicCategoryTable,
+                MemoryTable,
+                MemoryEvidenceTable,
+                IndexingOutboxTable,
+            )
         }
         repository = TopicAnalysisRepository(db)
     }
@@ -54,15 +59,17 @@ class TopicAnalysisRepositorySearchTest {
     }
 
     @Test
-    fun `search approved topics excludes pending topics`() {
-        val pending = repository.createTopic(topic("세콤 경비 규칙", "개가 있으면 세콤 경비상태에서 움직임 감지가 될 수 있다.", 30))
-        transaction(db) {
-            TopicCandidateTable.update({ TopicCandidateTable.id eq pending.id }) {
-                it[status] = CandidateStatus.PENDING.name
-            }
-        }
+    fun `search excludes another users private memories`() {
+        repository.createTopic(
+            topic(
+                "세콤 경비 규칙",
+                "개가 있으면 세콤 경비상태에서 움직임 감지가 될 수 있다.",
+                30,
+                MemoryVisibility.PRIVATE,
+            ),
+        )
 
-        val results = repository.searchApprovedTopics(TEST_USER, "세콤 경비", limit = 5)
+        val results = repository.searchApprovedTopics(UserId("mom"), "세콤 경비", limit = 5)
 
         assertEquals(emptyList(), results)
     }
@@ -78,7 +85,12 @@ class TopicAnalysisRepositorySearchTest {
         assertEquals(10, results.size)
     }
 
-    private fun topic(title: String, claimText: String, evidenceRef: Int) =
+    private fun topic(
+        title: String,
+        claimText: String,
+        evidenceRef: Int,
+        visibility: MemoryVisibility = MemoryVisibility.FAMILY,
+    ) =
         TopicCandidate(
             familyId = "household",
             createdByUserId = TEST_USER.value,
@@ -96,6 +108,7 @@ class TopicAnalysisRepositorySearchTest {
                     memoryType = MemoryType.REFERENCE,
                     certainty = ClaimCertainty.SAID,
                     evidenceRefs = listOf(evidenceRef),
+                    visibility = visibility,
                 ),
             ),
         )

@@ -9,22 +9,22 @@ internal object DatabaseFactory {
     fun init(dbPath: String): Database {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
+            archiveLegacyMemoryTable()
             SchemaUtils.createMissingTablesAndColumns(
-                FamilyTable,
-                FamilyMemberTable,
-                DomainTable,
-                ConversationMessageTable,
-                MemoryCandidateTable,
+                TopicTable,
+                CategoryTable,
+                TopicCategoryTable,
                 MemoryTable,
-                AuditLogTable,
+                MemoryEvidenceTable,
+                SchemaMigrationTable,
                 KakaoImportedMessageTable,
                 TopicAnalysisPreviewTable,
-                TopicCandidateTable,
                 IndexingOutboxTable,
                 SlackCodexSessionTable,
                 SlackCodexActiveSessionTable,
                 SlackMessageReceiptTable,
             )
+            migrateLegacyTopics()
         }
         return db
     }

@@ -1,19 +1,17 @@
 package com.homeassistant.adapter.outbound.persistence.topicanalysis
 
-import com.homeassistant.domain.memory.CandidateStatus
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.topicanalysis.ClaimCertainty
 import com.homeassistant.domain.topicanalysis.TopicCandidate
 import com.homeassistant.domain.topicanalysis.TopicClaimCandidate
-import com.homeassistant.adapter.outbound.persistence.db.tables.TopicCandidateTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
-import org.jetbrains.exposed.sql.update
 import java.sql.DriverManager
 import java.util.UUID
 import kotlin.test.*
@@ -30,7 +28,14 @@ class TopicAnalysisRepositoryTest {
         keepAlive = DriverManager.getConnection(dbUrl)
         db = Database.connect(dbUrl, driver = "org.sqlite.JDBC")
         transaction(db) {
-            SchemaUtils.create(TopicCandidateTable, IndexingOutboxTable)
+            SchemaUtils.create(
+                TopicTable,
+                CategoryTable,
+                TopicCategoryTable,
+                MemoryTable,
+                MemoryEvidenceTable,
+                IndexingOutboxTable,
+            )
         }
         repository = TopicAnalysisRepository(db)
         outbox = IndexingOutboxRepository(db)
@@ -42,10 +47,12 @@ class TopicAnalysisRepositoryTest {
     }
 
     @Test
-    fun `topic candidates store list fields as json columns`() {
+    fun `topics and memories use normalized canonical tables`() {
         assertEquals(
-            setOf("memory_types_json", "domains_json", "evidence_json", "claims_json"),
-            columnNames("topic_candidates").filter { it.endsWith("_json") }.toSet(),
+            setOf("topic_id", "content", "subject", "memory_type", "certainty", "visibility"),
+            columnNames("memories").toSet().intersect(
+                setOf("topic_id", "content", "subject", "memory_type", "certainty", "visibility"),
+            ),
         )
     }
 
@@ -79,8 +86,7 @@ class TopicAnalysisRepositoryTest {
         assertEquals(listOf(2, 3), topic.evidenceRefs)
         assertEquals("홍승민은 카인드커피로 오라고 말했다.", topic.claims.single().text)
         assertEquals(listOf(2, 3), topic.claims.single().evidenceRefs)
-        assertEquals(CandidateStatus.APPROVED, topic.status)
-        assertEquals(listOf(topic.id), outbox.pending(IndexTargetType.TOPIC))
+        assertEquals(listOf(topic.memories.single().id), outbox.pending(IndexTargetType.MEMORY))
     }
 
     @Test
@@ -93,24 +99,20 @@ class TopicAnalysisRepositoryTest {
     }
 
     @Test
-    fun `approves existing pending topic when saving same approved topic again`() {
-        val pending = createSimpleTopic()
-        transaction(db) {
-            TopicCandidateTable.update({ TopicCandidateTable.id eq pending.id }) {
-                it[status] = CandidateStatus.PENDING.name
-            }
-        }
+    fun `private canonical memory is hidden from another user`() {
+        val topic = repository.createTopic(
+            createProposal(visibility = MemoryVisibility.PRIVATE),
+        )
 
-        val approved = createSimpleTopic()
-
-        assertEquals(pending.id, approved.id)
-        assertEquals(CandidateStatus.APPROVED, approved.status)
-        assertEquals(CandidateStatus.APPROVED.name, topicStatus(pending.id))
+        assertEquals(topic.id, repository.getApprovedTopics(com.homeassistant.domain.identity.UserId("dad"), listOf(topic.id)).single().id)
+        assertEquals(emptyList(), repository.getApprovedTopics(com.homeassistant.domain.identity.UserId("mom"), listOf(topic.id)))
     }
 
     private fun createSimpleTopic() =
-        repository.createTopic(
-            TopicCandidate(
+        repository.createTopic(createProposal())
+
+    private fun createProposal(visibility: MemoryVisibility = MemoryVisibility.FAMILY) =
+        TopicCandidate(
                 familyId = "family-1",
                 createdByUserId = "dad",
                 sourceType = "kakao",
@@ -127,10 +129,10 @@ class TopicAnalysisRepositoryTest {
                         memoryType = MemoryType.STATE,
                         certainty = ClaimCertainty.OBSERVED,
                         evidenceRefs = listOf(1),
+                        visibility = visibility,
                     ),
                 ),
-            ),
-        )
+            )
 
     private fun columnNames(table: String): List<String> = transaction(db) {
         val names = mutableListOf<String>()
@@ -138,13 +140,5 @@ class TopicAnalysisRepositoryTest {
             while (result.next()) names += result.getString("name")
         }
         names
-    }
-
-    private fun topicStatus(topicId: Int): String = transaction(db) {
-        var status = ""
-        exec("SELECT status FROM topic_candidates WHERE id = $topicId") { result ->
-            if (result.next()) status = result.getString("status")
-        }
-        status
     }
 }

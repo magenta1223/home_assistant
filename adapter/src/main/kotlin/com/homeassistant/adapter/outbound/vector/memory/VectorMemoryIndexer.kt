@@ -32,7 +32,7 @@ internal class VectorMemoryIndexer(
                         put("sourceType", source.type)
                         put("sourceName", source.name)
                     }
-                    put("memoryType", memory.memoryType.code)
+                    put("memoryType", memory.memoryType.name)
                     put("subject", memory.subject)
                 },
             ),

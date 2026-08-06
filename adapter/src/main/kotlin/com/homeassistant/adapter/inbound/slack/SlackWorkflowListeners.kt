@@ -43,13 +43,13 @@ internal class SlackConfirmationListeners(
     private fun registerOpenReview(app: App) {
         app.blockAction(SlackTopicBlocks.ACTION_OPEN_REVIEW) { req, ctx ->
             val payload = req.payload
-            val previewId = payload.actions.firstOrNull()?.value
+            val reviewId = payload.actions.firstOrNull()?.value
             val userId = payload.user?.id
-            if (previewId.isNullOrBlank() || userId.isNullOrBlank()) return@blockAction ctx.ack()
+            if (reviewId.isNullOrBlank() || userId.isNullOrBlank()) return@blockAction ctx.ack()
             val principal = config.identityDirectory.resolve(payload.team?.id, userId)
                 ?: return@blockAction ctx.ack()
 
-            when (val result = handlers.buildReviewModal(previewId, principal)) {
+            when (val result = handlers.buildReviewModal(reviewId, principal)) {
                 is SlackReviewActionResult.OpenModal -> slackClient.openModal(payload.triggerId, result.view)
                 is SlackReviewActionResult.Ephemeral -> slackClient.postEphemeral(
                     channelId = payload.channel.id,
@@ -64,18 +64,18 @@ internal class SlackConfirmationListeners(
     private fun registerTopicConfirmation(app: App) {
         app.viewSubmission(SlackTopicBlocks.CALLBACK_CONFIRM_TOPICS) { req, ctx ->
             val payload = req.payload
-            val previewId = payload.view.privateMetadata
+            val reviewId = payload.view.privateMetadata
             val userId = payload.user?.id
-            if (previewId.isNullOrBlank() || userId.isNullOrBlank()) return@viewSubmission ctx.ack()
+            if (reviewId.isNullOrBlank() || userId.isNullOrBlank()) return@viewSubmission ctx.ack()
             val principal = config.identityDirectory.resolve(payload.team?.id, userId)
                 ?: return@viewSubmission ctx.ack()
-            val context = reviewContexts.find(previewId)
+            val context = reviewContexts.find(reviewId)
             val selectedIndices = selectedTopicIndices(payload.view.state?.values.orEmpty())
 
             executor.submit {
                 runBlocking {
                     deliverResult(
-                        handlers.submitSelection(previewId, selectedIndices, principal),
+                        handlers.submitSelection(reviewId, selectedIndices, principal),
                         context,
                         userId,
                     )

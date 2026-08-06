@@ -20,7 +20,7 @@ object AppConfig {
     const val ENV_VAR_CODEX_TIMEOUT_SECONDS  = "CODEX_TIMEOUT_SECONDS"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://localhost:11434"
     const val DEFAULT_QDRANT_URL            = "http://localhost:6333"
-    const val DEFAULT_QDRANT_COLLECTION     = "family_memories"
+    const val DEFAULT_QDRANT_COLLECTION     = "canonical_memories"
     const val DEFAULT_EMBEDDING_MODEL_NAME  = "qllama/multilingual-e5-base"
     const val DEFAULT_EMBEDDING_VECTOR_SIZE = 768
     const val DEFAULT_SLACK_MAX_FILE_SIZE_BYTES = 10_485_760L

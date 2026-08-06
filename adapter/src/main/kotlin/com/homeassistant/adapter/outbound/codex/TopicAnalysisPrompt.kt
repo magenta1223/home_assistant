@@ -55,7 +55,7 @@ internal object TopicAnalysisPrompt {
         각 topic은 가족/집 second brain에 승인 후보로 올릴 수 있는 evidence-backed memory를 1개 이상 포함해야 합니다.
         evidenceRecordIds는 사용자 메시지에 제공된 r1, r2 같은 ID만 사용하세요.
         실제로 말하지 않은 사실을 확정하지 말고, 관찰/발화/추론/불확실성을 구분하세요.
-        memoryType은 ${MemoryType.entries.joinToString(", ") { it.code }} 중 하나만 사용하세요.
+        memoryType은 ${MemoryType.entries.joinToString(", ") { it.name }} 중 하나만 사용하세요.
         categories는 housing, moving, travel, food, finance 같은 생활 영역 태그이며 memoryType과 분리하세요.
         최종 응답 전에 REFERENCE, DECISION, APPOINTMENT, STATE, PREFERENCE, CONSTRAINT, TRANSACTION,
         ROUTINE, INSTRUCTION, OBSERVATION 종류별로 독립 topic 기준을 통과한 후보가 누락되지 않았는지 다시 점검하세요.
@@ -81,7 +81,7 @@ internal object TopicAnalysisPrompt {
         evidenceRecordIds는 topic당 최대 5개, memories는 topic당 최대 3개로 제한하세요.
         evidenceRecordIds는 후보 목록에 포함된 원본 r1, r2 같은 source record ID만 사용하세요.
         실제로 말하지 않은 사실을 확정하지 말고 관찰/발화/추론/불확실성을 구분하세요.
-        memoryType은 ${MemoryType.entries.joinToString(", ") { it.code }} 중 하나만 사용하세요.
+        memoryType은 ${MemoryType.entries.joinToString(", ") { it.name }} 중 하나만 사용하세요.
         categories는 housing, moving, travel, food, finance 같은 생활 영역 태그이며 memoryType과 분리하세요.
         최종 응답 전에 모든 입력 후보가 최종 topic에 포함되거나 의미상 완전히 중복되어 병합되었는지 점검하세요.
         응답은 아래 JSON Schema를 준수하는 JSON object 하나여야 합니다.

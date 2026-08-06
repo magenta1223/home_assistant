@@ -27,11 +27,8 @@ class MemoryTypeTest {
     @Test
     fun `memory type entries expose group code and code`() {
         assertEquals("SEMANTIC", MemoryType.STATE.groupCode)
-        assertEquals("STATE", MemoryType.STATE.code)
         assertEquals("EPISODIC", MemoryType.EVENT.groupCode)
-        assertEquals("EVENT", MemoryType.EVENT.code)
         assertEquals("PROCEDURAL", MemoryType.CHECKLIST.groupCode)
-        assertEquals("CHECKLIST", MemoryType.CHECKLIST.code)
     }
 
     @Test

@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicExtractionException
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
@@ -76,12 +76,12 @@ internal class CodexTopicExtractor(
             val evidence = parseEvidence(document, topic.evidenceRecordIds)
             val memories = parseMemories(document, topic.memories)
 
-            if (topic.title.isBlank()) throw TopicAnalysisException("Topic title must not be blank")
-            if (topic.summary.isBlank()) throw TopicAnalysisException("Topic summary must not be blank")
-            if (memoryTypes.isEmpty()) throw TopicAnalysisException("Topic must include at least one memory type")
-            if (categories.isEmpty()) throw TopicAnalysisException("Topic must include at least one category")
-            if (evidence.isEmpty()) throw TopicAnalysisException("Topic must include at least one evidence record")
-            if (memories.isEmpty()) throw TopicAnalysisException("Topic must include at least one memory")
+            if (topic.title.isBlank()) throw TopicExtractionException("Topic title must not be blank")
+            if (topic.summary.isBlank()) throw TopicExtractionException("Topic summary must not be blank")
+            if (memoryTypes.isEmpty()) throw TopicExtractionException("Topic must include at least one memory type")
+            if (categories.isEmpty()) throw TopicExtractionException("Topic must include at least one category")
+            if (evidence.isEmpty()) throw TopicExtractionException("Topic must include at least one evidence record")
+            if (memories.isEmpty()) throw TopicExtractionException("Topic must include at least one memory")
 
             ValidatedTopic(
                 title = topic.title.trim(),
@@ -103,22 +103,22 @@ internal class CodexTopicExtractor(
     private fun parseCategories(categories: List<String>): List<String> =
         categories.map { category ->
             val normalized = category.trim().lowercase().replace(Regex("\\s+"), "-")
-            if (normalized.isBlank()) throw TopicAnalysisException("Category tag must not be blank")
+            if (normalized.isBlank()) throw TopicExtractionException("Category tag must not be blank")
             normalized
         }.distinct()
 
     private fun parseEvidence(document: SourceDocument, evidenceRecordIds: List<String>): List<SourceRecord> =
         evidenceRecordIds.map { recordId ->
             document.records.firstOrNull { it.promptId == recordId }
-                ?: throw TopicAnalysisException("Unknown evidence record id: $recordId")
+                ?: throw TopicExtractionException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
     private fun parseMemories(document: SourceDocument, memories: List<MemoryLlmResponse>): List<MemoryProposal> =
         memories.map { memory ->
             val evidence = parseEvidence(document, memory.evidenceRecordIds)
-            if (memory.text.isBlank()) throw TopicAnalysisException("Memory text must not be blank")
-            if (memory.subject.isBlank()) throw TopicAnalysisException("Memory subject must not be blank")
-            if (evidence.isEmpty()) throw TopicAnalysisException("Memory must include at least one evidence record")
+            if (memory.text.isBlank()) throw TopicExtractionException("Memory text must not be blank")
+            if (memory.subject.isBlank()) throw TopicExtractionException("Memory subject must not be blank")
+            if (evidence.isEmpty()) throw TopicExtractionException("Memory must include at least one evidence record")
             MemoryProposal(
                 content = memory.text.trim(),
                 subject = memory.subject.trim(),

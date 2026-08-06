@@ -66,7 +66,7 @@ internal class TopicRepository(private val db: Database) : TopicCreator {
             it[MemoryTable.createdByUserId] = createdByUserId
             it[content] = proposal.content
             it[subject] = proposal.subject
-            it[memoryType] = proposal.memoryType.code
+            it[memoryType] = proposal.memoryType.name
             it[certainty] = proposal.certainty.name
             it[visibility] = proposal.visibility.name
             it[createdAt] = now

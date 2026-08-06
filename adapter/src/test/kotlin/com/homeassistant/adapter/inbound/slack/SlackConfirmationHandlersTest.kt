@@ -28,7 +28,7 @@ class SlackConfirmationHandlersTest {
     fun `uploader can open review modal`() {
         val handlers = handlers(FakeContextStore(context()))
 
-        val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U1"))
+        val result = handlers.buildReviewModal(reviewId = "preview-1", actingPrincipal = principal("U1"))
 
         val openModal = assertIs<SlackReviewActionResult.OpenModal>(result)
         assertEquals("preview-1", openModal.view["private_metadata"])
@@ -38,7 +38,7 @@ class SlackConfirmationHandlersTest {
     fun `other user cannot open review modal`() {
         val handlers = handlers(FakeContextStore(context()))
 
-        val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U2"))
+        val result = handlers.buildReviewModal(reviewId = "preview-1", actingPrincipal = principal("U2"))
 
         assertIs<SlackReviewActionResult.Ephemeral>(result)
     }
@@ -47,7 +47,7 @@ class SlackConfirmationHandlersTest {
     fun `completed context cannot open review modal`() {
         val handlers = handlers(FakeContextStore(context(status = SlackReviewStatus.COMPLETED)))
 
-        val result = handlers.buildReviewModal(previewId = "preview-1", actingPrincipal = principal("U1"))
+        val result = handlers.buildReviewModal(reviewId = "preview-1", actingPrincipal = principal("U1"))
 
         assertIs<SlackReviewActionResult.Ephemeral>(result)
     }
@@ -59,7 +59,7 @@ class SlackConfirmationHandlersTest {
         val handlers = handlers(contexts)
 
         val result = handlers.submitSelection(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             selectedTopicIndices = setOf(0, 2),
             actingPrincipal = principal("U1"),
         )
@@ -78,7 +78,7 @@ class SlackConfirmationHandlersTest {
         val handlers = handlers(FakeContextStore(context()))
 
         val result = handlers.submitSelection(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             selectedTopicIndices = emptySet(),
             actingPrincipal = principal("U1"),
         )
@@ -112,7 +112,7 @@ private class FakeContextStore(context: SlackReviewContext) : SlackReviewContext
     override fun find(reviewId: String): SlackReviewContext? =
         context?.takeIf { it.reviewId == reviewId }
 
-    override fun markCompleted(previewId: String) {
+    override fun markCompleted(reviewId: String) {
         context = context?.copy(status = SlackReviewStatus.COMPLETED)
     }
 }

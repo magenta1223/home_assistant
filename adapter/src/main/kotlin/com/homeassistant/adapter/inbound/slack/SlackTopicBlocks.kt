@@ -9,7 +9,7 @@ object SlackTopicBlocks {
     const val MAX_MODAL_TOPICS = 100
 
     fun analysisMessage(
-        previewId: String,
+        reviewId: String,
         sourceName: String,
         importedRecordCount: Int,
         topics: List<TopicProposal>,
@@ -30,7 +30,7 @@ object SlackTopicBlocks {
                             button(
                                 text = "승인",
                                 actionId = ACTION_OPEN_REVIEW,
-                                value = previewId,
+                                value = reviewId,
                                 style = "primary",
                             ),
                         ),
@@ -39,7 +39,7 @@ object SlackTopicBlocks {
         )
 
     fun selectionModal(
-        previewId: String,
+        reviewId: String,
         topics: List<TopicProposal>,
     ): SlackModalBuildResult {
         if (topics.size > MAX_MODAL_TOPICS) {
@@ -58,7 +58,7 @@ object SlackTopicBlocks {
             mapOf(
                 "type" to "modal",
                 "callback_id" to CALLBACK_CONFIRM_TOPICS,
-                "private_metadata" to previewId,
+                "private_metadata" to reviewId,
                 "title" to plainText("기억 후보 승인"),
                 "submit" to plainText("승인"),
                 "close" to plainText("취소"),

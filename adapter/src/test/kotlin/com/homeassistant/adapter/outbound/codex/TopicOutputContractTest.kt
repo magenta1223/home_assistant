@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicExtractionException
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -21,7 +21,7 @@ class LlmTopicOutputContractTest {
         )
 
         invalid.forEach { response ->
-            assertFailsWith<TopicAnalysisException> {
+            assertFailsWith<TopicExtractionException> {
                 serviceFor(response).analyze(singleRecordDocument())
             }
         }
@@ -72,7 +72,7 @@ class LlmTopicOutputContractTest {
         )
 
         invalid.forEach { response ->
-            assertFailsWith<TopicAnalysisException> {
+            assertFailsWith<TopicExtractionException> {
                 serviceFor(response).analyze(singleRecordDocument())
             }
         }

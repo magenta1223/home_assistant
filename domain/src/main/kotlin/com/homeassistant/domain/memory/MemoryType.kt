@@ -32,8 +32,6 @@ enum class MemoryType(val groupCode: String) {
     TROUBLESHOOTING(GroupCodes.PROCEDURAL),
     TEMPLATE(GroupCodes.PROCEDURAL);
 
-    val code: String get() = name
-    
     companion object {
         private object GroupCodes {
             const val SEMANTIC = "SEMANTIC"

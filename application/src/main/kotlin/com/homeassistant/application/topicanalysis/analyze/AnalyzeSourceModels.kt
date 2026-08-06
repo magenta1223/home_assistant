@@ -24,5 +24,3 @@ class DuplicateSourceRecordsException(
     val sourceName: String,
     val recordCount: Int,
 ) : RuntimeException("All $recordCount source records already exist: $sourceName")
-
-class TopicAnalysisException(message: String) : RuntimeException(message)

@@ -13,7 +13,7 @@ class SlackTopicBlocksTest {
     @Test
     fun `analysis message renders preview topics and approval button`() {
         val message = SlackTopicBlocks.analysisMessage(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             sourceName = "family-kakao.txt",
             importedRecordCount = 2,
             topics = listOf(topic("이사 준비", "관리사무소 질문을 모았다.")),
@@ -35,7 +35,7 @@ class SlackTopicBlocksTest {
     @Test
     fun `analysis message truncates long title and summary safely`() {
         val message = SlackTopicBlocks.analysisMessage(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             sourceName = "family-kakao.txt",
             importedRecordCount = 2,
             topics = listOf(topic("가".repeat(300), "나".repeat(2000))),
@@ -49,7 +49,7 @@ class SlackTopicBlocksTest {
     @Test
     fun `selection modal stores preview id as private metadata and selects all topics initially`() {
         val result = SlackTopicBlocks.selectionModal(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             topics = listOf(
                 topic("첫 후보", "요약"),
                 topic("둘째 후보", "요약"),
@@ -72,7 +72,7 @@ class SlackTopicBlocksTest {
     @Test
     fun `selection modal rejects more than 100 topics`() {
         val result = SlackTopicBlocks.selectionModal(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             topics = List(101) { topic("후보 $it", "요약") },
         )
 
@@ -84,7 +84,7 @@ class SlackTopicBlocksTest {
     @Test
     fun `selection option label and description do not include evidence or memory content`() {
         val result = SlackTopicBlocks.selectionModal(
-            previewId = "preview-1",
+            reviewId = "preview-1",
             topics = listOf(topic("첫 후보", "비밀 원문 메시지")),
         )
 

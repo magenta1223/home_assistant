@@ -33,7 +33,7 @@ LLM providers and provider-selection environment variables are not supported.
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Used only by local embedding calls |
 | `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Ollama embedding model; run `ollama pull qllama/multilingual-e5-base` before vector indexing |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
-| `QDRANT_COLLECTION` | `family_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
+| `QDRANT_COLLECTION` | `canonical_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
 | `SLACK_MEMBER_SCOPES_JSON` | - | Server-owned mapping of Slack members to immutable application `userId` values |
 | `CODEX_EXECUTABLE` | - | Absolute path to the version-specific service Codex executable |
@@ -62,9 +62,9 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 ## Module Architecture
 
 ```text
-domain/     - domain models, ports, and business/application policies
-application/ - target home for vertically sliced use cases and their ports
-adapter/     - target home for inbound and outbound technology adapters
+domain/      - domain concepts, invariants, and domain-owned ports
+application/ - vertically sliced use cases and use-case-owned ports
+adapter/     - inbound and outbound technology adapters
 app/        - composition root and Ktor server startup
 ```
 
@@ -75,8 +75,10 @@ application-driven integrations under `outbound`.
 
 ### application
 
-- `topicanalysis/{analyze,save}/` - independent vertical use-case slices with their inputs, outputs, and ports.
-- `memory/answer/` - memory-answer input, output, use case, and memory-search port.
+- `topicanalysis/{analyze,review,save}/` - source analysis, proposal review, and persistence slices with their own inputs, outputs, and ports.
+- `memory/search/` - canonical-memory retrieval use case and search/read ports; topic context is optional.
+- `memory/answer/` - direct HTTP answer formatting over the memory-search use case.
+- `memory/index/` - canonical-memory indexing ports used by save orchestration.
 - `slackconversation/handle/` - authorized Slack conversation/session orchestration and its ports.
 
 ### adapter
@@ -86,7 +88,7 @@ application-driven integrations under `outbound`.
 - `inbound/slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
 - `outbound/codex/` - Codex topic extraction and conversation-turn implementations.
 - `outbound/embedding/ollama/` - local Ollama text embedding implementation.
-- `outbound/persistence/` - SQLite/Exposed repositories for generic source records, topic analysis, memories, and Slack sessions.
+- `outbound/persistence/` - SQLite/Exposed repositories for source records, topic-analysis reviews, topics, canonical memories, indexing outbox, and Slack sessions.
 - `outbound/vector/qdrant/` - Qdrant vector storage implementation.
 - `outbound/vector/memory/` - canonical-memory semantic index implementation.
 - `shared/config/` and `shared/json/` - runtime-only adapter/composition support; never domain APIs.
@@ -94,9 +96,9 @@ application-driven integrations under `outbound`.
 ### domain
 
 - `identity/` - single-household user identity and authorization policy. There is no family/subgroup scope.
-- `source/` - source-agnostic imported records, analysis documents, and persistence ports.
-- `topicanalysis/` - topic grouping/proposal models and persistence ports.
-- `memory/` - canonical memory, FAMILY/PRIVATE visibility policy, embedding, and vector-store ports. FAMILY is globally visible to authorized users; PRIVATE requires the requesting `userId` to match `createdByUserId`.
+- `source/` - source-agnostic imported records, analysis documents, and the source-record persistence port.
+- `topicanalysis/` - topic grouping and proposal models.
+- `memory/` - canonical memory and FAMILY/PRIVATE visibility policy. FAMILY is globally visible to authorized users; PRIVATE requires the requesting `userId` to match `createdByUserId`.
 
 ### app
 

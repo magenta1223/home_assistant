@@ -59,7 +59,7 @@ internal class SlackKakaoAnalysisWorkflow(
             )
 
             val message = SlackTopicBlocks.analysisMessage(
-                previewId = result.previewId,
+                reviewId = result.previewId,
                 sourceName = result.sourceName,
                 importedRecordCount = result.importedRecordCount,
                 topics = result.topics,

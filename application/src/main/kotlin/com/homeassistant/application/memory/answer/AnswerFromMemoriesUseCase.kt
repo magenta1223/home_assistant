@@ -1,5 +1,5 @@
 package com.homeassistant.application.memory.answer
 
-interface MemoryAnswerUseCase {
+interface AnswerFromMemoriesUseCase {
     fun answer(request: MemoryAnswerRequest): MemoryAnswerResult
 }

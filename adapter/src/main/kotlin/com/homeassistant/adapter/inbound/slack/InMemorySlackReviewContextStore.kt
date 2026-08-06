@@ -11,8 +11,8 @@ internal class InMemorySlackReviewContextStore : SlackReviewContextStore {
 
     override fun find(reviewId: String): SlackReviewContext? = contexts[reviewId]
 
-    override fun markCompleted(previewId: String) {
-        contexts.computeIfPresent(previewId) { _, context ->
+    override fun markCompleted(reviewId: String) {
+        contexts.computeIfPresent(reviewId) { _, context ->
             context.copy(status = SlackReviewStatus.COMPLETED)
         }
     }

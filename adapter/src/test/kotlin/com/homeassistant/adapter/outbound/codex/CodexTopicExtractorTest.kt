@@ -5,7 +5,7 @@ import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicExtractionException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicInteger
@@ -226,7 +226,7 @@ class CodexTopicExtractorTest {
         )
         val service = CodexTopicExtractor(backend)
 
-        assertFailsWith<TopicAnalysisException> {
+        assertFailsWith<TopicExtractionException> {
             service.analyze(documentWithRecords(201))
         }
     }

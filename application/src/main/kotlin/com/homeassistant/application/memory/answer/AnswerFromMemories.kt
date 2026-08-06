@@ -5,7 +5,7 @@ import com.homeassistant.application.memory.search.SearchMemoriesUseCase
 
 class AnswerFromMemories(
     private val searchMemories: SearchMemoriesUseCase,
-) : MemoryAnswerUseCase {
+) : AnswerFromMemoriesUseCase {
     override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult {
         val result = searchMemories.search(
             SearchMemoriesRequest(request.userId, request.question, request.limit),

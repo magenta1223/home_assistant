@@ -10,7 +10,7 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCo
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.answer.AnswerFromMemories
-import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
 import com.homeassistant.application.memory.search.SearchMemories
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSource
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
@@ -28,14 +28,14 @@ import org.slf4j.LoggerFactory
 interface ApplicationServices : AutoCloseable {
     val analyzeSource: AnalyzeSourceUseCase
     val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase
-    val memoryAnswer: MemoryAnswerUseCase
+    val memoryAnswer: AnswerFromMemoriesUseCase
     fun start()
 }
 
 private class DefaultApplicationServices(
     override val analyzeSource: AnalyzeSourceUseCase,
     override val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
-    override val memoryAnswer: MemoryAnswerUseCase,
+    override val memoryAnswer: AnswerFromMemoriesUseCase,
     private val slackRuntime: SlackRuntime?,
 ) : ApplicationServices {
     override fun start() {

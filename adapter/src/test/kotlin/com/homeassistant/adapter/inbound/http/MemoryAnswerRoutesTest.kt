@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.memory.search.MemorySearchMatch
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerResult
-import com.homeassistant.application.memory.answer.MemoryAnswerUseCase
+import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
 import com.homeassistant.application.memory.search.MemorySearchUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
@@ -89,7 +89,7 @@ class MemoryAnswerRoutesTest {
     }
 }
 
-private object FakeMemoryAnswer : MemoryAnswerUseCase {
+private object FakeMemoryAnswer : AnswerFromMemoriesUseCase {
     override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult =
         MemoryAnswerResult(
             question = request.question.trim(),
@@ -107,7 +107,7 @@ private object FakeMemoryAnswer : MemoryAnswerUseCase {
         )
 }
 
-private object UnavailableMemoryAnswer : MemoryAnswerUseCase {
+private object UnavailableMemoryAnswer : AnswerFromMemoriesUseCase {
     override fun answer(request: MemoryAnswerRequest): MemoryAnswerResult =
         throw MemorySearchUnavailableException("memory vector index is not configured")
 }

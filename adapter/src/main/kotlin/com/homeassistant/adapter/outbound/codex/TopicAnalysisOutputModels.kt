@@ -6,7 +6,7 @@ import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.adapter.shared.json.JsonSerializer.parseToJsonElement
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicExtractionException
 import kotlinx.schema.Schema
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.SerialDescription
@@ -131,7 +131,7 @@ internal object TopicAnalysisOutputContract {
         try {
             stripJsonCodeFence(raw).decodeFromString()
         } catch (error: SerializationException) {
-            throw TopicAnalysisException("Failed to parse topic analysis response: ${error.message}")
+            throw TopicExtractionException("Failed to parse topic analysis response: ${error.message}")
         }
 
     private fun stripJsonCodeFence(raw: String): String {

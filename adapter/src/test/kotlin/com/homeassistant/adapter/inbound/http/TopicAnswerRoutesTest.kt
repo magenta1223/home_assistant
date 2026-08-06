@@ -4,7 +4,7 @@ import com.homeassistant.application.topicanswer.answer.TopicAnswerMatch
 import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
 import com.homeassistant.application.topicanswer.answer.TopicAnswerResult
 import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexUnavailableException
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndexUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.analyze.AnalyzeSourceUseCase
@@ -85,7 +85,7 @@ class TopicAnswerRoutesTest {
         }
 
         assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
-        assertContains(response.bodyAsText(), "topic claim vector index is not configured")
+        assertContains(response.bodyAsText(), "memory vector index is not configured")
     }
 }
 
@@ -108,7 +108,7 @@ private object FakeTopicAnswer : TopicAnswerUseCase {
 
 private object UnavailableTopicAnswer : TopicAnswerUseCase {
     override fun answer(request: TopicAnswerRequest): TopicAnswerResult =
-        throw TopicClaimSearchIndexUnavailableException("topic claim vector index is not configured")
+        throw MemorySearchIndexUnavailableException("memory vector index is not configured")
 }
 
 private object UnusedTopicAnalysis : AnalyzeSourceUseCase, SaveTopicCandidatesUseCase {

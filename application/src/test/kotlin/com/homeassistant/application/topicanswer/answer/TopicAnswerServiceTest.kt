@@ -31,8 +31,8 @@ class TopicAnswerServiceTest {
                     ),
                 )
             ),
-            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
-                listOf(TopicClaimSearchHit(topicId = 7, claimId = 1, score = 0.91)),
+            memorySearchIndex = FakeMemorySearchIndex(
+                listOf(MemorySearchHit(topicId = 7, memoryId = 1, score = 0.91)),
             ),
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -50,7 +50,7 @@ class TopicAnswerServiceTest {
     fun `returns no match answer when approved topics do not match`() {
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(emptyList()),
-            topicClaimSearchIndex = FakeTopicClaimSearchIndex(emptyList()),
+            memorySearchIndex = FakeMemorySearchIndex(emptyList()),
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
@@ -69,10 +69,10 @@ class TopicAnswerServiceTest {
                     topic(2, "보안 리모컨", "보안 리모컨은 잘 해제하고 나가는 습관을 들이자고 했다."),
                 )
             ),
-            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+            memorySearchIndex = FakeMemorySearchIndex(
                 listOf(
-                    TopicClaimSearchHit(topicId = 1, claimId = 1, score = 0.92),
-                    TopicClaimSearchHit(topicId = 2, claimId = 1, score = 0.74),
+                    MemorySearchHit(topicId = 1, memoryId = 1, score = 0.92),
+                    MemorySearchHit(topicId = 2, memoryId = 1, score = 0.74),
                 ),
             ),
             accessPolicy = TEST_ACCESS_POLICY,
@@ -89,8 +89,8 @@ class TopicAnswerServiceTest {
         val topics = List(12) { topic(it + 1, "후보 $it", "리모컨 claim $it") }
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(topics),
-            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
-                topics.map { TopicClaimSearchHit(topicId = it.id, claimId = 1, score = 1.0) },
+            memorySearchIndex = FakeMemorySearchIndex(
+                topics.map { MemorySearchHit(topicId = it.id, memoryId = 1, score = 1.0) },
             ),
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -109,10 +109,10 @@ class TopicAnswerServiceTest {
                     topic(2, "두번째", "두번째 claim"),
                 ),
             ),
-            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
+            memorySearchIndex = FakeMemorySearchIndex(
                 listOf(
-                    TopicClaimSearchHit(topicId = 2, claimId = 1, score = 0.93),
-                    TopicClaimSearchHit(topicId = 1, claimId = 1, score = 0.91),
+                    MemorySearchHit(topicId = 2, memoryId = 1, score = 0.93),
+                    MemorySearchHit(topicId = 1, memoryId = 1, score = 0.91),
                 ),
             ),
             accessPolicy = TEST_ACCESS_POLICY,
@@ -126,10 +126,10 @@ class TopicAnswerServiceTest {
 
     @Test
     fun `rejects an unauthorized user and family pair before vector search`() {
-        val index = FakeTopicClaimSearchIndex(emptyList())
+        val index = FakeMemorySearchIndex(emptyList())
         val service = TopicAnswerService(
             topicStore = FakeTopicStore(emptyList()),
-            topicClaimSearchIndex = index,
+            memorySearchIndex = index,
             accessPolicy = TEST_ACCESS_POLICY,
         )
 
@@ -150,8 +150,8 @@ class TopicAnswerServiceTest {
             topicStore = FakeTopicStore(
                 listOf(topic(7, "가족 공용", "전역에서 보여야 함")),
             ),
-            topicClaimSearchIndex = FakeTopicClaimSearchIndex(
-                listOf(TopicClaimSearchHit(7, 1, 1.0)),
+            memorySearchIndex = FakeMemorySearchIndex(
+                listOf(MemorySearchHit(7, 1, 1.0)),
             ),
             accessPolicy = TEST_ACCESS_POLICY,
         )
@@ -159,6 +159,24 @@ class TopicAnswerServiceTest {
         val result = service.answer(request("비밀", 5))
 
         assertEquals(1, result.matches.size)
+    }
+
+    @Test
+    fun `does not substitute another memory when a vector hit is stale or invisible`() {
+        val service = TopicAnswerService(
+            topicStore = FakeTopicStore(
+                listOf(topic(7, "가족 공용", "보이는 다른 기억")),
+            ),
+            memorySearchIndex = FakeMemorySearchIndex(
+                listOf(MemorySearchHit(topicId = 7, memoryId = 999, score = 1.0)),
+            ),
+            accessPolicy = TEST_ACCESS_POLICY,
+        )
+
+        val result = service.answer(request("비공개 기억", 5))
+
+        assertEquals(emptyList(), result.matches)
+        assertEquals("승인된 기억에서 관련 내용을 찾지 못했습니다.", result.answer)
     }
 }
 
@@ -179,22 +197,25 @@ private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisSto
     ): List<Topic> =
         topics.filter { it.id in topicIds.toSet() }
 
-    override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> =
-        topics.filter { it.id in topicIds.toSet() }
+    override fun getTopicsForMemoryIndexing(memoryIds: Collection<Int>): List<Topic> =
+        topics.mapNotNull { topic ->
+            topic.memories.filter { it.id in memoryIds }.takeIf { it.isNotEmpty() }
+                ?.let { topic.copy(memories = it) }
+        }
 }
 
-private class FakeTopicClaimSearchIndex(
-    private val hits: List<TopicClaimSearchHit>,
-) : TopicClaimSearchIndex {
+private class FakeMemorySearchIndex(
+    private val hits: List<MemorySearchHit>,
+) : MemorySearchIndex {
     var lastUserId: UserId? = null
 
-    override fun index(topic: Topic) = Unit
+    override fun index(document: MemorySearchDocument) = Unit
 
     override fun search(
         userId: UserId,
         question: String,
         limit: Int,
-    ): List<TopicClaimSearchHit> {
+    ): List<MemorySearchHit> {
         lastUserId = userId
         return hits.take(limit.coerceIn(1, 10))
     }

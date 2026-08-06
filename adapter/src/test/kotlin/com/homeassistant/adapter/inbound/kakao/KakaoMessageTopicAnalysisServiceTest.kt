@@ -24,8 +24,9 @@ import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.indexing.IndexingOutboxes
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchHit
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
+import com.homeassistant.application.topicanswer.answer.MemorySearchDocument
+import com.homeassistant.application.topicanswer.answer.MemorySearchHit
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndex
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -130,32 +131,32 @@ internal class FakeTopicStore : TopicAnalysisStore {
     ): List<Topic> =
         emptyList()
 
-    override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> =
+    override fun getTopicsForMemoryIndexing(memoryIds: Collection<Int>): List<Topic> =
         emptyList()
 }
 
-internal class RecordingTopicClaimSearchIndex : TopicClaimSearchIndex {
-    val indexedTopics = mutableListOf<Topic>()
+internal class RecordingMemorySearchIndex : MemorySearchIndex {
+    val indexedDocuments = mutableListOf<MemorySearchDocument>()
 
-    override fun index(topic: Topic) {
-        indexedTopics += topic
+    override fun index(document: MemorySearchDocument) {
+        indexedDocuments += document
     }
 
     override fun search(
         userId: UserId,
         question: String,
         limit: Int,
-    ): List<TopicClaimSearchHit> =
+    ): List<MemorySearchHit> =
         emptyList()
 }
 
-internal object FailingTopicClaimSearchIndex : TopicClaimSearchIndex {
-    override fun index(topic: Topic) = error("qdrant unavailable")
+internal object FailingMemorySearchIndex : MemorySearchIndex {
+    override fun index(document: MemorySearchDocument) = error("qdrant unavailable")
     override fun search(
         userId: UserId,
         question: String,
         limit: Int,
-    ): List<TopicClaimSearchHit> = emptyList()
+    ): List<MemorySearchHit> = emptyList()
 }
 
 internal class FakeIndexingOutboxStore : IndexingOutboxStore {

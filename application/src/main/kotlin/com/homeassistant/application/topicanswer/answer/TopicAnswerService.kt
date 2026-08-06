@@ -7,7 +7,7 @@ import com.homeassistant.domain.topicanalysis.TopicAnalysisQueryStore
 
 internal class TopicAnswerService(
     private val topicStore: TopicAnalysisQueryStore,
-    private val topicClaimSearchIndex: TopicClaimSearchIndex,
+    private val memorySearchIndex: MemorySearchIndex,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : TopicAnswerUseCase {
     override fun answer(request: TopicAnswerRequest): TopicAnswerResult {
@@ -15,7 +15,7 @@ internal class TopicAnswerService(
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
         val question = request.question.trim()
         val limit = request.limit.coerceIn(1, 10)
-        val hits = topicClaimSearchIndex.search(userId, question, limit)
+        val hits = memorySearchIndex.search(userId, question, limit)
         val topicsById = topicStore
             .getApprovedTopics(userId, hits.map { it.topicId })
             .associateBy { it.id }
@@ -30,18 +30,15 @@ internal class TopicAnswerService(
         )
     }
 
-    private fun Topic.toMatch(hit: TopicClaimSearchHit): TopicAnswerMatch {
-        val selectedMemories = memories
-            .filter { it.id == hit.claimId }
-            .ifEmpty { memories }
-            .take(3)
+    private fun Topic.toMatch(hit: MemorySearchHit): TopicAnswerMatch? {
+        val selectedMemory = memories.singleOrNull { it.id == hit.memoryId } ?: return null
 
         return TopicAnswerMatch(
             topicId = id,
             title = title,
             summary = summary,
-            claims = selectedMemories.map { it.content }.distinct(),
-            evidenceRefs = selectedMemories.flatMap { it.evidenceRefs }.distinct(),
+            claims = listOf(selectedMemory.content),
+            evidenceRefs = selectedMemory.evidenceRefs,
         )
     }
 
@@ -59,8 +56,8 @@ internal class TopicAnswerService(
 object TopicAnswerFactory {
     fun create(
         topicStore: TopicAnalysisQueryStore,
-        topicClaimSearchIndex: TopicClaimSearchIndex,
+        memorySearchIndex: MemorySearchIndex,
         accessPolicy: HouseholdAccessPolicy,
     ): TopicAnswerUseCase =
-        TopicAnswerService(topicStore, topicClaimSearchIndex, accessPolicy)
+        TopicAnswerService(topicStore, memorySearchIndex, accessPolicy)
 }

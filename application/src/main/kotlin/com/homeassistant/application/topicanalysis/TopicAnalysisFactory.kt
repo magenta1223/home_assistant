@@ -9,8 +9,8 @@ import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexes
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndex
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndexes
 
 object TopicAnalysisFactory {
     fun kakao(
@@ -19,7 +19,7 @@ object TopicAnalysisFactory {
         importer: KakaoImporter,
         topicStore: TopicAnalysisStore,
         previewStore: TopicAnalysisPreviewStore,
-        searchIndex: TopicClaimSearchIndex = TopicClaimSearchIndexes.unavailable(),
+        searchIndex: MemorySearchIndex = MemorySearchIndexes.unavailable(),
         indexingOutbox: IndexingOutboxStore,
         accessPolicy: HouseholdAccessPolicy,
     ): TopicAnalysisUseCases =
@@ -36,7 +36,7 @@ object TopicAnalysisFactory {
                 sourceTextParser = sourceTextParser,
                 topicRepository = topicStore,
                 previewRepository = previewStore,
-                topicClaimSearchIndex = searchIndex,
+                memorySearchIndex = searchIndex,
                 indexingOutbox = indexingOutbox,
                 accessPolicy = accessPolicy,
             ),

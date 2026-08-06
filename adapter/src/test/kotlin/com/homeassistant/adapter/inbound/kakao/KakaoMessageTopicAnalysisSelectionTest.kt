@@ -41,7 +41,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
     fun `save selected analysis persists only selected preview topics`() = runBlocking {
         val kakaoStore = FakeKakaoMessageStore()
         val topicStore = FakeTopicStore()
-        val index = RecordingTopicClaimSearchIndex()
+        val index = RecordingMemorySearchIndex()
         val service = service(
             kakaoStore,
             topicStore,
@@ -53,7 +53,10 @@ class KakaoMessageTopicAnalysisSelectionTest {
 
         assertEquals(listOf("첫 후보", "셋째 후보"), result.topics.map { it.title })
         assertEquals(listOf("첫 후보", "셋째 후보"), topicStore.createdTopics.map { it.title })
-        assertEquals(listOf("첫 후보", "셋째 후보"), index.indexedTopics.map { it.title })
+        assertEquals(
+            listOf("첫 후보", "셋째 후보"),
+            index.indexedDocuments.map { it.topicTitle },
+        )
         assertEquals(1, kakaoStore.importCalls)
     }
 
@@ -79,7 +82,7 @@ class KakaoMessageTopicAnalysisSelectionTest {
             KakaoImporterFactory.create(FakeKakaoMessageStore()),
             FakeTopicStore(),
             FakePreviewStore(listOf(topic("후보", 1))),
-            FailingTopicClaimSearchIndex,
+            FailingMemorySearchIndex,
             outbox,
             TEST_ACCESS_POLICY,
         )
@@ -87,14 +90,14 @@ class KakaoMessageTopicAnalysisSelectionTest {
         val result = service.saveTopicCandidates.saveSelected(selection(setOf(0)))
 
         assertEquals(listOf("후보"), result.topics.map { it.title })
-        assertEquals(listOf(1), outbox.pending(IndexTargetType.TOPIC))
+        assertEquals(listOf(1), outbox.pending(IndexTargetType.MEMORY))
     }
 
     private fun service(
         kakaoStore: FakeKakaoMessageStore,
         topicStore: FakeTopicStore,
         previewStore: FakePreviewStore,
-        index: RecordingTopicClaimSearchIndex = RecordingTopicClaimSearchIndex(),
+        index: RecordingMemorySearchIndex = RecordingMemorySearchIndex(),
     ) = TopicAnalysisFactory.kakao(
         UnusedTopicExtractor,
         KakaoExportParser,

@@ -108,6 +108,33 @@ class TopicAnalysisRepositoryTest {
         assertEquals(emptyList(), repository.getApprovedTopics(com.homeassistant.domain.identity.UserId("mom"), listOf(topic.id)))
     }
 
+    @Test
+    fun `loads only requested canonical memories for indexing retry`() {
+        val proposal = createProposal()
+        val topic = repository.createTopic(
+            proposal.copy(
+                memoryTypes = listOf(MemoryType.STATE, MemoryType.LOCATION),
+                evidenceRefs = listOf(1, 2),
+                memories = listOf(
+                    proposal.memories.single(),
+                    TopicClaimCandidate(
+                        text = "리모컨은 벽장 위칸에 있다.",
+                        subject = "리모컨",
+                        memoryType = MemoryType.LOCATION,
+                        certainty = ClaimCertainty.SAID,
+                        evidenceRefs = listOf(2),
+                    ),
+                ),
+            ),
+        )
+        val requestedMemory = topic.memories.last()
+
+        val indexedTopic = repository.getTopicsForMemoryIndexing(listOf(requestedMemory.id)).single()
+
+        assertEquals(topic.id, indexedTopic.id)
+        assertEquals(listOf(requestedMemory.id), indexedTopic.memories.map { it.id })
+    }
+
     private fun createSimpleTopic() =
         repository.createTopic(createProposal())
 

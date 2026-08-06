@@ -17,7 +17,7 @@ import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.kakao.KakaoImporterFactory
 import com.homeassistant.application.topicanswer.answer.TopicAnswerFactory
 import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
-import com.homeassistant.adapter.outbound.vector.topicclaim.TopicClaimSearchIndexFactory
+import com.homeassistant.adapter.outbound.vector.memory.MemorySearchIndexFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
@@ -51,7 +51,7 @@ object ApplicationServicesFactory {
         log.info("Ollama embedding model={} baseUrl={}", embeddingModel, embeddingBaseUrl)
 
         val embeddingService = OllamaEmbeddingFactory.create(embeddingBaseUrl, embeddingModel)
-        val topicClaimSearchIndex = TopicClaimSearchIndexFactory.create(
+        val memorySearchIndex = MemorySearchIndexFactory.create(
             embeddingService,
             QdrantVectorStoreFactory.create(
                 baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
@@ -67,13 +67,13 @@ object ApplicationServicesFactory {
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,
-            searchIndex = topicClaimSearchIndex,
+            searchIndex = memorySearchIndex,
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = accessPolicy,
         )
         val topicAnswer = TopicAnswerFactory.create(
             topicStore = repositories.topicAnalysis,
-            topicClaimSearchIndex = topicClaimSearchIndex,
+            memorySearchIndex = memorySearchIndex,
             accessPolicy = accessPolicy,
         )
         val conversationClient = CodexConversationConfig.fromEnv()

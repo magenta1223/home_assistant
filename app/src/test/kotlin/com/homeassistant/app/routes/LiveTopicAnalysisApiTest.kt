@@ -8,7 +8,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.application.topicanalysis.TopicAnalysisFactory
 import com.homeassistant.domain.kakao.KakaoImporterFactory
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexes
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndexes
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -46,7 +46,7 @@ class LiveTopicAnalysisApiTest {
             importer = KakaoImporterFactory.create(repositories.kakaoMessages),
             topicStore = repositories.topicAnalysis,
             previewStore = repositories.kakaoAnalysisPreviews,
-            searchIndex = TopicClaimSearchIndexes.unavailable(),
+            searchIndex = MemorySearchIndexes.unavailable(),
             indexingOutbox = repositories.indexingOutbox,
             accessPolicy = HouseholdAccessPolicies.fixed(
                 listOf(UserId(USER_ID)),

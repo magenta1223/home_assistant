@@ -10,7 +10,7 @@ import com.homeassistant.adapter.shared.config.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.application.topicanswer.answer.TopicAnswerRequest
 import com.homeassistant.application.topicanswer.answer.TopicAnswerUseCase
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndexUnavailableException
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndexUnavailableException
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -106,7 +106,7 @@ fun Application.configureRoutes(
 
             try {
                 call.respond(HttpStatusCode.OK, topicAnswer.answer(req))
-            } catch (e: TopicClaimSearchIndexUnavailableException) {
+            } catch (e: MemorySearchIndexUnavailableException) {
                 call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to e.message))
             } catch (e: HouseholdAccessDeniedException) {
                 call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))

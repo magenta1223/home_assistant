@@ -52,8 +52,17 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
         topicIds.distinct().mapNotNull { getTopic(it, userId) }
     }
 
-    override fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic> = transaction(db) {
-        topicIds.distinct().mapNotNull(::getTopic)
+    override fun getTopicsForMemoryIndexing(memoryIds: Collection<Int>): List<Topic> = transaction(db) {
+        val requestedIds = memoryIds.toSet()
+        if (requestedIds.isEmpty()) return@transaction emptyList()
+        MemoryTable.selectAll()
+            .where { MemoryTable.id inList requestedIds }
+            .groupBy { it[MemoryTable.topicId] }
+            .mapNotNull { (topicId, rows) ->
+                topicId?.let(::getTopic)?.copy(
+                    memories = rows.map { it.toMemory() },
+                )
+            }
     }
 
     private fun findExistingTopic(proposal: ProposedTopic): Topic? {

@@ -9,7 +9,7 @@ interface TopicAnalysisCommandStore {
 interface TopicAnalysisQueryStore {
     fun searchApprovedTopics(userId: UserId, query: String, limit: Int): List<Topic>
     fun getApprovedTopics(userId: UserId, topicIds: Collection<Int>): List<Topic>
-    fun getApprovedTopicsForIndexing(topicIds: Collection<Int>): List<Topic>
+    fun getTopicsForMemoryIndexing(memoryIds: Collection<Int>): List<Topic>
 }
 
 interface TopicAnalysisStore : TopicAnalysisCommandStore, TopicAnalysisQueryStore

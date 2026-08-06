@@ -2,7 +2,6 @@ package com.homeassistant.domain.indexing
 
 enum class IndexTargetType {
     MEMORY,
-    TOPIC,
 }
 
 interface IndexingOutboxStore {

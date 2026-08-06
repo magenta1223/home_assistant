@@ -9,7 +9,7 @@ import com.homeassistant.domain.kakao.KakaoImporter
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.application.topicanswer.answer.TopicClaimSearchIndex
+import com.homeassistant.application.topicanswer.answer.MemorySearchIndex
 
 interface SaveTopicCandidatesUseCase {
     fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
@@ -21,13 +21,13 @@ internal class SaveTopicCandidates(
     private val sourceTextParser: SourceTextParser,
     private val topicRepository: TopicAnalysisStore,
     private val previewRepository: TopicAnalysisPreviewStore,
-    topicClaimSearchIndex: TopicClaimSearchIndex,
+    memorySearchIndex: MemorySearchIndex,
     indexingOutbox: IndexingOutboxStore,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : SaveTopicCandidatesUseCase {
-    private val topicIndexing = TopicIndexingCoordinatorFactory.create(
+    private val memoryIndexing = MemoryIndexingCoordinatorFactory.create(
         topicRepository,
-        topicClaimSearchIndex,
+        memorySearchIndex,
         indexingOutbox,
     )
 
@@ -68,8 +68,10 @@ internal class SaveTopicCandidates(
         val savedTopics = topics.map { topic ->
             topicRepository.createTopic(topic.remapEvidenceRefs(refToStoredId))
         }
-        savedTopics.forEach(topicIndexing::index)
-        topicIndexing.retryPending(savedTopics.mapTo(mutableSetOf()) { it.id })
+        savedTopics.forEach(memoryIndexing::index)
+        memoryIndexing.retryPending(
+            savedTopics.flatMapTo(mutableSetOf()) { topic -> topic.memories.map { it.id } },
+        )
         return TopicAnalysisSaveResult(previewId, savedTopics)
     }
 

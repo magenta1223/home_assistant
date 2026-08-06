@@ -1,5 +1,7 @@
 .env
 node_modules/
+.idea/
+.venv/
 .claude/
 *.sqlite
 .worktrees/
@@ -11,6 +13,3 @@ build/
 out/
 
 *.log
-
-# NLP assets are local payloads.
-nlp/src/main/resources/assets/**

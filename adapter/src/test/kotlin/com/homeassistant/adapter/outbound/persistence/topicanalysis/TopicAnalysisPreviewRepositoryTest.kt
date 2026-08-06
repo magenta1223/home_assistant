@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.outbound.persistence.kakao
+package com.homeassistant.adapter.outbound.persistence.topicanalysis
 
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryCertainty

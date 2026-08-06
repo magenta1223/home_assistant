@@ -23,7 +23,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class KakaoImportRoutesTest {
+class KakaoTopicAnalysisRoutesTest {
     @Test
     fun `import analyze route returns conflict when all messages already exist`() = testApplication {
         FakeAnalyzer.reset()

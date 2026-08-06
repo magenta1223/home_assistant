@@ -59,9 +59,3 @@ internal object MemoryEvidenceTable : Table("memory_evidence") {
         index(false, sourceRecordId)
     }
 }
-
-internal object SchemaMigrationTable : Table("schema_migrations") {
-    val version = integer("version")
-    val appliedAt = long("applied_at")
-    override val primaryKey = PrimaryKey(version)
-}

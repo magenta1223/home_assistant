@@ -34,7 +34,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
-class KakaoMessageTopicAnalysisServiceTest {
+class KakaoAnalyzeSourceIntegrationTest {
     @Test
     fun `analyze skips llm and preview when every message fingerprint already exists`() = runBlocking {
         val text = kakaoText()

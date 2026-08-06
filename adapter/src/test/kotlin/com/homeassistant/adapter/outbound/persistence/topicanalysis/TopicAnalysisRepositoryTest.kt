@@ -3,8 +3,9 @@ package com.homeassistant.adapter.outbound.persistence.topicanalysis
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.IndexingOutboxRepository
@@ -59,25 +60,23 @@ class TopicAnalysisRepositoryTest {
     @Test
     fun `stores topic and canonical memories in normalized rows`() {
         val topic = repository.createTopic(
-            ProposedTopic(
-                createdByUserId = "dad",
-                sourceType = "kakao",
-                sourceName = "2026-06-07.txt",
+            TopicProposal(
                 title = "카인드커피에서 만나기",
                 summary = "카인드커피 위치를 공유하고 그곳으로 오라고 말했다.",
-                memoryTypes = listOf(MemoryType.EVENT, MemoryType.LOCATION, MemoryType.EVENT),
                 categories = listOf("location", "home", "location"),
-                evidenceRefs = listOf(2, 3, 2),
                 memories = listOf(
-ProposedMemory(
-                        text = "홍승민은 카인드커피로 오라고 말했다.",
+                    MemoryProposal(
+                        content = "홍승민은 카인드커피로 오라고 말했다.",
                         subject = "홍승민",
                         memoryType = MemoryType.EVENT,
                         certainty = MemoryCertainty.SAID,
-                        evidenceRefs = listOf(2, 3, 2),
+                        evidenceIds = listOf(2, 3, 2),
                     ),
                 ),
             ),
+            TEST_USER,
+            "kakao",
+            "2026-06-07.txt",
         )
 
         assertEquals(setOf(MemoryType.EVENT), topic.memoryTypes.toSet())
@@ -101,6 +100,9 @@ ProposedMemory(
     fun `private canonical memory is hidden from another user`() {
         val topic = repository.createTopic(
             createProposal(visibility = MemoryVisibility.PRIVATE),
+            TEST_USER,
+            "kakao",
+            "2026-06-07.txt",
         )
 
         assertEquals(topic.id, repository.getApprovedTopics(com.homeassistant.domain.identity.UserId("dad"), listOf(topic.id)).single().id)
@@ -112,19 +114,20 @@ ProposedMemory(
         val proposal = createProposal()
         val topic = repository.createTopic(
             proposal.copy(
-                memoryTypes = listOf(MemoryType.STATE, MemoryType.LOCATION),
-                evidenceRefs = listOf(1, 2),
                 memories = listOf(
                     proposal.memories.single(),
-ProposedMemory(
-                        text = "리모컨은 벽장 위칸에 있다.",
+                    MemoryProposal(
+                        content = "리모컨은 벽장 위칸에 있다.",
                         subject = "리모컨",
                         memoryType = MemoryType.LOCATION,
                         certainty = MemoryCertainty.SAID,
-                        evidenceRefs = listOf(2),
+                        evidenceIds = listOf(2),
                     ),
                 ),
             ),
+            TEST_USER,
+            "kakao",
+            "2026-06-07.txt",
         )
         val requestedMemory = topic.memories.last()
 
@@ -135,30 +138,24 @@ ProposedMemory(
     }
 
     private fun createSimpleTopic() =
-        repository.createTopic(createProposal())
+        repository.createTopic(createProposal(), TEST_USER, "kakao", "2026-06-07.txt")
 
     private fun createProposal(visibility: MemoryVisibility = MemoryVisibility.FAMILY) =
-ProposedTopic(
-
-                createdByUserId = "dad",
-                sourceType = "kakao",
-                sourceName = "2026-06-07.txt",
-                title = "관계 표현",
-                summary = "애정 표현을 주고받았다.",
-                memoryTypes = listOf(MemoryType.STATE),
-                categories = listOf("relationship"),
-                evidenceRefs = listOf(1),
-                memories = listOf(
-ProposedMemory(
-                        text = "동훈은 애정 표현을 했다.",
-                        subject = "동훈",
-                        memoryType = MemoryType.STATE,
-                        certainty = MemoryCertainty.OBSERVED,
-                        evidenceRefs = listOf(1),
-                        visibility = visibility,
-                    ),
+        TopicProposal(
+            title = "관계 표현",
+            summary = "애정 표현을 주고받았다.",
+            categories = listOf("relationship"),
+            memories = listOf(
+                MemoryProposal(
+                    content = "동훈은 애정 표현을 했다.",
+                    subject = "동훈",
+                    memoryType = MemoryType.STATE,
+                    certainty = MemoryCertainty.OBSERVED,
+                    evidenceIds = listOf(1),
+                    visibility = visibility,
                 ),
-            )
+            ),
+        )
 
     private fun columnNames(table: String): List<String> = transaction(db) {
         val names = mutableListOf<String>()
@@ -166,5 +163,9 @@ ProposedMemory(
             while (result.next()) names += result.getString("name")
         }
         names
+    }
+
+    private companion object {
+        val TEST_USER = UserId("dad")
     }
 }

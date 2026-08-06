@@ -76,7 +76,7 @@ data class SlackTopicReviewSession(
     val status: SlackTopicReviewStatus,
     val channelId: String = "",
     val messageTs: String? = null,
-    val topics: List<com.homeassistant.domain.topicanalysis.ProposedTopic>,
+    val topics: List<com.homeassistant.domain.topicanalysis.TopicProposal>,
 )
 
 enum class SlackTopicReviewStatus {

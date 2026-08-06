@@ -4,7 +4,7 @@ import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.atomic.AtomicInteger
@@ -52,24 +52,24 @@ class CodexTopicExtractorTest {
             ),
         )
 
-        assertEquals(1, result.topics.size)
-        assertEquals("카인드커피에서 만나기", result.topics.single().title)
+        assertEquals(1, result.size)
+        assertEquals("카인드커피에서 만나기", result.single().title)
         assertEquals(
             setOf(
                 MemoryType.EVENT,
                 MemoryType.LOCATION,
             ),
-            result.topics.single().memoryTypes.toSet(),
+            result.single().memoryTypes.toSet(),
         )
-        assertEquals(setOf("location", "home"), result.topics.single().categories.toSet())
-        assertEquals(listOf(2, 3), result.topics.single().evidence.map { it.id })
-        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.topics.single().memories.single().text)
+        assertEquals(setOf("location", "home"), result.single().categories.toSet())
+        assertEquals(listOf(2, 3), result.single().evidenceIds)
+        assertEquals("홍승민은 카인드커피로 오라고 말했다.", result.single().memories.single().content)
         assertEquals(
             MemoryType.EVENT,
-            result.topics.single().memories.single().memoryType,
+            result.single().memories.single().memoryType,
         )
-        assertEquals(MemoryCertainty.SAID, result.topics.single().memories.single().certainty)
-        assertEquals(listOf(2, 3), result.topics.single().memories.single().evidence.map { it.id })
+        assertEquals(MemoryCertainty.SAID, result.single().memories.single().certainty)
+        assertEquals(listOf(2, 3), result.single().memories.single().evidenceIds)
     }
 
     @Test
@@ -138,8 +138,8 @@ class CodexTopicExtractorTest {
         assertContains(backend.calls[2].messageContent, "가족 병원 일정")
         assertContains(backend.calls[2].messageContent, "r1")
         assertContains(backend.calls[2].messageContent, "r201")
-        assertEquals(1, result.topics.size)
-        assertEquals(listOf(1, 201), result.topics.single().evidence.map { it.id })
+        assertEquals(1, result.size)
+        assertEquals(listOf(1, 201), result.single().evidenceIds)
     }
 
     @Test

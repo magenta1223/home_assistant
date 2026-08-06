@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.TopicProposal
 
 object SlackTopicBlocks {
     const val ACTION_OPEN_REVIEW = "topic_analysis_open_review"
@@ -12,7 +12,7 @@ object SlackTopicBlocks {
         previewId: String,
         sourceName: String,
         importedRecordCount: Int,
-        topics: List<ProposedTopic>,
+        topics: List<TopicProposal>,
     ): Map<String, Any> =
         mapOf(
             "text" to "Kakao 대화 분석 후보 ${topics.size}개",
@@ -40,7 +40,7 @@ object SlackTopicBlocks {
 
     fun selectionModal(
         previewId: String,
-        topics: List<ProposedTopic>,
+        topics: List<TopicProposal>,
     ): SlackModalBuildResult {
         if (topics.size > MAX_MODAL_TOPICS) {
             return SlackModalBuildResult.TooManyTopics(topics.size, MAX_MODAL_TOPICS)
@@ -81,11 +81,11 @@ object SlackTopicBlocks {
         )
     }
 
-    private fun topicSummary(index: Int, topic: ProposedTopic): Map<String, Any> =
+    private fun topicSummary(index: Int, topic: TopicProposal): Map<String, Any> =
         section(
             "*${index + 1}. ${mrkdwn(topic.title, 140)}*\n" +
                 "${mrkdwn(topic.summary, 700)}\n" +
-                "유형: ${topic.memoryTypes.joinToString(", ")} | 근거: ${topic.evidenceRefs.size}개",
+                "유형: ${topic.memoryTypes.joinToString(", ")} | 근거: ${topic.evidenceIds.size}개",
         )
 
     private fun section(text: String): Map<String, Any> =

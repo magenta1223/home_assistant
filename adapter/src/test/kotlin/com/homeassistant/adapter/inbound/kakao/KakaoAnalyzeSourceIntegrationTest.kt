@@ -15,8 +15,8 @@ import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.indexing.IndexingOutboxStore
 import com.homeassistant.domain.indexing.IndexingOutboxes
@@ -62,39 +62,41 @@ class KakaoAnalyzeSourceIntegrationTest {
 }
 
 internal class FakePreviewStore(
-    private val topics: List<ProposedTopic>,
+    private val topics: List<TopicProposal>,
 ) : TopicAnalysisPreviewStore {
     override fun createPreview(
-        sourceFileName: String,
-        text: String,
-        topics: List<ProposedTopic>,
+        requestedByUserId: String,
+        sourceType: String,
+        sourceName: String,
+        topics: List<TopicProposal>,
     ): TopicAnalysisPreview =
         error("not used")
 
     override fun findPreview(previewId: String): TopicAnalysisPreview? =
         TopicAnalysisPreview(
             previewId = previewId,
+            requestedByUserId = TEST_USER.value,
+            sourceType = "kakao",
             sourceName = "family-kakao.txt",
-            text = """
-                2026년 6월 15일 오전 6:43
-                2026년 6월 15일 오전 6:43, 동훈 : 첫 메시지
-                2026년 6월 15일 오전 6:44, 승민 : 둘째 메시지
-                2026년 6월 15일 오전 6:45, 동훈 : 셋째 메시지
-            """.trimIndent(),
             topics = topics,
         )
 }
 
 internal class FakeTopicStore : TopicAnalysisStore {
-    val createdTopics = mutableListOf<ProposedTopic>()
+    val createdTopics = mutableListOf<TopicProposal>()
 
-    override fun createTopic(proposal: ProposedTopic): Topic {
+    override fun createTopic(
+        proposal: TopicProposal,
+        createdBy: UserId,
+        sourceType: String,
+        sourceName: String,
+    ): Topic {
         createdTopics += proposal
         return Topic(
             id = createdTopics.size,
-            createdByUserId = proposal.createdByUserId,
-            sourceType = proposal.sourceType,
-            sourceName = proposal.sourceName,
+            createdByUserId = createdBy.value,
+            sourceType = sourceType,
+            sourceName = sourceName,
             title = proposal.title,
             summary = proposal.summary,
             categories = proposal.categories,
@@ -102,13 +104,13 @@ internal class FakeTopicStore : TopicAnalysisStore {
                 Memory(
                     id = index + 1,
                     topicId = createdTopics.size,
-                    createdByUserId = proposal.createdByUserId,
-                    content = memory.text,
+                    createdByUserId = createdBy.value,
+                    content = memory.content,
                     subject = memory.subject,
                     memoryType = memory.memoryType,
                     certainty = memory.certainty,
                     visibility = memory.visibility,
-                    evidenceRefs = memory.evidenceRefs,
+                    evidenceRefs = memory.evidenceIds,
                 )
             },
         )
@@ -200,12 +202,13 @@ internal class RecordingPreviewStore : TopicAnalysisPreviewStore {
     var createCalls = 0
 
     override fun createPreview(
-        sourceFileName: String,
-        text: String,
-        topics: List<ProposedTopic>,
+        requestedByUserId: String,
+        sourceType: String,
+        sourceName: String,
+        topics: List<TopicProposal>,
     ): TopicAnalysisPreview {
         createCalls += 1
-        return TopicAnalysisPreview("preview-1", sourceFileName, text, topics)
+        return TopicAnalysisPreview("preview-1", requestedByUserId, sourceType, sourceName, topics)
     }
 
     override fun findPreview(previewId: String): TopicAnalysisPreview? = null
@@ -215,15 +218,15 @@ internal class RecordingTopicExtractor : TopicExtractor {
     var calls = 0
     var document: SourceDocument? = null
 
-    override suspend fun analyze(document: SourceDocument): com.homeassistant.domain.topicanalysis.TopicAnalysisResult {
+    override suspend fun analyze(document: SourceDocument): List<TopicProposal> {
         calls += 1
         this.document = document
-        return com.homeassistant.domain.topicanalysis.TopicAnalysisResult(emptyList())
+        return emptyList()
     }
 }
 
 internal object UnusedTopicExtractor : TopicExtractor {
-    override suspend fun analyze(document: SourceDocument): com.homeassistant.domain.topicanalysis.TopicAnalysisResult =
+    override suspend fun analyze(document: SourceDocument): List<TopicProposal> =
         error("not used")
 }
 
@@ -234,22 +237,17 @@ internal fun kakaoText(): String =
     """.trimIndent()
 
 internal fun topic(title: String, evidenceRef: Int) =
-    ProposedTopic(
-        createdByUserId = TEST_USER.value,
-        sourceType = "kakao",
-        sourceName = "family-kakao.txt",
+    TopicProposal(
         title = title,
         summary = "요약",
-        memoryTypes = listOf(MemoryType.STATE),
         categories = listOf("family"),
-        evidenceRefs = listOf(evidenceRef),
         memories = listOf(
-            ProposedMemory(
-                text = "claim",
+            MemoryProposal(
+                content = "claim",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
                 certainty = MemoryCertainty.OBSERVED,
-                evidenceRefs = listOf(evidenceRef),
+                evidenceIds = listOf(evidenceRef),
             ),
         ),
     )

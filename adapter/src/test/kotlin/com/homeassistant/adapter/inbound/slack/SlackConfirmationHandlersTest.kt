@@ -4,8 +4,8 @@ import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
@@ -142,22 +142,17 @@ private object FakeTopicAnalysis : SaveAnalyzedTopicsUseCase {
 }
 
 private fun topic(id: Int) =
-    ProposedTopic(
-        createdByUserId = "dad",
-        sourceType = "kakao",
-        sourceName = "family-kakao.txt",
+    TopicProposal(
         title = "후보 $id",
         summary = "요약 $id",
-        memoryTypes = listOf(MemoryType.STATE),
         categories = listOf("family"),
-        evidenceRefs = listOf(id),
         memories = listOf(
-            ProposedMemory(
-                text = "claim $id",
+            MemoryProposal(
+                content = "claim $id",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
                 certainty = MemoryCertainty.OBSERVED,
-                evidenceRefs = listOf(id),
+                evidenceIds = listOf(id),
             ),
         ),
     )

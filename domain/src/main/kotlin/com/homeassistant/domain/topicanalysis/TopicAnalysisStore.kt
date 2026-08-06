@@ -3,7 +3,12 @@ package com.homeassistant.domain.topicanalysis
 import com.homeassistant.domain.identity.UserId
 
 interface TopicAnalysisCommandStore {
-    fun createTopic(proposal: ProposedTopic): Topic
+    fun createTopic(
+        proposal: TopicProposal,
+        createdBy: UserId,
+        sourceType: String,
+        sourceName: String,
+    ): Topic
 }
 
 interface TopicAnalysisQueryStore {

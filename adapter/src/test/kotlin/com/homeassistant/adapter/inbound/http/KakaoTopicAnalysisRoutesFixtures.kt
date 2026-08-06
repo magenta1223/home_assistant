@@ -4,8 +4,8 @@ import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisPreviewNotFoundException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
@@ -62,15 +62,10 @@ internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {
         saveAll(TopicAnalysisSaveRequest(request.previewId, request.userId))
 
     private fun newTopic(sourceName: String, evidenceRef: Int) =
-        ProposedTopic(
-            createdByUserId = "dad",
-            sourceType = "kakao",
-            sourceName = sourceName,
+        TopicProposal(
             title = "관계 표현",
             summary = "애정 표현을 주고받았다.",
-            memoryTypes = listOf(MemoryType.STATE),
             categories = listOf("relationship"),
-            evidenceRefs = listOf(evidenceRef),
             memories = listOf(candidateMemory(evidenceRef)),
         )
 
@@ -99,11 +94,11 @@ internal object FakeAnalyzer : AnalyzeSourceUseCase, SaveAnalyzedTopicsUseCase {
         )
 
     private fun candidateMemory(evidenceRef: Int) =
-        ProposedMemory(
-            text = "동훈은 애정 표현을 했다.",
+        MemoryProposal(
+            content = "동훈은 애정 표현을 했다.",
             subject = "동훈",
             memoryType = MemoryType.STATE,
             certainty = MemoryCertainty.OBSERVED,
-            evidenceRefs = listOf(evidenceRef),
+            evidenceIds = listOf(evidenceRef),
         )
 }

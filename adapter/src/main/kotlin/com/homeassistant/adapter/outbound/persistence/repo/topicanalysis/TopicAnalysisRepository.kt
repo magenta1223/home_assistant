@@ -5,8 +5,8 @@ import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.indexing.IndexTargetType
 import com.homeassistant.domain.memory.*
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import org.jetbrains.exposed.sql.*
@@ -14,16 +14,20 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 /** Stores approved topic groups and canonical memories in normalized tables. */
 internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysisStore {
-    override fun createTopic(proposal: ProposedTopic): Topic = transaction(db) {
-        require(proposal.createdByUserId.isNotBlank()) { "createdByUserId is required" }
+    override fun createTopic(
+        proposal: TopicProposal,
+        createdBy: UserId,
+        sourceType: String,
+        sourceName: String,
+    ): Topic = transaction(db) {
         require(proposal.memories.isNotEmpty()) { "topic must contain at least one memory" }
-        findExistingTopic(proposal)?.let { return@transaction it }
+        findExistingTopic(proposal, sourceType, sourceName)?.let { return@transaction it }
 
         val now = System.currentTimeMillis()
         val topicId = TopicTable.insert {
-            it[createdByUserId] = proposal.createdByUserId
-            it[sourceType] = proposal.sourceType
-            it[sourceName] = proposal.sourceName
+            it[createdByUserId] = createdBy.value
+            it[TopicTable.sourceType] = sourceType
+            it[TopicTable.sourceName] = sourceName
             it[title] = proposal.title
             it[summary] = proposal.summary
             it[createdAt] = now
@@ -32,8 +36,8 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
 
         proposal.categories.distinct().forEach { linkCategory(topicId, it) }
         proposal.memories
-            .distinctBy { it.text to it.evidenceRefs.toSet() }
-            .forEach { memory -> insertMemory(topicId, proposal.createdByUserId, memory, now) }
+            .distinctBy { it.content to it.evidenceIds.toSet() }
+            .forEach { memory -> insertMemory(topicId, createdBy.value, memory, now) }
         getTopic(topicId) ?: error("Created topic not found: $topicId")
     }
 
@@ -65,12 +69,12 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             }
     }
 
-    private fun findExistingTopic(proposal: ProposedTopic): Topic? {
-        val evidence = proposal.memories.flatMap { it.evidenceRefs }.toSet()
+    private fun findExistingTopic(proposal: TopicProposal, sourceType: String, sourceName: String): Topic? {
+        val evidence = proposal.evidenceIds.toSet()
         return TopicTable.selectAll()
             .where {
-                (TopicTable.sourceType eq proposal.sourceType) and
-                    (TopicTable.sourceName eq proposal.sourceName) and
+                (TopicTable.sourceType eq sourceType) and
+                    (TopicTable.sourceName eq sourceName) and
                     (TopicTable.title eq proposal.title)
             }
             .mapNotNull { getTopic(it[TopicTable.id]) }
@@ -80,13 +84,13 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
     private fun insertMemory(
         topicId: Int,
         createdByUserId: String,
-        proposal: ProposedMemory,
+        proposal: MemoryProposal,
         now: Long,
     ) {
         val memoryId = MemoryTable.insert {
             it[MemoryTable.topicId] = topicId
             it[MemoryTable.createdByUserId] = createdByUserId
-            it[content] = proposal.text
+            it[content] = proposal.content
             it[subject] = proposal.subject
             it[memoryType] = proposal.memoryType.code
             it[certainty] = proposal.certainty.name
@@ -94,7 +98,7 @@ internal class TopicAnalysisRepository(private val db: Database) : TopicAnalysis
             it[createdAt] = now
             it[updatedAt] = now
         }[MemoryTable.id]
-        proposal.evidenceRefs.distinct().forEach { sourceRecordId ->
+        proposal.evidenceIds.distinct().forEach { sourceRecordId ->
             MemoryEvidenceTable.insert {
                 it[MemoryEvidenceTable.memoryId] = memoryId
                 it[MemoryEvidenceTable.sourceRecordId] = sourceRecordId

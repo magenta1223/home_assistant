@@ -1,15 +1,13 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.application.topicanalysis.analyze.TopicExtractor
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
-import com.homeassistant.domain.topicanalysis.NewMemory
-import com.homeassistant.domain.topicanalysis.TopicAnalysisException
-import com.homeassistant.domain.topicanalysis.TopicAnalysisResult
-import com.homeassistant.domain.topicanalysis.TopicDraft
-import com.homeassistant.domain.topicanalysis.normalizeCategory
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -19,19 +17,17 @@ internal class CodexTopicExtractor(
     private val client: CodexCompletionClient,
     private val chunkSize: Int = CHUNK_SIZE,
 ) : TopicExtractor {
-    override suspend fun analyze(document: SourceDocument): TopicAnalysisResult {
-        val topics = analyzeValidTopics(document).map { topic ->
-            TopicDraft(
+    override suspend fun analyze(document: SourceDocument): List<TopicProposal> =
+        analyzeValidTopics(document).map { topic ->
+            TopicProposal(
                 title = topic.title,
                 summary = topic.summary,
-                memoryTypes = topic.memoryTypes,
                 categories = topic.categories,
-                evidence = topic.evidence,
                 memories = topic.memories,
+                memoryTypes = topic.memoryTypes,
+                evidenceIds = topic.evidence.map { it.id },
             )
         }
-        return TopicAnalysisResult(topics)
-    }
 
     private suspend fun analyzeValidTopics(document: SourceDocument): List<ValidatedTopic> {
         if (document.records.isEmpty()) return emptyList()
@@ -60,7 +56,7 @@ internal class CodexTopicExtractor(
         requestTopics(
             document = document,
             system = TopicAnalysisPrompt.mergeSystem(),
-            userMessage = renderProposedTopics(chunkTopics),
+            userMessage = renderTopicProposals(document, chunkTopics),
         )
 
     private suspend fun requestTopics(
@@ -106,11 +102,9 @@ internal class CodexTopicExtractor(
 
     private fun parseCategories(categories: List<String>): List<String> =
         categories.map { category ->
-            try {
-                normalizeCategory(category)
-            } catch (_: IllegalArgumentException) {
-                throw TopicAnalysisException("Category tag must not be blank")
-            }
+            val normalized = category.trim().lowercase().replace(Regex("\\s+"), "-")
+            if (normalized.isBlank()) throw TopicAnalysisException("Category tag must not be blank")
+            normalized
         }.distinct()
 
     private fun parseEvidence(document: SourceDocument, evidenceRecordIds: List<String>): List<SourceRecord> =
@@ -119,25 +113,25 @@ internal class CodexTopicExtractor(
                 ?: throw TopicAnalysisException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
-    private fun parseMemories(document: SourceDocument, memories: List<MemoryLlmResponse>): List<NewMemory> =
+    private fun parseMemories(document: SourceDocument, memories: List<MemoryLlmResponse>): List<MemoryProposal> =
         memories.map { memory ->
             val evidence = parseEvidence(document, memory.evidenceRecordIds)
             if (memory.text.isBlank()) throw TopicAnalysisException("Memory text must not be blank")
             if (memory.subject.isBlank()) throw TopicAnalysisException("Memory subject must not be blank")
             if (evidence.isEmpty()) throw TopicAnalysisException("Memory must include at least one evidence record")
-            NewMemory(
-                text = memory.text.trim(),
+            MemoryProposal(
+                content = memory.text.trim(),
                 subject = memory.subject.trim(),
                 memoryType = memory.memoryType,
                 certainty = memory.certainty,
-                evidence = evidence,
+                evidenceIds = evidence.map { it.id },
             )
         }
 
     private fun renderDocument(document: SourceDocument): String =
         document.records.joinToString("\n") { "${it.promptId} | ${it.content}" }
 
-    private fun renderProposedTopics(topics: List<ValidatedTopic>): String {
+    private fun renderTopicProposals(document: SourceDocument, topics: List<ValidatedTopic>): String {
         val payload = TopicAnalysisLlmResponse(
             topics = topics.map { topic ->
                 TopicLlmResponse(
@@ -148,11 +142,13 @@ internal class CodexTopicExtractor(
                     evidenceRecordIds = topic.evidence.map { it.promptId },
                     memories = topic.memories.map { memory ->
                         MemoryLlmResponse(
-                            text = memory.text,
+                            text = memory.content,
                             subject = memory.subject,
                             memoryType = memory.memoryType,
                             certainty = memory.certainty,
-                            evidenceRecordIds = memory.evidence.map { it.promptId },
+                            evidenceRecordIds = memory.evidenceIds.map { evidenceId ->
+                                document.records.first { it.id == evidenceId }.promptId
+                            },
                         )
                     },
                 )
@@ -182,5 +178,5 @@ private data class ValidatedTopic(
     val memoryTypes: List<MemoryType>,
     val categories: List<String>,
     val evidence: List<SourceRecord>,
-    val memories: List<NewMemory>,
+    val memories: List<MemoryProposal>,
 )

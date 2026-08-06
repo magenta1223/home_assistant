@@ -4,8 +4,8 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryVisibility
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisRepository
 import org.jetbrains.exposed.sql.Database
@@ -48,8 +48,8 @@ class TopicAnalysisRepositorySearchTest {
 
     @Test
     fun `search approved topics returns matching canonical memories`() {
-        val remote = repository.createTopic(topic("주차장 리모컨 위치", "주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", 10))
-        repository.createTopic(topic("점심 기록", "점심으로 쭈꾸미 덮밥을 먹었다.", 20))
+        val remote = createTopic(topic("주차장 리모컨 위치", "주차장 차단기 리모컨은 벽장 제일 위칸에 있다.", 10))
+        createTopic(topic("점심 기록", "점심으로 쭈꾸미 덮밥을 먹었다.", 20))
 
         val results = repository.searchApprovedTopics(TEST_USER, "차단기 리모컨 어디", limit = 5)
 
@@ -60,7 +60,7 @@ class TopicAnalysisRepositorySearchTest {
 
     @Test
     fun `search excludes another users private memories`() {
-        repository.createTopic(
+        createTopic(
             topic(
                 "세콤 경비 규칙",
                 "개가 있으면 세콤 경비상태에서 움직임 감지가 될 수 있다.",
@@ -77,7 +77,7 @@ class TopicAnalysisRepositorySearchTest {
     @Test
     fun `search approved topics clamps limit to ten`() {
         repeat(12) { index ->
-            repository.createTopic(topic("리모컨 후보 $index", "리모컨 관련 기억 $index", index + 1))
+            createTopic(topic("리모컨 후보 $index", "리모컨 관련 기억 $index", index + 1))
         }
 
         val results = repository.searchApprovedTopics(TEST_USER, "리모컨", limit = 50)
@@ -91,26 +91,24 @@ class TopicAnalysisRepositorySearchTest {
         evidenceRef: Int,
         visibility: MemoryVisibility = MemoryVisibility.FAMILY,
     ) =
-        ProposedTopic(
-            createdByUserId = TEST_USER.value,
-            sourceType = "kakao",
-            sourceName = "family-kakao.txt",
+        TopicProposal(
             title = title,
             summary = "$title 요약",
-            memoryTypes = listOf(MemoryType.REFERENCE),
             categories = listOf("home"),
-            evidenceRefs = listOf(evidenceRef),
             memories = listOf(
-                ProposedMemory(
-                    text = memoryContent,
+                MemoryProposal(
+                    content = memoryContent,
                     subject = title,
                     memoryType = MemoryType.REFERENCE,
                     certainty = MemoryCertainty.SAID,
-                    evidenceRefs = listOf(evidenceRef),
+                    evidenceIds = listOf(evidenceRef),
                     visibility = visibility,
                 ),
             ),
         )
+
+    private fun createTopic(proposal: TopicProposal) =
+        repository.createTopic(proposal, TEST_USER, "kakao", "family-kakao.txt")
 
     private companion object {
         val TEST_USER = UserId("dad")

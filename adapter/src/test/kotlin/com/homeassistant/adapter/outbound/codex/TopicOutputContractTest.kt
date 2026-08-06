@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.codex
 
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -33,8 +33,8 @@ class LlmTopicOutputContractTest {
         val trailing = serviceFor("```json\n${topicJson()}\n```\n분석 완료")
             .analyze(singleRecordDocument())
 
-        assertEquals("관계 표현", fenced.topics.single().title)
-        assertEquals("관계 표현", trailing.topics.single().title)
+        assertEquals("관계 표현", fenced.single().title)
+        assertEquals("관계 표현", trailing.single().title)
     }
 
     @Test
@@ -57,7 +57,7 @@ class LlmTopicOutputContractTest {
             .replace("}\n      ]", "},\n      ]")
         val result = serviceFor(response).analyze(singleRecordDocument())
 
-        assertEquals("관계 표현", result.topics.single().title)
+        assertEquals("관계 표현", result.single().title)
     }
 
     @Test

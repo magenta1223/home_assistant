@@ -4,8 +4,8 @@ import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.slackconversation.SlackPrincipal
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
@@ -161,22 +161,17 @@ private object DuplicateAnalyzer : AnalyzeSourceUseCase {
 }
 
 private fun topic() =
-    ProposedTopic(
-        createdByUserId = "dad",
-        sourceType = "kakao",
-        sourceName = "kakao.txt",
+    TopicProposal(
         title = "이사 준비",
         summary = "관리사무소 질문을 모았다.",
-        memoryTypes = listOf(MemoryType.STATE),
         categories = listOf("family"),
-        evidenceRefs = listOf(1),
         memories = listOf(
-            ProposedMemory(
-                text = "claim",
+            MemoryProposal(
+                content = "claim",
                 subject = "subject",
                 memoryType = MemoryType.STATE,
                 certainty = MemoryCertainty.OBSERVED,
-                evidenceRefs = listOf(1),
+                evidenceIds = listOf(1),
             ),
         ),
     )

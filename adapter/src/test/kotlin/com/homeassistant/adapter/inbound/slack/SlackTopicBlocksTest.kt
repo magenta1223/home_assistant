@@ -2,8 +2,8 @@ package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -100,22 +100,17 @@ class SlackTopicBlocksTest {
     }
 
     private fun topic(title: String, summary: String) =
-        ProposedTopic(
-            createdByUserId = "dad",
-            sourceType = "kakao",
-            sourceName = "family-kakao.txt",
+        TopicProposal(
             title = title,
             summary = summary,
-            memoryTypes = listOf(MemoryType.STATE),
             categories = listOf("family"),
-            evidenceRefs = listOf(1, 2),
             memories = listOf(
-                ProposedMemory(
-                    text = "동훈은 비밀 원문을 말했다.",
+                MemoryProposal(
+                    content = "동훈은 비밀 원문을 말했다.",
                     subject = "동훈",
                     memoryType = MemoryType.STATE,
                     certainty = MemoryCertainty.OBSERVED,
-                    evidenceRefs = listOf(1),
+                    evidenceIds = listOf(1),
                 ),
             ),
         )

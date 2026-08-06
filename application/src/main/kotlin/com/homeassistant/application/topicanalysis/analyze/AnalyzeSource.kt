@@ -6,9 +6,6 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.TopicAnalysisPreviewStore
-import com.homeassistant.domain.topicanalysis.ProposedMemory
-import com.homeassistant.domain.topicanalysis.ProposedTopic
-import com.homeassistant.domain.topicanalysis.TopicDraft
 
 interface AnalyzeSourceUseCase {
     suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult
@@ -44,10 +41,13 @@ class AnalyzeSource(
             sourceName = request.sourceName,
             records = storedRecords,
         )
-        val topics = topicExtractor.analyze(document).topics.map { topic ->
-            topic.toProposal(document, userId)
-        }
-        val preview = previewRepository.createPreview(request.sourceName, request.text, topics)
+        val topics = topicExtractor.analyze(document)
+        val preview = previewRepository.createPreview(
+            requestedByUserId = userId.value,
+            sourceType = request.sourceType,
+            sourceName = request.sourceName,
+            topics = topics,
+        )
         return TopicAnalysisResult(
             previewId = preview.previewId,
             sourceType = request.sourceType,
@@ -56,30 +56,6 @@ class AnalyzeSource(
             topics = topics,
         )
     }
-
-    private fun TopicDraft.toProposal(
-        document: SourceDocument,
-        userId: UserId,
-    ): ProposedTopic =
-        ProposedTopic(
-            createdByUserId = userId.value,
-            sourceType = document.sourceType,
-            sourceName = document.sourceName,
-            title = title,
-            summary = summary,
-            memoryTypes = memoryTypes,
-            categories = categories,
-            evidenceRefs = evidence.map { it.id },
-            memories = memories.map { memory ->
-                ProposedMemory(
-                    text = memory.text,
-                    subject = memory.subject,
-                    memoryType = memory.memoryType,
-                    certainty = memory.certainty,
-                    evidenceRefs = memory.evidence.map { it.id },
-                )
-            },
-        )
 
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()

@@ -6,7 +6,7 @@ import com.homeassistant.adapter.shared.json.JsonSerializer
 import com.homeassistant.adapter.shared.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.shared.json.JsonSerializer.encodeToString
 import com.homeassistant.adapter.shared.json.JsonSerializer.parseToJsonElement
-import com.homeassistant.domain.topicanalysis.TopicAnalysisException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisException
 import kotlinx.schema.Schema
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.SerialDescription

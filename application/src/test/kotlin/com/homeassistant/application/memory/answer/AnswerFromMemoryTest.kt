@@ -7,7 +7,7 @@ import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.ProposedTopic
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.domain.topicanalysis.TopicAnalysisStore
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -180,7 +180,12 @@ class AnswerFromMemoryTest {
 }
 
 private class FakeTopicStore(private val topics: List<Topic>) : TopicAnalysisStore {
-    override fun createTopic(proposal: ProposedTopic): Topic =
+    override fun createTopic(
+        proposal: TopicProposal,
+        createdBy: UserId,
+        sourceType: String,
+        sourceName: String,
+    ): Topic =
         error("not used")
 
     override fun searchApprovedTopics(

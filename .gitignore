@@ -13,3 +13,6 @@ build/
 out/
 
 *.log
+
+run-kakao-memory-analysis.bat
+kakao-memory-analysis-result.txt

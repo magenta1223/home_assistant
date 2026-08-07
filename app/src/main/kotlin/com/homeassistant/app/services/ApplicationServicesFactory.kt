@@ -8,7 +8,7 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCo
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.answer.AnswerFromMemories
-import com.homeassistant.application.memory.search.SearchMemories
+import com.homeassistant.application.memory.io.SearchMemories
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
 import com.homeassistant.application.topicanalysis.save.SaveTopicProposals
 import com.homeassistant.configuration.AppConfig
@@ -57,7 +57,7 @@ object ApplicationServicesFactory {
         val topicSaver = SaveTopicProposals(
             topicCreator = repositories.topicCreator,
             memoryIndexWriter = memoryIndexWriter,
-            canonicalMemoryReader = repositories.canonicalMemories,
+            memoryReader = repositories.canonicalMemories,
             indexingOutbox = repositories.indexingOutbox,
         )
         val topicAnalysisService = TopicAnalysisService(

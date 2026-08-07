@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
-import com.homeassistant.application.memory.search.MemorySearchUnavailableException
+import com.homeassistant.application.memory.io.MemorySearchUnavailableException
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal

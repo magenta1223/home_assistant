@@ -1,7 +1,7 @@
 package com.homeassistant.application.topicanalysis.save
 
 import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
-import com.homeassistant.application.memory.read.CanonicalMemoryReader
+import com.homeassistant.application.memory.io.MemoryReader
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.Topic
@@ -12,10 +12,10 @@ class SaveTopicProposals(
     private val topicCreator: TopicCreator,
     memoryIndexWriter: SemanticMemoryIndexWriter,
     indexingOutbox: IndexingOutboxStore,
-    canonicalMemoryReader: CanonicalMemoryReader,
+    memoryReader: MemoryReader,
 ) : TopicProposalSaver {
     private val memoryIndexing = MemoryIndexingCoordinator(
-        canonicalMemoryReader,
+        memoryReader,
         memoryIndexWriter,
         indexingOutbox,
     )

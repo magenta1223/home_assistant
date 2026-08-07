@@ -1,7 +1,7 @@
 package com.homeassistant.application.memory.answer
 
-import com.homeassistant.application.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.memory.search.SearchMemoriesUseCase
+import com.homeassistant.application.memory.io.SearchMemoriesRequest
+import com.homeassistant.application.memory.io.SearchMemoriesUseCase
 
 class AnswerFromMemories(
     private val searchMemories: SearchMemoriesUseCase,

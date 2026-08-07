@@ -3,7 +3,7 @@ package com.homeassistant.application.memory
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.source.SourceDescriptor
 
-data class CanonicalMemoryContext(
+data class MemoryContext(
     val memory: Memory,
     val topic: MemoryTopicContext? = null,
 )

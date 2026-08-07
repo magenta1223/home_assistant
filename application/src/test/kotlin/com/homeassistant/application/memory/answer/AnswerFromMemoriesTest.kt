@@ -1,6 +1,8 @@
 package com.homeassistant.application.memory.answer
 
-import com.homeassistant.application.memory.search.*
+import com.homeassistant.application.memory.io.MemorySearchMatch
+import com.homeassistant.application.memory.io.SearchMemoriesResult
+import com.homeassistant.application.memory.io.SearchMemoriesUseCase
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

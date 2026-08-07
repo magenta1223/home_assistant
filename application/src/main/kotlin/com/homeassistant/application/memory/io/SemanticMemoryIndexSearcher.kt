@@ -1,6 +1,6 @@
-package com.homeassistant.application.memory.search
+package com.homeassistant.application.memory.io
 
-data class SemanticMemorySearchHit(
+data class MemoryIndex(
     val memoryId: Int,
     val score: Double,
 )
@@ -8,7 +8,7 @@ data class SemanticMemorySearchHit(
 /** Searches the semantic memory index and returns ranked memory identifiers. */
 fun interface SemanticMemoryIndexSearcher {
     /** Searches the semantic memory index and returns the best matching memory IDs. */
-    fun search(query: String, limit: Int): List<SemanticMemorySearchHit>
+    fun search(query: String, limit: Int): List<MemoryIndex>
 }
 
 class MemorySearchUnavailableException(message: String) : RuntimeException(message)

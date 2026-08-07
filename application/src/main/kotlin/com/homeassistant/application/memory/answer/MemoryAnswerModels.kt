@@ -1,6 +1,6 @@
 package com.homeassistant.application.memory.answer
 
-import com.homeassistant.application.memory.search.MemorySearchMatch
+import com.homeassistant.application.memory.io.MemorySearchMatch
 import kotlinx.serialization.Serializable
 
 @Serializable

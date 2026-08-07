@@ -7,10 +7,10 @@ import com.homeassistant.application.slackconversation.handle.SlackMessageKey
 import com.homeassistant.application.slackconversation.handle.SlackMessageReceipt
 import com.homeassistant.application.slackconversation.handle.SlackMessageReceiptStatus
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.memory.search.MemorySearchMatch
-import com.homeassistant.application.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.memory.search.SearchMemoriesResult
-import com.homeassistant.application.memory.search.SearchMemoriesUseCase
+import com.homeassistant.application.memory.io.MemorySearchMatch
+import com.homeassistant.application.memory.io.SearchMemoriesRequest
+import com.homeassistant.application.memory.io.SearchMemoriesResult
+import com.homeassistant.application.memory.io.SearchMemoriesUseCase
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset

@@ -1,8 +1,8 @@
 package com.homeassistant.application.slackconversation.handle
 
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.memory.search.SearchMemoriesUseCase
+import com.homeassistant.application.memory.io.SearchMemoriesRequest
+import com.homeassistant.application.memory.io.SearchMemoriesUseCase
 
 /** Builds a bounded household-memory context for a Slack question. */
 interface HouseholdContextSource {

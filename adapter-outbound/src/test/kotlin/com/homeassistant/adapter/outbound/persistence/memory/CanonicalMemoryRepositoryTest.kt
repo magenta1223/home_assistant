@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
-import com.homeassistant.adapter.outbound.persistence.repo.memory.CanonicalMemoryRepository
+import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCertainty
@@ -23,7 +23,7 @@ class CanonicalMemoryRepositoryTest {
     private lateinit var keepAlive: java.sql.Connection
     private lateinit var db: Database
     private lateinit var topics: TopicRepository
-    private lateinit var memories: CanonicalMemoryRepository
+    private lateinit var memories: MemoryRepository
 
     @BeforeTest
     fun setup() {
@@ -33,7 +33,7 @@ class CanonicalMemoryRepositoryTest {
             SchemaUtils.create(TopicTable, CategoryTable, TopicCategoryTable, MemoryTable, MemoryEvidenceTable, IndexingOutboxTable)
         }
         topics = TopicRepository(db)
-        memories = CanonicalMemoryRepository(db)
+        memories = MemoryRepository(db)
     }
 
     @AfterTest

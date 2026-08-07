@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.memory.search.SearchMemoriesUseCase
+import com.homeassistant.application.memory.io.SearchMemoriesUseCase
 import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
 import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider

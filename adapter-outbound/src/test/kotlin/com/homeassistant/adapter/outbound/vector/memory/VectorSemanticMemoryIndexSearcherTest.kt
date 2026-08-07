@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.vector.memory
 
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import com.homeassistant.adapter.outbound.vector.*
-import com.homeassistant.application.memory.search.SemanticMemorySearchHit
+import com.homeassistant.application.memory.io.MemoryIndex
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -19,7 +19,7 @@ class VectorSemanticMemoryIndexSearcherTest {
 
         assertEquals(listOf("query: 차단기 리모컨 어디 있어?"), embedder.texts)
         assertEquals(VectorSearchFilter(must = mapOf("kind" to "memory")), store.filter)
-        assertEquals(listOf(SemanticMemorySearchHit(11, 0.94)), hits)
+        assertEquals(listOf(MemoryIndex(11, 0.94)), hits)
     }
 }
 

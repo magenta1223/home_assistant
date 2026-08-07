@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.memory.search.MemorySearchMatch
+import com.homeassistant.application.memory.io.MemorySearchMatch
 import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerResult
 import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
-import com.homeassistant.application.memory.search.MemorySearchUnavailableException
+import com.homeassistant.application.memory.io.MemorySearchUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis

@@ -1,6 +1,5 @@
-package com.homeassistant.application.memory.search
+package com.homeassistant.application.memory.io
 
-import com.homeassistant.application.memory.read.CanonicalMemoryReader
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -34,7 +33,7 @@ fun interface SearchMemoriesUseCase {
 }
 
 class SearchMemories(
-    private val memories: CanonicalMemoryReader,
+    private val memories: MemoryReader,
     private val searcher: SemanticMemoryIndexSearcher,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : SearchMemoriesUseCase {

@@ -54,7 +54,15 @@ class CodeQualityBoundaryTest {
 
     private companion object {
         const val MAX_LINES = 300
-        val MODULES = listOf("domain", "application", "adapter", "app")
+        val MODULES = listOf(
+            "domain",
+            "common",
+            "configuration",
+            "application",
+            "adapter-inbound",
+            "adapter-outbound",
+            "app",
+        )
         val ROW_MODEL =
             Regex("""(?m)^(?:data\s+)?class\s+([A-Za-z_][A-Za-z0-9_]*Row)\b""")
     }

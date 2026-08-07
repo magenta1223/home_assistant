@@ -21,6 +21,7 @@ internal object FakeAnalyzer : TopicAnalysisUseCase, SaveAnalyzedTopicsUseCase {
     var sourceFileName = ""
     var text = ""
     var previewId = ""
+    var lastPreviewUserId = ""
     var previewCalls = 0
     var saveCalls = 0
 
@@ -28,11 +29,13 @@ internal object FakeAnalyzer : TopicAnalysisUseCase, SaveAnalyzedTopicsUseCase {
         sourceFileName = ""
         text = ""
         previewId = ""
+        lastPreviewUserId = ""
         previewCalls = 0
         saveCalls = 0
     }
 
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
+        lastPreviewUserId = request.userId
         sourceFileName = request.source.source.name
         text = request.source.records.singleOrNull()?.content.orEmpty()
         previewCalls += 1
@@ -49,6 +52,7 @@ internal object FakeAnalyzer : TopicAnalysisUseCase, SaveAnalyzedTopicsUseCase {
     }
 
     override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult {
+        lastPreviewUserId = request.userId
         previewId = request.previewId
         saveCalls += 1
         if (request.previewId == "missing") throw TopicAnalysisReviewNotFoundException(request.previewId)

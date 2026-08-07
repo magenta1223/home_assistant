@@ -35,12 +35,14 @@ class MemoryAnswerRoutesTest {
                 topicAnalysis = UnusedTopicAnalysis,
                 saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
+                httpApiKeys = TEST_HTTP_API_KEYS,
             )
         }
 
         val response = client.post("/api/memories/answer") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"userId":"dad","question":"리모컨 어디 있어?","limit":5}""")
+            setBody("""{"question":"리모컨 어디 있어?","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -57,12 +59,14 @@ class MemoryAnswerRoutesTest {
                 topicAnalysis = UnusedTopicAnalysis,
                 saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
+                httpApiKeys = TEST_HTTP_API_KEYS,
             )
         }
 
         val response = client.post("/api/memories/answer") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"userId":"dad","question":"   ","limit":5}""")
+            setBody("""{"question":"   ","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -76,12 +80,14 @@ class MemoryAnswerRoutesTest {
                 topicAnalysis = UnusedTopicAnalysis,
                 saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = UnavailableMemoryAnswer,
+                httpApiKeys = TEST_HTTP_API_KEYS,
             )
         }
 
         val response = client.post("/api/memories/answer") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"userId":"dad","question":"리모컨 어디 있어?","limit":5}""")
+            setBody("""{"question":"리모컨 어디 있어?","limit":5}""")
         }
 
         assertEquals(HttpStatusCode.ServiceUnavailable, response.status)

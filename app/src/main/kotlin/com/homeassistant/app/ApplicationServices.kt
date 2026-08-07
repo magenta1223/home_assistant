@@ -19,6 +19,8 @@ import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCas
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
+import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.vector.memory.MemoryIndexerFactory
 import com.homeassistant.adapter.outbound.vector.memory.MemorySearcherFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
@@ -47,7 +49,10 @@ private class DefaultApplicationServices(
 }
 
 object ApplicationServicesFactory {
-    fun create(dbPath: String): ApplicationServices {
+    fun create(
+        dbPath: String,
+        httpUsers: Collection<UserId> = emptyList(),
+    ): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
@@ -63,8 +68,16 @@ object ApplicationServicesFactory {
         val memoryIndexer = MemoryIndexerFactory.create(textEmbedder, vectorStore)
         val memorySearcher = MemorySearcherFactory.create(textEmbedder, vectorStore)
         val slackConfig = SlackConfig.fromEnv()
-        val accessPolicy = slackConfig?.identityDirectory?.accessPolicy
-            ?: HouseholdAccessPolicies.denyAll()
+        val slackAccessPolicy = slackConfig?.identityDirectory?.accessPolicy
+        val httpAccessPolicy = HouseholdAccessPolicies.fixed(httpUsers)
+        val accessPolicy = if (slackAccessPolicy == null && httpUsers.isEmpty()) {
+            HouseholdAccessPolicies.denyAll()
+        } else {
+            HouseholdAccessPolicy { userId ->
+                (slackAccessPolicy?.isAuthorized(userId) == true) ||
+                    httpAccessPolicy.isAuthorized(userId)
+            }
+        }
         val topicAnalysis = TopicAnalysis(
             topicExtractor = TopicExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,

@@ -39,6 +39,7 @@ LLM providers and provider-selection environment variables are not supported.
 | `QDRANT_COLLECTION` | `canonical_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
 | `SLACK_MEMBER_SCOPES_JSON` | - | Server-owned mapping of Slack members to immutable application `userId` values |
+| `HTTP_MEMBER_API_KEYS_JSON` | - | Optional JSON array of `{userId, token}` records for HTTP Bearer authentication; tokens must be high-entropy and never committed |
 | `CODEX_EXECUTABLE` | - | Absolute path to the version-specific service Codex executable |
 | `CODEX_EXPECTED_VERSION` | `0.144.5` | Exact service CLI version validated at startup |
 | `CODEX_WORK_DIR` | - | Dedicated minimal service workspace; must not contain the application DB |
@@ -124,6 +125,8 @@ Ktor + Netty server. Current routes:
 - `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text and returns a review preview of proposed topics/memories.
 - `POST /api/kakao/import/save` -> saves the preview as topics and canonical memories.
 - `POST /api/memories/answer` -> retrieves visible canonical memories and builds a direct answer.
+
+HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` remains unauthenticated.
 
 `ApplicationServices.kt` is the composition root for repositories, use cases, Codex extraction, embeddings, vector search, Slack, and HTTP adapters.
 

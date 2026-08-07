@@ -1,6 +1,7 @@
 package com.homeassistant.app
 
 import com.homeassistant.adapter.inbound.http.configureRoutes
+import com.homeassistant.adapter.inbound.http.HttpApiKeyConfig
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.common.json.JsonSerializer
 import io.ktor.serialization.kotlinx.json.json
@@ -41,12 +42,14 @@ fun Application.module() {
 
     log.info("Database: $dbPath")
 
-    val services = ApplicationServicesFactory.create(dbPath)
+    val httpApiKeys = HttpApiKeyConfig.fromEnv()
+    val services = ApplicationServicesFactory.create(dbPath, httpApiKeys.values)
     services.start()
     monitor.subscribe(ApplicationStopped) { services.close() }
     configureRoutes(
         services.topicAnalysis,
         services.saveAnalyzedTopics,
         services.memoryAnswer,
+        httpApiKeys,
     )
 }

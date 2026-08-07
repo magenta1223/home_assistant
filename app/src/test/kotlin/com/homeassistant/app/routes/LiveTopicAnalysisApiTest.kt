@@ -2,6 +2,7 @@ package com.homeassistant.app.routes
 
 import com.homeassistant.adapter.outbound.topicanalysis.TopicExtractorFactory
 import com.homeassistant.adapter.inbound.http.configureRoutes
+import com.homeassistant.adapter.inbound.http.HttpApiKeyConfig
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.common.json.JsonSerializer
@@ -11,6 +12,7 @@ import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
+import io.ktor.client.request.header
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -59,15 +61,21 @@ class LiveTopicAnalysisApiTest {
         testApplication {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
-                configureRoutes(topicAnalysis, saveAnalyzedTopics)
+                configureRoutes(
+                    topicAnalysis,
+                    saveAnalyzedTopics,
+                    httpApiKeys = HttpApiKeyConfig.fromJson(
+                        """[{"userId":"$USER_ID","token":"test-token"}]""",
+                    ),
+                )
             }
 
             val response = client.post("/api/kakao/import/analyze") {
+                header("Authorization", "Bearer test-token")
                 contentType(ContentType.Application.Json)
                 setBody(
                     """
                     {
-                      "userId": "$USER_ID",
                       "sourceName": "live-api-smoke.txt",
                       "text": "[동훈] [오후 5:30] 오늘 저녁 7시에 카인드커피에서 만나자\n[승민] [오후 5:31] 좋아, 카인드커피는 서울역 2번 출구 앞이야\n[동훈] [오후 5:32] 도착하면 전화할게"
                     }

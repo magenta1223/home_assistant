@@ -23,18 +23,54 @@ import kotlin.test.assertEquals
 
 class KakaoTopicAnalysisRoutesTest {
     @Test
+    fun `import analyze route requires bearer authentication`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) { json() }
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            contentType(ContentType.Application.Json)
+            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+        }
+
+        assertEquals(HttpStatusCode.Unauthorized, response.status)
+        assertEquals(0, FakeAnalyzer.previewCalls)
+    }
+
+    @Test
+    fun `import analyze route derives user from bearer token`() = testApplication {
+        FakeAnalyzer.reset()
+        application {
+            install(ContentNegotiation) { json() }
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
+        }
+
+        val response = client.post("/api/kakao/import/analyze") {
+            authenticateAsTestUser()
+            contentType(ContentType.Application.Json)
+            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals("dad", FakeAnalyzer.lastPreviewUserId)
+    }
+
+    @Test
     fun `import analyze route returns conflict when all messages already exist`() = testApplication {
         FakeAnalyzer.reset()
         application {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody(scoped("""{"sourceName":"duplicate.txt","text":"duplicate"}"""))
+            setBody("""{"sourceName":"duplicate.txt","text":"duplicate"}""")
         }
 
         assertEquals(HttpStatusCode.Conflict, response.status)
@@ -48,12 +84,13 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody(scoped("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}"""))
+            setBody("""{"sourceName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -78,10 +115,11 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
             setBody("""{"filePath":"settings.gradle.kts"}""")
         }
@@ -97,10 +135,11 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/analyze") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
             setBody("""{"fileName":"2026-06-07.txt","text":"[동훈] [오후 4:49] 따랑해"}""")
         }
@@ -116,12 +155,13 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/save") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"preview-1","userId":"dad"}""")
+            setBody("""{"previewId":"preview-1"}""")
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
@@ -138,12 +178,13 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/save") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"   ","userId":"dad"}""")
+            setBody("""{"previewId":"   "}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -156,12 +197,13 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/save") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"missing","userId":"dad"}""")
+            setBody("""{"previewId":"missing"}""")
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
@@ -174,12 +216,13 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/kakao/import/save") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
-            setBody("""{"previewId":"broken","userId":"dad"}""")
+            setBody("""{"previewId":"broken"}""")
         }
 
         assertEquals(HttpStatusCode.InternalServerError, response.status)
@@ -192,7 +235,7 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.get("/api/test/topic-analysis/kakao-small-set")
@@ -207,17 +250,15 @@ class KakaoTopicAnalysisRoutesTest {
             install(ContentNegotiation) {
                 json()
             }
-            configureRoutes(FakeAnalyzer, FakeAnalyzer)
+            configureRoutes(FakeAnalyzer, FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
         val response = client.post("/api/test/topic-analysis/openrouter-model-eval") {
+            authenticateAsTestUser()
             contentType(ContentType.Application.Json)
             setBody("""{"models":["z-ai/glm-5.2","qwen/qwen3.7-max"]}""")
         }
 
         assertEquals(HttpStatusCode.NotFound, response.status)
     }
-
-    private fun scoped(json: String): String =
-        json.dropLast(1) + ""","userId":"dad"}"""
 }

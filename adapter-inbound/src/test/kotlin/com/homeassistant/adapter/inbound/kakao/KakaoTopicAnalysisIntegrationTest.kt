@@ -9,10 +9,9 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.ParsedSourceRecord
+import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordStore
 import com.homeassistant.domain.topicanalysis.Topic
@@ -30,7 +29,6 @@ import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 
 class KakaoTopicAnalysisIntegrationTest {
     @Test
@@ -153,7 +151,7 @@ internal class FakeSourceRecordStore(
     override fun findExistingDeduplicationKeys(sourceType: String, keys: Set<String>): Set<String> =
         (existingKeys + records.map { it.deduplicationKey }).filterTo(mutableSetOf()) { it in keys }
 
-    override fun saveAll(source: SourceDescriptor, records: List<ParsedSourceRecord>): List<SourceRecord> {
+    override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>): List<SourceRecord> {
         saveCalls += 1
         return records.mapIndexed { index, record ->
             SourceRecord(

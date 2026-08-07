@@ -1,4 +1,4 @@
-package com.homeassistant.app
+package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntime
@@ -26,29 +26,10 @@ import com.homeassistant.adapter.outbound.vector.memory.MemorySearcherFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
-interface ApplicationServices : AutoCloseable {
-    val topicAnalysis: TopicAnalysisUseCase
-    val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase
-    val memoryAnswer: AnswerFromMemoriesUseCase
-    fun start()
-}
-
-private class DefaultApplicationServices(
-    override val topicAnalysis: TopicAnalysisUseCase,
-    override val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
-    override val memoryAnswer: AnswerFromMemoriesUseCase,
-    private val slackRuntime: SlackRuntime?,
-) : ApplicationServices {
-    override fun start() {
-        slackRuntime?.startAsync()
-    }
-
-    override fun close() {
-        slackRuntime?.close()
-    }
-}
 
 object ApplicationServicesFactory {
+    private val log = LoggerFactory.getLogger(ApplicationServicesFactory::class.java)
+
     fun create(
         dbPath: String,
         httpUsers: Collection<UserId> = emptyList(),
@@ -120,4 +101,3 @@ object ApplicationServicesFactory {
     }
 }
 
-private val log = LoggerFactory.getLogger(ApplicationServicesFactory::class.java)

@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.kakao
 
-import com.homeassistant.domain.source.ParsedSource
-import com.homeassistant.domain.source.ParsedSourceRecord
+import com.homeassistant.domain.source.SourceDocumentDraft
+import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 
 import java.security.MessageDigest
@@ -14,7 +14,7 @@ object KakaoExportParser {
     private val exportedDateSeparator = Regex("^\\d{4}년 \\d{1,2}월 \\d{1,2}일 (?:오전|오후) \\d{1,2}:\\d{2}$")
     private val dottedDateSeparator = Regex("^\\d{4}\\.\\s*\\d{1,2}\\.\\s*\\d{1,2}\\.\\s*(?:오전|오후)\\s*\\d{1,2}:\\d{2}$")
 
-    fun parse(sourceName: String, text: String): ParsedSource {
+    fun parse(sourceName: String, text: String): SourceDocumentDraft {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
         lines.forEach { rawLine ->
@@ -41,7 +41,7 @@ object KakaoExportParser {
             messages += MessageBuilder(sender, displayTime, content)
         }
 
-        return ParsedSource(
+        return SourceDocumentDraft(
             source = SourceDescriptor("kakao", sourceName),
             records = messages.map { it.build(sourceName) },
         )
@@ -58,10 +58,10 @@ object KakaoExportParser {
             contentLines += line
         }
 
-        fun build(sourceName: String): ParsedSourceRecord {
+        fun build(sourceName: String): SourceRecordDraft {
             val content = contentLines.joinToString("\n").trimEnd()
             val fingerprintText = listOf(sourceName, sender, displayTime, content).joinToString("\u001F")
-            return ParsedSourceRecord(
+            return SourceRecordDraft(
                 deduplicationKey = sha256(fingerprintText),
                 content = "$sender | $displayTime | $content",
             )

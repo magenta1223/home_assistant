@@ -1,12 +1,12 @@
 package com.homeassistant.application.topicanalysis.analyze
 
-import com.homeassistant.domain.source.ParsedSource
+import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.topicanalysis.TopicProposal
 import kotlinx.serialization.Serializable
 
 data class TopicAnalysisRequest(
     val userId: String,
-    val source: ParsedSource,
+    val source: SourceDocumentDraft,
 )
 
 @Serializable

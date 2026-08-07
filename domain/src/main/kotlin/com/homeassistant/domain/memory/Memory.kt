@@ -3,9 +3,6 @@ package com.homeassistant.domain.memory
 import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
-@Serializable
-enum class MemoryCertainty { OBSERVED, SAID, INFERRED, UNCERTAIN }
-
 /** An approved, independently searchable household memory. */
 @Serializable
 data class Memory(

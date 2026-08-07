@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.domain.source.ParsedSourceRecord
+import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordStore
@@ -25,7 +25,7 @@ internal class SourceRecordRepository(private val db: Database) : SourceRecordSt
             }
     }
 
-    override fun saveAll(source: SourceDescriptor, records: List<ParsedSourceRecord>): List<SourceRecord> = transaction(db) {
+    override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>): List<SourceRecord> = transaction(db) {
         records.map { record ->
             val existing = SourceRecordTable.selectAll()
                 .where {
@@ -56,7 +56,7 @@ internal class SourceRecordRepository(private val db: Database) : SourceRecordSt
             .map { it.toSourceRecord() }
     }
 
-    private fun ParsedSourceRecord.toSourceRecord(id: Int): SourceRecord =
+    private fun SourceRecordDraft.toSourceRecord(id: Int): SourceRecord =
         SourceRecord(
             id = id,
             deduplicationKey = deduplicationKey,

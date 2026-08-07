@@ -2,8 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.source
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepository
-import com.homeassistant.domain.source.ParsedSource
-import com.homeassistant.domain.source.ParsedSourceRecord
+import com.homeassistant.domain.source.SourceDocumentDraft
+import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
@@ -32,11 +32,11 @@ class SourceRecordRepositoryTest {
     @Test
     fun `stores source records and deduplicates within source type`() {
         val repository = SourceRecordRepository(db)
-        val source = ParsedSource(
+        val source = SourceDocumentDraft(
             source = SourceDescriptor("kakao", "2026-06-07.txt"),
             records = listOf(
-                ParsedSourceRecord("key-1", "동훈 | 오후 4:49 | 따랑해"),
-                ParsedSourceRecord("key-2", "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
+                SourceRecordDraft("key-1", "동훈 | 오후 4:49 | 따랑해"),
+                SourceRecordDraft("key-2", "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
             ),
         )
         val result = repository.saveAll(source.source, source.records)

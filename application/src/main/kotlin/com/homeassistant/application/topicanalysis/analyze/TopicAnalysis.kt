@@ -23,21 +23,16 @@ class TopicAnalysis(
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         val parsedSource = request.source
-        val parsedRecords = parsedSource.records
-        val existingKeys = sourceRecords.findExistingDeduplicationKeys(
-            parsedSource.source.type,
-            parsedRecords.mapTo(mutableSetOf()) { it.deduplicationKey },
-        )
-        val newRecords = parsedRecords
-            .filterNot { it.deduplicationKey in existingKeys }
-            .distinctBy { it.deduplicationKey }
-        if (parsedRecords.isNotEmpty() && newRecords.isEmpty()) {
-            throw DuplicateSourceRecordsException(parsedSource.source.name, parsedRecords.size)
+
+        val newRecords = sourceRecords.saveAll(parsedSource.source, parsedSource.records)
+
+        if (newRecords.isEmpty()) {
+            throw DuplicateSourceRecordsException(parsedSource.source.name, parsedSource.records.size)
         }
-        val storedRecords = sourceRecords.saveAll(parsedSource.source, newRecords)
+
         val document = SourceDocument(
             source = parsedSource.source,
-            records = storedRecords,
+            records = newRecords,
         )
         val topics = topicExtractor.analyze(document)
         val review = reviewStore.create(
@@ -49,7 +44,7 @@ class TopicAnalysis(
             previewId = review.id,
             sourceType = parsedSource.source.type,
             sourceName = parsedSource.source.name,
-            importedRecordCount = storedRecords.size,
+            importedRecordCount = newRecords.size,
             topics = topics,
         )
     }

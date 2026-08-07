@@ -16,8 +16,12 @@ data class SlackMemberScopeConfig(
     val userId: String,
 )
 
+/** Maps Slack identities to application principals and exposes access policy. */
 interface SlackIdentityDirectory : SlackPrincipalResolver {
+    /** Provides the access policy derived from configured Slack members. */
     val accessPolicy: HouseholdAccessPolicy
+
+    /** Resolves a configured Slack actor to its application principal. */
     override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
 }
 

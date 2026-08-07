@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
-import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepository
+import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicAnalysisReviewRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topicanalysis.TopicRepository
@@ -13,7 +13,7 @@ object RepositoryFactory {
         val db = DatabaseFactory.init(dbPath)
         val canonicalMemories = CanonicalMemoryRepository(db)
         return RepositoryStores(
-            sourceRecords = SourceRecordRepository(db),
+            sourceRecords = SourceRecordRepositoryImpl(db),
             topicAnalysisReviews = TopicAnalysisReviewRepository(db),
             topicCreator = TopicRepository(db),
             canonicalMemories = canonicalMemories,

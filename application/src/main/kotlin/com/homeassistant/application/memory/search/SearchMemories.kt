@@ -26,7 +26,9 @@ data class MemorySearchMatch(
     val evidenceRefs: List<Int>,
 )
 
+/** Searches the caller-visible canonical memories and returns ranked matches. */
 fun interface SearchMemoriesUseCase {
+    /** Searches memories visible to the requesting user. */
     fun search(request: SearchMemoriesRequest): SearchMemoriesResult
 }
 

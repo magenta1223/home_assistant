@@ -11,13 +11,16 @@ data class TopicAnalysisReview(
     val proposals: List<TopicProposal>,
 )
 
+/** Stores and retrieves topic-analysis previews awaiting user review. */
 interface TopicAnalysisReviewStore {
+    /** Persists a topic-analysis review for later retrieval. */
     fun create(
         requestedBy: UserId,
         source: SourceDescriptor,
         proposals: List<TopicProposal>,
     ): TopicAnalysisReview
 
+    /** Finds a topic-analysis review by its identifier, if it exists. */
     fun find(reviewId: String): TopicAnalysisReview?
 }
 

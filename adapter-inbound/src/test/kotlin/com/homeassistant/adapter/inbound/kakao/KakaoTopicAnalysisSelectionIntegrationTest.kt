@@ -19,7 +19,7 @@ class KakaoTopicAnalysisSelectionIntegrationTest {
         val reviewStore = RecordingReviewStore()
         val useCase = TopicAnalysis(
             topicExtractor = extractor,
-            sourceRecords = FakeSourceRecordStore(setOf(parsed.records.first().deduplicationKey)),
+            sourceRecords = FakeSourceRecordRepository(setOf(parsed.records.first().deduplicationKey)),
             reviewStore = reviewStore,
             accessPolicy = TEST_ACCESS_POLICY,
         )

@@ -4,16 +4,18 @@ import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
-import com.homeassistant.domain.source.SourceRecordStore
+import com.homeassistant.domain.source.SourceRecordRepository
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
 
+/** Imports source records, analyzes them, and creates a reviewable topic proposal. */
 interface TopicAnalysisUseCase {
+    /** Imports new source records and creates a topic-analysis review. */
     suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult
 }
 
 class TopicAnalysis(
     private val topicExtractor: TopicExtractor,
-    private val sourceRecords: SourceRecordStore,
+    private val sourceRecords: SourceRecordRepository,
     private val reviewStore: TopicAnalysisReviewStore,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : TopicAnalysisUseCase {

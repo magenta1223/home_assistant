@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.source
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepository
+import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
@@ -12,7 +12,7 @@ import java.sql.DriverManager
 import java.util.UUID
 import kotlin.test.*
 
-class SourceRecordRepositoryTest {
+class SourceRecordRepositoryImplTest {
     private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
     private lateinit var keepAlive: java.sql.Connection
     private lateinit var db: Database
@@ -31,7 +31,7 @@ class SourceRecordRepositoryTest {
 
     @Test
     fun `stores source records and deduplicates within source type`() {
-        val repository = SourceRecordRepository(db)
+        val repository = SourceRecordRepositoryImpl(db)
         val source = SourceDocumentDraft(
             source = SourceDescriptor("kakao", "2026-06-07.txt"),
             records = listOf(

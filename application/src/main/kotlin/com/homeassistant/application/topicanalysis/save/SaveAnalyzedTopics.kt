@@ -10,8 +10,12 @@ import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.memory.index.MemoryIndexer
 import com.homeassistant.application.memory.index.MemoryIndexingSource
 
+/** Saves all or selected topic proposals from a reviewed analysis. */
 interface SaveAnalyzedTopicsUseCase {
+    /** Saves every proposal in a topic-analysis review. */
     fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult
+
+    /** Saves only the proposals selected by the caller. */
     fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult
 }
 

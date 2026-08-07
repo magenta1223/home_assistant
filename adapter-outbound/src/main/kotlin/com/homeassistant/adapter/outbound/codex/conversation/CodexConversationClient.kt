@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
+/** Runs Codex conversation turns and validates the configured CLI version. */
 interface CodexConversationClient : ConversationTurnClient {
+    /** Verifies that the configured Codex executable has the expected version. */
     fun validateVersion(): Boolean
 }
 

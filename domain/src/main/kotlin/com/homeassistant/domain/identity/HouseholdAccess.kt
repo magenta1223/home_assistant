@@ -1,6 +1,8 @@
 package com.homeassistant.domain.identity
 
+/** Determines whether an application user may access household features. */
 fun interface HouseholdAccessPolicy {
+    /** Returns whether the user is authorized to access household data. */
     fun isAuthorized(userId: UserId): Boolean
 }
 

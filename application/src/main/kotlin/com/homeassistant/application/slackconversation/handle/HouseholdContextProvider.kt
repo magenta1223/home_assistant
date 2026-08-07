@@ -4,7 +4,9 @@ import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.memory.search.SearchMemoriesRequest
 import com.homeassistant.application.memory.search.SearchMemoriesUseCase
 
+/** Builds a bounded household-memory context for a Slack question. */
 interface HouseholdContextSource {
+    /** Builds household-memory context relevant to a question. */
     fun context(principal: SlackPrincipal, question: String): HouseholdContext
 }
 

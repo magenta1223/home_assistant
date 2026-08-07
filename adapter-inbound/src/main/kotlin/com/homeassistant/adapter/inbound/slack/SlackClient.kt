@@ -9,10 +9,15 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import kotlinx.serialization.encodeToString
 
+/** Provides the Slack operations used by inbound workflows. */
 interface SlackClient {
+    /** Resolves a Slack file ID to a private download URL. */
     fun fileDownloadUrl(fileId: String): String?
+
+    /** Downloads and decodes text from a Slack file URL within the byte limit. */
     fun downloadText(url: String, maxBytes: Long): String
 
+    /** Posts a message, optionally as a reply in a Slack thread. */
     fun postMessage(
         channelId: String,
         text: String,
@@ -20,12 +25,14 @@ interface SlackClient {
         threadTs: String? = null,
     ): SlackMessageDelivery
 
+    /** Posts an ephemeral message visible only to one Slack user. */
     fun postEphemeral(
         channelId: String,
         userId: String,
         text: String,
     )
 
+    /** Opens a Slack modal from an interaction trigger. */
     fun openModal(
         triggerId: String,
         view: Map<String, Any>,
@@ -111,7 +118,9 @@ internal class SlackApiClient(
     }
 }
 
+/** Isolates the Slack message-posting operation for the client adapter. */
 internal fun interface SlackMessagePoster {
+    /** Posts one message through the underlying Slack API call. */
     fun post(
         channelId: String,
         text: String,

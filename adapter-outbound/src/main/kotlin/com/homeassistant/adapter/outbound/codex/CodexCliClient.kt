@@ -8,7 +8,9 @@ import java.util.concurrent.TimeUnit
 import kotlin.io.path.readText
 import kotlin.io.path.writeText
 
+/** Completes a single structured Codex prompt. */
 internal fun interface CodexCompletionClient {
+    /** Runs one completion request and returns the structured response text. */
     suspend fun complete(system: String, userMessage: String, outputSchema: String): String
 }
 
@@ -71,7 +73,9 @@ internal data class CodexProcessResult(
     val timedOut: Boolean = false,
 )
 
+/** Executes a Codex-related process and returns its outcome. */
 internal fun interface CodexProcessExecutor {
+    /** Executes a process with the supplied input and timeout. */
     fun execute(
         command: List<String>,
         workingDirectory: Path,

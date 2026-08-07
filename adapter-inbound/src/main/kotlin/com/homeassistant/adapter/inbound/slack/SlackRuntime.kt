@@ -128,7 +128,9 @@ object SlackRuntimeFactory {
 
 private val log = LoggerFactory.getLogger(SlackRuntimeFactory::class.java)
 
+/** Owns the lifecycle of the application's Slack event runtime. */
 interface SlackRuntime : AutoCloseable {
+    /** Starts listening for Slack events without blocking the caller. */
     fun startAsync()
 }
 

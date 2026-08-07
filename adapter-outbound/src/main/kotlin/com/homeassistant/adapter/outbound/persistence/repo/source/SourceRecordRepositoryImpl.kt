@@ -4,11 +4,11 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTabl
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.SourceRecordStore
+import com.homeassistant.domain.source.SourceRecordRepository
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class SourceRecordRepository(private val db: Database) : SourceRecordStore {
+internal class SourceRecordRepositoryImpl(private val db: Database) : SourceRecordRepository {
     override fun findExistingDeduplicationKeys(sourceType: String, keys: Set<String>): Set<String> = transaction(db) {
         if (keys.isEmpty()) return@transaction emptySet()
 
@@ -69,6 +69,10 @@ internal class SourceRecordRepository(private val db: Database) : SourceRecordSt
             deduplicationKey = this[SourceRecordTable.deduplicationKey],
             content = this[SourceRecordTable.content],
         )
-}
 
-private const val DEDUPLICATION_KEY_QUERY_BATCH_SIZE = 500
+    companion object {
+        private const val DEDUPLICATION_KEY_QUERY_BATCH_SIZE = 500
+
+    }
+
+}

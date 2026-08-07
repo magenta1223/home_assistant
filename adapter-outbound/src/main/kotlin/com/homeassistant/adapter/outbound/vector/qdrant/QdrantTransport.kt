@@ -5,7 +5,9 @@ import java.net.http.HttpClient
 import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 
+/** Sends raw HTTP requests to the Qdrant API. */
 internal interface QdrantTransport {
+    /** Sends an HTTP request to Qdrant and returns the response body. */
     fun request(method: String, path: String, body: String): String
 }
 

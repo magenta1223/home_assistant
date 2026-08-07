@@ -23,7 +23,11 @@ data class VectorSearchResult(
     val payload: Map<String, String>,
 )
 
+/** Stores and searches vector points for semantic retrieval. */
 interface VectorStore {
+    /** Inserts or replaces a vector point by its identifier. */
     fun upsert(point: VectorPoint)
+
+    /** Returns the nearest vector points that satisfy the supplied filter. */
     fun search(vector: List<Float>, filter: VectorSearchFilter, limit: Int): List<VectorSearchResult>
 }

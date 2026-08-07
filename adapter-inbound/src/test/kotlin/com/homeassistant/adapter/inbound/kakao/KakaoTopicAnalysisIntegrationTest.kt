@@ -13,7 +13,7 @@ import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
-import com.homeassistant.domain.source.SourceRecordStore
+import com.homeassistant.domain.source.SourceRecordRepository
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.MemoryProposal
 import com.homeassistant.domain.topicanalysis.TopicProposal
@@ -39,7 +39,7 @@ class KakaoTopicAnalysisIntegrationTest {
         val reviewStore = RecordingReviewStore()
         val useCase = TopicAnalysis(
             topicExtractor = extractor,
-            sourceRecords = FakeSourceRecordStore(
+            sourceRecords = FakeSourceRecordRepository(
                 parsed.records.mapTo(mutableSetOf()) { it.deduplicationKey },
             ),
             reviewStore = reviewStore,
@@ -142,9 +142,9 @@ internal class FakeIndexingOutboxStore : IndexingOutboxStore {
     }
 }
 
-internal class FakeSourceRecordStore(
+internal class FakeSourceRecordRepository(
     private val existingKeys: Set<String> = emptySet(),
-) : SourceRecordStore {
+) : SourceRecordRepository {
     private val records = mutableListOf<SourceRecord>()
     var saveCalls = 0
 

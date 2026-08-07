@@ -9,7 +9,9 @@ data class GetTopicAnalysisReviewRequest(
     val userId: String,
 )
 
+/** Retrieves a topic-analysis review after authorization and ownership checks. */
 fun interface GetTopicAnalysisReviewUseCase {
+    /** Returns a review after checking that the caller may access it. */
     fun get(request: GetTopicAnalysisReviewRequest): TopicAnalysisReview
 }
 

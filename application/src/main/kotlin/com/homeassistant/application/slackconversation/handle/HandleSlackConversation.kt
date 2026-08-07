@@ -13,22 +13,33 @@ data class SlackConversationMessage(
     val text: String,
 )
 
+/** Represents the outcome of one Codex conversation turn. */
 sealed interface ConversationTurnResult {
     data class Success(val answer: String) : ConversationTurnResult
     data class Failure(val category: String) : ConversationTurnResult
 }
 
+/** Resolves an incoming Slack actor to an application principal. */
 interface SlackPrincipalResolver {
+    /** Resolves Slack team and user identifiers to an application principal. */
     fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
 }
 
+/** Starts or resumes a short-lived Codex conversation turn. */
 interface ConversationTurnClient {
+    /** Starts a new Codex thread and reports its identifier when available. */
     fun start(prompt: String, onThreadStarted: (String) -> Unit): ConversationTurnResult
+
+    /** Resumes an existing Codex thread for one more turn. */
     fun resume(threadId: String, prompt: String): ConversationTurnResult
 }
 
+/** Delivers a generated answer or retryable failure back to Slack. */
 interface ConversationAnswerPublisher {
+    /** Posts an answer and returns Slack's response timestamp. */
     fun postAnswer(channelId: String, answer: String): String
+
+    /** Posts a transient error message that tells the user to retry. */
     fun postRetryableError(channelId: String)
 }
 

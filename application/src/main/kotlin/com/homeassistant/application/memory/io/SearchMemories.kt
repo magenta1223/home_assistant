@@ -3,6 +3,7 @@ package com.homeassistant.application.memory.io
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryVisibility
 import kotlinx.serialization.Serializable
 
@@ -39,20 +40,11 @@ class SearchMemories(
         val userId = UserId(request.userId)
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
         val query = request.query.trim()
-        val limit = request.limit.coerceIn(1, 10)
-        val hierarchicalHits = searchHierarchically(query, limit)
-        val hits = if (hierarchicalHits.isNotEmpty()) {
-            hierarchicalHits
-        } else {
-            searcher.search(
-                query,
-                limit * FLAT_FALLBACK_MULTIPLIER,
-                MemoryIndexSearchScope(),
-            )
-        }
-        val memoriesById = memories.findVisibleLeafByIds(userId, hits.map { it.memoryId }).associateBy { it.id }
-        val matches = hits.distinctBy { it.memoryId }.take(limit).mapNotNull { hit ->
-            memoriesById[hit.memoryId]?.let { memory ->
+
+        val memoriesById = memories.getMemories(userId).associateBy { it.id }
+        val retrievedMemoryIndices = semanticSearch(userId, query, memoriesById)
+        val matches = retrievedMemoryIndices.mapNotNull { memoryId ->
+            memoriesById[memoryId]?.let { memory ->
                 MemorySearchMatch(
                     memoryId = memory.id,
                     content = memory.content,
@@ -63,58 +55,32 @@ class SearchMemories(
         return SearchMemoriesResult(query, matches)
     }
 
-    private fun searchHierarchically(query: String, limit: Int): List<MemoryIndex> {
-        val rootIds = memories.findRootMemories()
-            .filter { it.visibility == MemoryVisibility.STRUCTURAL }
-            .mapTo(mutableSetOf()) { it.id }
-        if (rootIds.isEmpty()) return emptyList()
-        val routeHits = searcher.search(
+    private fun semanticSearch(userId: UserId, query: String, memoriesById: Map<Int, Memory>): List<Int> {
+        if (memoriesById.isEmpty()) return emptyList()
+
+        // TODO: 여기에도 userId에 의한 검증이 필요
+        val memoryIndices = searcher.search(
             query = query,
             limit = ROUTE_LIMIT,
             scope = MemoryIndexSearchScope(
-                allowedMemoryIds = rootIds,
-            ),
+                allowedMemoryIds = memoriesById.keys.toSet(),
+            )
         )
-        if (routeHits.isEmpty()) return emptyList()
 
-        val structuralIds = memories.findByIds(routeHits.map { it.memoryId })
-            .filter { it.visibility == MemoryVisibility.STRUCTURAL }
-            .mapTo(mutableSetOf()) { it.id }
-        if (structuralIds.isEmpty()) return emptyList()
+        val allChildrenMemories = memoryIndices.flatMap { (memoryId, _) ->
+            getAllChildrenIds(memoriesById, memoryId)
+        }
 
-        return routeHits
-            .filter { it.memoryId in structuralIds }
-            .flatMap { descend(query, it.memoryId, it.score, 0) }
-            .sortedByDescending { it.score }
-            .distinctBy { it.memoryId }
-            .take(limit)
+        return allChildrenMemories
     }
 
-    private fun descend(
-        query: String,
-        containerId: Int,
-        parentScore: Double,
-        depth: Int,
-    ): List<MemoryIndex> {
-        if (depth >= MAX_TRAVERSAL_DEPTH) return emptyList()
-        val parent = memories.findByIds(listOf(containerId)).singleOrNull() ?: return emptyList()
-        if (parent.childrenIds.isEmpty()) return emptyList()
-        val childHits = searcher.search(
-            query = query,
-            limit = CHILD_LIMIT,
-            scope = MemoryIndexSearchScope(allowedMemoryIds = parent.childrenIds.toSet()),
-        )
-        if (childHits.isEmpty()) return emptyList()
-        val children = memories.findByIds(childHits.map { it.memoryId }).associateBy { it.id }
-        return childHits.flatMap { hit ->
-            val child = children[hit.memoryId] ?: return@flatMap emptyList()
-            val combinedScore = (parentScore + hit.score) / 2.0
-            if (child.visibility == MemoryVisibility.STRUCTURAL) {
-                descend(query, child.id, combinedScore, depth + 1)
-            } else {
-                listOf(MemoryIndex(child.id, combinedScore))
+    private fun getAllChildrenIds(memoriesById: Map<Int, Memory>, memoryId: Int): List<Int> {
+        return memoriesById[memoryId]?.let { memory ->
+            val allChildrenIds = memory.childrenIds.flatMap { childId ->
+                getAllChildrenIds(memoriesById, childId)
             }
-        }
+            memory.childrenIds + allChildrenIds
+        } ?: emptyList()
     }
 
     private companion object {

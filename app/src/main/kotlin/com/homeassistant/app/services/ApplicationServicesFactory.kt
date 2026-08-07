@@ -59,22 +59,20 @@ object ApplicationServicesFactory {
         val memorySaver = SaveMemoryProposals(
             memoryCreator = repositories.memoryCreator,
             memoryIndexWriter = memoryIndexWriter,
-            memoryReader = repositories.canonicalMemories,
-            indexingOutbox = repositories.indexingOutbox,
         )
         val memoryAnalysisService = MemoryAnalysisService(
             memoryExtractor = MemoryExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
             accessPolicy = accessPolicy,
-            memoryPlacement = MemoryPlacementService(
-                extractor = MemoryPlacementExtractorFactory.create(),
-                memories = repositories.canonicalMemories,
-                tree = repositories.memoryTree,
-                searcher = semanticMemoryIndexSearcher,
-                memoryIndexWriter = memoryIndexWriter,
-                indexingOutbox = repositories.indexingOutbox,
-            ),
+//            memoryPlacement = MemoryPlacementService(
+//                extractor = MemoryPlacementExtractorFactory.create(),
+//                memoryRetriever = repositories.canonicalMemories,
+//                tree = repositories.memoryTree,
+//                searcher = semanticMemoryIndexSearcher,
+//                memoryIndexWriter = memoryIndexWriter,
+//                indexingOutbox = repositories.indexingOutbox,
+//            ),
         )
         val searchMemories = SearchMemories(
             memories = repositories.canonicalMemories,

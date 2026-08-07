@@ -9,15 +9,8 @@ import com.homeassistant.domain.memory.MemoryProposal
 /** Persists flat memory proposals immediately without a review stage. */
 class SaveMemoryProposals(
     private val memoryCreator: MemoryCreator,
-    memoryIndexWriter: SemanticMemoryIndexWriter,
-    indexingOutbox: IndexingOutboxStore,
-    memoryReader: MemoryReader,
+    private val memoryIndexWriter: SemanticMemoryIndexWriter
 ) : MemoryProposalSaver {
-    private val memoryIndexing = MemoryIndexingCoordinator(
-        memoryReader,
-        memoryIndexWriter,
-        indexingOutbox,
-    )
 
     override fun save(userId: UserId, proposals: List<MemoryProposal>): List<Memory> {
         if (proposals.isEmpty()) return emptyList()
@@ -25,8 +18,9 @@ class SaveMemoryProposals(
         val savedMemories = proposals
             .distinctBy { it.content to it.evidenceIds.toSet() }
             .map { memoryCreator.create(it, userId) }
-        savedMemories.forEach(memoryIndexing::index)
-        memoryIndexing.retryPending(savedMemories.mapTo(mutableSetOf()) { it.id })
+        savedMemories.forEach {
+            memoryIndexWriter.upsert(it)
+        }
         return savedMemories
     }
 }

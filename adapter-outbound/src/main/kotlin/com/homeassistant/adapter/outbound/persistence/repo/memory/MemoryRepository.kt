@@ -2,7 +2,6 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
-import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
 import com.homeassistant.application.memory.io.MemoryReader
 import com.homeassistant.application.memory.save.IndexTargetType
 import com.homeassistant.application.memory.save.MemoryCreator
@@ -21,26 +20,12 @@ import org.jetbrains.exposed.sql.transactions.transaction
 internal class MemoryRepository(
     private val db: Database,
 ) : MemoryReader, MemoryCreator, MemoryTreeStore {
-    override fun findByIds(memoryIds: Collection<Int>): List<Memory> = transaction(db) {
-        val ids = memoryIds.distinct()
-        if (ids.isEmpty()) return@transaction emptyList()
-        MemoryTable.selectAll()
-            .where { MemoryTable.id inList ids }
+
+    override fun getMemories(userId: UserId): List<Memory> {
+        return MemoryTable.selectAll()
             .map { it.toMemory() }
-    }
+            .filter { it.isVisibleTo(userId) }
 
-    override fun findVisibleByIds(userId: UserId, memoryIds: Collection<Int>): List<Memory> =
-        findByIds(memoryIds).filter { it.isVisibleTo(userId) }
-
-    override fun findChildren(containerId: Int): List<Memory> = transaction(db) {
-        val all = MemoryTable.selectAll().map { it.toMemory() }.associateBy { it.id }
-        all[containerId]?.childrenIds?.mapNotNull(all::get).orEmpty()
-    }
-
-    override fun findRootMemories(limit: Int): List<Memory> = transaction(db) {
-        val all = MemoryTable.selectAll().map { it.toMemory() }
-        val childIds = all.flatMapTo(mutableSetOf()) { it.childrenIds }
-        all.filterNot { it.id in childIds }.take(limit.coerceIn(1, 10_000))
     }
 
     override fun create(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {
@@ -62,18 +47,17 @@ internal class MemoryRepository(
                 it[MemoryEvidenceTable.sourceRecordId] = sourceRecordId
             }
         }
-        enqueueIndex(IndexTargetType.MEMORY, memoryId)
-        findByIds(listOf(memoryId)).single()
+        proposal.toMemory(createdBy, memoryId)
     }
 
-    override fun attachChild(parentMemoryId: Int, childMemoryId: Int): Memory = transaction(db) {
+    override fun attachChild(userId: UserId, parentMemoryId: Int, childMemoryId: Int): Memory = transaction(db) {
         require(parentMemoryId != childMemoryId) { "A memory cannot contain itself as a child" }
-        val all = MemoryTable.selectAll().map { it.toMemory() }.associateBy { it.id }
+        val all = getMemories(userId).associateBy { it.id }
         val parent = all[parentMemoryId] ?: error("Memory parent does not exist: $parentMemoryId")
-        require(parent.visibility == MemoryVisibility.STRUCTURAL) {
-            "Only structural memories can contain children: $parentMemoryId"
-        }
+
         require(all.containsKey(childMemoryId)) { "Memory does not exist: $childMemoryId" }
+
+        // non-recursive
         require(!containsDescendant(all, childMemoryId, parentMemoryId)) {
             "Attaching the child would create a cycle: parent=$parentMemoryId child=$childMemoryId"
         }
@@ -89,9 +73,9 @@ internal class MemoryRepository(
                 it[childrenIds] = children.encodeToString()
                 it[updatedAt] = System.currentTimeMillis()
             }
-            enqueueIndex(IndexTargetType.MEMORY, parentMemoryId)
         }
-        findByIds(listOf(parentMemoryId)).single()
+        // 이거 아님
+        getMemories(userId).single()
     }
 
     private fun containsDescendant(
@@ -123,6 +107,20 @@ internal class MemoryRepository(
             certainty = MemoryCertainty.valueOf(this[MemoryTable.certainty]),
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
             evidenceRefs = evidenceRefs,
+        )
+    }
+
+    private fun MemoryProposal.toMemory(userId: UserId, memoryId: Int): Memory {
+        return Memory(
+            id = memoryId,
+            childrenIds = emptyList(),
+            createdByUserId = userId.value,
+            content = content,
+            subject = subject,
+            memoryType = memoryType,
+            certainty = certainty,
+            visibility = visibility,
+            evidenceRefs = evidenceIds
         )
     }
 }

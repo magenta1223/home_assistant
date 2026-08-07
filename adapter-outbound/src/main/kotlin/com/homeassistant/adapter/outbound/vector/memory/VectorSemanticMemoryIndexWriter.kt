@@ -5,33 +5,43 @@ import com.homeassistant.adapter.outbound.vector.VectorPoint
 import com.homeassistant.adapter.outbound.vector.VectorStore
 import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
 import com.homeassistant.domain.memory.Memory
+import org.slf4j.LoggerFactory
 
 internal class VectorSemanticMemoryIndexWriter(
     private val textEmbedder: TextEmbedder,
     private val vectorStore: VectorStore,
 ) : SemanticMemoryIndexWriter {
-    override fun upsert(memory: Memory) {
-        vectorStore.upsert(
-            VectorPoint(
-                id = memoryVectorPointId(memory.id),
-                vector = textEmbedder.embed(
-                    "passage: " + listOfNotNull(
-                        memory.subject,
-                        memory.content,
-                    ).joinToString("\n"),
+    override fun upsert(memory: Memory): Boolean {
+        return try {
+            vectorStore.upsert(
+                VectorPoint(
+                    id = memoryVectorPointId(memory.id),
+                    vector = textEmbedder.embed(
+                        "passage: " + listOfNotNull(
+                            memory.subject,
+                            memory.content,
+                        ).joinToString("\n"),
+                    ),
+                    payload = buildMap {
+                        put("kind", MEMORY_KIND)
+                        put("memoryId", memory.id.toString())
+                        put("childrenIds", memory.childrenIds.joinToString(","))
+                        put("createdByUserId", memory.createdByUserId)
+                        put("visibility", memory.visibility.name)
+                        put("memoryType", memory.memoryType.name)
+                        put("subject", memory.subject)
+                    },
                 ),
-                payload = buildMap {
-                    put("kind", MEMORY_KIND)
-                    put("memoryId", memory.id.toString())
-                    put("childrenIds", memory.childrenIds.joinToString(","))
-                    put("createdByUserId", memory.createdByUserId)
-                    put("visibility", memory.visibility.name)
-                    put("memoryType", memory.memoryType.name)
-                    put("subject", memory.subject)
-                },
-            ),
-        )
+            )
+            true
+        } catch (e: Exception) {
+            log.warn("Memory vector indexing deferred memoryId=${memory.id}", e)
+            false
+        }
     }
+
+    private val log = LoggerFactory.getLogger(VectorSemanticMemoryIndexWriter::class.java)
+
 }
 
 object SemanticMemoryIndexWriterFactory {

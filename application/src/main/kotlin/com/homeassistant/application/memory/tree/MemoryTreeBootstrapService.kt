@@ -9,8 +9,7 @@ class MemoryTreeBootstrapService(
     private val placement: MemoryPlacement,
 ) {
     suspend fun placeExistingRoots(userId: UserId, limit: Int = 10_000): Int {
-        val roots = memories.findRootMemories(limit)
-            .filter { it.visibility != com.homeassistant.domain.memory.MemoryVisibility.STRUCTURAL }
+        val roots = memories.getMemories(userId)
         placement.place(userId, roots)
         return roots.size
     }

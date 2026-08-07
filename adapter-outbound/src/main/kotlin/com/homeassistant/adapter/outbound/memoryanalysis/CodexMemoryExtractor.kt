@@ -105,7 +105,7 @@ internal class CodexMemoryExtractor(
     ).encodeToString()
 
     private companion object {
-        const val CHUNK_SIZE = 200
+        const val CHUNK_SIZE = 400
     }
 }
 

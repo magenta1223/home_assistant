@@ -2,7 +2,6 @@ package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.indexing.IndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.adapter.outbound.persistence.repo.slackconversation.SlackCodexSessionRepository
 
@@ -15,7 +14,6 @@ object RepositoryFactory {
             memoryCreator = canonicalMemories,
             canonicalMemories = canonicalMemories,
             memoryTree = canonicalMemories,
-            indexingOutbox = IndexingOutboxRepository(db),
             slackCodexSessions = SlackCodexSessionRepository(db),
         )
     }

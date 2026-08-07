@@ -1,6 +1,5 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
-import com.homeassistant.application.memory.save.IndexingOutboxStore
 import com.homeassistant.domain.source.SourceRecordRepository
 import com.homeassistant.application.memory.io.MemoryReader
 import com.homeassistant.application.memory.save.MemoryCreator
@@ -12,6 +11,5 @@ data class RepositoryStores(
     val memoryCreator: MemoryCreator,
     val canonicalMemories: MemoryReader,
     val memoryTree: MemoryTreeStore,
-    val indexingOutbox: IndexingOutboxStore,
     val slackCodexSessions: SlackCodexSessionStore,
 )

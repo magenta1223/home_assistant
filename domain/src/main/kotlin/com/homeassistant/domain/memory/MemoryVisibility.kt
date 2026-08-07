@@ -4,14 +4,12 @@ import com.homeassistant.domain.identity.UserId
 
 enum class MemoryVisibility {
     PRIVATE,
-    FAMILY,
-    /** Internal tree node; never returned as user-visible memory content. */
-    STRUCTURAL;
+    PUBLIC
+    ;
 
     fun isVisibleTo(createdBy: UserId, requester: UserId): Boolean =
         when (this) {
-            FAMILY -> true
+            PUBLIC -> true
             PRIVATE -> createdBy == requester
-            STRUCTURAL -> true
         }
 }

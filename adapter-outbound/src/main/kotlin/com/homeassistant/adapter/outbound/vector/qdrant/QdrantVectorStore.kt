@@ -116,6 +116,14 @@ internal fun qdrantSearchBody(
                     range.lte?.let { put("lte", it) }
                 })
             }
+        } + if (filter.ids.isNotEmpty()) {
+            listOf(
+                buildJsonObject {
+                    put("has_id", JsonArray(filter.ids.sorted().map(::JsonPrimitive)))
+                },
+            )
+        } else {
+            emptyList()
         }
         if (conditions.isNotEmpty()) {
             put("filter", buildJsonObject { put("must", JsonArray(conditions)) })

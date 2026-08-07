@@ -3,6 +3,7 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
+import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtractorFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
@@ -11,6 +12,7 @@ import com.homeassistant.application.memory.answer.AnswerFromMemories
 import com.homeassistant.application.memory.io.SearchMemories
 import com.homeassistant.application.memory.analysis.MemoryAnalysisService
 import com.homeassistant.application.memory.save.SaveMemoryProposals
+import com.homeassistant.application.memory.tree.MemoryPlacementService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -65,6 +67,14 @@ object ApplicationServicesFactory {
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
             accessPolicy = accessPolicy,
+            memoryPlacement = MemoryPlacementService(
+                extractor = MemoryPlacementExtractorFactory.create(),
+                memories = repositories.canonicalMemories,
+                tree = repositories.memoryTree,
+                searcher = semanticMemoryIndexSearcher,
+                memoryIndexWriter = memoryIndexWriter,
+                indexingOutbox = repositories.indexingOutbox,
+            ),
         )
         val searchMemories = SearchMemories(
             memories = repositories.canonicalMemories,

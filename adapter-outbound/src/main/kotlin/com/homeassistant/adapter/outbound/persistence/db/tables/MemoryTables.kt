@@ -4,7 +4,7 @@ import org.jetbrains.exposed.sql.Table
 
 internal object MemoryTable : Table("memories") {
     val id = integer("id").autoIncrement()
-    val parentId = integer("parent_id").references(id).nullable()
+    val childrenIds = text("children_ids").default("[]")
     val createdByUserId = text("created_by_user_id")
     val content = text("content")
     val subject = text("subject")
@@ -16,7 +16,6 @@ internal object MemoryTable : Table("memories") {
     override val primaryKey = PrimaryKey(id)
 
     init {
-        index(false, parentId)
         index(false, createdByUserId, visibility)
         index(false, memoryType)
     }

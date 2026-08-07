@@ -4,8 +4,11 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTa
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.repo.indexing.enqueueIndex
 import com.homeassistant.application.memory.io.MemoryReader
-import com.homeassistant.application.memory.save.MemoryCreator
 import com.homeassistant.application.memory.save.IndexTargetType
+import com.homeassistant.application.memory.save.MemoryCreator
+import com.homeassistant.application.memory.tree.MemoryTreeStore
+import com.homeassistant.common.json.JsonSerializer.decodeFromString
+import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
@@ -17,25 +20,33 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class MemoryRepository(
     private val db: Database,
-) : MemoryReader, MemoryCreator {
+) : MemoryReader, MemoryCreator, MemoryTreeStore {
     override fun findByIds(memoryIds: Collection<Int>): List<Memory> = transaction(db) {
         val ids = memoryIds.distinct()
         if (ids.isEmpty()) return@transaction emptyList()
         MemoryTable.selectAll()
             .where { MemoryTable.id inList ids }
-            .map { row ->
-                val memory = row.toMemory()
-                memory
-            }
+            .map { it.toMemory() }
     }
 
     override fun findVisibleByIds(userId: UserId, memoryIds: Collection<Int>): List<Memory> =
         findByIds(memoryIds).filter { it.isVisibleTo(userId) }
 
+    override fun findChildren(containerId: Int): List<Memory> = transaction(db) {
+        val all = MemoryTable.selectAll().map { it.toMemory() }.associateBy { it.id }
+        all[containerId]?.childrenIds?.mapNotNull(all::get).orEmpty()
+    }
+
+    override fun findRootMemories(limit: Int): List<Memory> = transaction(db) {
+        val all = MemoryTable.selectAll().map { it.toMemory() }
+        val childIds = all.flatMapTo(mutableSetOf()) { it.childrenIds }
+        all.filterNot { it.id in childIds }.take(limit.coerceIn(1, 10_000))
+    }
+
     override fun create(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {
         require(proposal.evidenceIds.isNotEmpty()) { "memory evidence is required" }
         val memoryId = MemoryTable.insert {
-            it[parentId] = null
+            it[childrenIds] = emptyList<Int>().encodeToString()
             it[createdByUserId] = createdBy.value
             it[content] = proposal.content
             it[subject] = proposal.subject
@@ -55,14 +66,56 @@ internal class MemoryRepository(
         findByIds(listOf(memoryId)).single()
     }
 
+    override fun attachChild(parentMemoryId: Int, childMemoryId: Int): Memory = transaction(db) {
+        require(parentMemoryId != childMemoryId) { "A memory cannot contain itself as a child" }
+        val all = MemoryTable.selectAll().map { it.toMemory() }.associateBy { it.id }
+        val parent = all[parentMemoryId] ?: error("Memory parent does not exist: $parentMemoryId")
+        require(parent.visibility == MemoryVisibility.STRUCTURAL) {
+            "Only structural memories can contain children: $parentMemoryId"
+        }
+        require(all.containsKey(childMemoryId)) { "Memory does not exist: $childMemoryId" }
+        require(!containsDescendant(all, childMemoryId, parentMemoryId)) {
+            "Attaching the child would create a cycle: parent=$parentMemoryId child=$childMemoryId"
+        }
+        val existingContainer = all.values.firstOrNull {
+            it.id != parentMemoryId && childMemoryId in it.childrenIds
+        }
+        require(existingContainer == null) {
+            "Memory already belongs to another parent: $childMemoryId"
+        }
+        if (childMemoryId !in parent.childrenIds) {
+            val children = (parent.childrenIds + childMemoryId).distinct()
+            MemoryTable.update({ MemoryTable.id eq parentMemoryId }) {
+                it[childrenIds] = children.encodeToString()
+                it[updatedAt] = System.currentTimeMillis()
+            }
+            enqueueIndex(IndexTargetType.MEMORY, parentMemoryId)
+        }
+        findByIds(listOf(parentMemoryId)).single()
+    }
+
+    private fun containsDescendant(
+        memories: Map<Int, Memory>,
+        startId: Int,
+        targetId: Int,
+        visited: MutableSet<Int> = mutableSetOf(),
+    ): Boolean {
+        if (!visited.add(startId)) return false
+        val memory = memories[startId] ?: return false
+        if (targetId in memory.childrenIds) return true
+        return memory.childrenIds.any { containsDescendant(memories, it, targetId, visited) }
+    }
+
     private fun ResultRow.toMemory(): Memory {
         val memoryId = this[MemoryTable.id]
         val evidenceRefs = MemoryEvidenceTable.select(MemoryEvidenceTable.sourceRecordId)
             .where { MemoryEvidenceTable.memoryId eq memoryId }
             .map { it[MemoryEvidenceTable.sourceRecordId] }
+        val children = runCatching { this[MemoryTable.childrenIds].decodeFromString<List<Int>>() }
+            .getOrDefault(emptyList())
         return Memory(
             id = memoryId,
-            parentId = this[MemoryTable.parentId],
+            childrenIds = children,
             createdByUserId = this[MemoryTable.createdByUserId],
             content = this[MemoryTable.content],
             subject = this[MemoryTable.subject],

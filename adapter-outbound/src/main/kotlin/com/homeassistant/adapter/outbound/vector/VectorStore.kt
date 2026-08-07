@@ -10,6 +10,7 @@ data class VectorPoint(
 data class VectorSearchFilter(
     val must: Map<String, String> = emptyMap(),
     val ranges: Map<String, NumericRange> = emptyMap(),
+    val ids: Set<Int> = emptySet(),
 )
 
 data class NumericRange(

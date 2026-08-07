@@ -7,6 +7,7 @@ dependencies {
     api(project(":domain"))
     api(libs.kotlinx.serialization.json)
 
+    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.logback.classic)
 
     testImplementation(libs.kotlinx.coroutines.core)

@@ -12,7 +12,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class Memory(
     val id: Int,
-    val parentId: Int?,
+    val childrenIds: List<Int> = emptyList(),
     val createdByUserId: String,
     val content: String,
     val subject: String,
@@ -22,6 +22,8 @@ data class Memory(
     val evidenceRefs: List<Int>,
 ) {
     init {
+        require(childrenIds.distinct().size == childrenIds.size) { "memory children must be unique" }
+        require(id !in childrenIds) { "memory cannot contain itself as a child" }
         require(content.isNotBlank()) { "memory content is required" }
         require(subject.isNotBlank()) { "memory subject is required" }
         require(createdByUserId.isNotBlank()) { "createdByUserId is required" }

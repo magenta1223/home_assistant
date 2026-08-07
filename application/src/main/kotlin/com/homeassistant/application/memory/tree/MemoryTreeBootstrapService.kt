@@ -1,0 +1,17 @@
+package com.homeassistant.application.memory.tree
+
+import com.homeassistant.application.memory.io.MemoryReader
+import com.homeassistant.domain.identity.UserId
+
+/** Explicit one-time bootstrap for existing flat root memories. */
+class MemoryTreeBootstrapService(
+    private val memories: MemoryReader,
+    private val placement: MemoryPlacement,
+) {
+    suspend fun placeExistingRoots(userId: UserId, limit: Int = 10_000): Int {
+        val roots = memories.findRootMemories(limit)
+            .filter { it.visibility != com.homeassistant.domain.memory.MemoryVisibility.STRUCTURAL }
+        placement.place(userId, roots)
+        return roots.size
+    }
+}

@@ -23,7 +23,7 @@ internal class VectorSemanticMemoryIndexWriter(
                 payload = buildMap {
                     put("kind", MEMORY_KIND)
                     put("memoryId", memory.id.toString())
-                    memory.parentId?.let { put("parentId", it.toString()) }
+                    put("childrenIds", memory.childrenIds.joinToString(","))
                     put("createdByUserId", memory.createdByUserId)
                     put("visibility", memory.visibility.name)
                     put("memoryType", memory.memoryType.name)

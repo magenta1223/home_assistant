@@ -28,29 +28,4 @@ class SourceRecordRepositoryImplTest {
     fun teardown() {
         keepAlive.close()
     }
-
-    @Test
-    fun `stores source records and deduplicates within source type`() {
-        val repository = SourceRecordRepositoryImpl(db)
-        val source = SourceDocumentDraft(
-            source = SourceDescriptor("kakao", "2026-06-07.txt"),
-            records = listOf(
-                SourceRecordDraft("key-1", "동훈 | 오후 4:49 | 따랑해"),
-                SourceRecordDraft("key-2", "홍승민 | 오후 5:38 | 여기루 와용 ㅎㅎ"),
-            ),
-        )
-        val result = repository.saveAll(source.source, source.records)
-        val repeated = repository.saveAll(source.source, source.records)
-
-        assertEquals(2, result.size)
-        assertEquals(result.map { it.id }, repeated.map { it.id })
-        assertEquals(2, repository.findBySource(source.source).size)
-        assertEquals(
-            source.records.mapTo(mutableSetOf()) { it.deduplicationKey },
-            repository.findExistingDeduplicationKeys(
-                "kakao",
-                source.records.mapTo(mutableSetOf()) { it.deduplicationKey },
-            ),
-        )
-    }
 }

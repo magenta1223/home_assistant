@@ -2,11 +2,11 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 
 internal class DefaultApplicationServices(
-    override val topicAnalysis: TopicAnalysisUseCase,
+    override val topicAnalysis: TopicAnalysis,
     override val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
     override val memoryAnswer: AnswerFromMemoriesUseCase,
     override val slackRuntime: SlackRuntime?,

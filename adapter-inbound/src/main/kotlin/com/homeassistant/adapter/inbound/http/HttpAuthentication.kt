@@ -5,10 +5,10 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.auth.Authentication
-import io.ktor.server.auth.Principal
 import io.ktor.server.auth.bearer
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
+import io.ktor.server.auth.Principal
 import kotlinx.serialization.Serializable
 import java.security.MessageDigest
 

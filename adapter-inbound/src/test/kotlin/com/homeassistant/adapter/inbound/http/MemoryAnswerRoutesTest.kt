@@ -7,7 +7,7 @@ import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
 import com.homeassistant.application.memory.search.MemorySearchUnavailableException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
@@ -118,7 +118,7 @@ private object UnavailableMemoryAnswer : AnswerFromMemoriesUseCase {
         throw MemorySearchUnavailableException("memory vector index is not configured")
 }
 
-private object UnusedTopicAnalysis : TopicAnalysisUseCase, SaveAnalyzedTopicsUseCase {
+private object UnusedTopicAnalysis : TopicAnalysis, SaveAnalyzedTopicsUseCase {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("not used")
 

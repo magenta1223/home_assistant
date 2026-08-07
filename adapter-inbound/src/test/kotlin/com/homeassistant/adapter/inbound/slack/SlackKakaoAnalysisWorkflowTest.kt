@@ -11,7 +11,7 @@ import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -130,7 +130,7 @@ private data class EphemeralMessage(
     val text: String,
 )
 
-private class FakeAnalyzer : TopicAnalysisUseCase {
+private class FakeAnalyzer : TopicAnalysis {
     var sourceName = ""
     var text = ""
     var userId = ""
@@ -150,12 +150,12 @@ private class FakeAnalyzer : TopicAnalysisUseCase {
 
 }
 
-private object FailingAnalyzer : TopicAnalysisUseCase {
+private object FailingAnalyzer : TopicAnalysis {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         error("analysis failed")
 }
 
-private object DuplicateAnalyzer : TopicAnalysisUseCase {
+private object DuplicateAnalyzer : TopicAnalysis {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
         throw DuplicateSourceRecordsException(request.source.source.name, 1)
 }

@@ -5,7 +5,7 @@ import com.homeassistant.application.slackconversation.handle.ConversationTurnCl
 import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
@@ -55,7 +55,7 @@ data class SlackConfig(
 object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
-        topicAnalysis: TopicAnalysisUseCase,
+        topicAnalysis: TopicAnalysis,
         getTopicAnalysisReview: GetTopicAnalysisReviewUseCase,
         saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
         searchMemories: SearchMemoriesUseCase,

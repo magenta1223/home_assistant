@@ -10,14 +10,14 @@ import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecord
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.domain.source.SourceDescriptor
 
-internal object FakeAnalyzer : TopicAnalysisUseCase, SaveAnalyzedTopicsUseCase {
+internal object FakeAnalyzer : TopicAnalysis, SaveAnalyzedTopicsUseCase {
     var sourceFileName = ""
     var text = ""
     var previewId = ""

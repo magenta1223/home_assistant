@@ -2,7 +2,7 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
@@ -18,7 +18,7 @@ import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
 
 internal fun Route.kakaoTopicAnalysisRoutes(
-    topicAnalysis: TopicAnalysisUseCase,
+    topicAnalysis: TopicAnalysis,
     saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
 ) {
     post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {

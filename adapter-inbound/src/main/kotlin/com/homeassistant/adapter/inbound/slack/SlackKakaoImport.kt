@@ -4,7 +4,7 @@ import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.slack.api.model.event.MessageFileShareEvent
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -55,7 +55,7 @@ object SlackFileIngress {
 
 internal class SlackKakaoAnalysisWorkflow(
     private val slackClient: SlackClient,
-    private val topicAnalysis: TopicAnalysisUseCase,
+    private val topicAnalysis: TopicAnalysis,
     private val reviewContexts: SlackReviewContextStore,
     private val maxFileSizeBytes: Long,
 ) {

@@ -2,6 +2,7 @@ package com.homeassistant.application.memory.search
 
 import com.homeassistant.application.memory.CanonicalMemoryContext
 import com.homeassistant.application.memory.MemoryTopicContext
+import com.homeassistant.application.memory.read.CanonicalMemoryReader
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -12,8 +13,10 @@ import kotlin.test.*
 class SearchMemoriesTest {
     @Test
     fun `returns canonical memories in semantic hit order`() {
-        val reader = FakeMemoryReader(listOf(context(1, 7), context(2, 8)))
-        val searcher = FakeMemorySearcher(listOf(MemorySearchHit(2, 0.9), MemorySearchHit(1, 0.8)))
+        val reader = FakeCanonicalMemoryReader(listOf(context(1, 7), context(2, 8)))
+        val searcher = FakeSemanticMemoryIndexSearcher(
+            listOf(SemanticMemorySearchHit(2, 0.9), SemanticMemorySearchHit(1, 0.8)),
+        )
         val useCase = SearchMemories(reader, searcher, AUTHORIZED)
 
         val result = useCase.search(SearchMemoriesRequest("dad", "리모컨", 5))
@@ -24,7 +27,11 @@ class SearchMemoriesTest {
     @Test
     fun `returns standalone memory without topic context`() {
         val standalone = context(3, null)
-        val useCase = SearchMemories(FakeMemoryReader(listOf(standalone)), FakeMemorySearcher(listOf(MemorySearchHit(3, 1.0))), AUTHORIZED)
+        val useCase = SearchMemories(
+            FakeCanonicalMemoryReader(listOf(standalone)),
+            FakeSemanticMemoryIndexSearcher(listOf(SemanticMemorySearchHit(3, 1.0))),
+            AUTHORIZED,
+        )
 
         val match = useCase.search(SearchMemoriesRequest("dad", "독립", 5)).matches.single()
 
@@ -35,15 +42,36 @@ class SearchMemoriesTest {
 
     @Test
     fun `drops stale vector hit`() {
-        val useCase = SearchMemories(FakeMemoryReader(emptyList()), FakeMemorySearcher(listOf(MemorySearchHit(99, 1.0))), AUTHORIZED)
+        val useCase = SearchMemories(
+            FakeCanonicalMemoryReader(emptyList()),
+            FakeSemanticMemoryIndexSearcher(listOf(SemanticMemorySearchHit(99, 1.0))),
+            AUTHORIZED,
+        )
 
         assertEquals(emptyList(), useCase.search(SearchMemoriesRequest("dad", "없음", 5)).matches)
     }
 
     @Test
+    fun `filters private memories for a different user`() {
+        val privateMemory = context(4, null).copy(
+            memory = context(4, null).memory.copy(
+                createdByUserId = "mom",
+                visibility = MemoryVisibility.PRIVATE,
+            ),
+        )
+        val useCase = SearchMemories(
+            FakeCanonicalMemoryReader(listOf(privateMemory)),
+            FakeSemanticMemoryIndexSearcher(listOf(SemanticMemorySearchHit(4, 1.0))),
+            AUTHORIZED,
+        )
+
+        assertEquals(emptyList(), useCase.search(SearchMemoriesRequest("dad", "비밀", 5)).matches)
+    }
+
+    @Test
     fun `rejects unauthorized user before search`() {
-        val searcher = FakeMemorySearcher(emptyList())
-        val useCase = SearchMemories(FakeMemoryReader(emptyList()), searcher, AUTHORIZED)
+        val searcher = FakeSemanticMemoryIndexSearcher(emptyList())
+        val useCase = SearchMemories(FakeCanonicalMemoryReader(emptyList()), searcher, AUTHORIZED)
 
         assertFailsWith<HouseholdAccessDeniedException> {
             useCase.search(SearchMemoriesRequest("stranger", "질문", 5))
@@ -51,13 +79,18 @@ class SearchMemoriesTest {
     }
 }
 
-private class FakeMemoryReader(private val contexts: List<CanonicalMemoryContext>) : CanonicalMemoryReader {
-    override fun findVisibleByIds(userId: UserId, memoryIds: Collection<Int>): List<CanonicalMemoryContext> =
+private class FakeCanonicalMemoryReader(private val contexts: List<CanonicalMemoryContext>) : CanonicalMemoryReader {
+    override fun findByIds(memoryIds: Collection<Int>): List<CanonicalMemoryContext> =
         contexts.filter { it.memory.id in memoryIds }
+
+    override fun findVisibleByIds(userId: UserId, memoryIds: Collection<Int>): List<CanonicalMemoryContext> =
+        findByIds(memoryIds).filter { it.memory.isVisibleTo(userId) }
 }
 
-private class FakeMemorySearcher(private val hits: List<MemorySearchHit>) : MemorySearcher {
-    override fun search(query: String, limit: Int): List<MemorySearchHit> = hits.take(limit)
+private class FakeSemanticMemoryIndexSearcher(
+    private val hits: List<SemanticMemorySearchHit>,
+) : SemanticMemoryIndexSearcher {
+    override fun search(query: String, limit: Int): List<SemanticMemorySearchHit> = hits.take(limit)
 }
 
 private fun context(memoryId: Int, topicId: Int?) = CanonicalMemoryContext(

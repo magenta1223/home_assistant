@@ -2,15 +2,15 @@ package com.homeassistant.application.topicanalysis.save
 
 import com.homeassistant.application.memory.CanonicalMemoryContext
 import com.homeassistant.application.memory.MemoryTopicContext
-import com.homeassistant.application.memory.index.MemoryIndexer
-import com.homeassistant.application.memory.index.MemoryIndexingSource
+import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
+import com.homeassistant.application.memory.read.CanonicalMemoryReader
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.Topic
 import org.slf4j.LoggerFactory
 
 internal class MemoryIndexingCoordinator(
-    private val memories: MemoryIndexingSource,
-    private val indexer: MemoryIndexer,
+    private val memories: CanonicalMemoryReader,
+    private val indexWriter: SemanticMemoryIndexWriter,
     private val outbox: IndexingOutboxStore,
 ) {
     fun index(topic: Topic): Boolean =
@@ -40,7 +40,7 @@ internal class MemoryIndexingCoordinator(
     private fun index(context: CanonicalMemoryContext): Boolean {
         val memory = context.memory
         return try {
-            indexer.index(context)
+            indexWriter.upsert(context)
             outbox.markIndexed(IndexTargetType.MEMORY, memory.id)
             true
         } catch (error: Exception) {

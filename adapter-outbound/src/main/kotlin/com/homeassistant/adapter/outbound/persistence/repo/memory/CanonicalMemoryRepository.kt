@@ -5,8 +5,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicTable
 import com.homeassistant.application.memory.CanonicalMemoryContext
 import com.homeassistant.application.memory.MemoryTopicContext
-import com.homeassistant.application.memory.index.MemoryIndexingSource
-import com.homeassistant.application.memory.search.CanonicalMemoryReader
+import com.homeassistant.application.memory.read.CanonicalMemoryReader
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
@@ -18,10 +17,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class CanonicalMemoryRepository(
     private val db: Database,
-) : CanonicalMemoryReader, MemoryIndexingSource {
-    override fun findVisibleByIds(userId: UserId, memoryIds: Collection<Int>): List<CanonicalMemoryContext> =
-        findByIds(memoryIds).filter { it.memory.isVisibleTo(userId) }
-
+) : CanonicalMemoryReader {
     override fun findByIds(memoryIds: Collection<Int>): List<CanonicalMemoryContext> = transaction(db) {
         val ids = memoryIds.distinct()
         if (ids.isEmpty()) return@transaction emptyList()
@@ -32,6 +28,9 @@ internal class CanonicalMemoryRepository(
                 CanonicalMemoryContext(memory, memory.topicId?.let(::topicContext))
             }
     }
+
+    override fun findVisibleByIds(userId: UserId, memoryIds: Collection<Int>): List<CanonicalMemoryContext> =
+        findByIds(memoryIds).filter { it.memory.isVisibleTo(userId) }
 
     private fun topicContext(topicId: Int): MemoryTopicContext? =
         TopicTable.selectAll()

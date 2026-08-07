@@ -1,7 +1,7 @@
 package com.homeassistant.application.topicanalysis.save
 
-import com.homeassistant.application.memory.index.MemoryIndexer
-import com.homeassistant.application.memory.index.MemoryIndexingSource
+import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
+import com.homeassistant.application.memory.read.CanonicalMemoryReader
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.Topic
@@ -10,13 +10,13 @@ import com.homeassistant.domain.topicanalysis.TopicProposal
 /** Persists analyzed topic proposals immediately without an intermediate review. */
 class SaveTopicProposals(
     private val topicCreator: TopicCreator,
-    memoryIndexer: MemoryIndexer,
+    memoryIndexWriter: SemanticMemoryIndexWriter,
     indexingOutbox: IndexingOutboxStore,
-    memoryIndexingSource: MemoryIndexingSource,
+    canonicalMemoryReader: CanonicalMemoryReader,
 ) : TopicProposalSaver {
     private val memoryIndexing = MemoryIndexingCoordinator(
-        memoryIndexingSource,
-        memoryIndexer,
+        canonicalMemoryReader,
+        memoryIndexWriter,
         indexingOutbox,
     )
 

@@ -16,8 +16,8 @@ import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.adapter.outbound.vector.memory.MemoryIndexerFactory
-import com.homeassistant.adapter.outbound.vector.memory.MemorySearcherFactory
+import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexSearcherFactory
+import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import org.slf4j.LoggerFactory
 
@@ -41,8 +41,8 @@ object ApplicationServicesFactory {
             baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
             collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
         )
-        val memoryIndexer = MemoryIndexerFactory.create(textEmbedder, vectorStore)
-        val memorySearcher = MemorySearcherFactory.create(textEmbedder, vectorStore)
+        val memoryIndexWriter = SemanticMemoryIndexWriterFactory.create(textEmbedder, vectorStore)
+        val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val slackConfig = SlackConfig.fromEnv()
         val slackAccessPolicy = slackConfig?.identityDirectory?.accessPolicy
         val httpAccessPolicy = HouseholdAccessPolicies.fixed(httpUsers)
@@ -56,8 +56,8 @@ object ApplicationServicesFactory {
         }
         val topicSaver = SaveTopicProposals(
             topicCreator = repositories.topicCreator,
-            memoryIndexer = memoryIndexer,
-            memoryIndexingSource = repositories.memoryIndexingSource,
+            memoryIndexWriter = memoryIndexWriter,
+            canonicalMemoryReader = repositories.canonicalMemories,
             indexingOutbox = repositories.indexingOutbox,
         )
         val topicAnalysisService = TopicAnalysisService(
@@ -69,7 +69,7 @@ object ApplicationServicesFactory {
         val searchMemories = SearchMemories(
             memories = repositories.canonicalMemories,
             accessPolicy = accessPolicy,
-            searcher = memorySearcher,
+            searcher = semanticMemoryIndexSearcher,
         )
         val memoryAnswer = AnswerFromMemories(searchMemories)
         val conversationClient = CodexConversationConfig.fromEnv()

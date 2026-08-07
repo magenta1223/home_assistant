@@ -15,7 +15,6 @@ object RepositoryFactory {
             sourceRecords = SourceRecordRepositoryImpl(db),
             topicCreator = TopicRepository(db),
             canonicalMemories = canonicalMemories,
-            memoryIndexingSource = canonicalMemories,
             indexingOutbox = IndexingOutboxRepository(db),
             slackCodexSessions = SlackCodexSessionRepository(db),
         )

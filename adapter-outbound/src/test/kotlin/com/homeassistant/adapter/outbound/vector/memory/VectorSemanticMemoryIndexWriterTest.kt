@@ -10,14 +10,14 @@ import com.homeassistant.domain.source.SourceDescriptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class VectorMemoryIndexerTest {
+class VectorSemanticMemoryIndexWriterTest {
     @Test
     fun `indexes canonical memory with topic context`() {
         val embedder = RecordingTextEmbedder()
         val store = RecordingVectorStore()
-        val indexer = VectorMemoryIndexer(embedder, store)
+        val writer = VectorSemanticMemoryIndexWriter(embedder, store)
 
-        indexer.index(context(memory(11, "차단기 리모컨은 벽장 제일 위칸에 있다.")))
+        writer.upsert(context(memory(11, "차단기 리모컨은 벽장 제일 위칸에 있다.")))
 
         assertEquals(listOf("passage: 집 물건 위치\n리모컨 위치 정보\n차단기 리모컨은 벽장 제일 위칸에 있다."), embedder.texts)
         assertEquals("7", store.points.single().payload["topicId"])
@@ -28,9 +28,9 @@ class VectorMemoryIndexerTest {
     @Test
     fun `indexes standalone memory without fake topic id`() {
         val store = RecordingVectorStore()
-        val indexer = VectorMemoryIndexer(RecordingTextEmbedder(), store)
+        val writer = VectorSemanticMemoryIndexWriter(RecordingTextEmbedder(), store)
 
-        indexer.index(CanonicalMemoryContext(memory(11, "독립 기억", topicId = null)))
+        writer.upsert(CanonicalMemoryContext(memory(11, "독립 기억", topicId = null)))
 
         assertEquals(null, store.points.single().payload["topicId"])
         assertEquals("11", store.points.single().payload["memoryId"])

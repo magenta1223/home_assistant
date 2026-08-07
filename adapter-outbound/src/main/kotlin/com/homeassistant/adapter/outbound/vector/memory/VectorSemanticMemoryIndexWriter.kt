@@ -4,13 +4,13 @@ import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import com.homeassistant.adapter.outbound.vector.VectorPoint
 import com.homeassistant.adapter.outbound.vector.VectorStore
 import com.homeassistant.application.memory.CanonicalMemoryContext
-import com.homeassistant.application.memory.index.MemoryIndexer
+import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
 
-internal class VectorMemoryIndexer(
+internal class VectorSemanticMemoryIndexWriter(
     private val textEmbedder: TextEmbedder,
     private val vectorStore: VectorStore,
-) : MemoryIndexer {
-    override fun index(context: CanonicalMemoryContext) {
+) : SemanticMemoryIndexWriter {
+    override fun upsert(context: CanonicalMemoryContext) {
         val memory = context.memory
         vectorStore.upsert(
             VectorPoint(
@@ -40,9 +40,9 @@ internal class VectorMemoryIndexer(
     }
 }
 
-object MemoryIndexerFactory {
-    fun create(textEmbedder: TextEmbedder, vectorStore: VectorStore): MemoryIndexer =
-        VectorMemoryIndexer(textEmbedder, vectorStore)
+object SemanticMemoryIndexWriterFactory {
+    fun create(textEmbedder: TextEmbedder, vectorStore: VectorStore): SemanticMemoryIndexWriter =
+        VectorSemanticMemoryIndexWriter(textEmbedder, vectorStore)
 }
 
 internal const val MEMORY_KIND = "memory"

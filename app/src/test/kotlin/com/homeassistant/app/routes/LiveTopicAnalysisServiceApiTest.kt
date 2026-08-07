@@ -7,7 +7,7 @@ import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.application.memory.CanonicalMemoryContext
-import com.homeassistant.application.memory.index.MemoryIndexer
+import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
 import com.homeassistant.application.topicanalysis.save.SaveTopicProposals
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
@@ -48,8 +48,8 @@ class LiveTopicAnalysisServiceApiTest {
             sourceRecords = repositories.sourceRecords,
             topicSaver = SaveTopicProposals(
                 topicCreator = repositories.topicCreator,
-                memoryIndexer = NoOpMemoryIndexer,
-                memoryIndexingSource = repositories.memoryIndexingSource,
+                memoryIndexWriter = NoOpSemanticMemoryIndexWriter,
+                canonicalMemoryReader = repositories.canonicalMemories,
                 indexingOutbox = repositories.indexingOutbox,
             ),
             accessPolicy = accessPolicy,
@@ -93,6 +93,6 @@ class LiveTopicAnalysisServiceApiTest {
     }
 }
 
-private object NoOpMemoryIndexer : MemoryIndexer {
-    override fun index(context: CanonicalMemoryContext) = Unit
+private object NoOpSemanticMemoryIndexWriter : SemanticMemoryIndexWriter {
+    override fun upsert(context: CanonicalMemoryContext) = Unit
 }

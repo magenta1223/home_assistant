@@ -40,11 +40,11 @@ class CanonicalMemoryRepositoryTest {
     fun teardown() = keepAlive.close()
 
     @Test
-    fun `private memory is visible only to its owner`() {
+    fun `loads private memory for internal consumers`() {
         val topic = topics.create(proposal(MemoryVisibility.PRIVATE), UserId("dad"), SOURCE)
         val memoryId = topic.memories.single().id
 
-        assertEquals(listOf(memoryId), memories.findVisibleByIds(UserId("dad"), listOf(memoryId)).map { it.memory.id })
+        assertEquals(listOf(memoryId), memories.findByIds(listOf(memoryId)).map { it.memory.id })
         assertEquals(emptyList(), memories.findVisibleByIds(UserId("mom"), listOf(memoryId)))
     }
 
@@ -53,7 +53,7 @@ class CanonicalMemoryRepositoryTest {
         val topic = topics.create(proposal(), UserId("dad"), SOURCE)
         val memoryId = topic.memories.single().id
 
-        val context = memories.findByIds(listOf(memoryId)).single()
+        val context = memories.findVisibleByIds(UserId("mom"), listOf(memoryId)).single()
 
         assertEquals(memoryId, context.memory.id)
         assertEquals(topic.id, context.topic?.id)
@@ -81,7 +81,7 @@ class CanonicalMemoryRepositoryTest {
             id
         }
 
-        val context = memories.findVisibleByIds(UserId("mom"), listOf(memoryId)).single()
+        val context = memories.findByIds(listOf(memoryId)).single()
 
         assertNull(context.memory.topicId)
         assertNull(context.topic)

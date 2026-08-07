@@ -1,15 +1,14 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
+import com.homeassistant.application.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.topicanalysis.MemoryProposal
-import com.homeassistant.domain.topicanalysis.TopicProposal
+import com.homeassistant.domain.memory.MemoryProposal
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -17,12 +16,12 @@ import kotlin.test.assertEquals
 
 class SlackKakaoAnalysisWorkflowTest {
     @Test
-    fun `process downloads file analyzes and posts saved topic message`() = runBlocking {
+    fun `process downloads file analyzes and posts saved memory message`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
         val analyzer = FakeAnalyzer()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
-            topicAnalysis = analyzer,
+            memoryAnalysis = analyzer,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -42,7 +41,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
-            topicAnalysis = FailingAnalyzer,
+            memoryAnalysis = FailingAnalyzer,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -57,7 +56,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
-            topicAnalysis = DuplicateAnalyzer,
+            memoryAnalysis = DuplicateAnalyzer,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -116,46 +115,38 @@ private data class EphemeralMessage(
     val text: String,
 )
 
-private class FakeAnalyzer : TopicAnalysis {
+private class FakeAnalyzer : MemoryAnalysis {
     var sourceName = ""
     var text = ""
     var userId = ""
 
-    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
+    override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult {
         sourceName = request.source.source.name
         text = request.source.records.singleOrNull()?.content.orEmpty()
         userId = request.userId
-        return TopicAnalysisResult(
+        return MemoryAnalysisResult(
             sourceType = request.source.source.type,
             sourceName = request.source.source.name,
             importedRecordCount = 1,
-            topics = listOf(topic()),
+            memories = listOf(memory()),
         )
     }
 }
 
-private object FailingAnalyzer : TopicAnalysis {
-    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
+private object FailingAnalyzer : MemoryAnalysis {
+    override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult =
         error("analysis failed")
 }
 
-private object DuplicateAnalyzer : TopicAnalysis {
-    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
+private object DuplicateAnalyzer : MemoryAnalysis {
+    override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult =
         throw DuplicateSourceRecordsException(request.source.source.name, 1)
 }
 
-private fun topic() =
-    TopicProposal(
-        title = "이사 준비",
-        summary = "관리사무소 질문을 모았다.",
-        categories = listOf("family"),
-        memories = listOf(
-            MemoryProposal(
-                content = "claim",
-                subject = "subject",
-                memoryType = MemoryType.STATE,
-                certainty = MemoryCertainty.OBSERVED,
-                evidenceIds = listOf(1),
-            ),
-        ),
+private fun memory() = MemoryProposal(
+        content = "claim",
+        subject = "subject",
+        memoryType = MemoryType.STATE,
+        certainty = MemoryCertainty.OBSERVED,
+        evidenceIds = listOf(1),
     )

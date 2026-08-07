@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.indexing
 
-import com.homeassistant.application.topicanalysis.save.IndexTargetType
+import com.homeassistant.application.memory.save.IndexTargetType
 import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert

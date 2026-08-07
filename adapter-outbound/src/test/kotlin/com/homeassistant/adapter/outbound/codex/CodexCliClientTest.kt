@@ -21,7 +21,7 @@ class CodexCliClientTest {
     fun `executes codex in an isolated directory with structured output`() = runBlocking {
         val executor = RecordingExecutor { command, _ ->
             val outputPath = command[command.indexOf("--output-last-message") + 1]
-            java.nio.file.Path.of(outputPath).writeText("""{"topics":[]}""")
+            java.nio.file.Path.of(outputPath).writeText("""{"memories":[]}""")
             CodexProcessResult(exitCode = 0, stderr = "")
         }
         val client = CodexCliClient(executable = "codex-test", processExecutor = executor)
@@ -32,7 +32,7 @@ class CodexCliClientTest {
             outputSchema = """{"type":"object"}""",
         )
 
-        assertEquals("""{"topics":[]}""", response)
+        assertEquals("""{"memories":[]}""", response)
         assertEquals("codex-test", executor.command.first())
         assertContains(executor.command, "--ephemeral")
         assertContains(executor.command, "read-only")

@@ -3,11 +3,16 @@ package com.homeassistant.domain.memory
 import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
-/** An approved, independently searchable household memory. */
+/**
+ * An approved, independently searchable household memory.
+ *
+ * A memory with children is a short description of a knowledge area; a memory
+ * without children is an atomic fact. Both are represented by this same type.
+ */
 @Serializable
 data class Memory(
     val id: Int,
-    val topicId: Int?,
+    val parentId: Int?,
     val createdByUserId: String,
     val content: String,
     val subject: String,

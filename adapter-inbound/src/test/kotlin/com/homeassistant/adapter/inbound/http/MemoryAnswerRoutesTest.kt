@@ -5,9 +5,9 @@ import com.homeassistant.application.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.memory.answer.MemoryAnswerResult
 import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
 import com.homeassistant.application.memory.io.MemorySearchUnavailableException
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.memory.analysis.MemoryAnalysisResult
+import com.homeassistant.application.memory.analysis.MemoryAnalysis
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -28,7 +28,7 @@ class MemoryAnswerRoutesTest {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
-                topicAnalysis = UnusedTopicAnalysis,
+                memoryAnalysis = UnusedMemoryAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
                 httpApiKeys = TEST_HTTP_API_KEYS,
             )
@@ -51,7 +51,7 @@ class MemoryAnswerRoutesTest {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
-                topicAnalysis = UnusedTopicAnalysis,
+                memoryAnalysis = UnusedMemoryAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
                 httpApiKeys = TEST_HTTP_API_KEYS,
             )
@@ -71,7 +71,7 @@ class MemoryAnswerRoutesTest {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
-                topicAnalysis = UnusedTopicAnalysis,
+                memoryAnalysis = UnusedMemoryAnalysis,
                 memoryAnswer = UnavailableMemoryAnswer,
                 httpApiKeys = TEST_HTTP_API_KEYS,
             )
@@ -96,9 +96,6 @@ private object FakeMemoryAnswer : AnswerFromMemoriesUseCase {
             matches = listOf(
                 MemorySearchMatch(
                     memoryId = 11,
-                    topicId = 1,
-                    topicTitle = "집 물건 위치",
-                    topicSummary = "리모컨 위치",
                     content = "리모컨은 벽장 제일 위칸에 있다.",
                     evidenceRefs = listOf(10),
                 ),
@@ -111,7 +108,7 @@ private object UnavailableMemoryAnswer : AnswerFromMemoriesUseCase {
         throw MemorySearchUnavailableException("memory vector index is not configured")
 }
 
-private object UnusedTopicAnalysis : TopicAnalysis {
-    override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
+private object UnusedMemoryAnalysis : MemoryAnalysis {
+    override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult =
         error("not used")
 }

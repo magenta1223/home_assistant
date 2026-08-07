@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
+import com.homeassistant.application.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
@@ -14,8 +14,8 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
 
-internal fun Route.kakaoTopicAnalysisRoutes(
-    topicAnalysis: TopicAnalysis,
+internal fun Route.kakaoMemoryAnalysisRoutes(
+    memoryAnalysis: MemoryAnalysis,
 ) {
     post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {
         val principal = call.principal<HttpUserPrincipal>()
@@ -37,8 +37,8 @@ internal fun Route.kakaoTopicAnalysisRoutes(
         try {
             call.respond(
                 HttpStatusCode.OK,
-                topicAnalysis.execute(
-                    TopicAnalysisRequest(
+                memoryAnalysis.execute(
+                    MemoryAnalysisRequest(
                         userId = principal.userId.value,
                         source = KakaoExportParser.parse(sourceName, text),
                     ),

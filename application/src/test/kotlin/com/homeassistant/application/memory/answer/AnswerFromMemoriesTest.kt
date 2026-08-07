@@ -13,7 +13,7 @@ class AnswerFromMemoriesTest {
             SearchMemoriesUseCase { request ->
                 SearchMemoriesResult(
                     request.query.trim(),
-                    listOf(MemorySearchMatch(1, null, null, null, "독립 기억", listOf(10))),
+                    listOf(MemorySearchMatch(1, "독립 기억", listOf(10))),
                 )
             },
         )

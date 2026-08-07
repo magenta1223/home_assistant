@@ -15,7 +15,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class KakaoTopicAnalysisServiceRoutesTest {
+class KakaoMemoryAnalysisServiceRoutesTest {
     @Test
     fun `import analyze route requires bearer authentication`() = testApplication {
         FakeAnalyzer.reset()
@@ -34,7 +34,7 @@ class KakaoTopicAnalysisServiceRoutesTest {
     }
 
     @Test
-    fun `import analyze route derives user from bearer token and returns saved topics`() = testApplication {
+    fun `import analyze route derives user from bearer token and returns saved memories`() = testApplication {
         FakeAnalyzer.reset()
         application {
             install(ContentNegotiation) { json() }
@@ -48,7 +48,7 @@ class KakaoTopicAnalysisServiceRoutesTest {
         }
 
         assertEquals(HttpStatusCode.OK, response.status)
-        assertContains(response.bodyAsText(), "관계 표현")
+        assertContains(response.bodyAsText(), "동훈")
         assertContains(response.bodyAsText(), "동훈은 애정 표현을 했다.")
         assertContains(response.bodyAsText(), "memoryType")
         assertContains(response.bodyAsText(), "evidenceRefs")
@@ -131,14 +131,14 @@ class KakaoTopicAnalysisServiceRoutesTest {
     }
 
     @Test
-    fun `test topic analysis route is not exposed`() = testApplication {
+    fun `test memory analysis route is not exposed`() = testApplication {
         FakeAnalyzer.reset()
         application {
             install(ContentNegotiation) { json() }
             configureRoutes(FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
-        val response = client.get("/api/test/topic-analysis/kakao-small-set")
+        val response = client.get("/api/test/memory-analysis/kakao-small-set")
 
         assertEquals(HttpStatusCode.NotFound, response.status)
         assertEquals(0, FakeAnalyzer.analysisCalls)
@@ -151,7 +151,7 @@ class KakaoTopicAnalysisServiceRoutesTest {
             configureRoutes(FakeAnalyzer, httpApiKeys = TEST_HTTP_API_KEYS)
         }
 
-        val response = client.post("/api/test/topic-analysis/openrouter-model-eval") {
+        val response = client.post("/api/test/memory-analysis/openrouter-model-eval") {
             authenticateAsTestUser()
             contentType(ContentType.Application.Json)
             setBody("""{"models":["z-ai/glm-5.2","qwen/qwen3.7-max"]}""")

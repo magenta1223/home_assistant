@@ -10,9 +10,6 @@ internal object DatabaseFactory {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
             SchemaUtils.createMissingTablesAndColumns(
-                TopicTable,
-                CategoryTable,
-                TopicCategoryTable,
                 MemoryTable,
                 MemoryEvidenceTable,
                 SourceRecordTable,

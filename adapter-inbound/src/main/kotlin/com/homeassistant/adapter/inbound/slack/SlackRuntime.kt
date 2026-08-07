@@ -5,7 +5,7 @@ import com.homeassistant.application.slackconversation.handle.ConversationTurnCl
 import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.application.memory.analysis.MemoryAnalysis
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -53,7 +53,7 @@ data class SlackConfig(
 object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
-        topicAnalysis: TopicAnalysis,
+        memoryAnalysis: MemoryAnalysis,
         searchMemories: SearchMemoriesUseCase,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
@@ -69,7 +69,7 @@ object SlackRuntimeFactory {
         )
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slackClient,
-            topicAnalysis = topicAnalysis,
+            memoryAnalysis = memoryAnalysis,
             maxFileSizeBytes = config.maxFileSizeBytes,
         )
         val listeners = SlackListeners(

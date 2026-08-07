@@ -25,10 +25,6 @@ class HouseholdContextProvider(
             reference = result.matches.joinToString("\n") { match ->
                 buildString {
                     append("- ")
-                    match.topicTitle?.let {
-                        append(it)
-                        append(": ")
-                    }
                     append(match.content)
                 }
             }.take(MAX_CONTEXT_CHARS),

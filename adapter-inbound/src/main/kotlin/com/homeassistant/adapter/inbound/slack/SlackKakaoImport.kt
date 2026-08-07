@@ -2,9 +2,9 @@ package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.application.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.memory.analysis.MemoryAnalysis
 import com.slack.api.model.event.MessageFileShareEvent
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException
@@ -55,7 +55,7 @@ object SlackFileIngress {
 
 internal class SlackKakaoAnalysisWorkflow(
     private val slackClient: SlackClient,
-    private val topicAnalysis: TopicAnalysis,
+    private val memoryAnalysis: MemoryAnalysis,
     private val maxFileSizeBytes: Long,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -74,8 +74,8 @@ internal class SlackKakaoAnalysisWorkflow(
                 ?: upload.downloadUrl
                 ?: error("Slack file download URL is missing")
             val text = slackClient.downloadText(downloadUrl, maxFileSizeBytes)
-            val result = topicAnalysis.execute(
-                TopicAnalysisRequest(
+            val result = memoryAnalysis.execute(
+                MemoryAnalysisRequest(
                     userId = upload.principal.userId.value,
                     source = KakaoExportParser.parse(upload.fileName, text),
                 ),
@@ -91,10 +91,10 @@ internal class SlackKakaoAnalysisWorkflow(
                 return
             }
 
-            val message = SlackTopicBlocks.analysisMessage(
+            val message = SlackMemoryBlocks.analysisMessage(
                 sourceName = result.sourceName,
                 importedRecordCount = result.importedRecordCount,
-                topics = result.topics,
+                memories = result.memories,
             )
             @Suppress("UNCHECKED_CAST")
             slackClient.postMessage(

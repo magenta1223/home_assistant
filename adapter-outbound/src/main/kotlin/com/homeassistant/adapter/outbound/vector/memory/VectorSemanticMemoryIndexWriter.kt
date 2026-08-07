@@ -3,35 +3,29 @@ package com.homeassistant.adapter.outbound.vector.memory
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import com.homeassistant.adapter.outbound.vector.VectorPoint
 import com.homeassistant.adapter.outbound.vector.VectorStore
-import com.homeassistant.application.memory.MemoryContext
 import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
+import com.homeassistant.domain.memory.Memory
 
 internal class VectorSemanticMemoryIndexWriter(
     private val textEmbedder: TextEmbedder,
     private val vectorStore: VectorStore,
 ) : SemanticMemoryIndexWriter {
-    override fun upsert(context: MemoryContext) {
-        val memory = context.memory
+    override fun upsert(memory: Memory) {
         vectorStore.upsert(
             VectorPoint(
                 id = memoryVectorPointId(memory.id),
                 vector = textEmbedder.embed(
                     "passage: " + listOfNotNull(
-                        context.topic?.title,
-                        context.topic?.summary,
+                        memory.subject,
                         memory.content,
                     ).joinToString("\n"),
                 ),
                 payload = buildMap {
                     put("kind", MEMORY_KIND)
                     put("memoryId", memory.id.toString())
-                    memory.topicId?.let { put("topicId", it.toString()) }
+                    memory.parentId?.let { put("parentId", it.toString()) }
                     put("createdByUserId", memory.createdByUserId)
                     put("visibility", memory.visibility.name)
-                    context.topic?.source?.let { source ->
-                        put("sourceType", source.type)
-                        put("sourceName", source.name)
-                    }
                     put("memoryType", memory.memoryType.name)
                     put("subject", memory.subject)
                 },

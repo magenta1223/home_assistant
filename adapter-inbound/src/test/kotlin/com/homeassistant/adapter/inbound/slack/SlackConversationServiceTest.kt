@@ -62,7 +62,7 @@ class SlackConversationServiceTest {
     }
 
     @Test
-    fun `does not invoke Codex when no authorized topic matches`() {
+    fun `does not invoke Codex when no authorized memory matches`() {
         val store = MemorySessionStore()
         val codex = CountingCodex()
         val noMatches = SearchMemoriesUseCase { request ->
@@ -115,9 +115,6 @@ private class CapturingMemorySearch : SearchMemoriesUseCase {
             listOf(
                 MemorySearchMatch(
                     memoryId = 1,
-                    topicId = 1,
-                    topicTitle = "리모컨",
-                    topicSummary = "벽장에 있음",
                     content = "위칸",
                     evidenceRefs = listOf(1),
                 ),

@@ -25,7 +25,7 @@ class MemoryTest {
     private fun memory(visibility: MemoryVisibility) =
         Memory(
             id = 1,
-            topicId = 7,
+            parentId = 7,
             createdByUserId = "dad",
             content = "리모컨은 현관 수납장에 있다.",
             subject = "리모컨",

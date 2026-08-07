@@ -2,15 +2,15 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
-import com.homeassistant.adapter.outbound.topicanalysis.TopicExtractorFactory
+import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.answer.AnswerFromMemories
 import com.homeassistant.application.memory.io.SearchMemories
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
-import com.homeassistant.application.topicanalysis.save.SaveTopicProposals
+import com.homeassistant.application.memory.analysis.MemoryAnalysisService
+import com.homeassistant.application.memory.save.SaveMemoryProposals
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -54,16 +54,16 @@ object ApplicationServicesFactory {
                     httpAccessPolicy.isAuthorized(userId)
             }
         }
-        val topicSaver = SaveTopicProposals(
-            topicCreator = repositories.topicCreator,
+        val memorySaver = SaveMemoryProposals(
+            memoryCreator = repositories.memoryCreator,
             memoryIndexWriter = memoryIndexWriter,
             memoryReader = repositories.canonicalMemories,
             indexingOutbox = repositories.indexingOutbox,
         )
-        val topicAnalysisService = TopicAnalysisService(
-            topicExtractor = TopicExtractorFactory.create(),
+        val memoryAnalysisService = MemoryAnalysisService(
+            memoryExtractor = MemoryExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
-            topicSaver = topicSaver,
+            memorySaver = memorySaver,
             accessPolicy = accessPolicy,
         )
         val searchMemories = SearchMemories(
@@ -78,7 +78,7 @@ object ApplicationServicesFactory {
         val slackRuntime = slackConfig?.let {
             SlackRuntimeFactory.create(
                 it,
-                topicAnalysisService,
+                memoryAnalysisService,
                 searchMemories,
                 repositories.slackCodexSessions,
                 conversationClient,
@@ -87,6 +87,6 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(topicAnalysisService, memoryAnswer, slackRuntime)
+        return DefaultApplicationServices(memoryAnalysisService, memoryAnswer, slackRuntime)
     }
 }

@@ -2,38 +2,36 @@ package com.homeassistant.adapter.outbound.vector.memory
 
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import com.homeassistant.adapter.outbound.vector.*
-import com.homeassistant.application.memory.MemoryContext
-import com.homeassistant.application.memory.MemoryTopicContext
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.*
-import com.homeassistant.domain.source.SourceDescriptor
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class VectorSemanticMemoryIndexWriterTest {
     @Test
-    fun `indexes canonical memory with topic context`() {
+    fun `indexes memory without parent context`() {
         val embedder = RecordingTextEmbedder()
         val store = RecordingVectorStore()
         val writer = VectorSemanticMemoryIndexWriter(embedder, store)
 
-        writer.upsert(context(memory(11, "차단기 리모컨은 벽장 제일 위칸에 있다.")))
+        writer.upsert(memory(11, "차단기 리모컨은 벽장 제일 위칸에 있다."))
 
-        assertEquals(listOf("passage: 집 물건 위치\n리모컨 위치 정보\n차단기 리모컨은 벽장 제일 위칸에 있다."), embedder.texts)
-        assertEquals("7", store.points.single().payload["topicId"])
+        assertEquals(
+            listOf("passage: 리모컨\n차단기 리모컨은 벽장 제일 위칸에 있다."),
+            embedder.texts,
+        )
+        assertEquals(null, store.points.single().payload["parentId"])
         assertEquals("11", store.points.single().payload["memoryId"])
-        assertEquals("family-kakao.txt", store.points.single().payload["sourceName"])
     }
 
     @Test
-    fun `indexes standalone memory without fake topic id`() {
+    fun `indexes parent id when memory is placed`() {
         val store = RecordingVectorStore()
         val writer = VectorSemanticMemoryIndexWriter(RecordingTextEmbedder(), store)
 
-        writer.upsert(MemoryContext(memory(11, "독립 기억", topicId = null)))
+        writer.upsert(memory(12, "리모컨은 서랍에 있다.").copy(parentId = 7))
 
-        assertEquals(null, store.points.single().payload["topicId"])
-        assertEquals("11", store.points.single().payload["memoryId"])
+        assertEquals("7", store.points.single().payload["parentId"])
     }
 }
 
@@ -48,12 +46,14 @@ private class RecordingVectorStore : VectorStore {
     override fun search(vector: List<Float>, filter: VectorSearchFilter, limit: Int): List<VectorSearchResult> = emptyList()
 }
 
-private fun context(memory: Memory) = MemoryContext(
-    memory,
-    MemoryTopicContext(7, "집 물건 위치", "리모컨 위치 정보", SourceDescriptor("kakao", "family-kakao.txt")),
-)
-
-private fun memory(id: Int, content: String, topicId: Int? = 7) = Memory(
-    id, topicId, UserId("dad").value, content, "리모컨", MemoryType.REFERENCE,
-    MemoryCertainty.SAID, MemoryVisibility.FAMILY, listOf(10),
+private fun memory(id: Int, content: String) = Memory(
+    id = id,
+    parentId = null,
+    createdByUserId = UserId("dad").value,
+    content = content,
+    subject = "리모컨",
+    memoryType = MemoryType.REFERENCE,
+    certainty = MemoryCertainty.SAID,
+    visibility = MemoryVisibility.FAMILY,
+    evidenceRefs = listOf(10),
 )

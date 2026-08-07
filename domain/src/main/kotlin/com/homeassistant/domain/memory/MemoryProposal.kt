@@ -1,11 +1,9 @@
-package com.homeassistant.domain.topicanalysis
+package com.homeassistant.domain.memory
 
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.memory.MemoryVisibility
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** A source-backed atomic memory candidate produced by analysis. */
 @Serializable
 data class MemoryProposal(
     @SerialName("text")

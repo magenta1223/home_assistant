@@ -1,18 +1,18 @@
 package com.homeassistant.app.routes
 
-import com.homeassistant.adapter.outbound.topicanalysis.TopicExtractorFactory
-import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.adapter.inbound.http.HttpApiKeyConfig
+import com.homeassistant.adapter.inbound.http.configureRoutes
+import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
+import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
+import com.homeassistant.application.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.memory.analysis.MemoryAnalysisService
+import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
+import com.homeassistant.application.memory.save.SaveMemoryProposals
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.common.json.JsonSerializer
-import com.homeassistant.application.memory.MemoryContext
-import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
-import com.homeassistant.application.topicanalysis.save.SaveTopicProposals
-import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import io.ktor.client.request.post
 import io.ktor.client.request.header
+import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
@@ -31,23 +31,23 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class LiveTopicAnalysisServiceApiTest {
+class LiveMemoryAnalysisServiceApiTest {
     @Test
-    fun `real Codex backend analyzes topics through HTTP API`() = runBlocking {
+    fun `real Codex backend analyzes memories through HTTP API`() = runBlocking {
         if (System.getenv(LIVE_TEST_ENV) != "true") return@runBlocking
 
         val databasePath = Files.createDirectories(
-            java.nio.file.Path.of("build", "tmp", "live-topic-analysis"),
+            java.nio.file.Path.of("build", "tmp", "live-memory-analysis"),
         ).resolve("${UUID.randomUUID()}.db")
         databasePath.toFile().deleteOnExit()
 
         val repositories = RepositoryFactory.create(databasePath.toString())
         val accessPolicy = HouseholdAccessPolicies.fixed(listOf(UserId(USER_ID)))
-        val topicAnalysisService = TopicAnalysisService(
-            topicExtractor = TopicExtractorFactory.create(),
+        val memoryAnalysisService: MemoryAnalysis = MemoryAnalysisService(
+            memoryExtractor = MemoryExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
-            topicSaver = SaveTopicProposals(
-                topicCreator = repositories.topicCreator,
+            memorySaver = SaveMemoryProposals(
+                memoryCreator = repositories.memoryCreator,
                 memoryIndexWriter = NoOpSemanticMemoryIndexWriter,
                 memoryReader = repositories.canonicalMemories,
                 indexingOutbox = repositories.indexingOutbox,
@@ -59,7 +59,7 @@ class LiveTopicAnalysisServiceApiTest {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
                 configureRoutes(
-                    topicAnalysisService,
+                    memoryAnalysisService,
                     httpApiKeys = HttpApiKeyConfig.fromJson(
                         """[{"userId":"$USER_ID","token":"test-token"}]""",
                     ),
@@ -81,9 +81,9 @@ class LiveTopicAnalysisServiceApiTest {
 
             assertEquals(HttpStatusCode.OK, response.status)
             val payload = JsonSerializer.json.parseToJsonElement(response.bodyAsText()).jsonObject
-            val topics = payload.getValue("topics").jsonArray
-            assertTrue(topics.isNotEmpty(), "Codex returned no topics through the analysis API")
-            println("LIVE_TOPIC_ANALYSIS_API_TOPICS=${topics.size}")
+            val memories = payload.getValue("memories").jsonArray
+            assertTrue(memories.isNotEmpty(), "Codex returned no memories through the analysis API")
+            println("LIVE_MEMORY_ANALYSIS_API_MEMORIES=${memories.size}")
         }
     }
 
@@ -94,5 +94,5 @@ class LiveTopicAnalysisServiceApiTest {
 }
 
 private object NoOpSemanticMemoryIndexWriter : SemanticMemoryIndexWriter {
-    override fun upsert(context: MemoryContext) = Unit
+    override fun upsert(memory: com.homeassistant.domain.memory.Memory) = Unit
 }

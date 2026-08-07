@@ -19,9 +19,6 @@ data class SearchMemoriesResult(
 @Serializable
 data class MemorySearchMatch(
     val memoryId: Int,
-    val topicId: Int?,
-    val topicTitle: String?,
-    val topicSummary: String?,
     val content: String,
     val evidenceRefs: List<Int>,
 )
@@ -42,16 +39,13 @@ class SearchMemories(
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
         val query = request.query.trim()
         val hits = searcher.search(query, request.limit.coerceIn(1, 10))
-        val contexts = memories.findVisibleByIds(userId, hits.map { it.memoryId }).associateBy { it.memory.id }
+        val memoriesById = memories.findVisibleByIds(userId, hits.map { it.memoryId }).associateBy { it.id }
         val matches = hits.mapNotNull { hit ->
-            contexts[hit.memoryId]?.let { context ->
+            memoriesById[hit.memoryId]?.let { memory ->
                 MemorySearchMatch(
-                    memoryId = context.memory.id,
-                    topicId = context.memory.topicId,
-                    topicTitle = context.topic?.title,
-                    topicSummary = context.topic?.summary,
-                    content = context.memory.content,
-                    evidenceRefs = context.memory.evidenceRefs,
+                    memoryId = memory.id,
+                    content = memory.content,
+                    evidenceRefs = memory.evidenceRefs,
                 )
             }
         }

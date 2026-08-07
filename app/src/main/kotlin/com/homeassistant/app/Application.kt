@@ -48,7 +48,7 @@ fun Application.module() {
     services.start()
     monitor.subscribe(ApplicationStopped) { services.close() }
     configureRoutes(
-        services.topicAnalysis,
+        services.memoryAnalysis,
         services.memoryAnswer,
         httpApiKeys,
     )

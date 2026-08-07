@@ -1,8 +1,8 @@
 package com.homeassistant.application.slackconversation.handle
 
+import com.homeassistant.application.memory.read.MemorySearcher
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.memory.io.SearchMemoriesRequest
-import com.homeassistant.application.memory.io.SearchMemoriesUseCase
+import com.homeassistant.application.memory.read.SearchMemoriesRequest
 
 /** Builds a bounded household-memory context for a Slack question. */
 interface HouseholdContextSource {
@@ -11,10 +11,10 @@ interface HouseholdContextSource {
 }
 
 class HouseholdContextProvider(
-    private val searchMemories: SearchMemoriesUseCase,
+    private val memorySearcher: MemorySearcher,
 ) : HouseholdContextSource {
     override fun context(principal: SlackPrincipal, question: String): HouseholdContext {
-        val result = searchMemories.search(
+        val result = memorySearcher.search(
             SearchMemoriesRequest(
                 userId = principal.userId.value,
                 query = question,

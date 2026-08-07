@@ -1,4 +1,4 @@
-package com.homeassistant.application.memory.io
+package com.homeassistant.application.memory.read
 
 data class MemoryIndex(
     val memoryId: Int,

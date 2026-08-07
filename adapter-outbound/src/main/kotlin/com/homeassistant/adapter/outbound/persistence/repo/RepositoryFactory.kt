@@ -11,7 +11,7 @@ object RepositoryFactory {
         val canonicalMemories = MemoryRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
-            memoryCreator = canonicalMemories,
+            memoryWriter = canonicalMemories,
             canonicalMemories = canonicalMemories,
             memoryTree = canonicalMemories,
             slackCodexSessions = SlackCodexSessionRepository(db),

@@ -2,9 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
-import com.homeassistant.application.memory.io.MemoryReader
-import com.homeassistant.application.memory.save.IndexTargetType
-import com.homeassistant.application.memory.save.MemoryCreator
+import com.homeassistant.application.memory.read.MemoryReader
+import com.homeassistant.application.memory.write.MemoryWriter
 import com.homeassistant.application.memory.tree.MemoryTreeStore
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
@@ -19,7 +18,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class MemoryRepository(
     private val db: Database,
-) : MemoryReader, MemoryCreator, MemoryTreeStore {
+) : MemoryReader, MemoryWriter, MemoryTreeStore {
 
     override fun getMemories(userId: UserId): List<Memory> {
         return MemoryTable.selectAll()
@@ -28,7 +27,7 @@ internal class MemoryRepository(
 
     }
 
-    override fun create(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {
+    override fun write(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {
         require(proposal.evidenceIds.isNotEmpty()) { "memory evidence is required" }
         val memoryId = MemoryTable.insert {
             it[childrenIds] = emptyList<Int>().encodeToString()

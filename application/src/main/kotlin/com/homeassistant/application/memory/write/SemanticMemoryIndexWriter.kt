@@ -1,4 +1,4 @@
-package com.homeassistant.application.memory.index
+package com.homeassistant.application.memory.write
 
 import com.homeassistant.domain.memory.Memory
 

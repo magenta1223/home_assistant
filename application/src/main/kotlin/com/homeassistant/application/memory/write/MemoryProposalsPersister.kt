@@ -1,23 +1,21 @@
-package com.homeassistant.application.memory.save
+package com.homeassistant.application.memory.write
 
-import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
-import com.homeassistant.application.memory.io.MemoryReader
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryProposal
 
 /** Persists flat memory proposals immediately without a review stage. */
-class SaveMemoryProposals(
-    private val memoryCreator: MemoryCreator,
-    private val memoryIndexWriter: SemanticMemoryIndexWriter
-) : MemoryProposalSaver {
+class MemoryProposalsPersister(
+    private val memoryWriter: MemoryWriter,
+    private val memoryIndexWriter: SemanticMemoryIndexWriter,
+) {
 
-    override fun save(userId: UserId, proposals: List<MemoryProposal>): List<Memory> {
+    fun persist(userId: UserId, proposals: List<MemoryProposal>): List<Memory> {
         if (proposals.isEmpty()) return emptyList()
 
         val savedMemories = proposals
             .distinctBy { it.content to it.evidenceIds.toSet() }
-            .map { memoryCreator.create(it, userId) }
+            .map { memoryWriter.write(it, userId) }
         savedMemories.forEach {
             memoryIndexWriter.upsert(it)
         }

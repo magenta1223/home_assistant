@@ -3,16 +3,12 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
-import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtractorFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
-import com.homeassistant.application.memory.answer.AnswerFromMemories
-import com.homeassistant.application.memory.io.SearchMemories
+import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
 import com.homeassistant.application.memory.analysis.MemoryAnalysisService
-import com.homeassistant.application.memory.save.SaveMemoryProposals
-import com.homeassistant.application.memory.tree.MemoryPlacementService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -21,6 +17,8 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexSearcherFactory
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
+import com.homeassistant.application.memory.read.MemorySearcher
+import com.homeassistant.application.memory.write.MemoryProposalsPersister
 import org.slf4j.LoggerFactory
 
 
@@ -56,8 +54,8 @@ object ApplicationServicesFactory {
                     httpAccessPolicy.isAuthorized(userId)
             }
         }
-        val memorySaver = SaveMemoryProposals(
-            memoryCreator = repositories.memoryCreator,
+        val memorySaver = MemoryProposalsPersister(
+            memoryWriter = repositories.memoryWriter,
             memoryIndexWriter = memoryIndexWriter,
         )
         val memoryAnalysisService = MemoryAnalysisService(
@@ -74,12 +72,12 @@ object ApplicationServicesFactory {
 //                indexingOutbox = repositories.indexingOutbox,
 //            ),
         )
-        val searchMemories = SearchMemories(
+        val memorySearcherImpl = MemorySearcher(
             memories = repositories.canonicalMemories,
             accessPolicy = accessPolicy,
             searcher = semanticMemoryIndexSearcher,
         )
-        val memoryAnswer = AnswerFromMemories(searchMemories)
+        val memoryAnswer = MemoryGroundedChatbot(memorySearcherImpl)
         val conversationClient = CodexConversationConfig.fromEnv()
             ?.let(CodexConversationClientFactory::create)
             ?.takeIf { it.validateVersion() }
@@ -87,7 +85,7 @@ object ApplicationServicesFactory {
             SlackRuntimeFactory.create(
                 it,
                 memoryAnalysisService,
-                searchMemories,
+                memorySearcherImpl,
                 repositories.slackCodexSessions,
                 conversationClient,
             )

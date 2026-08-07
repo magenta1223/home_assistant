@@ -1,6 +1,6 @@
 package com.homeassistant.application.memory.tree
 
-import com.homeassistant.application.memory.io.MemoryReader
+import com.homeassistant.application.memory.read.MemoryReader
 import com.homeassistant.domain.identity.UserId
 
 /** Explicit one-time bootstrap for existing flat root memories. */

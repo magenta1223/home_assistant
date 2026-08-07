@@ -3,9 +3,9 @@ package com.homeassistant.adapter.outbound.vector.memory
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import com.homeassistant.adapter.outbound.vector.VectorSearchFilter
 import com.homeassistant.adapter.outbound.vector.VectorStore
-import com.homeassistant.application.memory.io.SemanticMemoryIndexSearcher
-import com.homeassistant.application.memory.io.MemoryIndex
-import com.homeassistant.application.memory.io.MemoryIndexSearchScope
+import com.homeassistant.application.memory.read.SemanticMemoryIndexSearcher
+import com.homeassistant.application.memory.read.MemoryIndex
+import com.homeassistant.application.memory.read.MemoryIndexSearchScope
 
 internal class VectorSemanticMemoryIndexSearcher(
     private val textEmbedder: TextEmbedder,

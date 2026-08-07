@@ -1,4 +1,4 @@
-package com.homeassistant.application.memory.io
+package com.homeassistant.application.memory.read
 
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory

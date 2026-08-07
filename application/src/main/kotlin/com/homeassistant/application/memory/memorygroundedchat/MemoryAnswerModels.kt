@@ -1,6 +1,6 @@
-package com.homeassistant.application.memory.answer
+package com.homeassistant.application.memory.memorygroundedchat
 
-import com.homeassistant.application.memory.io.MemorySearchMatch
+import com.homeassistant.application.memory.read.MemorySearchMatch
 import kotlinx.serialization.Serializable
 
 @Serializable

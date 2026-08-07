@@ -1,13 +1,9 @@
 package com.homeassistant.application.memory.tree
 
-import com.homeassistant.application.memory.index.SemanticMemoryIndexWriter
-import com.homeassistant.application.memory.io.MemoryIndex
-import com.homeassistant.application.memory.io.MemoryIndexSearchScope
-import com.homeassistant.application.memory.io.MemoryReader
-import com.homeassistant.application.memory.io.SemanticMemoryIndexSearcher
+import com.homeassistant.application.memory.write.SemanticMemoryIndexWriter
+import com.homeassistant.application.memory.read.SemanticMemoryIndexSearcher
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryVisibility
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 

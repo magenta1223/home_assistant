@@ -22,7 +22,7 @@ class SlackKakaoAnalysisWorkflowTest {
     fun `process downloads file analyzes kakao text stores review session and posts approval message`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
         val analyzer = FakeAnalyzer()
-        val contexts = InMemorySlackReviewContextStore()
+        val contexts = SlackReviewContextStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             topicAnalysis = analyzer,
@@ -48,7 +48,7 @@ class SlackKakaoAnalysisWorkflowTest {
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             topicAnalysis = FailingAnalyzer,
-            reviewContexts = InMemorySlackReviewContextStore(),
+            reviewContexts = SlackReviewContextStore(),
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -61,7 +61,7 @@ class SlackKakaoAnalysisWorkflowTest {
     @Test
     fun `process reports already analyzed kakao data without creating review session`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
-        val contexts = InMemorySlackReviewContextStore()
+        val contexts = SlackReviewContextStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             topicAnalysis = DuplicateAnalyzer,

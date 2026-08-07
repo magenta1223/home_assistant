@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.slackconversation.handle.SlackPrincipalResolver
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
-import com.homeassistant.domain.identity.HouseholdAccessPolicies
+import com.homeassistant.application.slackconversation.handle.SlackPrincipalResolver
 import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.domain.identity.HouseholdAccessPolicies
+import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -38,26 +38,26 @@ object SlackIdentityDirectoryFactory {
         configuredTeamId: String,
         json: String,
     ): SlackIdentityDirectory {
-            require(configuredTeamId.isNotBlank()) { "SLACK_TEAM_ID is required" }
-            val records = JsonSerializer.json.decodeFromString<List<SlackMemberScopeConfig>>(json)
-            require(records.isNotEmpty()) { "SLACK_MEMBER_SCOPES_JSON must not be empty" }
+        require(configuredTeamId.isNotBlank()) { "SLACK_TEAM_ID is required" }
+        val records = JsonSerializer.json.decodeFromString<List<SlackMemberScopeConfig>>(json)
+        require(records.isNotEmpty()) { "SLACK_MEMBER_SCOPES_JSON must not be empty" }
 
-            val principals = LinkedHashMap<SlackActor, SlackPrincipal>()
-            records.forEach { record ->
-                require(record.teamId == configuredTeamId) {
-                    "Slack member mapping team does not match SLACK_TEAM_ID"
-                }
-                val principal = SlackPrincipal(
-                    teamId = record.teamId,
-                    slackUserId = record.slackUserId,
-                    userId = UserId(record.userId),
-                )
-                val previous = principals.put(
-                    SlackActor(record.teamId, record.slackUserId),
-                    principal,
-                )
-                require(previous == null) { "Duplicate Slack member mapping" }
+        val principals = LinkedHashMap<SlackActor, SlackPrincipal>()
+        records.forEach { record ->
+            require(record.teamId == configuredTeamId) {
+                "Slack member mapping team does not match SLACK_TEAM_ID"
             }
+            val principal = SlackPrincipal(
+                teamId = record.teamId,
+                slackUserId = record.slackUserId,
+                userId = UserId(record.userId),
+            )
+            val previous = principals.put(
+                SlackActor(record.teamId, record.slackUserId),
+                principal,
+            )
+            require(previous == null) { "Duplicate Slack member mapping" }
+        }
         return ConfiguredSlackIdentityDirectory(principals)
     }
 }

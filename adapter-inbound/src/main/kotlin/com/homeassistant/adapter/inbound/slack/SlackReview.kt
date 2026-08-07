@@ -1,28 +1,20 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewRequest
 import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
 import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
+import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
+import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
-
-interface SlackConfirmationHandler {
-    fun buildReviewModal(reviewId: String, actingPrincipal: SlackPrincipal): SlackReviewActionResult
-    suspend fun submitSelection(
-        reviewId: String,
-        selectedTopicIndices: Set<Int>,
-        actingPrincipal: SlackPrincipal,
-    ): SlackReviewSubmitResult
-}
+import java.util.concurrent.ConcurrentHashMap
 
 internal class SlackConfirmationHandlers(
     private val saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
     private val getReview: GetTopicAnalysisReviewUseCase,
     private val reviewContexts: SlackReviewContextStore,
-) : SlackConfirmationHandler {
-    override fun buildReviewModal(
+) {
+    fun buildReviewModal(
         reviewId: String,
         actingPrincipal: SlackPrincipal,
     ): SlackReviewActionResult {
@@ -47,7 +39,7 @@ internal class SlackConfirmationHandlers(
         }
     }
 
-    override suspend fun submitSelection(
+    suspend fun submitSelection(
         reviewId: String,
         selectedTopicIndices: Set<Int>,
         actingPrincipal: SlackPrincipal,
@@ -77,12 +69,6 @@ internal class SlackConfirmationHandlers(
     }
 }
 
-interface SlackReviewContextStore {
-    fun save(context: SlackReviewContext)
-    fun find(reviewId: String): SlackReviewContext?
-    fun markCompleted(reviewId: String)
-}
-
 data class SlackReviewContext(
     val reviewId: String,
     val status: SlackReviewStatus,
@@ -102,4 +88,20 @@ sealed class SlackReviewActionResult {
 sealed class SlackReviewSubmitResult {
     data class Saved(val savedTopicCount: Int) : SlackReviewSubmitResult()
     data class Rejected(val message: String) : SlackReviewSubmitResult()
+}
+
+internal class SlackReviewContextStore {
+    private val contexts = ConcurrentHashMap<String, SlackReviewContext>()
+
+    fun save(context: SlackReviewContext) {
+        contexts[context.reviewId] = context
+    }
+
+    fun find(reviewId: String): SlackReviewContext? = contexts[reviewId]
+
+    fun markCompleted(reviewId: String) {
+        contexts.computeIfPresent(reviewId) { _, context ->
+            context.copy(status = SlackReviewStatus.COMPLETED)
+        }
+    }
 }

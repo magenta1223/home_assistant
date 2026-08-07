@@ -26,7 +26,7 @@ import kotlin.test.assertIs
 class SlackConfirmationHandlersTest {
     @Test
     fun `uploader can open review modal`() {
-        val handlers = handlers(FakeContextStore(context()))
+        val handlers = handlers(contextStore(context()))
 
         val result = handlers.buildReviewModal(reviewId = "preview-1", actingPrincipal = principal("U1"))
 
@@ -36,7 +36,7 @@ class SlackConfirmationHandlersTest {
 
     @Test
     fun `other user cannot open review modal`() {
-        val handlers = handlers(FakeContextStore(context()))
+        val handlers = handlers(contextStore(context()))
 
         val result = handlers.buildReviewModal(reviewId = "preview-1", actingPrincipal = principal("U2"))
 
@@ -45,7 +45,7 @@ class SlackConfirmationHandlersTest {
 
     @Test
     fun `completed context cannot open review modal`() {
-        val handlers = handlers(FakeContextStore(context(status = SlackReviewStatus.COMPLETED)))
+        val handlers = handlers(contextStore(context(status = SlackReviewStatus.COMPLETED)))
 
         val result = handlers.buildReviewModal(reviewId = "preview-1", actingPrincipal = principal("U1"))
 
@@ -55,7 +55,7 @@ class SlackConfirmationHandlersTest {
     @Test
     fun `modal submit saves selected topic indices and completes context`() = runBlocking {
         FakeTopicAnalysis.reset()
-        val contexts = FakeContextStore(context())
+        val contexts = contextStore(context())
         val handlers = handlers(contexts)
 
         val result = handlers.submitSelection(
@@ -75,7 +75,7 @@ class SlackConfirmationHandlersTest {
     @Test
     fun `empty selection is treated as saving zero topics`() = runBlocking {
         FakeTopicAnalysis.reset()
-        val handlers = handlers(FakeContextStore(context()))
+        val handlers = handlers(contextStore(context()))
 
         val result = handlers.submitSelection(
             reviewId = "preview-1",
@@ -91,6 +91,9 @@ class SlackConfirmationHandlersTest {
     private fun handlers(contexts: SlackReviewContextStore) =
         SlackConfirmationHandlers(FakeTopicAnalysis, FakeGetReview, contexts)
 
+    private fun contextStore(context: SlackReviewContext) =
+        SlackReviewContextStore().also { it.save(context) }
+
     private fun context(status: SlackReviewStatus = SlackReviewStatus.AWAITING_CONFIRMATION) =
         SlackReviewContext("preview-1", status, "D1")
 
@@ -100,21 +103,6 @@ class SlackConfirmationHandlersTest {
             slackUserId,
             UserId(if (slackUserId == "U1") "dad" else "mom"),
         )
-}
-
-private class FakeContextStore(context: SlackReviewContext) : SlackReviewContextStore {
-    private var context: SlackReviewContext? = context
-
-    override fun save(context: SlackReviewContext) {
-        this.context = context
-    }
-
-    override fun find(reviewId: String): SlackReviewContext? =
-        context?.takeIf { it.reviewId == reviewId }
-
-    override fun markCompleted(reviewId: String) {
-        context = context?.copy(status = SlackReviewStatus.COMPLETED)
-    }
 }
 
 private object FakeGetReview : GetTopicAnalysisReviewUseCase {

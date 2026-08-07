@@ -1,24 +1,67 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.slack.api.model.event.MessageFileShareEvent
+import java.nio.ByteBuffer
+import java.nio.charset.CharacterCodingException
+import java.nio.charset.Charset
+import java.nio.charset.CodingErrorAction
+import java.nio.charset.StandardCharsets
 import org.slf4j.LoggerFactory
 
-interface SlackKakaoWorkflow {
-    suspend fun process(upload: SlackKakaoFileUpload)
+data class SlackKakaoFileUpload(
+    val principal: SlackPrincipal,
+    val channelId: String,
+    val messageTs: String,
+    val fileId: String?,
+    val fileName: String,
+    val downloadUrl: String?,
+)
+
+object SlackFileIngress {
+    fun from(
+        event: MessageFileShareEvent,
+        principal: SlackPrincipal,
+        maxFileSizeBytes: Long,
+    ): List<SlackKakaoFileUpload> {
+        if (event.channelType != "im") return emptyList()
+        val userId = event.user?.takeIf { it.isNotBlank() } ?: return emptyList()
+        if (userId != principal.slackUserId) return emptyList()
+        val channelId = event.channel?.takeIf { it.isNotBlank() } ?: return emptyList()
+        val messageTs = event.threadTs ?: event.ts ?: return emptyList()
+
+        return event.files.orEmpty().mapNotNull { file ->
+            val fileName = file.name ?: file.title ?: return@mapNotNull null
+            val size = file.size?.toLong() ?: return@mapNotNull null
+            val url = file.urlPrivateDownload ?: file.urlPrivate ?: return@mapNotNull null
+            if (!fileName.endsWith(".txt", ignoreCase = true)) return@mapNotNull null
+            if (size > maxFileSizeBytes) return@mapNotNull null
+
+            SlackKakaoFileUpload(
+                principal = principal,
+                channelId = channelId,
+                messageTs = messageTs,
+                fileId = file.id,
+                fileName = fileName,
+                downloadUrl = url,
+            )
+        }
+    }
 }
 
 internal class SlackKakaoAnalysisWorkflow(
-    private val slackClient: SlackKakaoClient,
+    private val slackClient: SlackClient,
     private val topicAnalysis: TopicAnalysisUseCase,
     private val reviewContexts: SlackReviewContextStore,
     private val maxFileSizeBytes: Long,
-) : SlackKakaoWorkflow {
+) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override suspend fun process(upload: SlackKakaoFileUpload) {
+    suspend fun process(upload: SlackKakaoFileUpload) {
         try {
             slackClient.postMessage(
                 channelId = upload.channelId,
@@ -106,4 +149,48 @@ internal class SlackKakaoAnalysisWorkflow(
             .replace("`", "'")
             .replace(Regex("\\s+"), " ")
             .take(160)
+}
+
+internal object SlackTextDecoder {
+    fun decode(body: ByteArray): String =
+        when {
+            body.startsWith(byteArrayOf(0xFF.toByte(), 0xFE.toByte())) ->
+                Charsets.UTF_16LE.decode(ByteBuffer.wrap(body, 2, body.size - 2)).toString()
+            body.startsWith(byteArrayOf(0xFE.toByte(), 0xFF.toByte())) ->
+                Charsets.UTF_16BE.decode(ByteBuffer.wrap(body, 2, body.size - 2)).toString()
+            body.looksLikeUtf16Le() -> Charsets.UTF_16LE.decode(ByteBuffer.wrap(body)).toString()
+            body.looksLikeUtf16Be() -> Charsets.UTF_16BE.decode(ByteBuffer.wrap(body)).toString()
+            else -> decodeUtf8OrMs949(body)
+        }
+
+    private fun decodeUtf8OrMs949(body: ByteArray): String =
+        try {
+            StandardCharsets.UTF_8
+                .newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(body))
+                .toString()
+        } catch (_: CharacterCodingException) {
+            Charset.forName("MS949").decode(ByteBuffer.wrap(body)).toString()
+        }
+
+    private fun ByteArray.startsWith(prefix: ByteArray): Boolean =
+        size >= prefix.size && prefix.indices.all { this[it] == prefix[it] }
+
+    private fun ByteArray.looksLikeUtf16Le(): Boolean =
+        size >= 8 && oddNullByteRatio() > 0.3 && evenNullByteRatio() < 0.05
+
+    private fun ByteArray.looksLikeUtf16Be(): Boolean =
+        size >= 8 && evenNullByteRatio() > 0.3 && oddNullByteRatio() < 0.05
+
+    private fun ByteArray.evenNullByteRatio(): Double = nullByteRatio(startIndex = 0)
+    private fun ByteArray.oddNullByteRatio(): Double = nullByteRatio(startIndex = 1)
+
+    private fun ByteArray.nullByteRatio(startIndex: Int): Double {
+        val sampled = indices.count { it % 2 == startIndex }
+        if (sampled == 0) return 0.0
+        val nulls = indices.count { it % 2 == startIndex && this[it] == 0.toByte() }
+        return nulls.toDouble() / sampled
+    }
 }

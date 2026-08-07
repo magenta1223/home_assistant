@@ -40,7 +40,7 @@ class SlackWebApiClientTest {
     ) = SlackPostMessageResponse(ok, ts, error)
 
     private fun client(response: SlackPostMessageResponse) =
-        SlackApiComponentFactory.message(
+        SlackApiClient(
             botToken = "token",
             messagePoster = SlackMessagePoster { _, _, _, _ -> response },
         )

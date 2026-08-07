@@ -2,7 +2,10 @@ package com.homeassistant.common.json
 
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import com.homeassistant.common.json.JsonSerializer.toJsonElement
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -34,5 +37,24 @@ class JsonSerializerTest {
         ).jsonObject
 
         assertEquals("home", decoded.getValue("name").toString().trim('"'))
+    }
+
+    @Test
+    fun `encodes nested untyped values as json elements`() {
+        val encoded = JsonSerializer.json.encodeToString(
+            mapOf(
+                "type" to "section",
+                "blocks" to listOf(mapOf("text" to mapOf("text" to "hello"))),
+            ).let { it.toJsonElement() },
+        )
+
+        val decoded = JsonSerializer.json.parseToJsonElement(encoded).jsonObject
+        assertEquals("section", decoded.getValue("type").jsonPrimitive.content)
+        assertEquals(
+            "hello",
+            decoded.getValue("blocks").jsonArray
+                .single().jsonObject.getValue("text").jsonObject
+                .getValue("text").jsonPrimitive.content,
+        )
     }
 }

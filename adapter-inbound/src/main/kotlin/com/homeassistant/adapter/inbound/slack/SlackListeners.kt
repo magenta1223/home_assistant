@@ -1,16 +1,28 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.slackconversation.handle.SlackConversationMessage
 import com.slack.api.bolt.App
+import com.slack.api.model.event.MessageEvent
 import com.slack.api.model.event.MessageFileShareEvent
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.ExecutorService
 
-internal class SlackKakaoListeners(
+internal class SlackListeners(
     private val config: SlackConfig,
-    private val workflow: SlackKakaoWorkflow,
+    private val workflow: SlackKakaoAnalysisWorkflow,
+    private val confirmationHandlers: SlackConfirmationHandlers,
+    private val reviewContexts: SlackReviewContextStore,
+    private val slackClient: SlackClient,
     private val executor: ExecutorService,
-) : SlackListenerRegistrar {
-    override fun register(app: App) {
+    private val conversationService: SlackConversationService?,
+) {
+    fun register(app: App) {
+        registerKakaoImport(app)
+        registerReview(app)
+        conversationService?.let { registerConversation(app, it) }
+    }
+
+    private fun registerKakaoImport(app: App) {
         app.event(MessageFileShareEvent::class.java) { payload, ctx ->
             val principal = config.identityDirectory.resolve(payload.teamId, payload.event.user)
                 ?: return@event ctx.ack()
@@ -26,21 +38,8 @@ internal class SlackKakaoListeners(
             ctx.ack()
         }
     }
-}
 
-internal class SlackConfirmationListeners(
-    private val config: SlackConfig,
-    private val handlers: SlackConfirmationHandler,
-    private val reviewContexts: SlackReviewContextStore,
-    private val slackClient: SlackInteractionClient,
-    private val executor: ExecutorService,
-) : SlackListenerRegistrar {
-    override fun register(app: App) {
-        registerOpenReview(app)
-        registerTopicConfirmation(app)
-    }
-
-    private fun registerOpenReview(app: App) {
+    private fun registerReview(app: App) {
         app.blockAction(SlackTopicBlocks.ACTION_OPEN_REVIEW) { req, ctx ->
             val payload = req.payload
             val reviewId = payload.actions.firstOrNull()?.value
@@ -49,7 +48,7 @@ internal class SlackConfirmationListeners(
             val principal = config.identityDirectory.resolve(payload.team?.id, userId)
                 ?: return@blockAction ctx.ack()
 
-            when (val result = handlers.buildReviewModal(reviewId, principal)) {
+            when (val result = confirmationHandlers.buildReviewModal(reviewId, principal)) {
                 is SlackReviewActionResult.OpenModal -> slackClient.openModal(payload.triggerId, result.view)
                 is SlackReviewActionResult.Ephemeral -> slackClient.postEphemeral(
                     channelId = payload.channel.id,
@@ -59,9 +58,7 @@ internal class SlackConfirmationListeners(
             }
             ctx.ack()
         }
-    }
 
-    private fun registerTopicConfirmation(app: App) {
         app.viewSubmission(SlackTopicBlocks.CALLBACK_CONFIRM_TOPICS) { req, ctx ->
             val payload = req.payload
             val reviewId = payload.view.privateMetadata
@@ -74,8 +71,8 @@ internal class SlackConfirmationListeners(
 
             executor.submit {
                 runBlocking {
-                    deliverResult(
-                        handlers.submitSelection(reviewId, selectedIndices, principal),
+                    deliverReviewResult(
+                        confirmationHandlers.submitSelection(reviewId, selectedIndices, principal),
                         context,
                         userId,
                     )
@@ -85,7 +82,14 @@ internal class SlackConfirmationListeners(
         }
     }
 
-    private fun deliverResult(
+    private fun registerConversation(app: App, service: SlackConversationService) {
+        app.event(MessageEvent::class.java) { payload, ctx ->
+            directMessage(payload.teamId, payload.event)?.let(service::submit)
+            ctx.ack()
+        }
+    }
+
+    private fun deliverReviewResult(
         result: SlackReviewSubmitResult,
         context: SlackReviewContext?,
         userId: String,
@@ -108,4 +112,22 @@ internal class SlackConfirmationListeners(
             .orEmpty()
             .mapNotNull { option -> option.value?.toIntOrNull() }
             .toSet()
+
+    private fun directMessage(teamId: String?, event: MessageEvent): SlackConversationMessage? {
+        val resolvedTeamId = teamId?.takeIf { it.isNotBlank() } ?: return null
+        if (event.channelType != "im") return null
+        if (!event.botId.isNullOrBlank()) return null
+        if (!event.subtype.isNullOrBlank()) return null
+        val userId = event.user?.takeIf { it.isNotBlank() } ?: return null
+        val channelId = event.channel?.takeIf { it.isNotBlank() } ?: return null
+        val messageTs = event.ts?.takeIf { it.isNotBlank() } ?: return null
+        val text = event.text?.takeIf { it.isNotBlank() } ?: return null
+        return SlackConversationMessage(
+            teamId = resolvedTeamId,
+            slackUserId = userId,
+            channelId = channelId,
+            messageTs = messageTs,
+            text = text,
+        )
+    }
 }

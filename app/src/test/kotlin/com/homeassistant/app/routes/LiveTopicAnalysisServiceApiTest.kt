@@ -8,7 +8,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.application.memory.CanonicalMemoryContext
 import com.homeassistant.application.memory.index.MemoryIndexer
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
@@ -31,7 +31,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class LiveTopicAnalysisApiTest {
+class LiveTopicAnalysisServiceApiTest {
     @Test
     fun `real Codex backend analyzes topics through HTTP API`() = runBlocking {
         if (System.getenv(LIVE_TEST_ENV) != "true") return@runBlocking
@@ -43,7 +43,7 @@ class LiveTopicAnalysisApiTest {
 
         val repositories = RepositoryFactory.create(databasePath.toString())
         val accessPolicy = HouseholdAccessPolicies.fixed(listOf(UserId(USER_ID)))
-        val topicAnalysis = TopicAnalysis(
+        val topicAnalysisService = TopicAnalysisService(
             topicExtractor = TopicExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
             reviewStore = repositories.topicAnalysisReviews,
@@ -62,7 +62,7 @@ class LiveTopicAnalysisApiTest {
             application {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
                 configureRoutes(
-                    topicAnalysis,
+                    topicAnalysisService,
                     saveAnalyzedTopics,
                     httpApiKeys = HttpApiKeyConfig.fromJson(
                         """[{"userId":"$USER_ID","token":"test-token"}]""",

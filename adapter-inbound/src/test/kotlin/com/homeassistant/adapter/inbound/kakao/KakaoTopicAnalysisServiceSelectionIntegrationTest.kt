@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.kakao
 
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
 import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
 import com.homeassistant.application.topicanalysis.save.IndexTargetType
@@ -10,14 +10,14 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-class KakaoTopicAnalysisSelectionIntegrationTest {
+class KakaoTopicAnalysisServiceSelectionIntegrationTest {
     @Test
     fun `analyze stores and sends only new source records to llm`() = runBlocking {
         val text = kakaoText()
         val parsed = KakaoExportParser.parse("family-kakao.txt", text)
         val extractor = RecordingTopicExtractor()
         val reviewStore = RecordingReviewStore()
-        val useCase = TopicAnalysis(
+        val useCase = TopicAnalysisService(
             topicExtractor = extractor,
             sourceRecords = FakeSourceRecordRepository(setOf(parsed.records.first().deduplicationKey)),
             reviewStore = reviewStore,

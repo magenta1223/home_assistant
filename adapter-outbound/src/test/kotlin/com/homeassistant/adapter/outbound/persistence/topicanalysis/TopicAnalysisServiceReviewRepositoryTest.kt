@@ -19,7 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
-class TopicAnalysisReviewRepositoryTest {
+class TopicAnalysisServiceReviewRepositoryTest {
     private val dbUrl = "jdbc:sqlite:file:${UUID.randomUUID()}?mode=memory&cache=shared"
     private lateinit var keepAlive: java.sql.Connection
     private lateinit var db: Database

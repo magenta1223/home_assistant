@@ -1,7 +1,6 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackConfig
-import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.topicanalysis.TopicExtractorFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
@@ -9,13 +8,10 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCo
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.answer.AnswerFromMemories
-import com.homeassistant.application.memory.answer.AnswerFromMemoriesUseCase
 import com.homeassistant.application.memory.search.SearchMemories
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisUseCase
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
 import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReview
 import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -59,7 +55,7 @@ object ApplicationServicesFactory {
                     httpAccessPolicy.isAuthorized(userId)
             }
         }
-        val topicAnalysis = TopicAnalysis(
+        val topicAnalysisService = TopicAnalysisService(
             topicExtractor = TopicExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
             reviewStore = repositories.topicAnalysisReviews,
@@ -86,7 +82,7 @@ object ApplicationServicesFactory {
         val slackRuntime = slackConfig?.let {
             SlackRuntimeFactory.create(
                 it,
-                topicAnalysis,
+                topicAnalysisService,
                 getTopicAnalysisReview,
                 saveAnalyzedTopics,
                 searchMemories,
@@ -97,7 +93,7 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(topicAnalysis, saveAnalyzedTopics, memoryAnswer, slackRuntime)
+        return DefaultApplicationServices(topicAnalysisService, saveAnalyzedTopics, memoryAnswer, slackRuntime)
     }
 }
 

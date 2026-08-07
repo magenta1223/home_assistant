@@ -21,7 +21,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class KakaoTopicAnalysisRoutesTest {
+class KakaoTopicAnalysisServiceRoutesTest {
     @Test
     fun `import analyze route requires bearer authentication`() = testApplication {
         FakeAnalyzer.reset()

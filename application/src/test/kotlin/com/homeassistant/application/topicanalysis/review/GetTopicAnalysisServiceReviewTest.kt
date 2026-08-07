@@ -9,7 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
-class GetTopicAnalysisReviewTest {
+class GetTopicAnalysisServiceReviewTest {
     @Test
     fun `returns review to its requester`() {
         val useCase = GetTopicAnalysisReview(FakeReviewStore(review()), AUTHORIZED_USERS)

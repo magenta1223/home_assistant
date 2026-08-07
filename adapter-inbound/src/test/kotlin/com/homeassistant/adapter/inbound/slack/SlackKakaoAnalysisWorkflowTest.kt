@@ -1,17 +1,15 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.domain.topicanalysis.Topic
-import com.homeassistant.domain.topicanalysis.MemoryProposal
-import com.homeassistant.domain.topicanalysis.TopicProposal
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.topicanalysis.MemoryProposal
+import com.homeassistant.domain.topicanalysis.TopicProposal
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -19,14 +17,12 @@ import kotlin.test.assertEquals
 
 class SlackKakaoAnalysisWorkflowTest {
     @Test
-    fun `process downloads file analyzes kakao text stores review session and posts approval message`() = runBlocking {
+    fun `process downloads file analyzes and posts saved topic message`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
         val analyzer = FakeAnalyzer()
-        val contexts = SlackReviewContextStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             topicAnalysis = analyzer,
-            reviewContexts = contexts,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -34,12 +30,11 @@ class SlackKakaoAnalysisWorkflowTest {
 
         assertEquals("동훈 | 오후 4:49 | kakao export", analyzer.text)
         assertEquals("kakao.txt", analyzer.sourceName)
-        assertEquals(SlackReviewStatus.AWAITING_CONFIRMATION, contexts.find("preview-1")?.status)
-        assertEquals("D1", contexts.find("preview-1")?.channelId)
         assertEquals("dad", analyzer.userId)
         assertEquals(2, slack.messages.size)
         assertEquals("D1", slack.messages.last().channelId)
         assertEquals("1710000000.000100", slack.messages.last().threadTs)
+        assertContains(slack.messages.last().text, "분석 및 저장 완료")
     }
 
     @Test
@@ -48,7 +43,6 @@ class SlackKakaoAnalysisWorkflowTest {
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             topicAnalysis = FailingAnalyzer,
-            reviewContexts = SlackReviewContextStore(),
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -59,13 +53,11 @@ class SlackKakaoAnalysisWorkflowTest {
     }
 
     @Test
-    fun `process reports already analyzed kakao data without creating review session`() = runBlocking {
+    fun `process reports already analyzed kakao data`() = runBlocking {
         val slack = FakeSlackClient(downloadedText = "[동훈] [오후 4:49] kakao export")
-        val contexts = SlackReviewContextStore()
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slack,
             topicAnalysis = DuplicateAnalyzer,
-            reviewContexts = contexts,
             maxFileSizeBytes = 10_485_760,
         )
 
@@ -73,12 +65,11 @@ class SlackKakaoAnalysisWorkflowTest {
 
         assertEquals(1, slack.ephemeralMessages.size)
         assertContains(slack.ephemeralMessages.single().text, "이미 분석된")
-        assertEquals(null, contexts.find("preview-1"))
     }
 
     private fun upload() =
         SlackKakaoFileUpload(
-            principal = SlackPrincipal("T1", "U1", com.homeassistant.domain.identity.UserId("dad")),
+            principal = SlackPrincipal("T1", "U1", UserId("dad")),
             channelId = "D1",
             messageTs = "1710000000.000100",
             fileId = null,
@@ -93,11 +84,9 @@ private class FakeSlackClient(
     val messages = mutableListOf<PostedMessage>()
     val ephemeralMessages = mutableListOf<EphemeralMessage>()
 
-    override fun fileDownloadUrl(fileId: String): String? =
-        null
+    override fun fileDownloadUrl(fileId: String): String? = null
 
-    override fun downloadText(url: String, maxBytes: Long): String =
-        downloadedText
+    override fun downloadText(url: String, maxBytes: Long): String = downloadedText
 
     override fun postMessage(
         channelId: String,
@@ -113,9 +102,6 @@ private class FakeSlackClient(
         ephemeralMessages += EphemeralMessage(channelId, userId, text)
     }
 
-    override fun openModal(triggerId: String, view: Map<String, Any>) {
-        error("not used")
-    }
 }
 
 private data class PostedMessage(
@@ -140,14 +126,12 @@ private class FakeAnalyzer : TopicAnalysis {
         text = request.source.records.singleOrNull()?.content.orEmpty()
         userId = request.userId
         return TopicAnalysisResult(
-            previewId = "preview-1",
             sourceType = request.source.source.type,
             sourceName = request.source.source.name,
             importedRecordCount = 1,
             topics = listOf(topic()),
         )
     }
-
 }
 
 private object FailingAnalyzer : TopicAnalysis {

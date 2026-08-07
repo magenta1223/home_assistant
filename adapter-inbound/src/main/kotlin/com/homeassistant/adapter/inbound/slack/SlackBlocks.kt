@@ -3,83 +3,22 @@ package com.homeassistant.adapter.inbound.slack
 import com.homeassistant.domain.topicanalysis.TopicProposal
 
 object SlackTopicBlocks {
-    const val ACTION_OPEN_REVIEW = "topic_analysis_open_review"
-    const val ACTION_TOPIC_SELECTION = "topic_analysis_topic_selection"
-    const val CALLBACK_CONFIRM_TOPICS = "topic_analysis_confirm_topics"
-    const val MAX_MODAL_TOPICS = 100
-
     fun analysisMessage(
-        reviewId: String,
         sourceName: String,
         importedRecordCount: Int,
         topics: List<TopicProposal>,
     ): Map<String, Any> =
         mapOf(
-            "text" to "Kakao 대화 분석 후보 ${topics.size}개",
+            "text" to "Kakao 대화 분석 및 저장 완료: ${topics.size}개",
             "blocks" to listOf(
                 section(
-                    "*Kakao 대화 분석 후보 ${topics.size}개*\n" +
+                    "*Kakao 대화 분석 및 저장 완료: ${topics.size}개*\n" +
                         "${plain(sourceName, 140)}\n" +
                         "파싱 메시지 ${importedRecordCount}건",
                 ),
                 divider(),
-            ) + topics.take(5).mapIndexed { index, topic -> topicSummary(index, topic) } +
-                listOf(
-                    actions(
-                        listOf(
-                            button(
-                                text = "승인",
-                                actionId = ACTION_OPEN_REVIEW,
-                                value = reviewId,
-                                style = "primary",
-                            ),
-                        ),
-                    ),
-                ),
+            ) + topics.take(5).mapIndexed { index, topic -> topicSummary(index, topic) },
         )
-
-    fun selectionModal(
-        reviewId: String,
-        topics: List<TopicProposal>,
-    ): SlackModalBuildResult {
-        if (topics.size > MAX_MODAL_TOPICS) {
-            return SlackModalBuildResult.TooManyTopics(topics.size, MAX_MODAL_TOPICS)
-        }
-
-        val options = topics.mapIndexed { index, topic ->
-            mapOf(
-                "text" to plainText("${index + 1}. ${plain(topic.title, 60)}"),
-                "description" to plainText(topic.memoryTypes.joinToString(", ").ifBlank { "memory" }),
-                "value" to index.toString(),
-            )
-        }
-
-        return SlackModalBuildResult.Modal(
-            mapOf(
-                "type" to "modal",
-                "callback_id" to CALLBACK_CONFIRM_TOPICS,
-                "private_metadata" to reviewId,
-                "title" to plainText("기억 후보 승인"),
-                "submit" to plainText("승인"),
-                "close" to plainText("취소"),
-                "blocks" to listOf(
-                    section("승인할 후보를 선택하세요."),
-                    mapOf(
-                        "type" to "input",
-                        "block_id" to "topic_selection",
-                        "label" to plainText("후보"),
-                        "element" to mapOf(
-                            "type" to "multi_static_select",
-                            "action_id" to ACTION_TOPIC_SELECTION,
-                            "placeholder" to plainText("승인할 후보 선택"),
-                            "options" to options,
-                            "initial_options" to options,
-                        ),
-                    ),
-                ),
-            ),
-        )
-    }
 
     private fun topicSummary(index: Int, topic: TopicProposal): Map<String, Any> =
         section(
@@ -94,27 +33,7 @@ object SlackTopicBlocks {
             "text" to mapOf("type" to "mrkdwn", "text" to text),
         )
 
-    private fun actions(elements: List<Map<String, Any>>): Map<String, Any> =
-        mapOf("type" to "actions", "elements" to elements)
-
-    private fun button(
-        text: String,
-        actionId: String,
-        value: String,
-        style: String,
-    ): Map<String, Any> =
-        mapOf(
-            "type" to "button",
-            "text" to plainText(text),
-            "action_id" to actionId,
-            "value" to value,
-            "style" to style,
-        )
-
     private fun divider(): Map<String, Any> = mapOf("type" to "divider")
-
-    private fun plainText(text: String): Map<String, Any> =
-        mapOf("type" to "plain_text", "text" to plain(text, 75))
 
     private fun mrkdwn(text: String, maxLength: Int): String =
         plain(text, maxLength)
@@ -124,9 +43,4 @@ object SlackTopicBlocks {
         if (compact.length <= maxLength) return compact
         return compact.take(maxLength - 1).trimEnd() + "…"
     }
-}
-
-sealed class SlackModalBuildResult {
-    data class Modal(val view: Map<String, Any>) : SlackModalBuildResult()
-    data class TooManyTopics(val actualCount: Int, val maxCount: Int) : SlackModalBuildResult()
 }

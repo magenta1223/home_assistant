@@ -89,7 +89,7 @@ class LlmTopicOutputContractTest {
             "certainty",
             "evidenceRecordIds",
             "Proposed topics extracted from the source document",
-            "Short review-facing title for one grouped household memory topic",
+            "Short title for one grouped household memory topic",
             "Concise summary of why the grouped records belong together",
             "Allowed MemoryType enum values represented by this topic",
             "Evidence-backed canonical-memory proposals under this topic",

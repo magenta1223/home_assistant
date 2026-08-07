@@ -6,8 +6,6 @@ import com.homeassistant.application.slackconversation.handle.HandleSlackConvers
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
-import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReviewUseCase
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -56,14 +54,11 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         topicAnalysis: TopicAnalysis,
-        getTopicAnalysisReview: GetTopicAnalysisReviewUseCase,
-        saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
         searchMemories: SearchMemoriesUseCase,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
     ): SlackRuntime {
         val slackClient = SlackApiClient(config.botToken)
-        val reviewContexts = SlackReviewContextStore()
         val executor = Executors.newFixedThreadPool(2)
         val conversationService = createConversationService(
             config,
@@ -75,16 +70,11 @@ object SlackRuntimeFactory {
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slackClient,
             topicAnalysis = topicAnalysis,
-            reviewContexts = reviewContexts,
             maxFileSizeBytes = config.maxFileSizeBytes,
         )
-        val confirmationHandlers = SlackConfirmationHandlers(saveAnalyzedTopics, getTopicAnalysisReview, reviewContexts)
         val listeners = SlackListeners(
             config = config,
             workflow = workflow,
-            confirmationHandlers = confirmationHandlers,
-            reviewContexts = reviewContexts,
-            slackClient = slackClient,
             executor = executor,
             conversationService = conversationService,
         )

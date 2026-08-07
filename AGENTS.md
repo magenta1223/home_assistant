@@ -54,14 +54,13 @@ Server port and DB path are configured in `AppConfig` and Ktor application confi
 The project is now a **home second brain**, not a general chat assistant. The primary flow is:
 
 1. Import source records, currently Kakao exports.
-2. Analyze source records into proposed topics containing proposed memories.
-3. Save approved topics as groupings and their memories as independently searchable canonical records.
-4. Search and retrieve canonical memories with their source evidence and optional topic context.
-5. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
+2. Analyze source records and immediately save the resulting topics and memories as canonical records.
+3. Search and retrieve canonical memories with their source evidence and optional topic context.
+4. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
-Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-analysis pipelines, or chat-response DTOs. Keep Slack identity, authorization, memory retrieval, idempotency, and session expiry inside the Kotlin application.
+Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Keep Slack identity, authorization, memory retrieval, idempotency, and session expiry inside the Kotlin application.
 
 ## Module Architecture
 
@@ -84,7 +83,8 @@ ports together by use case. Within the adapter modules, keep external entry poin
 
 ### application
 
-- `topicanalysis/{analyze,review,save}/` - source analysis, proposal review, and persistence slices with their own inputs, outputs, and ports.
+- `topicanalysis/analyze/` - source analysis and immediate topic-persistence orchestration.
+- `topicanalysis/save/` - topic persistence and memory-indexing collaborator used by analysis.
 - `memory/search/` - canonical-memory retrieval use case and search/read ports; topic context is optional.
 - `memory/answer/` - direct HTTP answer formatting over the memory-search use case.
 - `memory/index/` - canonical-memory indexing ports used by save orchestration.
@@ -101,7 +101,7 @@ ports together by use case. Within the adapter modules, keep external entry poin
 - `codex/` - Codex CLI transport and conversation-turn implementations.
 - `topicanalysis/` - Codex-backed topic extraction implementations.
 - `embedding/ollama/` - local Ollama text embedding implementation.
-- `persistence/` - SQLite/Exposed repositories for source records, topic-analysis reviews, topics, canonical memories, indexing outbox, and Slack sessions.
+- `persistence/` - SQLite/Exposed repositories for source records, topics, canonical memories, indexing outbox, and Slack sessions.
 - `vector/qdrant/` - Qdrant vector storage implementation.
 - `vector/memory/` - canonical-memory semantic index implementation.
 
@@ -122,8 +122,7 @@ ports together by use case. Within the adapter modules, keep external entry poin
 Ktor + Netty server. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
-- `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text and returns a review preview of proposed topics/memories.
-- `POST /api/kakao/import/save` -> saves the preview as topics and canonical memories.
+- `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text and immediately saves the resulting topics and canonical memories.
 - `POST /api/memories/answer` -> retrieves visible canonical memories and builds a direct answer.
 
 HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` remains unauthenticated.

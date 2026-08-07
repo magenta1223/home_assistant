@@ -1,7 +1,7 @@
 package com.homeassistant.application.topicanalysis.analyze
 
-/** Imports source records, analyzes them, and creates a reviewable topic proposal. */
+/** Imports source records, analyzes them, and saves the resulting topics. */
 interface TopicAnalysis {
-    /** Imports new source records and creates a topic-analysis review. */
+    /** Imports new source records, analyzes them, and saves the resulting topics. */
     suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult
 }

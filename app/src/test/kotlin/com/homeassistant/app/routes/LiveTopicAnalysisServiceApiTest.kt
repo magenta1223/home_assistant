@@ -9,7 +9,7 @@ import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.application.memory.CanonicalMemoryContext
 import com.homeassistant.application.memory.index.MemoryIndexer
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
+import com.homeassistant.application.topicanalysis.save.SaveTopicProposals
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import io.ktor.client.request.post
 import io.ktor.client.request.header
@@ -46,15 +46,12 @@ class LiveTopicAnalysisServiceApiTest {
         val topicAnalysisService = TopicAnalysisService(
             topicExtractor = TopicExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
-            reviewStore = repositories.topicAnalysisReviews,
-            accessPolicy = accessPolicy,
-        )
-        val saveAnalyzedTopics = SaveAnalyzedTopics(
-            topicCreator = repositories.topicCreator,
-            reviewStore = repositories.topicAnalysisReviews,
-            memoryIndexer = NoOpMemoryIndexer,
-            memoryIndexingSource = repositories.memoryIndexingSource,
-            indexingOutbox = repositories.indexingOutbox,
+            topicSaver = SaveTopicProposals(
+                topicCreator = repositories.topicCreator,
+                memoryIndexer = NoOpMemoryIndexer,
+                memoryIndexingSource = repositories.memoryIndexingSource,
+                indexingOutbox = repositories.indexingOutbox,
+            ),
             accessPolicy = accessPolicy,
         )
 
@@ -63,7 +60,6 @@ class LiveTopicAnalysisServiceApiTest {
                 install(ContentNegotiation) { json(JsonSerializer.json) }
                 configureRoutes(
                     topicAnalysisService,
-                    saveAnalyzedTopics,
                     httpApiKeys = HttpApiKeyConfig.fromJson(
                         """[{"userId":"$USER_ID","token":"test-token"}]""",
                     ),

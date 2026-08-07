@@ -35,7 +35,7 @@ internal object TopicAnalysisPrompt {
     fun system(schema: String = TopicAnalysisOutputContract.schema): String =
         """
         주어진 source document 또는 chunk 안에서만 내용 기반으로 주제 분석하세요.
-        목표는 대화를 요약하는 것이 아니라 가족·집 second brain에 검토 후보로 저장할 독립적인 기억을 빠짐없이 찾는 것입니다.
+        목표는 대화를 요약하는 것이 아니라 가족·집 second brain에 바로 저장할 독립적인 기억을 빠짐없이 찾는 것입니다.
 
         $retentionCriteria
 
@@ -52,7 +52,7 @@ internal object TopicAnalysisPrompt {
         memories 최대 3개 제한만을 맞추기 위해 의미적으로 같은 topic을 여러 개로 쪼개지 마세요.
         같은 topic의 세부사항이 많으면 미래 재사용성이 가장 높은 원자적 memory를 최대 3개 선택하세요.
         evidenceRecordIds는 topic당 최대 5개, memories는 topic당 최대 3개로 제한하세요.
-        각 topic은 가족/집 second brain에 승인 후보로 올릴 수 있는 evidence-backed memory를 1개 이상 포함해야 합니다.
+        각 topic은 가족/집 second brain에 바로 저장할 수 있는 evidence-backed memory를 1개 이상 포함해야 합니다.
         evidenceRecordIds는 사용자 메시지에 제공된 r1, r2 같은 ID만 사용하세요.
         실제로 말하지 않은 사실을 확정하지 말고, 관찰/발화/추론/불확실성을 구분하세요.
         memoryType은 ${MemoryType.entries.joinToString(", ") { it.name }} 중 하나만 사용하세요.

@@ -5,12 +5,12 @@ import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecordRepository
-import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewStore
+import com.homeassistant.application.topicanalysis.save.TopicProposalSaver
 
 class TopicAnalysisService(
     private val topicExtractor: TopicExtractor,
     private val sourceRecords: SourceRecordRepository,
-    private val reviewStore: TopicAnalysisReviewStore,
+    private val topicSaver: TopicProposalSaver,
     private val accessPolicy: HouseholdAccessPolicy,
 ) : TopicAnalysis {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult {
@@ -29,13 +29,8 @@ class TopicAnalysisService(
             records = newRecords,
         )
         val topics = topicExtractor.analyze(document)
-        val review = reviewStore.create(
-            requestedBy = userId,
-            source = parsedSource.source,
-            proposals = topics,
-        )
+        topicSaver.save(userId, parsedSource.source, topics)
         return TopicAnalysisResult(
-            previewId = review.id,
             sourceType = parsedSource.source.type,
             sourceName = parsedSource.source.name,
             importedRecordCount = newRecords.size,

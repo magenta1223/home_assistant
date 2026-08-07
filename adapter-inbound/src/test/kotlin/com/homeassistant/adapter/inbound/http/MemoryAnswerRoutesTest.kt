@@ -8,10 +8,6 @@ import com.homeassistant.application.memory.search.MemorySearchUnavailableExcept
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisResult
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveResult
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSelectionSaveRequest
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -28,12 +24,11 @@ import kotlin.test.assertEquals
 
 class MemoryAnswerRoutesTest {
     @Test
-    fun `memory answer route returns answer from approved memories`() = testApplication {
+    fun `memory answer route returns answer from stored memories`() = testApplication {
         application {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 topicAnalysis = UnusedTopicAnalysis,
-                saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
                 httpApiKeys = TEST_HTTP_API_KEYS,
             )
@@ -57,7 +52,6 @@ class MemoryAnswerRoutesTest {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 topicAnalysis = UnusedTopicAnalysis,
-                saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = FakeMemoryAnswer,
                 httpApiKeys = TEST_HTTP_API_KEYS,
             )
@@ -78,7 +72,6 @@ class MemoryAnswerRoutesTest {
             install(ServerContentNegotiation) { json() }
             configureRoutes(
                 topicAnalysis = UnusedTopicAnalysis,
-                saveAnalyzedTopics = UnusedTopicAnalysis,
                 memoryAnswer = UnavailableMemoryAnswer,
                 httpApiKeys = TEST_HTTP_API_KEYS,
             )
@@ -118,13 +111,7 @@ private object UnavailableMemoryAnswer : AnswerFromMemoriesUseCase {
         throw MemorySearchUnavailableException("memory vector index is not configured")
 }
 
-private object UnusedTopicAnalysis : TopicAnalysis, SaveAnalyzedTopicsUseCase {
+private object UnusedTopicAnalysis : TopicAnalysis {
     override suspend fun execute(request: TopicAnalysisRequest): TopicAnalysisResult =
-        error("not used")
-
-    override fun saveAll(request: TopicAnalysisSaveRequest): TopicAnalysisSaveResult =
-        error("not used")
-
-    override fun saveSelected(request: TopicAnalysisSelectionSaveRequest): TopicAnalysisSaveResult =
         error("not used")
 }

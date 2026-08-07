@@ -32,11 +32,6 @@ interface SlackClient {
         text: String,
     )
 
-    /** Opens a Slack modal from an interaction trigger. */
-    fun openModal(
-        triggerId: String,
-        view: Map<String, Any>,
-    )
 }
 
 data class SlackMessageDelivery(val responseTs: String)
@@ -110,12 +105,6 @@ internal class SlackApiClient(
         }
     }
 
-    override fun openModal(triggerId: String, view: Map<String, Any>) {
-        slack.methods(botToken).viewsOpen { req ->
-            req.triggerId(triggerId)
-                .viewAsString(JsonSerializer.json.encodeToString(view.toJsonElement()))
-        }
-    }
 }
 
 /** Isolates the Slack message-posting operation for the client adapter. */

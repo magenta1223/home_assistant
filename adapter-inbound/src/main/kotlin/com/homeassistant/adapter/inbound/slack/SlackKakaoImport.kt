@@ -56,7 +56,6 @@ object SlackFileIngress {
 internal class SlackKakaoAnalysisWorkflow(
     private val slackClient: SlackClient,
     private val topicAnalysis: TopicAnalysis,
-    private val reviewContexts: SlackReviewContextStore,
     private val maxFileSizeBytes: Long,
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -92,16 +91,7 @@ internal class SlackKakaoAnalysisWorkflow(
                 return
             }
 
-            reviewContexts.save(
-                SlackReviewContext(
-                    reviewId = result.previewId,
-                    status = SlackReviewStatus.AWAITING_CONFIRMATION,
-                    channelId = upload.channelId,
-                ),
-            )
-
             val message = SlackTopicBlocks.analysisMessage(
-                reviewId = result.previewId,
                 sourceName = result.sourceName,
                 importedRecordCount = result.importedRecordCount,
                 topics = result.topics,

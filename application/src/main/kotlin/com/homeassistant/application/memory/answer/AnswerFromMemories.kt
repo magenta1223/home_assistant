@@ -11,7 +11,7 @@ class AnswerFromMemories(
             SearchMemoriesRequest(request.userId, request.question, request.limit),
         )
         val answer = if (result.matches.isEmpty()) {
-            "승인된 기억에서 관련 내용을 찾지 못했습니다."
+            "저장된 기억에서 관련 내용을 찾지 못했습니다."
         } else {
             "저장된 기억 기준으로는 ${result.matches.first().content}"
         }

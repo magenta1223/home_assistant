@@ -1,13 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.configuration.AppConfig
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.analyze.DuplicateSourceRecordsException
+import com.homeassistant.application.topicanalysis.analyze.TopicAnalysis
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisRequest
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopicsUseCase
-import com.homeassistant.application.topicanalysis.save.TopicAnalysisSaveRequest
-import com.homeassistant.application.topicanalysis.review.TopicAnalysisReviewNotFoundException
+import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
@@ -19,7 +16,6 @@ import kotlinx.serialization.Serializable
 
 internal fun Route.kakaoTopicAnalysisRoutes(
     topicAnalysis: TopicAnalysis,
-    saveAnalyzedTopics: SaveAnalyzedTopicsUseCase,
 ) {
     post(AppConfig.ROUTE_KAKAO_IMPORT_ANALYZE) {
         val principal = call.principal<HttpUserPrincipal>()
@@ -54,44 +50,10 @@ internal fun Route.kakaoTopicAnalysisRoutes(
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))
         }
     }
-
-    post(AppConfig.ROUTE_KAKAO_IMPORT_SAVE) {
-        val principal = call.principal<HttpUserPrincipal>()
-        if (principal == null) {
-            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "authentication required"))
-            return@post
-        }
-        val request = call.receive<KakaoImportSaveRequest>()
-        if (request.previewId.isBlank()) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "previewId is required"))
-            return@post
-        }
-
-        try {
-            call.respond(
-                HttpStatusCode.OK,
-                saveAnalyzedTopics.saveAll(
-                    TopicAnalysisSaveRequest(
-                        previewId = request.previewId,
-                        userId = principal.userId.value,
-                    ),
-                ),
-            )
-        } catch (_: TopicAnalysisReviewNotFoundException) {
-            call.respond(HttpStatusCode.NotFound, mapOf("error" to "preview not found"))
-        } catch (_: HouseholdAccessDeniedException) {
-            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))
-        }
-    }
 }
 
 @Serializable
 private data class KakaoImportAnalyzeRequest(
     val sourceName: String? = null,
     val text: String? = null,
-)
-
-@Serializable
-private data class KakaoImportSaveRequest(
-    val previewId: String,
 )

@@ -161,7 +161,6 @@ private open class SuccessfulSlack : SlackClient {
         threadTs: String?,
     ) = SlackMessageDelivery("200.2")
     override fun postEphemeral(channelId: String, userId: String, text: String) = Unit
-    override fun openModal(triggerId: String, view: Map<String, Any>) = Unit
 }
 
 private object RejectingSlack : SuccessfulSlack() {

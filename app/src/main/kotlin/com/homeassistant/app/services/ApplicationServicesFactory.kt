@@ -10,8 +10,7 @@ import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.answer.AnswerFromMemories
 import com.homeassistant.application.memory.search.SearchMemories
 import com.homeassistant.application.topicanalysis.analyze.TopicAnalysisService
-import com.homeassistant.application.topicanalysis.review.GetTopicAnalysisReview
-import com.homeassistant.application.topicanalysis.save.SaveAnalyzedTopics
+import com.homeassistant.application.topicanalysis.save.SaveTopicProposals
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
@@ -55,18 +54,16 @@ object ApplicationServicesFactory {
                     httpAccessPolicy.isAuthorized(userId)
             }
         }
-        val topicAnalysisService = TopicAnalysisService(
-            topicExtractor = TopicExtractorFactory.create(),
-            sourceRecords = repositories.sourceRecords,
-            reviewStore = repositories.topicAnalysisReviews,
-            accessPolicy = accessPolicy,
-        )
-        val saveAnalyzedTopics = SaveAnalyzedTopics(
+        val topicSaver = SaveTopicProposals(
             topicCreator = repositories.topicCreator,
-            reviewStore = repositories.topicAnalysisReviews,
             memoryIndexer = memoryIndexer,
             memoryIndexingSource = repositories.memoryIndexingSource,
             indexingOutbox = repositories.indexingOutbox,
+        )
+        val topicAnalysisService = TopicAnalysisService(
+            topicExtractor = TopicExtractorFactory.create(),
+            sourceRecords = repositories.sourceRecords,
+            topicSaver = topicSaver,
             accessPolicy = accessPolicy,
         )
         val searchMemories = SearchMemories(
@@ -75,7 +72,6 @@ object ApplicationServicesFactory {
             searcher = memorySearcher,
         )
         val memoryAnswer = AnswerFromMemories(searchMemories)
-        val getTopicAnalysisReview = GetTopicAnalysisReview(repositories.topicAnalysisReviews, accessPolicy)
         val conversationClient = CodexConversationConfig.fromEnv()
             ?.let(CodexConversationClientFactory::create)
             ?.takeIf { it.validateVersion() }
@@ -83,8 +79,6 @@ object ApplicationServicesFactory {
             SlackRuntimeFactory.create(
                 it,
                 topicAnalysisService,
-                getTopicAnalysisReview,
-                saveAnalyzedTopics,
                 searchMemories,
                 repositories.slackCodexSessions,
                 conversationClient,
@@ -93,7 +87,6 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(topicAnalysisService, saveAnalyzedTopics, memoryAnswer, slackRuntime)
+        return DefaultApplicationServices(topicAnalysisService, memoryAnswer, slackRuntime)
     }
 }
-

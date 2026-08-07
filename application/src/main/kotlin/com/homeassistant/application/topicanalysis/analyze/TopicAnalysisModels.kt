@@ -11,7 +11,6 @@ data class TopicAnalysisRequest(
 
 @Serializable
 data class TopicAnalysisResult(
-    val previewId: String,
     val sourceType: String,
     val sourceName: String,
     val importedRecordCount: Int,

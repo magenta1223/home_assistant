@@ -133,6 +133,6 @@ class HandleSlackConversation(
 
     companion object {
         const val SESSION_IDLE_TIMEOUT_MILLIS = 600_000L
-        const val NO_MATCH_ANSWER = "승인된 기억에서 관련 내용을 찾지 못했습니다."
+        const val NO_MATCH_ANSWER = "저장된 기억에서 관련 내용을 찾지 못했습니다."
     }
 }

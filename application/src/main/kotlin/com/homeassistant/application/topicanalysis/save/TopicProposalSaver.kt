@@ -5,8 +5,11 @@ import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.topicanalysis.Topic
 import com.homeassistant.domain.topicanalysis.TopicProposal
 
-/** Creates a persisted topic from an analyzed topic proposal. */
-fun interface TopicCreator {
-    /** Creates and returns a topic from an analyzed proposal. */
-    fun create(proposal: TopicProposal, createdBy: UserId, source: SourceDescriptor): Topic
+/** Saves analyzed topic proposals as canonical topics and indexes their memories. */
+fun interface TopicProposalSaver {
+    fun save(
+        userId: UserId,
+        source: SourceDescriptor,
+        proposals: List<TopicProposal>,
+    ): List<Topic>
 }

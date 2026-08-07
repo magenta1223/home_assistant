@@ -13,7 +13,7 @@ import com.homeassistant.domain.source.SourceDescriptor
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-/** Stores approved topic groups and canonical memories in normalized tables. */
+/** Stores topic groups and canonical memories in normalized tables. */
 internal class TopicRepository(private val db: Database) : TopicCreator {
     override fun create(
         proposal: TopicProposal,

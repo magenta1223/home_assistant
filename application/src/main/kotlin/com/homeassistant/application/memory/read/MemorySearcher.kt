@@ -26,6 +26,7 @@ class MemorySearcher(
                         content = memory.content,
                         evidenceRefs = memory.evidenceRefs,
                         score = index.score,
+                        createdAt = memory.createdAt,
                     )
                 }
             }

@@ -201,6 +201,7 @@ class MemoryPlacementServiceTest {
         certainty = MemoryCertainty.OBSERVED,
         visibility = visibility,
         evidenceRefs = listOf(id),
+        createdAt = id * 1_000L,
     )
 
     private class FixedMemoryReader(
@@ -232,6 +233,7 @@ class MemoryPlacementServiceTest {
             certainty = MemoryCertainty.OBSERVED,
             visibility = MemoryVisibility.PUBLIC,
             evidenceRefs = listOf(id),
+            createdAt = id * 1_000L,
         )
     }
 

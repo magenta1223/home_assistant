@@ -187,6 +187,7 @@ class MemoryAnalysisRetryTest {
                 certainty = proposal.certainty,
                 visibility = proposal.visibility,
                 evidenceRefs = proposal.evidenceIds,
+                createdAt = (memories.size + 1) * 1_000L,
             ).also(memories::add)
         }
     }

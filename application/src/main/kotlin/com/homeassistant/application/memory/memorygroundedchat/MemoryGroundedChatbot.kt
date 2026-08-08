@@ -1,13 +1,12 @@
 package com.homeassistant.application.memory.memorygroundedchat
 
-import com.homeassistant.application.memory.read.MemorySearcher
 import com.homeassistant.application.memory.read.SearchMemoriesRequest
 
 class MemoryGroundedChatbot(
-    private val memorySearcher: MemorySearcher,
+    private val answerContext: MemoryAnswerContextProvider,
 ) {
     fun answer(request: MemoryAnswerRequest): MemoryAnswerResult {
-        val result = memorySearcher.search(
+        val result = answerContext.context(
             SearchMemoriesRequest(request.userId, request.question, request.limit),
         )
         val answer = if (result.matches.isEmpty()) {

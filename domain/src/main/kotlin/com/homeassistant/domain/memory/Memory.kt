@@ -20,6 +20,8 @@ data class Memory(
     val certainty: MemoryCertainty,
     val visibility: MemoryVisibility,
     val evidenceRefs: List<Int>,
+    /** Storage creation time in epoch milliseconds; this is not the event time described by the memory. */
+    val createdAt: Long,
 ) {
     init {
         require(childrenIds.distinct().size == childrenIds.size) { "memory children must be unique" }
@@ -28,6 +30,7 @@ data class Memory(
         require(subject.isNotBlank()) { "memory subject is required" }
         require(createdByUserId.isNotBlank()) { "createdByUserId is required" }
         require(evidenceRefs.isNotEmpty()) { "memory evidence is required" }
+        require(createdAt >= 0) { "memory creation time must not be negative" }
     }
 
     fun isVisibleTo(requester: UserId): Boolean =

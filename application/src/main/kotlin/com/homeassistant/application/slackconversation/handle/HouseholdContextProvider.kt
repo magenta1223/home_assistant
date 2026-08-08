@@ -1,8 +1,10 @@
 package com.homeassistant.application.slackconversation.handle
 
-import com.homeassistant.application.memory.read.MemorySearcher
+import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
+import com.homeassistant.application.memory.read.MemorySearchMatch
 import com.homeassistant.application.slackconversation.SlackPrincipal
 import com.homeassistant.application.memory.read.SearchMemoriesRequest
+import java.time.Instant
 
 /** Builds a bounded household-memory context for a Slack question. */
 interface HouseholdContextSource {
@@ -11,10 +13,10 @@ interface HouseholdContextSource {
 }
 
 class HouseholdContextProvider(
-    private val memorySearcher: MemorySearcher,
+    private val answerContext: MemoryAnswerContextProvider,
 ) : HouseholdContextSource {
     override fun context(principal: SlackPrincipal, question: String): HouseholdContext {
-        val result = memorySearcher.search(
+        val result = answerContext.context(
             SearchMemoriesRequest(
                 userId = principal.userId.value,
                 query = question,
@@ -22,12 +24,8 @@ class HouseholdContextProvider(
             ),
         )
         return HouseholdContext(
-            reference = result.matches.joinToString("\n") { match ->
-                buildString {
-                    append("- ")
-                    append(match.content)
-                }
-            }.take(MAX_CONTEXT_CHARS),
+            reference = result.matches.joinToString("\n", transform = ::memoryReferenceLine)
+                .take(MAX_CONTEXT_CHARS),
             hasMatches = result.matches.isNotEmpty(),
         )
     }
@@ -37,6 +35,10 @@ class HouseholdContextProvider(
         const val MAX_MATCHES = 5
     }
 }
+
+internal fun memoryReferenceLine(match: MemorySearchMatch): String =
+    "- [savedAt=${Instant.ofEpochMilli(match.createdAt)}; source=${match.source}; " +
+        "score=${match.score}; parentMemoryId=${match.parentMemoryId ?: "none"}; depth=${match.depth}] ${match.content}"
 
 data class HouseholdContext(
     val reference: String,

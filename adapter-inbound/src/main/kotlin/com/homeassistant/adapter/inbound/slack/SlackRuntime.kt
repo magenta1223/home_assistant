@@ -5,7 +5,7 @@ import com.homeassistant.application.slackconversation.handle.HandleSlackConvers
 import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
 import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
 import com.homeassistant.application.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.memory.read.MemorySearcher
+import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -54,7 +54,7 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         memoryAnalysis: MemoryAnalysis,
-        memorySearcher: MemorySearcher,
+        answerContext: MemoryAnswerContextProvider,
         codexSessions: SlackCodexSessionStore,
         conversationClient: ConversationTurnClient?,
     ): SlackRuntime {
@@ -62,7 +62,7 @@ object SlackRuntimeFactory {
         val executor = Executors.newFixedThreadPool(2)
         val conversationService = createConversationService(
             config,
-            memorySearcher,
+            answerContext,
             codexSessions,
             slackClient,
             conversationClient,
@@ -87,7 +87,7 @@ object SlackRuntimeFactory {
 
     private fun createConversationService(
         config: SlackConfig,
-        memorySearcher: MemorySearcher,
+        answerContext: MemoryAnswerContextProvider,
         sessions: SlackCodexSessionStore,
         slackClient: SlackClient,
         conversationClient: ConversationTurnClient?,
@@ -103,7 +103,7 @@ object SlackRuntimeFactory {
             HandleSlackConversation(
                 identities = config.identityDirectory,
                 sessions = sessions,
-                contextProvider = HouseholdContextProvider(memorySearcher),
+                contextProvider = HouseholdContextProvider(answerContext),
                 conversationClient = client,
                 answerPublisher = SlackConversationAnswerPublisher(slackClient),
             ),

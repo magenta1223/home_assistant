@@ -4,6 +4,7 @@ import com.homeassistant.application.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
+import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
 import com.homeassistant.application.memory.read.MemoryIndex
 import com.homeassistant.application.memory.read.MemoryReader
 import com.homeassistant.application.memory.read.MemorySearcher
@@ -55,13 +56,17 @@ class MemoryAnswerRoutesTest {
         }
     }
 
-    private fun memoryGroundedChatbot() = MemoryGroundedChatbot(
-        MemorySearcher(
+    private fun memoryGroundedChatbot(): MemoryGroundedChatbot {
+        val semanticSearcher = SemanticMemoryIndexSearcher { _, _ -> emptyList<MemoryIndex>() }
+        val memorySearcher = MemorySearcher(
             memories = EmptyMemoryReader,
-            searcher = SemanticMemoryIndexSearcher { _, _ -> emptyList<MemoryIndex>() },
+            searcher = semanticSearcher,
             accessPolicy = HouseholdAccessPolicy { it == USER_ID },
-        ),
-    )
+        )
+        return MemoryGroundedChatbot(
+            MemoryAnswerContextProvider(memorySearcher, EmptyMemoryReader, semanticSearcher),
+        )
+    }
 
     private object EmptyMemoryReader : MemoryReader {
         override fun getMemories(userId: UserId) = emptyList<Memory>()

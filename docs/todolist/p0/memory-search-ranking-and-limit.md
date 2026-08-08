@@ -1,6 +1,6 @@
 # Memory 검색 순위와 limit
 
-- 상태: TODO
+- 상태: DONE
 - 목표: Weekend MVP
 
 ## 문제

@@ -30,8 +30,9 @@ class MemoryAnswerContextProviderTest {
 
         val result = provider(memories, semanticSearcher).context(request(limit = 3))
 
-        assertEquals(listOf(1, 2, 3), result.matches.map { it.memoryId })
-        assertTrue(result.matches.all { it.source == MemorySearchMatchSource.DIRECT })
+        assertEquals(listOf(1, 2, 3), result.directMatches.map { it.memoryId })
+        assertEquals(result.directMatches, result.contextMatches)
+        assertTrue(result.contextMatches.all { it.source == MemorySearchMatchSource.DIRECT })
         assertEquals(listOf(3), semanticSearcher.directLimits)
     }
 
@@ -54,13 +55,14 @@ class MemoryAnswerContextProviderTest {
 
         val result = provider(memories, semanticSearcher).context(request(limit = 2))
 
-        assertEquals(listOf(parent.id, relevantChild.id), result.matches.map { it.memoryId })
-        assertEquals(MemorySearchMatchSource.DIRECT, result.matches[0].source)
-        assertEquals(MemorySearchMatchSource.CHILD, result.matches[1].source)
-        assertEquals(parent.id, result.matches[1].parentMemoryId)
-        assertEquals(1, result.matches[1].depth)
-        assertEquals(0.92, result.matches[1].score)
-        assertEquals(2, result.matches.size)
+        assertEquals(listOf(parent.id), result.directMatches.map { it.memoryId })
+        assertEquals(listOf(parent.id, relevantChild.id), result.contextMatches.map { it.memoryId })
+        assertEquals(MemorySearchMatchSource.DIRECT, result.contextMatches[0].source)
+        assertEquals(MemorySearchMatchSource.CHILD, result.contextMatches[1].source)
+        assertEquals(parent.id, result.contextMatches[1].parentMemoryId)
+        assertEquals(1, result.contextMatches[1].depth)
+        assertEquals(0.92, result.contextMatches[1].score)
+        assertEquals(2, result.contextMatches.size)
     }
 
     @Test
@@ -85,9 +87,10 @@ class MemoryAnswerContextProviderTest {
 
         assertEquals(
             listOf(firstParent.id, secondParent.id, leaf.id, firstChild.id, secondChild.id),
-            result.matches.map { it.memoryId },
+            result.contextMatches.map { it.memoryId },
         )
-        assertEquals(3 + MemoryAnswerContextProvider.MAX_EXPANDED_MATCHES, result.matches.size)
+        assertEquals(listOf(firstParent.id, secondParent.id, leaf.id), result.directMatches.map { it.memoryId })
+        assertEquals(3 + MemoryAnswerContextProvider.MAX_EXPANDED_MATCHES, result.contextMatches.size)
     }
 
     @Test
@@ -103,8 +106,29 @@ class MemoryAnswerContextProviderTest {
 
         val result = provider(memories, semanticSearcher).context(request(limit = 2))
 
-        assertEquals(listOf(parent.id), result.matches.map { it.memoryId })
+        assertEquals(listOf(parent.id), result.contextMatches.map { it.memoryId })
         assertEquals(setOf(unrelatedChild.id), semanticSearcher.childScopes.single())
+    }
+
+    @Test
+    fun `zero and negative scores cannot qualify children for expansion`() {
+        listOf(
+            0.0 to 0.0,
+            -0.5 to -0.3,
+        ).forEach { (parentScore, childScore) ->
+            val parent = memory(1, childrenIds = listOf(2))
+            val child = memory(2)
+            val memories = listOf(parent, child)
+            val semanticSearcher = ScopedSemanticSearcher(
+                directScope = memories.mapTo(mutableSetOf()) { it.id },
+                directResults = listOf(MemoryIndex(parent.id, parentScore)),
+                childResults = listOf(MemoryIndex(child.id, childScore)),
+            )
+
+            val result = provider(memories, semanticSearcher).context(request(limit = 1))
+
+            assertEquals(listOf(parent.id), result.contextMatches.map { it.memoryId })
+        }
     }
 
     @Test
@@ -125,7 +149,7 @@ class MemoryAnswerContextProviderTest {
 
         val result = provider(memories, semanticSearcher).context(request(limit = 3))
 
-        assertEquals(listOf(parent.id, visibleChild.id), result.matches.map { it.memoryId })
+        assertEquals(listOf(parent.id, visibleChild.id), result.contextMatches.map { it.memoryId })
         assertEquals(setOf(visibleChild.id), semanticSearcher.childScopes.single())
     }
 
@@ -143,9 +167,9 @@ class MemoryAnswerContextProviderTest {
 
         val result = provider(memories, semanticSearcher).context(request(limit = 5))
 
-        assertEquals(listOf(parent.id, cyclicChild.id), result.matches.map { it.memoryId })
+        assertEquals(listOf(parent.id, cyclicChild.id), result.contextMatches.map { it.memoryId })
         assertEquals(setOf(cyclicChild.id), semanticSearcher.childScopes.single())
-        assertEquals(MemoryAnswerContextProvider.MAX_EXPANSION_DEPTH, result.matches.last().depth)
+        assertEquals(MemoryAnswerContextProvider.MAX_EXPANSION_DEPTH, result.contextMatches.last().depth)
     }
 
     private fun provider(

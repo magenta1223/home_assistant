@@ -9,11 +9,11 @@ class MemoryGroundedChatbot(
         val result = answerContext.context(
             SearchMemoriesRequest(request.userId, request.question, request.limit),
         )
-        val answer = if (result.matches.isEmpty()) {
+        val answer = if (result.directMatches.isEmpty()) {
             "저장된 기억에서 관련 내용을 찾지 못했습니다."
         } else {
-            "저장된 기억 기준으로는 ${result.matches.first().content}"
+            "저장된 기억 기준으로는 ${result.directMatches.first().content}"
         }
-        return MemoryAnswerResult(result.query, answer, result.matches)
+        return MemoryAnswerResult(result.query, answer, result.directMatches)
     }
 }

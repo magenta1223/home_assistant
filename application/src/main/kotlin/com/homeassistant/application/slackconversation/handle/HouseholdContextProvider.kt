@@ -24,9 +24,9 @@ class HouseholdContextProvider(
             ),
         )
         return HouseholdContext(
-            reference = result.matches.joinToString("\n", transform = ::memoryReferenceLine)
+            reference = result.contextMatches.joinToString("\n", transform = ::memoryReferenceLine)
                 .take(MAX_CONTEXT_CHARS),
-            hasMatches = result.matches.isNotEmpty(),
+            hasMatches = result.directMatches.isNotEmpty(),
         )
     }
 

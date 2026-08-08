@@ -6,6 +6,7 @@ import com.homeassistant.application.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
 import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
 import com.homeassistant.application.memory.read.MemoryIndex
+import com.homeassistant.application.memory.read.MemoryIndexSearchScope
 import com.homeassistant.application.memory.read.MemoryReader
 import com.homeassistant.application.memory.read.MemorySearcher
 import com.homeassistant.application.memory.read.SemanticMemoryIndexSearcher
@@ -14,6 +15,9 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.header
 import io.ktor.client.request.post
@@ -29,8 +33,52 @@ import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlinx.serialization.json.double
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 
 class MemoryAnswerRoutesTest {
+    @Test
+    fun `answer keeps public matches within limit while serializing direct diagnostics`() = testApplication {
+        val parent = memory(1, childrenIds = listOf(2), createdAt = 1_000L)
+        val child = memory(2, createdAt = 2_000L)
+        application {
+            install(ContentNegotiation) {
+                json(JsonSerializer.json)
+            }
+            configureRoutes(
+                memoryAnalysis = UnusedMemoryAnalysis,
+                memoryGroundedChatbot = memoryGroundedChatbot(
+                    memories = listOf(parent, child),
+                    directResults = listOf(MemoryIndex(parent.id, 0.9)),
+                    childResults = listOf(MemoryIndex(child.id, 0.85)),
+                ),
+                httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to USER_ID),
+            )
+        }
+
+        val response = client.post(AppConfig.ROUTE_MEMORY_ANSWER) {
+            bearerAuth(API_TOKEN)
+            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            setBody("""{"question":"where is it?","limit":1}""")
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val matches = JsonSerializer.json.parseToJsonElement(response.bodyAsText())
+            .jsonObject.getValue("matches").jsonArray
+        assertEquals(1, matches.size)
+        val match = matches.single().jsonObject
+        assertEquals(parent.id, match.getValue("memoryId").jsonPrimitive.int)
+        assertEquals(parent.createdAt, match.getValue("createdAt").jsonPrimitive.long)
+        assertEquals(0.9, match.getValue("score").jsonPrimitive.double)
+        assertEquals("DIRECT", match.getValue("source").jsonPrimitive.content)
+        assertEquals(0, match.getValue("depth").jsonPrimitive.int)
+        assertTrue("parentMemoryId" !in match)
+    }
+
     @Test
     fun `rejects an out-of-range limit as a bad request`() = testApplication {
         application {
@@ -56,20 +104,57 @@ class MemoryAnswerRoutesTest {
         }
     }
 
-    private fun memoryGroundedChatbot(): MemoryGroundedChatbot {
-        val semanticSearcher = SemanticMemoryIndexSearcher { _, _ -> emptyList<MemoryIndex>() }
+    private fun memoryGroundedChatbot(
+        memories: List<Memory> = emptyList(),
+        directResults: List<MemoryIndex> = emptyList(),
+        childResults: List<MemoryIndex> = emptyList(),
+    ): MemoryGroundedChatbot {
+        val reader = FixedMemoryReader(memories)
+        val directScope = memories.mapTo(mutableSetOf()) { it.id }
+        val semanticSearcher = object : SemanticMemoryIndexSearcher {
+            override fun search(query: String, limit: Int): List<MemoryIndex> = directResults.take(limit)
+
+            override fun search(
+                query: String,
+                limit: Int,
+                scope: MemoryIndexSearchScope,
+            ): List<MemoryIndex> {
+                val allowedIds = scope.allowedMemoryIds.orEmpty()
+                val results = if (allowedIds == directScope) directResults else childResults
+                return results.filter { it.memoryId in allowedIds }.take(limit)
+            }
+        }
         val memorySearcher = MemorySearcher(
-            memories = EmptyMemoryReader,
+            memories = reader,
             searcher = semanticSearcher,
             accessPolicy = HouseholdAccessPolicy { it == USER_ID },
         )
         return MemoryGroundedChatbot(
-            MemoryAnswerContextProvider(memorySearcher, EmptyMemoryReader, semanticSearcher),
+            MemoryAnswerContextProvider(memorySearcher, reader, semanticSearcher),
         )
     }
 
-    private object EmptyMemoryReader : MemoryReader {
-        override fun getMemories(userId: UserId) = emptyList<Memory>()
+    private fun memory(
+        id: Int,
+        childrenIds: List<Int> = emptyList(),
+        createdAt: Long,
+    ) = Memory(
+        id = id,
+        childrenIds = childrenIds,
+        createdByUserId = USER_ID.value,
+        content = "memory-$id",
+        subject = "subject-$id",
+        memoryType = MemoryType.REFERENCE,
+        certainty = MemoryCertainty.OBSERVED,
+        visibility = MemoryVisibility.PUBLIC,
+        evidenceRefs = listOf(id),
+        createdAt = createdAt,
+    )
+
+    private class FixedMemoryReader(
+        private val memories: List<Memory>,
+    ) : MemoryReader {
+        override fun getMemories(userId: UserId) = memories
     }
 
     private object UnusedMemoryAnalysis : MemoryAnalysis {

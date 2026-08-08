@@ -6,7 +6,6 @@ import com.homeassistant.application.memory.read.MemorySearchMatch
 import com.homeassistant.application.memory.read.MemorySearchMatchSource
 import com.homeassistant.application.memory.read.MemorySearcher
 import com.homeassistant.application.memory.read.SearchMemoriesRequest
-import com.homeassistant.application.memory.read.SearchMemoriesResult
 import com.homeassistant.application.memory.read.SemanticMemoryIndexSearcher
 import com.homeassistant.domain.identity.UserId
 
@@ -16,9 +15,11 @@ class MemoryAnswerContextProvider(
     private val memories: MemoryReader,
     private val semanticSearcher: SemanticMemoryIndexSearcher,
 ) {
-    fun context(request: SearchMemoriesRequest): SearchMemoriesResult {
+    fun context(request: SearchMemoriesRequest): MemoryAnswerContext {
         val seedResult = memorySearcher.search(request)
-        if (seedResult.matches.isEmpty()) return seedResult
+        if (seedResult.matches.isEmpty()) {
+            return MemoryAnswerContext(seedResult.query, seedResult.matches, seedResult.matches)
+        }
         val finalContextLimit = request.limit + MAX_EXPANDED_MATCHES
 
         val userId = UserId(request.userId)
@@ -41,7 +42,9 @@ class MemoryAnswerContextProvider(
                     }
                 }
         }
-        if (parentByCandidateId.isEmpty()) return seedResult
+        if (parentByCandidateId.isEmpty()) {
+            return MemoryAnswerContext(seedResult.query, seedResult.matches, seedResult.matches)
+        }
 
         val searchLimit = minOf(parentByCandidateId.size, SearchMemoriesRequest.MAX_LIMIT)
         val rankedChildren = semanticSearcher.search(
@@ -56,6 +59,7 @@ class MemoryAnswerContextProvider(
             .mapNotNull { index ->
                 val parentId = parentByCandidateId[index.memoryId] ?: return@mapNotNull null
                 val parentScore = seedScoreById.getValue(parentId)
+                if (parentScore <= 0.0 || index.score <= 0.0) return@mapNotNull null
                 if (index.score < parentScore * MIN_CHILD_TO_PARENT_SCORE_RATIO) return@mapNotNull null
                 val expandedCount = expandedCountByParent[parentId] ?: 0
                 if (expandedCount >= MAX_EXPANDED_CHILDREN_PER_SEED) return@mapNotNull null
@@ -74,9 +78,10 @@ class MemoryAnswerContextProvider(
             }
             .take(minOf(MAX_EXPANDED_MATCHES, finalContextLimit - seedResult.matches.size))
 
-        return SearchMemoriesResult(
-            seedResult.query,
-            (seedResult.matches + expandedMatches).take(finalContextLimit),
+        return MemoryAnswerContext(
+            query = seedResult.query,
+            directMatches = seedResult.matches,
+            contextMatches = (seedResult.matches + expandedMatches).take(finalContextLimit),
         )
     }
 
@@ -89,3 +94,9 @@ class MemoryAnswerContextProvider(
         const val MIN_CHILD_TO_PARENT_SCORE_RATIO = 0.8
     }
 }
+
+data class MemoryAnswerContext(
+    val query: String,
+    val directMatches: List<MemorySearchMatch>,
+    val contextMatches: List<MemorySearchMatch>,
+)

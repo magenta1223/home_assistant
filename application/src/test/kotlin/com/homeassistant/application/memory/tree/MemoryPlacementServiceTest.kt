@@ -184,6 +184,17 @@ class MemoryPlacementServiceTest {
         }
     }
 
+    @Test
+    fun `placement request owns a snapshot of the input memories`() {
+        val memory = memory(100)
+        val input = mutableListOf(memory)
+        val request = MemoryPlaceRequest(userId, input)
+
+        input += memory
+
+        assertEquals(listOf(memory), request.memories)
+    }
+
     private fun service(
         memories: List<Memory>,
         extractor: RecordingExtractor,

@@ -3,12 +3,14 @@ package com.homeassistant.application.memory.tree
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 
-data class MemoryPlaceRequest(
+class MemoryPlaceRequest(
     val userId: UserId,
-    val memories: List<Memory>
+    memories: List<Memory>,
 ) {
+    val memories: List<Memory> = memories.toList()
+
     init {
-        require(memories.distinctBy { it.id }.size == memories.size) {
+        require(this.memories.distinctBy { it.id }.size == this.memories.size) {
             "Placement request contains duplicate memory ids"
         }
     }

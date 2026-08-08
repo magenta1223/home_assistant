@@ -11,10 +11,12 @@ interface SourceRecordRepository {
 
     /** Returns source records belonging to the specified source. */
     fun findBySource(source: SourceDescriptor): List<SourceRecord>
+
 }
 
 data class SourceRecordSaveResult(
     val recordsToAnalyze: List<SourceRecord>,
+    val contextRecords: List<SourceRecord>,
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,

@@ -30,6 +30,68 @@ import kotlin.test.assertTrue
 
 class MemoryAnalysisRetryTest {
     @Test
+    fun `renamed cumulative import passes analyzed history as context for its new tail`() = runBlocking {
+        val databasePath = Files.createTempFile("analysis-renamed-context", ".db")
+        try {
+            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val original = SourceDescriptor("kakao", "original.txt")
+            val initial = sourceRecords.saveAll(original, listOf(draft("old-1"), draft("old-2")))
+            sourceRecords.markAnalyzed(initial.recordsToAnalyze.map { it.id })
+            val extractor = RecordingExtractor { document ->
+                listOf(proposal(document, MemoryVisibility.PUBLIC))
+            }
+            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+            val renamed = original.copy(name = "renamed.txt")
+
+            val result = service.execute(
+                MemoryAnalysisRequest(
+                    userId = USER_ID.value,
+                    source = SourceDocumentDraft(
+                        renamed,
+                        listOf(draft("old-1"), draft("old-2"), draft("new")),
+                    ),
+                ),
+            )
+
+            assertEquals(1, result.importedRecordCount)
+            assertEquals(2, result.alreadyAnalyzedRecordCount)
+            assertEquals(listOf("old-1", "old-2"), extractor.documents.single().contextRecords.map { it.deduplicationKey })
+            assertEquals(listOf("new"), extractor.documents.single().records.map { it.deduplicationKey })
+            assertEquals(
+                SourceRecordAnalysisStatus.ANALYZED,
+                sourceRecords.findBySource(renamed).single().analysisStatus,
+            )
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `same source name with a different conversation does not inherit database context`() = runBlocking {
+        val databasePath = Files.createTempFile("analysis-same-name-isolation", ".db")
+        try {
+            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val source = SourceDescriptor("kakao", "KakaoTalkChats.txt")
+            val unrelated = sourceRecords.saveAll(source, listOf(draft("other-conversation")))
+            sourceRecords.markAnalyzed(unrelated.recordsToAnalyze.map { it.id })
+            val extractor = RecordingExtractor { emptyList() }
+            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+
+            service.execute(
+                MemoryAnalysisRequest(
+                    userId = USER_ID.value,
+                    source = SourceDocumentDraft(source, listOf(draft("new-conversation"))),
+                ),
+            )
+
+            assertTrue(extractor.documents.single().contextRecords.isEmpty())
+            assertEquals(listOf("new-conversation"), extractor.documents.single().records.map { it.deduplicationKey })
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
     fun `memory persistence failure leaves source pending`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-persistence-failure", ".db")
         try {
@@ -116,7 +178,7 @@ class MemoryAnalysisRetryTest {
                     userId = USER_ID.value,
                     source = SourceDocumentDraft(
                         source,
-                        listOf(draft("pending"), draft("analyzed"), draft("new")),
+                        listOf(draft("analyzed"), draft("pending"), draft("new")),
                     ),
                 ),
             )
@@ -126,8 +188,45 @@ class MemoryAnalysisRetryTest {
             assertEquals(1, result.alreadyAnalyzedRecordCount)
             assertEquals(1, result.privateMemoryCount)
             assertEquals(1, result.publicMemoryCount)
+            assertEquals(listOf("analyzed"), extractor.documents.single().contextRecords.map { it.deduplicationKey })
             assertEquals(listOf("pending", "new"), extractor.documents.single().records.map { it.deduplicationKey })
             assertTrue(sourceRecords.findBySource(source).all { it.analysisStatus == SourceRecordAnalysisStatus.ANALYZED })
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `analyzed records after the first pending record are not used as future context`() = runBlocking {
+        val databasePath = Files.createTempFile("analysis-pending-context-boundary", ".db")
+        try {
+            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val source = SourceDescriptor("kakao", "conversation.txt")
+            val initial = sourceRecords.saveAll(
+                source,
+                listOf(draft("prefix"), draft("pending"), draft("future-analyzed")),
+            )
+            sourceRecords.markAnalyzed(
+                initial.recordsToAnalyze
+                    .filter { it.deduplicationKey != "pending" }
+                    .map { it.id },
+            )
+            val extractor = RecordingExtractor { emptyList() }
+            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+
+            service.execute(
+                MemoryAnalysisRequest(
+                    userId = USER_ID.value,
+                    source = SourceDocumentDraft(
+                        source,
+                        listOf(draft("prefix"), draft("pending"), draft("future-analyzed"), draft("new")),
+                    ),
+                ),
+            )
+
+            val document = extractor.documents.single()
+            assertEquals(listOf("prefix"), document.contextRecords.map { it.deduplicationKey })
+            assertEquals(listOf("pending", "new"), document.records.map { it.deduplicationKey })
         } finally {
             Files.deleteIfExists(databasePath)
         }

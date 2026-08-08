@@ -18,23 +18,54 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         var retriedRecordCount = 0
         var alreadyAnalyzedRecordCount = 0
         val seenDeduplicationKeys = mutableSetOf<String>()
+        val contextRecords = ArrayDeque<SourceRecord>()
+        var analysisStarted = false
 
         records.forEach { record ->
             if (!seenDeduplicationKeys.add(record.deduplicationKey)) {
                 return@forEach
             }
-            val existing = SourceRecordTable.selectAll()
+            var existing = SourceRecordTable.selectAll()
                 .where {
                     (SourceRecordTable.sourceType eq source.type) and
                         (SourceRecordTable.deduplicationKey eq record.deduplicationKey)
                 }
                 .singleOrNull()
+            if (existing == null && record.deduplicationAliases.isNotEmpty()) {
+                val aliasMatches = SourceRecordTable.selectAll()
+                    .where {
+                        (SourceRecordTable.sourceType eq source.type) and
+                            (SourceRecordTable.deduplicationKey inList record.deduplicationAliases)
+                    }
+                    .limit(2)
+                    .toList()
+                check(aliasMatches.size <= 1) {
+                    "Multiple source records match deduplication aliases for ${record.deduplicationKey}"
+                }
+                existing = aliasMatches.singleOrNull()
+                existing?.let { legacy ->
+                    SourceRecordTable.update({ SourceRecordTable.id eq legacy[SourceRecordTable.id] }) {
+                        it[deduplicationKey] = record.deduplicationKey
+                        it[content] = record.content
+                    }
+                }
+            }
             if (existing != null) {
-                val existingRecord = existing.toSourceRecord()
+                val existingRecord = existing.toSourceRecord().let { stored ->
+                    if (stored.deduplicationKey == record.deduplicationKey) stored else stored.copy(
+                        deduplicationKey = record.deduplicationKey,
+                        content = record.content,
+                    )
+                }
                 if (existingRecord.analysisStatus == SourceRecordAnalysisStatus.PENDING) {
+                    analysisStarted = true
                     recordsToAnalyze += existingRecord
                     retriedRecordCount++
                 } else {
+                    if (!analysisStarted) {
+                        contextRecords += existingRecord
+                        if (contextRecords.size > CONTEXT_RECORD_LIMIT) contextRecords.removeFirst()
+                    }
                     alreadyAnalyzedRecordCount++
                 }
                 return@forEach
@@ -48,11 +79,13 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 it[createdAt] = System.currentTimeMillis()
                 it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
             }[SourceRecordTable.id]
+            analysisStarted = true
             recordsToAnalyze += record.toSourceRecord(id)
             importedRecordCount++
         }
         SourceRecordSaveResult(
             recordsToAnalyze = recordsToAnalyze,
+            contextRecords = contextRecords.toList(),
             importedRecordCount = importedRecordCount,
             retriedRecordCount = retriedRecordCount,
             alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
@@ -91,4 +124,8 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             content = this[SourceRecordTable.content],
             analysisStatus = SourceRecordAnalysisStatus.valueOf(this[SourceRecordTable.analysisStatus]),
         )
+
+    private companion object {
+        const val CONTEXT_RECORD_LIMIT = 20
+    }
 }

@@ -11,20 +11,33 @@ import com.homeassistant.domain.source.SourceRecord
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 /** Runs Codex memory analysis for normalized source documents. */
 internal class CodexMemoryExtractor(
     private val client: CodexCompletionClient,
     private val chunkSize: Int = CHUNK_SIZE,
+    private val chunkOverlap: Int = minOf(CHUNK_OVERLAP, chunkSize - 1),
+    private val maxConcurrentChunks: Int = MAX_CONCURRENT_CHUNKS,
+    private val maxMergeInputChars: Int = MAX_MERGE_INPUT_CHARS,
 ) : MemoryExtractor {
+    init {
+        require(chunkSize > 0) { "chunkSize must be positive" }
+        require(chunkOverlap in 0 until chunkSize) { "chunkOverlap must be between zero and chunkSize" }
+        require(maxConcurrentChunks > 0) { "maxConcurrentChunks must be positive" }
+        require(maxMergeInputChars > 0) { "maxMergeInputChars must be positive" }
+    }
+
     override suspend fun analyze(document: SourceDocument): List<MemoryProposal> {
         if (document.records.isEmpty()) return emptyList()
         val memories = if (document.records.size <= chunkSize) {
             analyzeChunk(document)
         } else {
+            val semaphore = Semaphore(maxConcurrentChunks)
             val chunkMemories = coroutineScope {
                 chunkDocument(document)
-                    .map { chunk -> async { analyzeChunk(chunk) } }
+                    .map { chunk -> async { semaphore.withPermit { analyzeChunk(chunk) } } }
                     .awaitAll()
                     .flatten()
             }
@@ -43,12 +56,16 @@ internal class CodexMemoryExtractor(
     private suspend fun mergeMemories(
         document: SourceDocument,
         chunkMemories: List<MemoryProposal>,
-    ): List<MemoryProposal> =
-        requestMemories(
+    ): List<MemoryProposal> {
+        if (chunkMemories.isEmpty()) return emptyList()
+        val mergeInput = renderMemoryProposals(document, chunkMemories)
+        if (mergeInput.length > maxMergeInputChars) return chunkMemories.resolveDuplicateVisibilities()
+        return requestMemories(
             document = document,
             system = MemoryAnalysisPrompt.mergeSystem(),
-            userMessage = renderMemoryProposals(document, chunkMemories),
+            userMessage = mergeInput,
         )
+    }
 
     private suspend fun requestMemories(
         document: SourceDocument,
@@ -77,8 +94,20 @@ internal class CodexMemoryExtractor(
         }
     }
 
-    private fun chunkDocument(document: SourceDocument): List<SourceDocument> =
-        document.records.chunked(chunkSize).map { records -> document.copy(records = records) }
+    private fun chunkDocument(document: SourceDocument): List<SourceDocument> {
+        val step = chunkSize - chunkOverlap
+        return generateSequence(0) { it + step }
+            .takeWhile { start ->
+                start < document.records.size && (start == 0 || start + chunkOverlap < document.records.size)
+            }
+            .mapIndexed { index, start ->
+                document.copy(
+                    contextRecords = if (index == 0) document.contextRecords else emptyList(),
+                    records = document.records.subList(start, minOf(start + chunkSize, document.records.size)),
+                )
+            }
+            .toList()
+    }
 
     private fun parseEvidence(document: SourceDocument, evidenceRecordIds: List<String>): List<SourceRecord> =
         evidenceRecordIds.map { recordId ->
@@ -86,8 +115,14 @@ internal class CodexMemoryExtractor(
                 ?: throw MemoryExtractionException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
-    private fun renderDocument(document: SourceDocument): String =
-        document.records.joinToString("\n") { "${it.promptId} | ${it.content}" }
+    private fun renderDocument(document: SourceDocument): String = buildString {
+        if (document.contextRecords.isNotEmpty()) {
+            appendLine("[CONTEXT_ONLY]")
+            document.contextRecords.forEach { appendLine("${it.contextPromptId} | ${it.content}") }
+        }
+        appendLine("[NEW_RECORDS]")
+        append(document.records.joinToString("\n") { "${it.promptId} | ${it.content}" })
+    }
 
     private fun renderMemoryProposals(
         document: SourceDocument,
@@ -109,20 +144,27 @@ internal class CodexMemoryExtractor(
 
     private companion object {
         const val CHUNK_SIZE = 400
+        const val CHUNK_OVERLAP = 20
+        const val MAX_CONCURRENT_CHUNKS = 4
+        const val MAX_MERGE_INPUT_CHARS = 100_000
     }
 }
 
 private val SourceRecord.promptId: String
     get() = "r$id"
 
+private val SourceRecord.contextPromptId: String
+    get() = "c$id"
+
 private fun List<MemoryProposal>.resolveDuplicateVisibilities(): List<MemoryProposal> =
-    groupBy { it.content to it.evidenceIds.toSet() }
-        .values
-        .map { duplicates ->
-            val first = duplicates.first()
-            if (duplicates.any { it.visibility == MemoryVisibility.PRIVATE }) {
-                first.copy(visibility = MemoryVisibility.PRIVATE)
-            } else {
-                first
+    LinkedHashMap<Pair<String, Set<Int>>, MemoryProposal>().also { unique ->
+        forEach { memory ->
+            val key = memory.content to memory.evidenceIds.toSet()
+            val existing = unique[key]
+            if (existing == null ||
+                existing.visibility == MemoryVisibility.PUBLIC && memory.visibility == MemoryVisibility.PRIVATE
+            ) {
+                unique[key] = memory
             }
         }
+    }.values.toList()

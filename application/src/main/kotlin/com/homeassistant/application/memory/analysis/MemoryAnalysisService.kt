@@ -32,9 +32,12 @@ class MemoryAnalysisService(
             )
         }
 
+        val contextRecords = sourceRecordSave.contextRecords.takeLast(CONTEXT_RECORD_LIMIT)
+
         val proposals = memoryExtractor.analyze(
             SourceDocument(
                 source = parsedSource.source,
+                contextRecords = contextRecords,
                 records = recordsToAnalyze,
             ),
         )
@@ -59,6 +62,7 @@ class MemoryAnalysisService(
     }
 
     private companion object {
+        const val CONTEXT_RECORD_LIMIT = 20
         val log = LoggerFactory.getLogger(MemoryAnalysisService::class.java)
     }
 }

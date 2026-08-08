@@ -4,6 +4,7 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerRequest
 import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
 import com.homeassistant.application.memory.read.MemorySearchUnavailableException
+import com.homeassistant.application.memory.read.SearchMemoriesRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
@@ -26,6 +27,16 @@ internal fun Route.memoryAnswerRoutes(memoryGroundedChatbot: MemoryGroundedChatb
         val request = call.receive<MemoryAnswerHttpRequest>()
         if (request.question.isBlank()) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "question is required"))
+            return@post
+        }
+        if (request.limit !in SearchMemoriesRequest.MIN_LIMIT..SearchMemoriesRequest.MAX_LIMIT) {
+            call.respond(
+                HttpStatusCode.BadRequest,
+                mapOf(
+                    "error" to
+                        "limit must be between ${SearchMemoriesRequest.MIN_LIMIT} and ${SearchMemoriesRequest.MAX_LIMIT}",
+                ),
+            )
             return@post
         }
 

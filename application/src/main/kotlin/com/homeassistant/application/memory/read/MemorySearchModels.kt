@@ -9,11 +9,12 @@ data class SearchMemoriesRequest(
     val limit: Int = 5,
 ) {
     init {
-        require(limit in 1..MAX_SEARCH_LIMIT) { "memory search limit must be between 1 and $MAX_SEARCH_LIMIT" }
+        require(limit in MIN_LIMIT..MAX_LIMIT) { "memory search limit must be between $MIN_LIMIT and $MAX_LIMIT" }
     }
 
-    private companion object {
-        const val MAX_SEARCH_LIMIT = 10
+    companion object {
+        const val MIN_LIMIT = 1
+        const val MAX_LIMIT = 10
     }
 }
 

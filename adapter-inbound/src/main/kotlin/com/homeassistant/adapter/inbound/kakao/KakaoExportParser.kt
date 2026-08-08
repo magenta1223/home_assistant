@@ -37,6 +37,7 @@ object KakaoExportParser {
         lines.forEach { rawLine ->
             val line = rawLine.trimStart('\uFEFF')
             parseBracketDate(line)?.let { date ->
+                if (messages.isNotEmpty()) messages.last().appendLegacy(rawLine)
                 bracketDate = date
                 return@forEach
             }
@@ -49,9 +50,10 @@ object KakaoExportParser {
                 return@forEach
             }
 
-            val sender = (bracketMatch?.groupValues?.get(1)
+            val legacySender = bracketMatch?.groupValues?.get(1)
                 ?: exportedMatch?.groupValues?.get(2)
-                ?: dottedExportedMatch!!.groupValues[2]).trim()
+                ?: dottedExportedMatch!!.groupValues[2]
+            val sender = legacySender.trim()
             val timestamp = bracketMatch
                 ?.let { bracketTimestamp(bracketDate, it.groupValues[2], it.groupValues[3]) }
                 ?: parseTimestamp(
@@ -61,32 +63,43 @@ object KakaoExportParser {
             val content = bracketMatch?.groupValues?.get(4)
                 ?: exportedMatch?.groupValues?.get(3)
                 ?: dottedExportedMatch!!.groupValues[3]
-            messages += MessageBuilder(sender, timestamp, content)
+            messages += MessageBuilder(sender, legacySender, timestamp, content)
         }
 
         return SourceDocumentDraft(
             source = SourceDescriptor("kakao", sourceName),
-            records = messages.map { it.build() },
+            records = messages.map { it.build(sourceName) },
         )
     }
 
     private class MessageBuilder(
         private val sender: String,
+        private val legacySender: String,
         private val timestamp: ParsedTimestamp,
         initialContent: String,
     ) {
         private val contentLines = mutableListOf(initialContent)
+        private val legacyContentLines = mutableListOf(initialContent)
 
         fun append(line: String) {
             contentLines += line
+            legacyContentLines += line
         }
 
-        fun build(): SourceRecordDraft {
+        fun appendLegacy(line: String) {
+            legacyContentLines += line
+        }
+
+        fun build(sourceName: String): SourceRecordDraft {
             val content = contentLines.joinToString("\n").trimEnd()
             val fingerprintText = listOf(sender, timestamp.canonical, content).joinToString("\u001F")
+            val legacyContent = legacyContentLines.joinToString("\n").trimEnd()
+            val legacyFingerprintText = listOf(sourceName, legacySender, timestamp.legacyDisplay, legacyContent)
+                .joinToString("\u001F")
             return SourceRecordDraft(
                 deduplicationKey = sha256(fingerprintText),
                 content = "$sender | ${timestamp.display} | $content",
+                deduplicationAliases = setOf(sha256(legacyFingerprintText)),
             )
         }
     }
@@ -94,6 +107,7 @@ object KakaoExportParser {
     private data class ParsedTimestamp(
         val display: String,
         val canonical: String,
+        val legacyDisplay: String,
     )
 
     private fun parseBracketDate(line: String): LocalDate? {
@@ -110,9 +124,15 @@ object KakaoExportParser {
     private fun bracketTimestamp(date: LocalDate?, period: String, time: String): ParsedTimestamp {
         if (date == null) {
             val display = "$period $time"
-            return ParsedTimestamp(display, "UNKNOWN_DATE|$display")
+            return ParsedTimestamp(display, "UNKNOWN_DATE|$display", display)
         }
-        return timestamp(date, period, time.substringBefore(':').toInt(), time.substringAfter(':').toInt())
+        return timestamp(
+            date,
+            period,
+            time.substringBefore(':').toInt(),
+            time.substringAfter(':').toInt(),
+            "$period $time",
+        )
     }
 
     private fun parseTimestamp(value: String): ParsedTimestamp {
@@ -127,10 +147,18 @@ object KakaoExportParser {
             period = match.groupValues[4],
             hour = match.groupValues[5].toInt(),
             minute = match.groupValues[6].toInt(),
+            legacyDisplay = value,
         )
     }
 
-    private fun timestamp(date: LocalDate, period: String, hour: Int, minute: Int): ParsedTimestamp {
+    private fun timestamp(
+        date: LocalDate,
+        period: String,
+        hour: Int,
+        minute: Int,
+        legacyDisplay: String,
+    ): ParsedTimestamp {
+        require(hour in 1..12) { "Kakao hour must be between 1 and 12: $hour" }
         val hourOfDay = (hour % 12) + if (period == "오후") 12 else 0
         val time = LocalTime.of(hourOfDay, minute)
         return ParsedTimestamp(
@@ -143,6 +171,7 @@ object KakaoExportParser {
                 time.hour,
                 time.minute,
             ),
+            legacyDisplay = legacyDisplay,
         )
     }
 

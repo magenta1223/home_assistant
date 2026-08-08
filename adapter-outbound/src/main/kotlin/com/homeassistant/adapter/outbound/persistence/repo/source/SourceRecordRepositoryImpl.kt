@@ -25,14 +25,38 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             if (!seenDeduplicationKeys.add(record.deduplicationKey)) {
                 return@forEach
             }
-            val existing = SourceRecordTable.selectAll()
+            var existing = SourceRecordTable.selectAll()
                 .where {
                     (SourceRecordTable.sourceType eq source.type) and
                         (SourceRecordTable.deduplicationKey eq record.deduplicationKey)
                 }
                 .singleOrNull()
+            if (existing == null && record.deduplicationAliases.isNotEmpty()) {
+                val aliasMatches = SourceRecordTable.selectAll()
+                    .where {
+                        (SourceRecordTable.sourceType eq source.type) and
+                            (SourceRecordTable.deduplicationKey inList record.deduplicationAliases)
+                    }
+                    .limit(2)
+                    .toList()
+                check(aliasMatches.size <= 1) {
+                    "Multiple source records match deduplication aliases for ${record.deduplicationKey}"
+                }
+                existing = aliasMatches.singleOrNull()
+                existing?.let { legacy ->
+                    SourceRecordTable.update({ SourceRecordTable.id eq legacy[SourceRecordTable.id] }) {
+                        it[deduplicationKey] = record.deduplicationKey
+                        it[content] = record.content
+                    }
+                }
+            }
             if (existing != null) {
-                val existingRecord = existing.toSourceRecord()
+                val existingRecord = existing.toSourceRecord().let { stored ->
+                    if (stored.deduplicationKey == record.deduplicationKey) stored else stored.copy(
+                        deduplicationKey = record.deduplicationKey,
+                        content = record.content,
+                    )
+                }
                 if (existingRecord.analysisStatus == SourceRecordAnalysisStatus.PENDING) {
                     analysisStarted = true
                     recordsToAnalyze += existingRecord
@@ -83,21 +107,6 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             }
             .orderBy(SourceRecordTable.id)
             .map { it.toSourceRecord() }
-    }
-
-    override fun findRecentAnalyzed(source: SourceDescriptor, limit: Int): List<SourceRecord> = transaction(db) {
-        require(limit >= 0) { "limit must not be negative" }
-        if (limit == 0) return@transaction emptyList()
-        SourceRecordTable.selectAll()
-            .where {
-                (SourceRecordTable.sourceType eq source.type) and
-                    (SourceRecordTable.sourceName eq source.name) and
-                    (SourceRecordTable.analysisStatus eq SourceRecordAnalysisStatus.ANALYZED.name)
-            }
-            .orderBy(SourceRecordTable.id, SortOrder.DESC)
-            .limit(limit)
-            .map { it.toSourceRecord() }
-            .asReversed()
     }
 
     private fun SourceRecordDraft.toSourceRecord(id: Int): SourceRecord =

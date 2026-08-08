@@ -32,12 +32,7 @@ class MemoryAnalysisService(
             )
         }
 
-        val contextRecords = (
-            sourceRecords.findRecentAnalyzed(parsedSource.source, CONTEXT_RECORD_LIMIT) +
-                sourceRecordSave.contextRecords
-            )
-            .distinctBy { it.id }
-            .takeLast(CONTEXT_RECORD_LIMIT)
+        val contextRecords = sourceRecordSave.contextRecords.takeLast(CONTEXT_RECORD_LIMIT)
 
         val proposals = memoryExtractor.analyze(
             SourceDocument(

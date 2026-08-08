@@ -12,8 +12,6 @@ interface SourceRecordRepository {
     /** Returns source records belonging to the specified source. */
     fun findBySource(source: SourceDescriptor): List<SourceRecord>
 
-    /** Returns the most recent analyzed records for read-only incremental-import context. */
-    fun findRecentAnalyzed(source: SourceDescriptor, limit: Int): List<SourceRecord>
 }
 
 data class SourceRecordSaveResult(

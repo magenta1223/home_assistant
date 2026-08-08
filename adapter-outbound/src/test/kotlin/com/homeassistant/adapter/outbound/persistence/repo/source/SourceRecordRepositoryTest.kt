@@ -12,6 +12,34 @@ import kotlin.test.assertTrue
 
 class SourceRecordRepositoryTest {
     @Test
+    fun `incremental import returns only the recent analyzed prefix as context`() {
+        val databasePath = Files.createTempFile("source-record-context", ".db")
+        try {
+            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val source = SourceDescriptor("kakao", "conversation")
+            val existingDrafts = (1..25).map { draft("old-$it") }
+            val initial = repository.saveAll(source, existingDrafts)
+            repository.markAnalyzed(initial.recordsToAnalyze.map { it.id })
+
+            assertEquals(
+                listOf("old-23", "old-24", "old-25"),
+                repository.findRecentAnalyzed(source, limit = 3).map { it.deduplicationKey },
+            )
+
+            val incremental = repository.saveAll(
+                source.copy(name = "renamed-conversation"),
+                existingDrafts + draft("new") + draft("old-1"),
+            )
+
+            assertEquals((6..25).map { "old-$it" }, incremental.contextRecords.map { it.deduplicationKey })
+            assertEquals(listOf("new"), incremental.recordsToAnalyze.map { it.deduplicationKey })
+            assertTrue(incremental.contextRecords.all { it.analysisStatus == SourceRecordAnalysisStatus.ANALYZED })
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
     fun `returns pending records for retry alongside newly imported records`() {
         val databasePath = Files.createTempFile("source-record-retry", ".db")
         try {

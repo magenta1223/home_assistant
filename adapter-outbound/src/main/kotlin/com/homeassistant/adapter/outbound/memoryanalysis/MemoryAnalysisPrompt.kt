@@ -24,7 +24,8 @@ internal object MemoryAnalysisPrompt {
         서로 다른 사실을 하나의 memory에 묶지 마세요.
         같은 미래 질문에 답하는 중복 memory는 하나로 합치세요.
         시간 순서나 메시지 개수로 중요도를 판단하지 마세요.
-        evidenceRecordIds는 입력에 제공된 r1, r2 같은 ID만 사용하세요.
+        CONTEXT_ONLY의 c1, c2 같은 record는 해석에만 사용하고 memory evidence로 선택하지 마세요.
+        evidenceRecordIds는 NEW_RECORDS에 제공된 r1, r2 같은 ID만 사용하세요.
         실제로 말하지 않은 사실을 확정하지 말고 관찰/발화/추론/불확실성을 구분하세요.
         memoryType은 ${MemoryType.entries.joinToString(", ") { it.name }} 중 하나만 사용하세요.
         visibility는 일반적인 가족 공동 정보에만 ${MemoryVisibility.PUBLIC}을 사용하세요.

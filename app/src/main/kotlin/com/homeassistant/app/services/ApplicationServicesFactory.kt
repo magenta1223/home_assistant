@@ -69,7 +69,6 @@ object ApplicationServicesFactory {
                 memoryReader = repositories.canonicalMemories,
                 extractor = MemoryPlacementExtractorFactory.create(),
                 tree = repositories.memoryTree,
-                memoryIndexWriter = memoryIndexWriter,
             ),
         )
         val memorySearcherImpl = MemorySearcher(

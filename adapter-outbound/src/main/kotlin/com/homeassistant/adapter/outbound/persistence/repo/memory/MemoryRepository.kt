@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTa
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.application.memory.read.MemoryReader
 import com.homeassistant.application.memory.tree.MemoryTreeAttachRequest
-import com.homeassistant.application.memory.tree.MemoryTreeAttachResponse
 import com.homeassistant.application.memory.tree.MemoryTreeStore
 import com.homeassistant.application.memory.write.MemoryWriter
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
@@ -51,8 +50,8 @@ internal class MemoryRepository(
         proposal.toMemory(createdBy, memoryId)
     }
 
-    override fun attachChildren(request: MemoryTreeAttachRequest): MemoryTreeAttachResponse = transaction(db) {
-        if (request.parentByChild.isEmpty()) return@transaction MemoryTreeAttachResponse(emptyList())
+    override fun attachChildren(request: MemoryTreeAttachRequest): Unit = transaction(db) {
+        if (request.parentByChild.isEmpty()) return@transaction
 
         val all = getMemories(request.userId).associateBy { it.id }
         request.parentByChild.forEach { (childMemoryId, parentMemoryId) ->
@@ -94,7 +93,6 @@ internal class MemoryRepository(
         }
         all.keys.forEach(::verifyAcyclic)
 
-        val updatedParentIds = linkedSetOf<Int>()
         request.parentByChild.values.distinct().forEach { parentId ->
             val parent = all.getValue(parentId)
             val children = finalChildren.getValue(parentId)
@@ -103,13 +101,8 @@ internal class MemoryRepository(
                     it[childrenIds] = children.encodeToString()
                     it[updatedAt] = System.currentTimeMillis()
                 }
-                updatedParentIds += parentId
             }
         }
-
-        MemoryTreeAttachResponse(
-            updatedMemories = getMemories(request.userId).filter { it.id in updatedParentIds },
-        )
     }
 
     private fun ResultRow.toMemory(): Memory {

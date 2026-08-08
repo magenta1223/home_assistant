@@ -1,7 +1,6 @@
 package com.homeassistant.application.memory.tree
 
 import com.homeassistant.application.memory.read.MemoryReader
-import com.homeassistant.application.memory.write.SemanticMemoryIndexWriter
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
@@ -70,12 +69,12 @@ class MemoryPlacementServiceTest {
     }
 
     @Test
-    fun `orders assignments when a new memory is the parent of another new memory`() = runBlocking {
+    fun `passes child-first assignments to one atomic attach call`() = runBlocking {
         val existingRoot = memory(1)
         val first = memory(100)
         val second = memory(101)
         val extractor = RecordingExtractor {
-            // Deliberately return the child first; persistence order must still be parent-first.
+            // Deliberately return the child first; the store validates the final graph atomically.
             MemoryPlacementResponse(
                 decisions = listOf(
                     MemoryPlacementDecision(first.id, second.id),
@@ -91,9 +90,11 @@ class MemoryPlacementServiceTest {
         ).place(MemoryPlaceRequest(userId, listOf(first, second)))
 
         assertEquals(
-            listOf(1 to 101, 101 to 100),
+            listOf(101 to 100, 1 to 101),
             tree.parentChildIds,
         )
+        assertEquals(1, extractor.calls)
+        assertEquals(1, tree.calls)
     }
 
     @Test
@@ -174,6 +175,15 @@ class MemoryPlacementServiceTest {
         }
     }
 
+    @Test
+    fun `rejects duplicate memory ids when creating a placement request`() {
+        val duplicate = memory(100)
+
+        assertFailsWith<IllegalArgumentException> {
+            MemoryPlaceRequest(userId, listOf(duplicate, duplicate))
+        }
+    }
+
     private fun service(
         memories: List<Memory>,
         extractor: RecordingExtractor,
@@ -183,7 +193,6 @@ class MemoryPlacementServiceTest {
         memoryReader = FixedMemoryReader(memories),
         extractor = extractor,
         tree = tree,
-        memoryIndexWriter = SemanticMemoryIndexWriter { true },
         visibleTreeDepth = visibleTreeDepth,
     )
 
@@ -213,26 +222,12 @@ class MemoryPlacementServiceTest {
         var calls = 0
         val parentChildIds = mutableListOf<Pair<Int, Int>>()
 
-        override fun attachChildren(request: MemoryTreeAttachRequest): MemoryTreeAttachResponse {
+        override fun attachChildren(request: MemoryTreeAttachRequest) {
             calls++
             request.parentByChild.forEach { (childId, parentId) ->
                 parentChildIds += parentId to childId
             }
-            return MemoryTreeAttachResponse(
-                updatedMemories = request.parentByChild.values.distinct().map(::memory),
-            )
         }
-
-        private fun memory(id: Int) = Memory(
-            id = id,
-            createdByUserId = "member-1",
-            content = "updated-$id",
-            subject = "updated-$id",
-            memoryType = MemoryType.REFERENCE,
-            certainty = MemoryCertainty.OBSERVED,
-            visibility = MemoryVisibility.PUBLIC,
-            evidenceRefs = listOf(id),
-        )
     }
 
     private class RecordingExtractor(

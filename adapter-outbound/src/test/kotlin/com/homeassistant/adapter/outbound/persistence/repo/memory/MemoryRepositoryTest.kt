@@ -83,6 +83,88 @@ class MemoryRepositoryTest {
         }
     }
 
+    @Test
+    fun `batch placement is independent of parent assignment order`() {
+        val databasePath = Files.createTempFile("memory-placement-order", ".db")
+        try {
+            val database = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(database)
+            val memories = MemoryRepository(database)
+            val userId = UserId("member-1")
+            val records = sourceRecords.saveAll(
+                SourceDescriptor(type = "test", name = "placement-order"),
+                listOf(
+                    SourceRecordDraft("root", "root"),
+                    SourceRecordDraft("child", "child"),
+                    SourceRecordDraft("grandchild", "grandchild"),
+                ),
+            ).recordsToAnalyze
+            val root = memories.write(memoryProposal(records[0].id, "root"), userId)
+            val child = memories.write(memoryProposal(records[1].id, "child"), userId)
+            val grandchild = memories.write(memoryProposal(records[2].id, "grandchild"), userId)
+
+            memories.attachChildren(
+                MemoryTreeAttachRequest(
+                    userId = userId,
+                    parentByChild = linkedMapOf(
+                        grandchild.id to child.id,
+                        child.id to root.id,
+                    ),
+                ),
+            )
+
+            val stored = transaction(database) { memories.getMemories(userId).associateBy { it.id } }
+            assertEquals(listOf(child.id), stored.getValue(root.id).childrenIds)
+            assertEquals(listOf(grandchild.id), stored.getValue(child.id).childrenIds)
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `cycle against the stored graph is rejected without partial updates`() {
+        val databasePath = Files.createTempFile("memory-placement-cycle", ".db")
+        try {
+            val database = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(database)
+            val memories = MemoryRepository(database)
+            val userId = UserId("member-1")
+            val records = sourceRecords.saveAll(
+                SourceDescriptor(type = "test", name = "placement-cycle"),
+                listOf(
+                    SourceRecordDraft("root", "root"),
+                    SourceRecordDraft("child", "child"),
+                    SourceRecordDraft("other", "other"),
+                ),
+            ).recordsToAnalyze
+            val root = memories.write(memoryProposal(records[0].id, "root"), userId)
+            val child = memories.write(memoryProposal(records[1].id, "child"), userId)
+            val other = memories.write(memoryProposal(records[2].id, "other"), userId)
+            memories.attachChildren(
+                MemoryTreeAttachRequest(userId, mapOf(child.id to root.id)),
+            )
+
+            assertFailsWith<IllegalArgumentException> {
+                memories.attachChildren(
+                    MemoryTreeAttachRequest(
+                        userId = userId,
+                        parentByChild = linkedMapOf(
+                            other.id to child.id,
+                            root.id to child.id,
+                        ),
+                    ),
+                )
+            }
+
+            val stored = transaction(database) { memories.getMemories(userId).associateBy { it.id } }
+            assertEquals(listOf(child.id), stored.getValue(root.id).childrenIds)
+            assertEquals(emptyList(), stored.getValue(child.id).childrenIds)
+            assertEquals(emptyList(), stored.getValue(other.id).childrenIds)
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
     private fun memoryProposal(evidenceId: Int, subject: String) = MemoryProposal(
         content = subject,
         subject = subject,

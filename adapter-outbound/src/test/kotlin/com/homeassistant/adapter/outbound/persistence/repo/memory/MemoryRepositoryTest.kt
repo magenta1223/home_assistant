@@ -10,6 +10,9 @@ import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -17,6 +20,34 @@ import kotlin.test.assertFailsWith
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class MemoryRepositoryTest {
+    @Test
+    fun `stores one creation time and reads it from an existing memory`() {
+        val databasePath = Files.createTempFile("memory-created-at", ".db")
+        try {
+            val database = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(database)
+            val createdAt = Instant.parse("2026-08-08T01:02:03Z")
+            val memories = MemoryRepository(database, Clock.fixed(createdAt, ZoneOffset.UTC))
+            val userId = UserId("member-1")
+            val record = sourceRecords.saveAll(
+                SourceDescriptor(type = "test", name = "created-at"),
+                listOf(SourceRecordDraft("memory", "memory")),
+            ).recordsToAnalyze.single()
+
+            val saved = memories.write(memoryProposal(record.id, "memory"), userId)
+            val laterReader = MemoryRepository(
+                database,
+                Clock.fixed(Instant.parse("2027-01-01T00:00:00Z"), ZoneOffset.UTC),
+            )
+            val stored = transaction(database) { laterReader.getMemories(userId).single() }
+
+            assertEquals(createdAt.toEpochMilli(), saved.createdAt)
+            assertEquals(saved.createdAt, stored.createdAt)
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
     @Test
     fun `private memory remains visible only to the uploader`() {
         val databasePath = Files.createTempFile("private-memory", ".db")

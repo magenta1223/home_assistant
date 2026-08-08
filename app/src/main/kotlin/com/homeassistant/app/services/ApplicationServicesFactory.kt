@@ -9,6 +9,7 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCo
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
+import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
 import com.homeassistant.application.memory.analysis.MemoryAnalysisService
 import com.homeassistant.application.memory.tree.MemoryPlacementService
 import com.homeassistant.configuration.AppConfig
@@ -76,7 +77,12 @@ object ApplicationServicesFactory {
             accessPolicy = accessPolicy,
             searcher = semanticMemoryIndexSearcher,
         )
-        val memoryAnswer = MemoryGroundedChatbot(memorySearcherImpl)
+        val answerContext = MemoryAnswerContextProvider(
+            memorySearcher = memorySearcherImpl,
+            memories = repositories.canonicalMemories,
+            semanticSearcher = semanticMemoryIndexSearcher,
+        )
+        val memoryAnswer = MemoryGroundedChatbot(answerContext)
         val conversationClient = CodexConversationConfig.fromEnv()
             ?.let(CodexConversationClientFactory::create)
             ?.takeIf { it.validateVersion() }
@@ -84,7 +90,7 @@ object ApplicationServicesFactory {
             SlackRuntimeFactory.create(
                 it,
                 memoryAnalysisService,
-                memorySearcherImpl,
+                answerContext,
                 repositories.slackCodexSessions,
                 conversationClient,
             )

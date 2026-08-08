@@ -17,9 +17,7 @@
 | [memory-search-ranking-and-limit.md](p0/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |
 | [retryable-memory-analysis.md](p0/retryable-memory-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
 | [kakao-import-integrity.md](p1/kakao-import-integrity.md) | Kakao dedup, 날짜, 증분 문맥과 대용량 처리 |
-| [memory-created-at-context.md](p1/memory-created-at-context.md) | memory 생성 일자를 응답 context에 제공 |
 | [model-inferred-memory-visibility.md](p0/model-inferred-memory-visibility.md) | 모델이 PUBLIC/PRIVATE을 명시적으로 결정 |
-| [tree-aware-memory-context-expansion.md](p1/tree-aware-memory-context-expansion.md) | 직접 검색 seed를 유지하며 관련 하위 memory를 제한적으로 context에 확장 |
 | [reliable-indexing-and-placement-retry.md](p2/reliable-indexing-and-placement-retry.md) | 인덱싱·배치 실패 기록과 재시도 |
 | [evidence-grounded-answer.md](p2/evidence-grounded-answer.md) | evidence와 certainty를 실제 답변에 전달 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 전체 조회와 N+1 query 제거 |
@@ -30,6 +28,8 @@
 
 완료 문서는 [done](done/)에서 버전별 release note로 사용한다.
 
-| 문서 | 변경 내용 |
+| 문서 | 목적 |
 |---|---|
+| [memory-created-at-context.md](done/memory-created-at-context.md) | memory 생성 일자를 응답 context에 제공 |
 | [simplify-memory-placement.md](done/simplify-memory-placement.md) | 의미 없는 정렬·부모 재인덱싱·attach 응답 제거 |
+| [tree-aware-memory-context-expansion.md](done/tree-aware-memory-context-expansion.md) | 직접 검색 seed를 유지하며 관련 하위 memory를 제한적으로 context에 확장 |

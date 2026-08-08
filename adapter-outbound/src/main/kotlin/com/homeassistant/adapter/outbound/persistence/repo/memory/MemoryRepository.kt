@@ -16,9 +16,11 @@ import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.time.Clock
 
 internal class MemoryRepository(
     private val db: Database,
+    private val clock: Clock = Clock.systemUTC(),
 ) : MemoryReader, MemoryWriter, MemoryTreeStore {
 
     override fun getMemories(userId: UserId): List<Memory> {
@@ -30,6 +32,7 @@ internal class MemoryRepository(
 
     override fun write(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {
         require(proposal.evidenceIds.isNotEmpty()) { "memory evidence is required" }
+        val now = clock.millis()
         val memoryId = MemoryTable.insert {
             it[childrenIds] = emptyList<Int>().encodeToString()
             it[createdByUserId] = createdBy.value
@@ -38,8 +41,8 @@ internal class MemoryRepository(
             it[memoryType] = proposal.memoryType.name
             it[certainty] = proposal.certainty.name
             it[visibility] = proposal.visibility.name
-            it[createdAt] = System.currentTimeMillis()
-            it[updatedAt] = System.currentTimeMillis()
+            it[createdAt] = now
+            it[updatedAt] = now
         }[MemoryTable.id]
         proposal.evidenceIds.distinct().forEach { sourceRecordId ->
             MemoryEvidenceTable.insert {
@@ -47,7 +50,7 @@ internal class MemoryRepository(
                 it[MemoryEvidenceTable.sourceRecordId] = sourceRecordId
             }
         }
-        proposal.toMemory(createdBy, memoryId)
+        proposal.toMemory(createdBy, memoryId, now)
     }
 
     override fun attachChildren(request: MemoryTreeAttachRequest): Unit = transaction(db) {
@@ -122,10 +125,11 @@ internal class MemoryRepository(
             certainty = MemoryCertainty.valueOf(this[MemoryTable.certainty]),
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
             evidenceRefs = evidenceRefs,
+            createdAt = this[MemoryTable.createdAt],
         )
     }
 
-    private fun MemoryProposal.toMemory(userId: UserId, memoryId: Int): Memory {
+    private fun MemoryProposal.toMemory(userId: UserId, memoryId: Int, createdAt: Long): Memory {
         return Memory(
             id = memoryId,
             childrenIds = emptyList(),
@@ -135,7 +139,8 @@ internal class MemoryRepository(
             memoryType = memoryType,
             certainty = certainty,
             visibility = visibility,
-            evidenceRefs = evidenceIds
+            evidenceRefs = evidenceIds,
+            createdAt = createdAt,
         )
     }
 }

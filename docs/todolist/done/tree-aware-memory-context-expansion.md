@@ -1,6 +1,6 @@
 # Tree-aware Memory context 확장
 
-- 상태: TODO
+- 상태: DONE
 - 목표: Weekend MVP
 
 ## 문제
@@ -45,3 +45,19 @@ container/detail 타입이 아니라 관련 memory 사이의 single-parent 관�
 - 확장 후에도 visibility, cycle, depth, child count, 최종 limit 제약이 지켜진다.
 - 확장된 memory의 score와 어떤 seed에서 확장됐는지 확인할 수 있다.
 - 넓은 질문의 답변 품질이 개선되고 exact leaf 질문의 품질이 회귀하지 않는다.
+
+## Release note
+
+- 완료일: 2026-08-08
+- `MemorySearcher`의 direct 결과는 변경하지 않고, HTTP와 Slack이 공유하는 `MemoryAnswerContextProvider`에서만 answer context를 확장한다.
+- 요청된 direct top-K seed를 순서와 score 그대로 모두 보존하고, 별도 answer context에 최대 2개의 direct child를 추가한다. HTTP 공개 `matches`는 direct 결과만 반환해 요청 limit을 지킨다.
+- child 후보는 visible memory로 한정하고 seed당 후보 5개, 전체 후보 10개, seed당 확장 1개, depth 1로 제한한다. visited seed ID와 direct-child-only 정책으로 legacy cycle을 순회하지 않는다.
+- child는 별도 scoped semantic search로 다시 평가하며 부모와 child score가 모두 양수이고 부모 seed score의 80% 이상인 경우에만 포함한다. 부모 score는 상속하지 않는다.
+- 결과마다 `DIRECT`/`CHILD`, `parentMemoryId`, `depth`, 자체 score를 제공한다.
+- 검증: exact leaf top-K 보존, broad parent의 관련 child, 낮은 관련도·0·음수 score child 제외, PRIVATE child 제외, direct seed 보존, final context limit, cycle/depth, HTTP limit 및 Slack 확장 reference 회귀 테스트와 전체 `./gradlew build` 통과.
+
+## 남은 제약
+
+- 초기 정책은 direct child와 최대 depth 1만 다룬다. 더 깊은 확장은 실제 질문 표본의 품질 평가 없이 늘리지 않는다.
+- 양수 score와 부모 대비 80% 상대 score gate는 보수적인 초기값이며 실제 relevant/irrelevant 분포로 재평가해야 한다.
+- HTTP는 direct match만 반환하며 여전히 첫 match를 이용한 단순 문자열 답변이다. 확장 reference를 이용한 Codex 기반 응답 경로 통합은 `unify-answer-path` 작업에 남긴다.

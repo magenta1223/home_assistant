@@ -59,6 +59,7 @@ class MemorySearcherTest {
 
         assertEquals(listOf(2, 1, 3), result.matches.map { it.memoryId })
         assertEquals(listOf(0.92, 0.87, 0.81), result.matches.map { it.score })
+        assertEquals(listOf(2_000L, 1_000L, 3_000L), result.matches.map { it.createdAt })
     }
 
     private fun memorySearcher(
@@ -85,6 +86,7 @@ class MemorySearcherTest {
         certainty = MemoryCertainty.OBSERVED,
         visibility = MemoryVisibility.PUBLIC,
         evidenceRefs = listOf(id),
+        createdAt = id * 1_000L,
     )
 
     private class FixedMemoryReader(

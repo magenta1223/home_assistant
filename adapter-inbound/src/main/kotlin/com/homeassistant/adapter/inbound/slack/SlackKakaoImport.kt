@@ -80,7 +80,7 @@ internal class SlackKakaoAnalysisWorkflow(
                     source = KakaoExportParser.parse(upload.fileName, text),
                 ),
             )
-            if (result.importedRecordCount == 0) {
+            if (result.importedRecordCount + result.retriedRecordCount == 0) {
                 log.warn("Slack Kakao analysis parsed zero messages for file ${upload.fileName}")
                 slackClient.postEphemeral(
                     channelId = upload.channelId,
@@ -94,6 +94,8 @@ internal class SlackKakaoAnalysisWorkflow(
             val message = SlackMemoryBlocks.analysisMessage(
                 sourceName = result.sourceName,
                 importedRecordCount = result.importedRecordCount,
+                retriedRecordCount = result.retriedRecordCount,
+                alreadyAnalyzedRecordCount = result.alreadyAnalyzedRecordCount,
                 memories = result.memories,
             )
             @Suppress("UNCHECKED_CAST")

@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.db.tables
 
+import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.Table
 
 internal object SourceRecordTable : Table("source_records") {
@@ -9,6 +10,7 @@ internal object SourceRecordTable : Table("source_records") {
     val content = text("content")
     val deduplicationKey = text("deduplication_key")
     val createdAt = long("created_at")
+    val analysisStatus = text("analysis_status").default(SourceRecordAnalysisStatus.ANALYZED.name)
     override val primaryKey = PrimaryKey(id)
 
     init {

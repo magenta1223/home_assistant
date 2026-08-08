@@ -44,8 +44,14 @@ internal fun Route.kakaoMemoryAnalysisRoutes(
                     ),
                 ),
             )
-        } catch (_: DuplicateSourceRecordsException) {
-            call.respond(HttpStatusCode.Conflict, mapOf("error" to "all Kakao messages have already been analyzed"))
+        } catch (error: DuplicateSourceRecordsException) {
+            call.respond(
+                HttpStatusCode.Conflict,
+                mapOf(
+                    "error" to "all Kakao messages have already been analyzed",
+                    "alreadyAnalyzedRecordCount" to error.recordCount,
+                ),
+            )
         } catch (_: HouseholdAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))
         }

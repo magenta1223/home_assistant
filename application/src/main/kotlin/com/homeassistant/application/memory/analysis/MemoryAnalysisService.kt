@@ -22,25 +22,32 @@ class MemoryAnalysisService(
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         val parsedSource = request.source
-        val newRecords = sourceRecords.saveAll(parsedSource.source, parsedSource.records)
+        val sourceRecordSave = sourceRecords.saveAll(parsedSource.source, parsedSource.records)
+        val recordsToAnalyze = sourceRecordSave.recordsToAnalyze
 
-        if (newRecords.isEmpty()) {
-            throw DuplicateSourceRecordsException(parsedSource.source.name, parsedSource.records.size)
+        if (recordsToAnalyze.isEmpty() && parsedSource.records.isNotEmpty()) {
+            throw DuplicateSourceRecordsException(
+                parsedSource.source.name,
+                sourceRecordSave.alreadyAnalyzedRecordCount,
+            )
         }
 
         val proposals = memoryExtractor.analyze(
             SourceDocument(
                 source = parsedSource.source,
-                records = newRecords,
+                records = recordsToAnalyze,
             ),
         )
         val savedMemories = memorySaver.persist(userId, proposals)
+        sourceRecords.markAnalyzed(recordsToAnalyze.map { it.id })
         runCatching { memoryPlacement.place(MemoryPlaceRequest(userId, savedMemories)) }
             .onFailure { error -> log.warn("Memory tree placement deferred", error) }
         return MemoryAnalysisResult(
             sourceType = parsedSource.source.type,
             sourceName = parsedSource.source.name,
-            importedRecordCount = newRecords.size,
+            importedRecordCount = sourceRecordSave.importedRecordCount,
+            retriedRecordCount = sourceRecordSave.retriedRecordCount,
+            alreadyAnalyzedRecordCount = sourceRecordSave.alreadyAnalyzedRecordCount,
             publicMemoryCount = proposals.count { it.visibility == MemoryVisibility.PUBLIC },
             privateMemoryCount = proposals.count { it.visibility == MemoryVisibility.PRIVATE },
             memories = proposals,

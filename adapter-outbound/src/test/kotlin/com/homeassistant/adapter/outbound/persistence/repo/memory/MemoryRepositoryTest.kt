@@ -29,7 +29,7 @@ class MemoryRepositoryTest {
             val record = sourceRecords.saveAll(
                 SourceDescriptor(type = "test", name = "visibility"),
                 listOf(SourceRecordDraft("private", "private")),
-            ).single()
+            ).recordsToAnalyze.single()
             memories.write(
                 memoryProposal(record.id, "private").copy(visibility = MemoryVisibility.PRIVATE),
                 uploader,
@@ -57,7 +57,7 @@ class MemoryRepositoryTest {
                     SourceRecordDraft("child", "child"),
                     SourceRecordDraft("other", "other"),
                 ),
-            )
+            ).recordsToAnalyze
             val root = memories.write(memoryProposal(records[0].id, "root"), userId)
             val child = memories.write(memoryProposal(records[1].id, "child"), userId)
             val other = memories.write(memoryProposal(records[2].id, "other"), userId)

@@ -6,6 +6,7 @@ import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
+import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
@@ -86,7 +87,9 @@ class CodexMemoryExtractorTest {
 
     private fun document(recordCount: Int): SourceDocument = SourceDocument(
         source = SourceDescriptor(type = "test", name = "source"),
-        records = (1..recordCount).map { SourceRecord(it, "key-$it", "content-$it") },
+        records = (1..recordCount).map {
+            SourceRecord(it, "key-$it", "content-$it", SourceRecordAnalysisStatus.PENDING)
+        },
     )
 
     private fun response(

@@ -14,6 +14,8 @@ data class MemoryAnalysisResult(
     val sourceType: String,
     val sourceName: String,
     val importedRecordCount: Int,
+    val retriedRecordCount: Int,
+    val alreadyAnalyzedRecordCount: Int,
     val publicMemoryCount: Int,
     val privateMemoryCount: Int,
     val memories: List<MemoryProposal>,

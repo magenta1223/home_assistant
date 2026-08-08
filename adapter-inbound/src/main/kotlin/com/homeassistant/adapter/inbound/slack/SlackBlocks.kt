@@ -7,6 +7,8 @@ object SlackMemoryBlocks {
     fun analysisMessage(
         sourceName: String,
         importedRecordCount: Int,
+        retriedRecordCount: Int,
+        alreadyAnalyzedRecordCount: Int,
         memories: List<MemoryProposal>,
     ): Map<String, Any> =
         mapOf(
@@ -15,7 +17,8 @@ object SlackMemoryBlocks {
                 section(
                     "*Kakao 대화 분석 및 저장 완료: ${memories.size}개*\n" +
                         "${plain(sourceName, 140)}\n" +
-                        "파싱 메시지 ${importedRecordCount}건 | " +
+                        "신규 ${importedRecordCount}건 | 재시도 ${retriedRecordCount}건 | " +
+                        "기존 분석 ${alreadyAnalyzedRecordCount}건\n" +
                         "공개 ${memories.count { it.visibility == MemoryVisibility.PUBLIC }}개 | " +
                         "비공개 ${memories.count { it.visibility == MemoryVisibility.PRIVATE }}개",
                 ),

@@ -1,6 +1,6 @@
 # 재시도 가능한 Memory 분석
 
-- 상태: TODO
+- 상태: DONE
 - 목표: Weekend MVP
 
 ## 문제

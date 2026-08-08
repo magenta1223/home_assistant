@@ -5,6 +5,7 @@ import com.homeassistant.application.memory.analysis.MemoryExtractionException
 import com.homeassistant.application.memory.analysis.MemoryExtractor
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.MemoryProposal
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
 import kotlinx.coroutines.async
@@ -29,7 +30,7 @@ internal class CodexMemoryExtractor(
             }
             mergeMemories(document, chunkMemories)
         }
-        return memories.distinctBy { it.content to it.evidenceIds.toSet() }
+        return memories.resolveDuplicateVisibilities()
     }
 
     private suspend fun analyzeChunk(document: SourceDocument): List<MemoryProposal> =
@@ -71,6 +72,7 @@ internal class CodexMemoryExtractor(
                 memoryType = memory.memoryType,
                 certainty = memory.certainty,
                 evidenceIds = evidence.map { it.id },
+                visibility = memory.visibility,
             )
         }
     }
@@ -97,6 +99,7 @@ internal class CodexMemoryExtractor(
                 subject = memory.subject,
                 memoryType = memory.memoryType,
                 certainty = memory.certainty,
+                visibility = memory.visibility,
                 evidenceRecordIds = memory.evidenceIds.map { evidenceId ->
                     document.records.first { it.id == evidenceId }.promptId
                 },
@@ -111,3 +114,15 @@ internal class CodexMemoryExtractor(
 
 private val SourceRecord.promptId: String
     get() = "r$id"
+
+private fun List<MemoryProposal>.resolveDuplicateVisibilities(): List<MemoryProposal> =
+    groupBy { it.content to it.evidenceIds.toSet() }
+        .values
+        .map { duplicates ->
+            val first = duplicates.first()
+            if (duplicates.any { it.visibility == MemoryVisibility.PRIVATE }) {
+                first.copy(visibility = MemoryVisibility.PRIVATE)
+            } else {
+                first
+            }
+        }

@@ -6,6 +6,7 @@ import com.homeassistant.application.memory.tree.MemoryPlaceRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecordRepository
 import org.slf4j.LoggerFactory
@@ -40,6 +41,8 @@ class MemoryAnalysisService(
             sourceType = parsedSource.source.type,
             sourceName = parsedSource.source.name,
             importedRecordCount = newRecords.size,
+            publicMemoryCount = proposals.count { it.visibility == MemoryVisibility.PUBLIC },
+            privateMemoryCount = proposals.count { it.visibility == MemoryVisibility.PRIVATE },
             memories = proposals,
         )
     }

@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.domain.memory.MemoryProposal
+import com.homeassistant.domain.memory.MemoryVisibility
 
 object SlackMemoryBlocks {
     fun analysisMessage(
@@ -14,7 +15,9 @@ object SlackMemoryBlocks {
                 section(
                     "*Kakao 대화 분석 및 저장 완료: ${memories.size}개*\n" +
                         "${plain(sourceName, 140)}\n" +
-                        "파싱 메시지 ${importedRecordCount}건",
+                        "파싱 메시지 ${importedRecordCount}건 | " +
+                        "공개 ${memories.count { it.visibility == MemoryVisibility.PUBLIC }}개 | " +
+                        "비공개 ${memories.count { it.visibility == MemoryVisibility.PRIVATE }}개",
                 ),
                 divider(),
             ) + memories.take(5).mapIndexed { index, memory -> memorySummary(index, memory) },

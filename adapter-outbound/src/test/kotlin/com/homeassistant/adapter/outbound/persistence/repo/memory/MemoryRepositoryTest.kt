@@ -18,6 +18,31 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 class MemoryRepositoryTest {
     @Test
+    fun `private memory remains visible only to the uploader`() {
+        val databasePath = Files.createTempFile("private-memory", ".db")
+        try {
+            val database = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(database)
+            val memories = MemoryRepository(database)
+            val uploader = UserId("member-1")
+            val otherMember = UserId("member-2")
+            val record = sourceRecords.saveAll(
+                SourceDescriptor(type = "test", name = "visibility"),
+                listOf(SourceRecordDraft("private", "private")),
+            ).single()
+            memories.write(
+                memoryProposal(record.id, "private").copy(visibility = MemoryVisibility.PRIVATE),
+                uploader,
+            )
+
+            assertEquals(1, transaction(database) { memories.getMemories(uploader).size })
+            assertEquals(0, transaction(database) { memories.getMemories(otherMember).size })
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
     fun `invalid assignment rolls back every update in the placement batch`() {
         val databasePath = Files.createTempFile("memory-placement", ".db")
         try {

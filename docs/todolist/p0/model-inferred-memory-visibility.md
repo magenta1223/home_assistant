@@ -1,6 +1,6 @@
 # 모델이 추론하는 Memory visibility
 
-- 상태: TODO
+- 상태: DONE
 - 목표: Weekend MVP
 
 ## 현재 동작

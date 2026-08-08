@@ -6,6 +6,7 @@ import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.common.json.JsonSerializer.parseToJsonElement
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
 import kotlinx.schema.Schema
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.SerialDescription
@@ -36,6 +37,8 @@ internal data class MemoryLlmResponse(
     val memoryType: MemoryType,
     @property:SerialDescription("How directly the source evidence supports this memory.")
     val certainty: MemoryCertainty,
+    @property:SerialDescription("PUBLIC only for ordinary shared household information; PRIVATE for sensitive or ambiguous information.")
+    val visibility: MemoryVisibility,
     @property:SerialDescription("Source record ids supporting this memory, using ids such as r1 or r2 from the input.")
     val evidenceRecordIds: List<String>,
 )

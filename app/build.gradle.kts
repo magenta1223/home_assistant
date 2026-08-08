@@ -13,6 +13,14 @@ tasks.named<JavaExec>("run") {
     workingDir = rootProject.projectDir
 }
 
+tasks.register<JavaExec>("setupEmbedding") {
+    group = "application"
+    description = "Installs the pinned Windows Ollama runtime and prepares the embedding model."
+    mainClass.set("com.homeassistant.app.embedding.OllamaSetupKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    workingDir = rootProject.projectDir
+}
+
 dependencies {
     implementation(project(":adapter-inbound"))
     implementation(project(":adapter-outbound"))

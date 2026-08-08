@@ -7,7 +7,7 @@ import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtractorFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
-import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
+import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryGroundedChatbot
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
@@ -38,11 +38,9 @@ object ApplicationServicesFactory {
         val repositories = RepositoryFactory.create(dbPath)
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
-        val embeddingBaseUrl = Env[AppConfig.ENV_VAR_OLLAMA_BASE_URL]
-            ?: AppConfig.DEFAULT_OLLAMA_BASE_URL
-        log.info("Ollama embedding model={} baseUrl={}", embeddingModel, embeddingBaseUrl)
-
-        val textEmbedder = OllamaEmbeddingFactory.create(embeddingBaseUrl, embeddingModel)
+        val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
+        val textEmbedder = managedEmbedding.embedder
+        log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
         val vectorStore = QdrantVectorStoreFactory.create(
             baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
             collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
@@ -116,6 +114,11 @@ object ApplicationServicesFactory {
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
-        return DefaultApplicationServices(memoryAnalysisService, memoryAnswer, slackRuntime)
+        return DefaultApplicationServices(
+            memoryAnalysis = memoryAnalysisService,
+            memoryGroundedChatbot = memoryAnswer,
+            slackRuntime = slackRuntime,
+            embeddingRuntime = managedEmbedding.runtime,
+        )
     }
 }

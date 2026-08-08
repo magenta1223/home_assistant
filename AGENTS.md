@@ -11,6 +11,9 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 # Run the server (port 8080)
 ./gradlew :app:run
 
+# One-time Windows setup for the managed Ollama runtime and embedding model
+.\gradlew.bat setupEmbedding
+
 # Run all tests
 ./gradlew test
 
@@ -33,8 +36,7 @@ LLM providers and provider-selection environment variables are not supported.
 
 | Variable | Default | Notes |
 |---|---|---|
-| `OLLAMA_BASE_URL` | `http://localhost:11434` | Used only by local embedding calls |
-| `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Ollama embedding model; run `ollama pull qllama/multilingual-e5-base` before vector indexing |
+| `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Model prepared by `setupEmbedding` and verified as 768-dimensional at application startup |
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
 | `QDRANT_COLLECTION` | `canonical_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
@@ -48,6 +50,13 @@ LLM providers and provider-selection environment variables are not supported.
 | `CODEX_TIMEOUT_SECONDS` | `120` | Positive per-turn process timeout |
 
 Server port and DB path are configured in `AppConfig` and Ktor application config.
+
+On Windows, `setupEmbedding` downloads the pinned official standalone Ollama distribution, verifies
+its SHA-256, installs it under the gitignored `runtime/ollama/` directory, and prepares the embedding
+model. The application starts and stops this project-owned `ollama serve` process on
+`127.0.0.1:11435`; do not start a separate Ollama server on that port. Normal application startup
+never downloads binaries or models and fails with a setup instruction when the managed runtime is
+missing or unhealthy.
 
 ## Project Direction
 
@@ -106,7 +115,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 - `codex/` - Codex CLI transport and conversation-turn implementations.
 - `topicanalysis/` - Codex-backed topic extraction implementations.
-- `embedding/ollama/` - local Ollama text embedding implementation.
+- `embedding/ollama/` - pinned Windows Ollama installation, managed server lifecycle, and local text embedding.
 - `persistence/` - SQLite/Exposed repositories for source records, topics, canonical memories, indexing outbox, and Slack sessions.
 - `vector/qdrant/` - Qdrant vector storage implementation.
 - `vector/memory/` - canonical-memory semantic index implementation.

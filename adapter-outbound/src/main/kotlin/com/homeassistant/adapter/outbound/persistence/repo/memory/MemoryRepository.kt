@@ -23,11 +23,10 @@ internal class MemoryRepository(
     private val clock: Clock = Clock.systemUTC(),
 ) : MemoryReader, MemoryWriter, MemoryTreeStore {
 
-    override fun getMemories(userId: UserId): List<Memory> {
-        return MemoryTable.selectAll()
+    override fun getMemories(userId: UserId): List<Memory> = transaction(db) {
+        MemoryTable.selectAll()
             .map { it.toMemory() }
             .filter { it.isVisibleTo(userId) }
-
     }
 
     override fun write(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {

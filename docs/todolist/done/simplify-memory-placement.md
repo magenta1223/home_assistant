@@ -33,5 +33,5 @@ Memory 배치 결과는 같지만, 한 번의 Codex 호출과 한 번의 원자�
 
 ## 남은 제약
 
-- placement 실패의 영속 기록과 재시도는 `reliable-indexing-and-placement-retry` 작업 범위다.
+- placement 실패의 영속 기록과 재시도는 이번 변경 범위에 포함하지 않았다.
 - vector payload에 과거 `childrenIds`가 남을 수 있지만 현재 검색에서는 소비하지 않는다. tree-aware 검색은 canonical repository 관계를 기준으로 별도 context 확장 단계에서 구현한다.

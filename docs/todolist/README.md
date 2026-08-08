@@ -12,15 +12,19 @@
 
 ## 현재 작업
 
+### P1
+
 | 문서 | 목적 |
 |---|---|
-| [memory-search-ranking-and-limit.md](p0/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |
-| [retryable-memory-analysis.md](p0/retryable-memory-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
-| [model-inferred-memory-visibility.md](p0/model-inferred-memory-visibility.md) | 모델이 PUBLIC/PRIVATE을 명시적으로 결정 |
-| [reliable-indexing-and-placement-retry.md](p2/reliable-indexing-and-placement-retry.md) | 인덱싱·배치 실패 기록과 재시도 |
-| [evidence-grounded-answer.md](p2/evidence-grounded-answer.md) | evidence와 certainty를 실제 답변에 전달 |
+| [atomic-memory-analysis-persistence.md](p1/atomic-memory-analysis-persistence.md) | 분석 batch의 memory·evidence·source 상태를 원자적이고 idempotent하게 저장 |
+| [unified-evidence-grounded-answer.md](p1/unified-evidence-grounded-answer.md) | HTTP·Slack 답변 경로를 통일하고 evidence와 certainty를 실제 응답에 전달 |
+| [explicit-memory-placement-model.md](p1/explicit-memory-placement-model.md) | topic, tag, container tree 중 명시적인 장기 배치 모델 결정 |
+
+### P2
+
+| 문서 | 목적 |
+|---|---|
 | [memory-query-performance.md](p2/memory-query-performance.md) | 전체 조회와 N+1 query 제거 |
-| [unify-answer-path.md](p2/unify-answer-path.md) | HTTP와 Slack 답변 동작 통일 |
 | [regression-test-baseline.md](p2/regression-test-baseline.md) | 안정화 시점의 최소 회귀 테스트 |
 
 ## 완료된 작업
@@ -29,6 +33,11 @@
 
 | 문서 | 결과 |
 |---|---|
+| [managed-embedding-server.md](done/managed-embedding-server.md) | Windows standalone Ollama 설치·모델 준비·managed server lifecycle 구현 |
+| [memory-read-transaction-boundary.md](done/memory-read-transaction-boundary.md) | repository 소유 transaction으로 검색·답변·Slack 문맥·배치 읽기 경로 복구 |
+| [memory-search-ranking-and-limit.md](done/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |
+| [retryable-memory-analysis.md](done/retryable-memory-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
+| [model-inferred-memory-visibility.md](done/model-inferred-memory-visibility.md) | 모델이 PUBLIC/PRIVATE을 명시적으로 결정 |
 | [kakao-import-integrity.md](done/kakao-import-integrity.md) | 파일명 독립 dedup, 날짜 보존, 검증된 증분 문맥, 제한된 대용량 분석 |
 | [memory-created-at-context.md](done/memory-created-at-context.md) | memory 생성 일자를 응답 context에 제공 |
 | [simplify-memory-placement.md](done/simplify-memory-placement.md) | 의미 없는 정렬·부모 재인덱싱·attach 응답 제거 |

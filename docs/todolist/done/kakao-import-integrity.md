@@ -56,5 +56,4 @@ Bracket export의 날짜 구분자가 message 시각에 결합되지 않아 날�
   연결된다.
 - oversized merge fallback은 exact content/evidence 중복만 제거하며 semantic duplicate 병합은 수행하지 않는다.
 - blocking Codex subprocess가 coroutine 취소에 즉시 반응하는 transport-level 보장은 이번 범위에 포함하지
-  않았다. 장애 후 재시도 정책은 [reliable-indexing-and-placement-retry](../p2/reliable-indexing-and-placement-retry.md)
-  후속 작업과 함께 다뤄야 한다.
+  않았다.

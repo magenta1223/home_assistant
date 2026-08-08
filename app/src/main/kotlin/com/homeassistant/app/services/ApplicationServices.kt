@@ -15,6 +15,9 @@ interface ApplicationServices : AutoCloseable {
     /** Provides the optional Slack runtime when Slack is configured. */
     val slackRuntime: SlackRuntime?
 
+    /** Reports whether required managed runtimes are available. */
+    val isReady: Boolean
+
     /** Starts managed application runtimes. */
     fun start()
 }

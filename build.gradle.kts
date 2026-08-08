@@ -7,6 +7,12 @@ plugins {
     alias(libs.plugins.ktor) apply false
 }
 
+tasks.register("setupEmbedding") {
+    group = "application"
+    description = "Installs the pinned Windows Ollama runtime and prepares the embedding model."
+    dependsOn(":app:setupEmbedding")
+}
+
 subprojects {
     group = "com.homeassistant"
     version = "1.0.0"

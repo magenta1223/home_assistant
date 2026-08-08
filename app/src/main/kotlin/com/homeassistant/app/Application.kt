@@ -45,11 +45,17 @@ fun Application.module() {
 
     val httpApiKeys = HttpApiKeyConfig.fromEnv()
     val services = ApplicationServicesFactory.create(dbPath, httpApiKeys.values)
-    services.start()
+    try {
+        services.start()
+    } catch (failure: Exception) {
+        services.close()
+        throw failure
+    }
     monitor.subscribe(ApplicationStopped) { services.close() }
     configureRoutes(
         services.memoryAnalysis,
         services.memoryGroundedChatbot,
         httpApiKeys,
+        readiness = { services.isReady },
     )
 }

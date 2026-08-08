@@ -6,8 +6,12 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 
-internal fun Route.healthRoutes() {
+internal fun Route.healthRoutes(readiness: () -> Boolean) {
     get(AppConfig.ROUTE_HEALTH) {
-        call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
+        if (readiness()) {
+            call.respond(HttpStatusCode.OK, mapOf("status" to "ok"))
+        } else {
+            call.respond(HttpStatusCode.ServiceUnavailable, mapOf("status" to "unavailable"))
+        }
     }
 }

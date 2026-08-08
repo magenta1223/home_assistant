@@ -17,7 +17,6 @@ import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import org.jetbrains.exposed.sql.transactions.transaction
 
 class MemoryRepositoryTest {
     @Test
@@ -39,7 +38,7 @@ class MemoryRepositoryTest {
                 database,
                 Clock.fixed(Instant.parse("2027-01-01T00:00:00Z"), ZoneOffset.UTC),
             )
-            val stored = transaction(database) { laterReader.getMemories(userId).single() }
+            val stored = laterReader.getMemories(userId).single()
 
             assertEquals(createdAt.toEpochMilli(), saved.createdAt)
             assertEquals(saved.createdAt, stored.createdAt)
@@ -66,8 +65,8 @@ class MemoryRepositoryTest {
                 uploader,
             )
 
-            assertEquals(1, transaction(database) { memories.getMemories(uploader).size })
-            assertEquals(0, transaction(database) { memories.getMemories(otherMember).size })
+            assertEquals(1, memories.getMemories(uploader).size)
+            assertEquals(0, memories.getMemories(otherMember).size)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -105,9 +104,7 @@ class MemoryRepositoryTest {
                 )
             }
 
-            val storedRoot = transaction(database) {
-                memories.getMemories(userId).single { it.id == root.id }
-            }
+            val storedRoot = memories.getMemories(userId).single { it.id == root.id }
             assertEquals(emptyList(), storedRoot.childrenIds)
         } finally {
             Files.deleteIfExists(databasePath)
@@ -144,7 +141,7 @@ class MemoryRepositoryTest {
                 ),
             )
 
-            val stored = transaction(database) { memories.getMemories(userId).associateBy { it.id } }
+            val stored = memories.getMemories(userId).associateBy { it.id }
             assertEquals(listOf(child.id), stored.getValue(root.id).childrenIds)
             assertEquals(listOf(grandchild.id), stored.getValue(child.id).childrenIds)
         } finally {
@@ -187,7 +184,7 @@ class MemoryRepositoryTest {
                 )
             }
 
-            val stored = transaction(database) { memories.getMemories(userId).associateBy { it.id } }
+            val stored = memories.getMemories(userId).associateBy { it.id }
             assertEquals(listOf(child.id), stored.getValue(root.id).childrenIds)
             assertEquals(emptyList(), stored.getValue(child.id).childrenIds)
             assertEquals(emptyList(), stored.getValue(other.id).childrenIds)

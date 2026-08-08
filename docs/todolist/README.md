@@ -16,7 +16,6 @@
 |---|---|
 | [memory-search-ranking-and-limit.md](p0/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |
 | [retryable-memory-analysis.md](p0/retryable-memory-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
-| [kakao-import-integrity.md](p1/kakao-import-integrity.md) | Kakao dedup, 날짜, 증분 문맥과 대용량 처리 |
 | [memory-created-at-context.md](p1/memory-created-at-context.md) | memory 생성 일자를 응답 context에 제공 |
 | [model-inferred-memory-visibility.md](p0/model-inferred-memory-visibility.md) | 모델이 PUBLIC/PRIVATE을 명시적으로 결정 |
 | [simplify-memory-placement.md](p1/simplify-memory-placement.md) | 의미 없는 정렬과 부모 재인덱싱 제거 |
@@ -28,5 +27,9 @@
 | [regression-test-baseline.md](p2/regression-test-baseline.md) | 안정화 시점의 최소 회귀 테스트 |
 
 ## 완료된 작업
+
+| 문서 | 완료일 | 결과 |
+|---|---|---|
+| [kakao-import-integrity.md](done/kakao-import-integrity.md) | 2026-08-08 | 파일명 독립 dedup, 날짜 보존, 증분 문맥, 제한된 대용량 분석 |
 
 완료 문서는 [done](done/)에서 버전별 release note로 사용한다.

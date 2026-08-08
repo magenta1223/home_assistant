@@ -2,6 +2,7 @@ package com.homeassistant.application.memory.analysis
 
 import com.homeassistant.application.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.memory.tree.MemoryPlacement
+import com.homeassistant.application.memory.tree.MemoryPlaceRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -33,7 +34,7 @@ class MemoryAnalysisService(
             ),
         )
         val savedMemories = memorySaver.persist(userId, proposals)
-        runCatching { memoryPlacement.place(userId, savedMemories) }
+        runCatching { memoryPlacement.place(MemoryPlaceRequest(userId, savedMemories)) }
             .onFailure { error -> log.warn("Memory tree placement deferred", error) }
         return MemoryAnalysisResult(
             sourceType = parsedSource.source.type,

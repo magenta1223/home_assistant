@@ -2,29 +2,25 @@ package com.homeassistant.application.memory.tree
 
 import com.homeassistant.domain.memory.Memory
 
-enum class MemoryPlacementDecisionType {
-    EXISTING_PARENT,
-    ROOT,
-}
-
+/** All context needed to place one saved batch in a single Codex call. */
 data class MemoryPlacementInput(
-    val memory: Memory,
-    val candidates: List<Memory>,
+    val memories: List<Memory>,
+    val visibleMemoryTree: String,
 )
 
 data class MemoryPlacementDecision(
     val memoryId: Int,
-    val decision: MemoryPlacementDecisionType,
-    val containerId: Int? = null,
+    /** null keeps the memory at the root; otherwise this is the direct parent id. */
+    val parentId: Int?,
 )
 
-data class MemoryPlacementBatchResult(
+data class MemoryPlacementResponse(
     val decisions: List<MemoryPlacementDecision>,
 )
 
 /** Batch-capable boundary for a Codex-backed placement implementation. */
 fun interface MemoryPlacementExtractor {
-    suspend fun analyze(inputs: List<MemoryPlacementInput>): MemoryPlacementBatchResult
+    suspend fun analyze(input: MemoryPlacementInput): MemoryPlacementResponse
 }
 
 class MemoryPlacementException(message: String) : RuntimeException(message)

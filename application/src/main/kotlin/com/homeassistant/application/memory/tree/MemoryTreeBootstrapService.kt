@@ -9,8 +9,8 @@ class MemoryTreeBootstrapService(
     private val placement: MemoryPlacement,
 ) {
     suspend fun placeExistingRoots(userId: UserId, limit: Int = 10_000): Int {
-        val roots = memories.getMemories(userId)
-        placement.place(userId, roots)
+        val roots = memories.getMemories(userId).take(limit)
+        placement.place(MemoryPlaceRequest(userId, roots))
         return roots.size
     }
 }

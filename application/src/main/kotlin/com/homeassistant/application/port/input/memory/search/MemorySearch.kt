@@ -5,4 +5,6 @@ fun interface MemorySearch {
     fun search(request: SearchMemoriesRequest): SearchMemoriesResult
 }
 
-class MemorySearchUnavailableException(message: String) : RuntimeException(message)
+class MemorySearchUnavailableException internal constructor(
+    cause: Throwable,
+) : RuntimeException("memory search is unavailable", cause)

@@ -11,3 +11,8 @@ fun interface MemoryPlacement {
         override suspend fun place(memoryPlaceRequest: MemoryPlaceRequest) = Unit
     }
 }
+
+class MemoryPlacementException internal constructor(
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)

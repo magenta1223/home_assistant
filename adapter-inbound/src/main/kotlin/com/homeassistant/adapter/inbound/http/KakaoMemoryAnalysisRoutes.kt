@@ -4,6 +4,7 @@ import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
@@ -52,6 +53,8 @@ internal fun Route.kakaoMemoryAnalysisRoutes(
                     "alreadyAnalyzedRecordCount" to error.recordCount,
                 ),
             )
+        } catch (error: MemoryAnalysisUnavailableException) {
+            call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: HouseholdAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))
         }

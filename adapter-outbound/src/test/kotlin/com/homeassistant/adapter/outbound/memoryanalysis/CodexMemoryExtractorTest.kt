@@ -1,7 +1,6 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -39,7 +38,7 @@ class CodexMemoryExtractorTest {
             ),
         )
 
-        assertFailsWith<MemoryExtractionException> {
+        assertFailsWith<IllegalArgumentException> {
             extractor.analyze(document(recordCount = 1))
         }
     }
@@ -98,7 +97,7 @@ class CodexMemoryExtractorTest {
             ),
         )
 
-        assertFailsWith<MemoryExtractionException> { CodexMemoryExtractor(client).analyze(input) }
+        assertFailsWith<IllegalArgumentException> { CodexMemoryExtractor(client).analyze(input) }
         assertContains(client.calls.single().userMessage, "[CONTEXT_ONLY]\nc99 | earlier message")
         assertContains(client.calls.single().userMessage, "[NEW_RECORDS]\nr1 | content-1")
         assertContains(client.calls.single().system, "c1, c2 같은 record는 해석에만 사용")

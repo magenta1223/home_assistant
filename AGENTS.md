@@ -92,6 +92,10 @@ application-driven integrations in `adapter-outbound`.
 - `port/input/memory/` and `usecase/memory/` - memory analysis, search, answer, and placement flows.
 - `port/input/slackconversation/` and `usecase/slackconversation/` - authorized Slack conversation flow.
 
+Application exception types are use-case failure contracts. Declare them beside the corresponding
+input port with an `internal` constructor, and let the use-case implementation translate collaborator
+failures into that contract. Output ports and adapters must not construct application exceptions.
+
 ### adapter-inbound
 
 - `http/` - Ktor routes and HTTP request/response DTO mapping.

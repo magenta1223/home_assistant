@@ -2,11 +2,13 @@ package com.homeassistant.application.usecase.memory.placement
 
 import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
+import com.homeassistant.application.port.input.memory.placement.MemoryPlacementException
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementExtractor
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
 import com.homeassistant.application.port.output.memory.read.MemoryReader
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -26,8 +28,16 @@ class MemoryPlacementService(
     override suspend fun place(memoryPlaceRequest: MemoryPlaceRequest) {
         if (memoryPlaceRequest.memories.isEmpty()) return
 
-        placementLock.withLock {
-            placeBatch(memoryPlaceRequest)
+        try {
+            placementLock.withLock {
+                placeBatch(memoryPlaceRequest)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: MemoryPlacementException) {
+            throw error
+        } catch (error: Exception) {
+            throw MemoryPlacementException("memory placement failed", error)
         }
     }
 

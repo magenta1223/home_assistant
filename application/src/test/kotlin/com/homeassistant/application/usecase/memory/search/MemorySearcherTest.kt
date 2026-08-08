@@ -1,5 +1,6 @@
 package com.homeassistant.application.usecase.memory.search
 
+import com.homeassistant.application.port.input.memory.search.MemorySearchUnavailableException
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.search.MemoryIndex
@@ -15,6 +16,7 @@ import com.homeassistant.domain.memory.MemoryVisibility
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertSame
 
 class MemorySearcherTest {
     private val userId = UserId("member-1")
@@ -66,6 +68,26 @@ class MemorySearcherTest {
         assertEquals(listOf(2, 1, 3), result.matches.map { it.memoryId })
         assertEquals(listOf(0.92, 0.87, 0.81), result.matches.map { it.score })
         assertEquals(listOf(2_000L, 1_000L, 3_000L), result.matches.map { it.createdAt })
+    }
+
+    @Test
+    fun `translates output failures to the memory search failure contract`() {
+        val failure = IllegalStateException("index unavailable")
+        val searcher = object : SemanticMemoryIndexSearcher {
+            override fun search(query: String, limit: Int): List<MemoryIndex> = throw failure
+
+            override fun search(
+                query: String,
+                limit: Int,
+                scope: MemoryIndexSearchScope,
+            ): List<MemoryIndex> = throw failure
+        }
+
+        val unavailable = assertFailsWith<MemorySearchUnavailableException> {
+            memorySearcher(listOf(memory(1)), searcher).search(request())
+        }
+
+        assertSame(failure, unavailable.cause)
     }
 
     private fun memorySearcher(

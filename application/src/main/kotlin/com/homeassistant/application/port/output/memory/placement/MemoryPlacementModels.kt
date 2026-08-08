@@ -22,5 +22,3 @@ data class MemoryPlacementResponse(
 fun interface MemoryPlacementExtractor {
     suspend fun analyze(input: MemoryPlacementInput): MemoryPlacementResponse
 }
-
-class MemoryPlacementException(message: String) : RuntimeException(message)

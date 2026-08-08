@@ -1,6 +1,5 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
-import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.common.json.JsonSerializer.parseToJsonElement
@@ -91,7 +90,7 @@ internal object MemoryAnalysisOutputContract {
         try {
             stripJsonCodeFence(raw).decodeFromString()
         } catch (error: SerializationException) {
-            throw MemoryExtractionException("Failed to parse memory analysis response: ${error.message}")
+            throw IllegalArgumentException("Failed to parse memory analysis response: ${error.message}", error)
         }
 
     private fun stripJsonCodeFence(raw: String): String {

@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.memory.placement
 
+import com.homeassistant.application.port.input.memory.placement.MemoryPlacementException
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
-import com.homeassistant.application.port.output.memory.placement.MemoryPlacementException
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
 
 /** Validates a complete extractor response without transforming or ordering it. */

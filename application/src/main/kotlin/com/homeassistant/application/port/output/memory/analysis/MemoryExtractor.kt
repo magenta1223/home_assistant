@@ -8,5 +8,3 @@ interface MemoryExtractor {
     /** Extracts atomic memory proposals from the supplied source document. */
     suspend fun analyze(document: SourceDocument): List<MemoryProposal>
 }
-
-class MemoryExtractionException(message: String) : RuntimeException(message)

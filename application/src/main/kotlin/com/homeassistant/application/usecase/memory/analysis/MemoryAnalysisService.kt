@@ -4,6 +4,7 @@ import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceR
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
@@ -14,6 +15,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecordRepository
+import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
 
 class MemoryAnalysisService(
@@ -27,7 +29,9 @@ class MemoryAnalysisService(
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         val parsedSource = request.source
-        val sourceRecordSave = sourceRecords.saveAll(parsedSource.source, parsedSource.records)
+        val sourceRecordSave = requireAvailable {
+            sourceRecords.saveAll(parsedSource.source, parsedSource.records)
+        }
         val recordsToAnalyze = sourceRecordSave.recordsToAnalyze
 
         if (recordsToAnalyze.isEmpty() && parsedSource.records.isNotEmpty()) {
@@ -39,15 +43,17 @@ class MemoryAnalysisService(
 
         val contextRecords = sourceRecordSave.contextRecords.takeLast(CONTEXT_RECORD_LIMIT)
 
-        val proposals = memoryExtractor.analyze(
-            SourceDocument(
-                source = parsedSource.source,
-                contextRecords = contextRecords,
-                records = recordsToAnalyze,
-            ),
-        )
-        val savedMemories = memorySaver.persist(userId, proposals)
-        sourceRecords.markAnalyzed(recordsToAnalyze.map { it.id })
+        val proposals = requireAvailable {
+            memoryExtractor.analyze(
+                SourceDocument(
+                    source = parsedSource.source,
+                    contextRecords = contextRecords,
+                    records = recordsToAnalyze,
+                ),
+            )
+        }
+        val savedMemories = requireAvailable { memorySaver.persist(userId, proposals) }
+        requireAvailable { sourceRecords.markAnalyzed(recordsToAnalyze.map { it.id }) }
         runCatching { memoryPlacement.place(MemoryPlaceRequest(userId, savedMemories)) }
             .onFailure { error -> log.warn("Memory tree placement deferred", error) }
         return MemoryAnalysisResult(
@@ -65,6 +71,15 @@ class MemoryAnalysisService(
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
     }
+
+    private suspend fun <T> requireAvailable(operation: suspend () -> T): T =
+        try {
+            operation()
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            throw MemoryAnalysisUnavailableException(error)
+        }
 
     private companion object {
         const val CONTEXT_RECORD_LIMIT = 20

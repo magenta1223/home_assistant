@@ -2,9 +2,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
-import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.port.output.memory.write.MemoryWriter
@@ -103,7 +103,8 @@ class MemoryAnalysisRetryTest {
             val service = service(sourceRecords, extractor, RecordingMemoryWriter(failure))
             val request = request("a")
 
-            assertSame(failure, assertFailsWith<IllegalStateException> { service.execute(request) })
+            val unavailable = assertFailsWith<MemoryAnalysisUnavailableException> { service.execute(request) }
+            assertSame(failure, unavailable.cause)
             assertEquals(
                 SourceRecordAnalysisStatus.PENDING,
                 sourceRecords.findBySource(request.source.source).single().analysisStatus,
@@ -122,7 +123,7 @@ class MemoryAnalysisRetryTest {
             val extractor = RecordingExtractor { document ->
                 if (shouldFail) {
                     shouldFail = false
-                    throw MemoryExtractionException("temporary failure")
+                    error("temporary failure")
                 }
                 listOf(proposal(document, MemoryVisibility.PRIVATE))
             }
@@ -130,7 +131,7 @@ class MemoryAnalysisRetryTest {
             val service = service(sourceRecords, extractor, writer)
             val request = request("a")
 
-            assertFailsWith<MemoryExtractionException> { service.execute(request) }
+            assertFailsWith<MemoryAnalysisUnavailableException> { service.execute(request) }
             assertEquals(
                 SourceRecordAnalysisStatus.PENDING,
                 sourceRecords.findBySource(request.source.source).single().analysisStatus,

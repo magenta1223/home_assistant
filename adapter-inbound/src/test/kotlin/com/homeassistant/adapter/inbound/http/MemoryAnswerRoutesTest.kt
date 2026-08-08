@@ -104,10 +104,37 @@ class MemoryAnswerRoutesTest {
         }
     }
 
+    @Test
+    fun `maps answer usecase failures to service unavailable`() = testApplication {
+        application {
+            install(ContentNegotiation) {
+                json(JsonSerializer.json)
+            }
+            configureRoutes(
+                memoryAnalysis = UnusedMemoryAnalysis,
+                memoryGroundedChatbot = memoryGroundedChatbot(
+                    memories = listOf(memory(1, createdAt = 1_000L)),
+                    semanticFailure = IllegalStateException("vector connection failed"),
+                ),
+                httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to USER_ID),
+            )
+        }
+
+        val response = client.post(AppConfig.ROUTE_MEMORY_ANSWER) {
+            bearerAuth(API_TOKEN)
+            header(HttpHeaders.ContentType, ContentType.Application.Json.toString())
+            setBody("""{"question":"where is it?"}""")
+        }
+
+        assertEquals(HttpStatusCode.ServiceUnavailable, response.status)
+        assertTrue(response.bodyAsText().contains("memory answer is unavailable"))
+    }
+
     private fun memoryGroundedChatbot(
         memories: List<Memory> = emptyList(),
         directResults: List<MemoryIndex> = emptyList(),
         childResults: List<MemoryIndex> = emptyList(),
+        semanticFailure: RuntimeException? = null,
     ): MemoryGroundedChatbot {
         val reader = FixedMemoryReader(memories)
         val directScope = memories.mapTo(mutableSetOf()) { it.id }
@@ -119,6 +146,7 @@ class MemoryAnswerRoutesTest {
                 limit: Int,
                 scope: MemoryIndexSearchScope,
             ): List<MemoryIndex> {
+                semanticFailure?.let { throw it }
                 val allowedIds = scope.allowedMemoryIds.orEmpty()
                 val results = if (allowedIds == directScope) directResults else childResults
                 return results.filter { it.memoryId in allowedIds }.take(limit)

@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.memory.placement
 
 import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementDecision
-import com.homeassistant.application.port.output.memory.placement.MemoryPlacementException
+import com.homeassistant.application.port.input.memory.placement.MemoryPlacementException
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementExtractor
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
@@ -19,6 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlinx.coroutines.runBlocking
 
 class MemoryPlacementServiceTest {
@@ -202,6 +203,23 @@ class MemoryPlacementServiceTest {
         input += memory
 
         assertEquals(listOf(memory), request.memories)
+    }
+
+    @Test
+    fun `translates extractor failures to the memory placement failure contract`() = runBlocking {
+        val incoming = memory(100)
+        val failure = IllegalStateException("extractor unavailable")
+        val extractor = RecordingExtractor { throw failure }
+
+        val unavailable = assertFailsWith<MemoryPlacementException> {
+            service(
+                memories = listOf(incoming),
+                extractor = extractor,
+                tree = RecordingTree(),
+            ).place(MemoryPlaceRequest(userId, listOf(incoming)))
+        }
+
+        assertSame(failure, unavailable.cause)
     }
 
     private fun service(

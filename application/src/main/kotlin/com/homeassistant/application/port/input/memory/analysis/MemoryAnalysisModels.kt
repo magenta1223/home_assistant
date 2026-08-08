@@ -21,7 +21,11 @@ data class MemoryAnalysisResult(
     val memories: List<MemoryProposal>,
 )
 
-class DuplicateSourceRecordsException(
+class DuplicateSourceRecordsException internal constructor(
     val sourceName: String,
     val recordCount: Int,
 ) : RuntimeException("All $recordCount source records already exist: $sourceName")
+
+class MemoryAnalysisUnavailableException internal constructor(
+    cause: Throwable,
+) : RuntimeException("memory analysis is unavailable", cause)

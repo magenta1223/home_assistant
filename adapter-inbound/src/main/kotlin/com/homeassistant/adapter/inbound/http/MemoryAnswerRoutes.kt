@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.application.port.input.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.port.input.memory.answer.MemoryAnswer
-import com.homeassistant.application.port.input.memory.search.MemorySearchUnavailableException
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerUnavailableException
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
@@ -51,7 +51,7 @@ internal fun Route.memoryAnswerRoutes(memoryGroundedChatbot: MemoryAnswer?) {
                     ),
                 ),
             )
-        } catch (error: MemorySearchUnavailableException) {
+        } catch (error: MemoryAnswerUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: HouseholdAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))

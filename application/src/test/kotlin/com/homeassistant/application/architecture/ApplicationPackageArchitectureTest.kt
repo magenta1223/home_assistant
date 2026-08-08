@@ -57,6 +57,49 @@ class ApplicationPackageArchitectureTest {
         }
     }
 
+    @Test
+    fun `application exceptions are usecase contracts with module restricted constructors`() {
+        val inputPortPath = "com/homeassistant/application/port/input"
+        val usecasePath = "com/homeassistant/application/usecase"
+        val exceptionDeclaration = Regex("class\\s+(\\w+Exception)\\b")
+        val exceptions = mutableListOf<Pair<String, Path>>()
+
+        kotlinSources(applicationSourceRoot).forEach { source ->
+            val content = Files.readString(source)
+            exceptionDeclaration.findAll(content).forEach { match ->
+                val exceptionName = match.groupValues[1]
+                exceptions += exceptionName to source
+                val relativePath = applicationSourceRoot.relativize(source)
+                    .toString()
+                    .replace('\\', '/')
+                assertTrue(
+                    relativePath.startsWith(inputPortPath),
+                    "$exceptionName must be declared beside its input port: $source",
+                )
+                assertTrue(
+                    Regex("class\\s+$exceptionName\\s+internal\\s+constructor\\s*\\(").containsMatchIn(content),
+                    "$exceptionName must only be constructible inside the application module",
+                )
+            }
+        }
+
+        exceptions.forEach { (exceptionName, declarationSource) ->
+            val construction = Regex("\\b$exceptionName\\s*\\(")
+            kotlinSources(applicationSourceRoot)
+                .filterNot { it == declarationSource }
+                .filter { construction.containsMatchIn(Files.readString(it)) }
+                .forEach { source ->
+                    val relativePath = applicationSourceRoot.relativize(source)
+                        .toString()
+                        .replace('\\', '/')
+                    assertTrue(
+                        relativePath.startsWith(usecasePath),
+                        "$exceptionName may only be created by a usecase implementation: $source",
+                    )
+                }
+        }
+    }
+
     private fun kotlinSources(root: Path): List<Path> {
         if (!root.isDirectory()) return emptyList()
         return Files.walk(root).use { paths ->

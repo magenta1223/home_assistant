@@ -2,6 +2,7 @@ package com.homeassistant.application.usecase.memory.search
 
 import com.homeassistant.application.port.input.memory.search.MemorySearch
 import com.homeassistant.application.port.input.memory.search.MemorySearchMatch
+import com.homeassistant.application.port.input.memory.search.MemorySearchUnavailableException
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesResult
 import com.homeassistant.application.port.output.memory.read.MemoryReader
@@ -23,8 +24,16 @@ class MemorySearcher(
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
         val query = request.query.trim()
 
+        return try {
+            searchVisibleMemories(userId, query, request.limit)
+        } catch (error: Exception) {
+            throw MemorySearchUnavailableException(error)
+        }
+    }
+
+    private fun searchVisibleMemories(userId: UserId, query: String, limit: Int): SearchMemoriesResult {
         val memoriesById = memories.getMemories(userId).associateBy { it.id }
-        val retrievedMemoryIndices = semanticSearch(query, request.limit, memoriesById.keys)
+        val retrievedMemoryIndices = semanticSearch(query, limit, memoriesById.keys)
         val matches = retrievedMemoryIndices
             .distinctBy { it.memoryId }
             .mapNotNull { index ->
@@ -38,7 +47,7 @@ class MemorySearcher(
                     )
                 }
             }
-            .take(request.limit)
+            .take(limit)
         return SearchMemoriesResult(query, matches)
     }
 

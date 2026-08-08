@@ -1,7 +1,6 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.MemoryProposal
@@ -80,9 +79,9 @@ internal class CodexMemoryExtractor(
         val response = MemoryAnalysisOutputContract.decode(raw)
         return response.memories.map { memory ->
             val evidence = parseEvidence(document, memory.evidenceRecordIds)
-            if (memory.text.isBlank()) throw MemoryExtractionException("Memory text must not be blank")
-            if (memory.subject.isBlank()) throw MemoryExtractionException("Memory subject must not be blank")
-            if (evidence.isEmpty()) throw MemoryExtractionException("Memory must include at least one evidence record")
+            require(memory.text.isNotBlank()) { "Memory text must not be blank" }
+            require(memory.subject.isNotBlank()) { "Memory subject must not be blank" }
+            require(evidence.isNotEmpty()) { "Memory must include at least one evidence record" }
             MemoryProposal(
                 content = memory.text.trim(),
                 subject = memory.subject.trim(),
@@ -112,7 +111,7 @@ internal class CodexMemoryExtractor(
     private fun parseEvidence(document: SourceDocument, evidenceRecordIds: List<String>): List<SourceRecord> =
         evidenceRecordIds.map { recordId ->
             document.records.firstOrNull { it.promptId == recordId }
-                ?: throw MemoryExtractionException("Unknown evidence record id: $recordId")
+                ?: throw IllegalArgumentException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
     private fun renderDocument(document: SourceDocument): String = buildString {

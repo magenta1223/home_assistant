@@ -2,7 +2,6 @@ package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementDecision
-import com.homeassistant.application.port.output.memory.placement.MemoryPlacementException
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementExtractor
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
@@ -141,7 +140,7 @@ internal object MemoryPlacementOutputContract {
         try {
             stripJsonCodeFence(raw).decodeFromString()
         } catch (error: SerializationException) {
-            throw MemoryPlacementException("Failed to parse memory placement response: ${error.message}")
+            throw IllegalArgumentException("Failed to parse memory placement response: ${error.message}", error)
         }
 
     private fun stripJsonCodeFence(raw: String): String {

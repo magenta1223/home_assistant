@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.repo.slackconversation
 
-import com.homeassistant.application.slackconversation.handle.SlackCodexSession
-import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
-import com.homeassistant.application.slackconversation.handle.SlackMessageKey
-import com.homeassistant.application.slackconversation.handle.SlackMessageReceipt
-import com.homeassistant.application.slackconversation.handle.SlackMessageReceiptStatus
-import com.homeassistant.application.slackconversation.SlackPrincipal
+import com.homeassistant.application.port.output.slackconversation.SlackConversationSession
+import com.homeassistant.application.port.output.slackconversation.SlackConversationSessionStore
+import com.homeassistant.application.port.output.slackconversation.SlackMessageKey
+import com.homeassistant.application.port.output.slackconversation.SlackMessageReceipt
+import com.homeassistant.application.port.output.slackconversation.SlackMessageReceiptStatus
+import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexActiveSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexSessionTable
@@ -23,7 +23,7 @@ import org.jetbrains.exposed.sql.update
 
 internal class SlackCodexSessionRepository(
     private val db: Database,
-) : SlackCodexSessionStore {
+) : SlackConversationSessionStore {
     override fun claimMessage(key: SlackMessageKey, now: Long): SlackMessageReceipt? =
         try {
             transaction(db) {
@@ -80,15 +80,15 @@ internal class SlackCodexSessionRepository(
 
     override fun createAndActivate(
         principal: SlackPrincipal,
-        codexThreadId: String,
+        conversationThreadId: String,
         now: Long,
-    ): SlackCodexSession = transaction(db) {
-        require(codexThreadId.isNotBlank()) { "codexThreadId is required" }
+    ): SlackConversationSession = transaction(db) {
+        require(conversationThreadId.isNotBlank()) { "conversationThreadId is required" }
         val id = SlackCodexSessionTable.insert {
             it[teamId] = principal.teamId
             it[slackUserId] = principal.slackUserId
             it[userId] = principal.userId.value
-            it[SlackCodexSessionTable.codexThreadId] = codexThreadId
+            it[SlackCodexSessionTable.codexThreadId] = conversationThreadId
             it[createdAt] = now
             it[lastActiveAt] = now
         }[SlackCodexSessionTable.id]
@@ -106,7 +106,7 @@ internal class SlackCodexSessionRepository(
         principal: SlackPrincipal,
         now: Long,
         idleTimeoutMillis: Long,
-    ): SlackCodexSession? = transaction(db) {
+    ): SlackConversationSession? = transaction(db) {
         require(idleTimeoutMillis > 0) { "idleTimeoutMillis must be positive" }
         val pointer = SlackCodexActiveSessionTable.selectAll()
             .where {
@@ -201,15 +201,15 @@ internal class SlackCodexSessionRepository(
             this[SlackCodexSessionTable.slackUserId] == principal.slackUserId &&
             this[SlackCodexSessionTable.userId] == principal.userId.value
 
-    private fun ResultRow.toSession(): SlackCodexSession =
-        SlackCodexSession(
+    private fun ResultRow.toSession(): SlackConversationSession =
+        SlackConversationSession(
             id = this[SlackCodexSessionTable.id],
             principal = SlackPrincipal(
                 teamId = this[SlackCodexSessionTable.teamId],
                 slackUserId = this[SlackCodexSessionTable.slackUserId],
                 userId = UserId(this[SlackCodexSessionTable.userId]),
             ),
-            codexThreadId = this[SlackCodexSessionTable.codexThreadId],
+            conversationThreadId = this[SlackCodexSessionTable.codexThreadId],
             createdAt = this[SlackCodexSessionTable.createdAt],
             lastActiveAt = this[SlackCodexSessionTable.lastActiveAt],
         )

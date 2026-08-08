@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.application.memory.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode

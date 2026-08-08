@@ -66,7 +66,7 @@ Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-a
 
 ```text
 domain/            - domain concepts, invariants, and domain-owned ports
-application/       - vertically sliced use cases and use-case-owned ports
+application/       - input/output ports and technology-independent use-case orchestration
 common/            - adapter-independent shared utilities such as JSON serialization
 configuration/     - runtime environment and server configuration
 adapter-inbound/   - HTTP, Slack, and source-format inbound adapters
@@ -77,18 +77,20 @@ app/               - composition root and Ktor server startup
 The dependency direction is `app -> adapter-inbound/adapter-outbound -> application -> domain`.
 Both adapter modules may depend on `common` and `configuration`; inbound and outbound must not
 depend on each other.
-Within `application`, keep commands, results, use-case orchestration, and use-case-specific output
-ports together by use case. Within the adapter modules, keep external entry points in
-`adapter-inbound` and application-driven integrations in `adapter-outbound`.
+Within `application`, separate inbound contracts, outbound requirements, and orchestration into
+`port/input`, `port/output`, and `usecase`. Organize each layer by feature area. Inbound adapters
+invoke input ports without importing use-case implementations; outbound adapters implement output
+ports. Within the adapter modules, keep external entry points in `adapter-inbound` and
+application-driven integrations in `adapter-outbound`.
 
 ### application
 
-- `topicanalysis/analyze/` - source analysis and immediate topic-persistence orchestration.
-- `topicanalysis/save/` - topic persistence and memory-indexing collaborator used by analysis.
-- `memory/search/` - canonical-memory retrieval use case and search/read ports; topic context is optional.
-- `memory/answer/` - direct HTTP answer formatting over the memory-search use case.
-- `memory/index/` - canonical-memory indexing ports used by save orchestration.
-- `slackconversation/handle/` - authorized Slack conversation/session orchestration and its ports.
+- `port/input/` - use-case entry contracts plus their request and result models, grouped by feature.
+- `port/output/` - technology-neutral capabilities required from persistence, semantic search,
+  extraction, placement, and conversation adapters.
+- `usecase/` - technology-independent orchestration that implements input ports and uses output ports.
+- `port/input/memory/` and `usecase/memory/` - memory analysis, search, answer, and placement flows.
+- `port/input/slackconversation/` and `usecase/slackconversation/` - authorized Slack conversation flow.
 
 ### adapter-inbound
 

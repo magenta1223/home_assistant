@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
-import com.homeassistant.application.memory.analysis.MemoryExtractionException
+import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.common.json.JsonSerializer.parseToJsonElement

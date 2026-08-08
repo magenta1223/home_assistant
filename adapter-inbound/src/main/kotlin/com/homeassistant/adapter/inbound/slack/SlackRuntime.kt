@@ -1,11 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.slackconversation.handle.ConversationTurnClient
-import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
-import com.homeassistant.application.slackconversation.handle.HouseholdContextProvider
-import com.homeassistant.application.slackconversation.handle.SlackCodexSessionStore
-import com.homeassistant.application.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.port.input.slackconversation.SlackConversationHandler
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -54,19 +50,12 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         memoryAnalysis: MemoryAnalysis,
-        answerContext: MemoryAnswerContextProvider,
-        codexSessions: SlackCodexSessionStore,
-        conversationClient: ConversationTurnClient?,
+        conversationHandlerFactory: (SlackClient) -> SlackConversationHandler?,
     ): SlackRuntime {
         val slackClient = SlackApiClient(config.botToken)
         val executor = Executors.newFixedThreadPool(2)
-        val conversationService = createConversationService(
-            config,
-            answerContext,
-            codexSessions,
-            slackClient,
-            conversationClient,
-        )
+        val conversationService = conversationHandlerFactory(slackClient)
+            ?.let(::SlackConversationService)
         val workflow = SlackKakaoAnalysisWorkflow(
             slackClient = slackClient,
             memoryAnalysis = memoryAnalysis,
@@ -85,38 +74,7 @@ object SlackRuntimeFactory {
         )
     }
 
-    private fun createConversationService(
-        config: SlackConfig,
-        answerContext: MemoryAnswerContextProvider,
-        sessions: SlackCodexSessionStore,
-        slackClient: SlackClient,
-        conversationClient: ConversationTurnClient?,
-    ): SlackConversationService? {
-        val client = conversationClient ?: return disabled("configuration missing or invalid")
-
-        val now = System.currentTimeMillis()
-        sessions.failStaleProcessing(
-            before = now - HandleSlackConversation.SESSION_IDLE_TIMEOUT_MILLIS,
-            now = now,
-        )
-        return SlackConversationService(
-            HandleSlackConversation(
-                identities = config.identityDirectory,
-                sessions = sessions,
-                contextProvider = HouseholdContextProvider(answerContext),
-                conversationClient = client,
-                answerPublisher = SlackConversationAnswerPublisher(slackClient),
-            ),
-        )
-    }
-
-    private fun disabled(reason: String): SlackConversationService? {
-        log.info("Slack conversation disabled: {}", reason)
-        return null
-    }
 }
-
-private val log = LoggerFactory.getLogger(SlackRuntimeFactory::class.java)
 
 /** Owns the lifecycle of the application's Slack event runtime. */
 interface SlackRuntime : AutoCloseable {

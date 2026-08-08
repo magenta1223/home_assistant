@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.slackconversation.handle.SlackConversationMessage
+import com.homeassistant.application.port.input.slackconversation.SlackConversationMessage
 import com.slack.api.bolt.App
 import com.slack.api.model.event.MessageEvent
 import com.slack.api.model.event.MessageFileShareEvent

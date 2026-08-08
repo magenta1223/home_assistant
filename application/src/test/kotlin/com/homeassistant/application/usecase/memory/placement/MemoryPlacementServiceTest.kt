@@ -1,0 +1,266 @@
+package com.homeassistant.application.usecase.memory.placement
+
+import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementDecision
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementException
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementExtractor
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
+import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
+import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
+
+import com.homeassistant.application.port.output.memory.read.MemoryReader
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.memory.MemoryType
+import com.homeassistant.domain.memory.MemoryVisibility
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlinx.coroutines.runBlocking
+
+class MemoryPlacementServiceTest {
+    private val userId = UserId("member-1")
+
+    @Test
+    fun `renders visible tree through configured depth and calls extractor once`() = runBlocking {
+        val root = memory(1, childrenIds = listOf(2))
+        val child = memory(2, childrenIds = listOf(3))
+        val grandchild = memory(3, childrenIds = listOf(4))
+        val omitted = memory(4)
+        val incoming = memory(100)
+        val extractor = RecordingExtractor {
+            MemoryPlacementResponse(
+                decisions = listOf(MemoryPlacementDecision(incoming.id, child.id)),
+            )
+        }
+        val tree = RecordingTree()
+        val service = service(
+            memories = listOf(root, child, grandchild, omitted, incoming),
+            extractor = extractor,
+            tree = tree,
+            visibleTreeDepth = 2,
+        )
+
+        service.place(MemoryPlaceRequest(userId, listOf(incoming)))
+
+        assertEquals(1, extractor.calls)
+        assertEquals(listOf(2 to 100), tree.parentChildIds)
+        assertEquals(1, tree.calls)
+        assertEquals(
+            "- [1] subject-1 | memory-1\n" +
+                "  - [2] subject-2 | memory-2\n" +
+                "    - [3] subject-3 | memory-3",
+            extractor.input.visibleMemoryTree,
+        )
+        assertFalse(extractor.input.visibleMemoryTree.contains("[4]"))
+    }
+
+    @Test
+    fun `null parent keeps every memory in the root without tree mutation`() = runBlocking {
+        val incoming = memory(100)
+        val extractor = RecordingExtractor {
+            MemoryPlacementResponse(
+                decisions = listOf(MemoryPlacementDecision(incoming.id, null)),
+            )
+        }
+        val tree = RecordingTree()
+        service(
+            memories = listOf(incoming),
+            extractor = extractor,
+            tree = tree,
+        ).place(MemoryPlaceRequest(userId, listOf(incoming)))
+
+        assertEquals(1, extractor.calls)
+        assertEquals(0, tree.calls)
+    }
+
+    @Test
+    fun `passes child-first assignments to one atomic attach call`() = runBlocking {
+        val existingRoot = memory(1)
+        val first = memory(100)
+        val second = memory(101)
+        val extractor = RecordingExtractor {
+            // Deliberately return the child first; the store validates the final graph atomically.
+            MemoryPlacementResponse(
+                decisions = listOf(
+                    MemoryPlacementDecision(first.id, second.id),
+                    MemoryPlacementDecision(second.id, existingRoot.id),
+                ),
+            )
+        }
+        val tree = RecordingTree()
+        service(
+            memories = listOf(existingRoot, first, second),
+            extractor = extractor,
+            tree = tree,
+        ).place(MemoryPlaceRequest(userId, listOf(first, second)))
+
+        assertEquals(
+            listOf(101 to 100, 1 to 101),
+            tree.parentChildIds,
+        )
+        assertEquals(1, extractor.calls)
+        assertEquals(1, tree.calls)
+    }
+
+    @Test
+    fun `rejects a parent that is not in the rendered visible tree`() = runBlocking {
+        val incoming = memory(100)
+        val extractor = RecordingExtractor {
+            MemoryPlacementResponse(
+                decisions = listOf(MemoryPlacementDecision(incoming.id, 999)),
+            )
+        }
+        val tree = RecordingTree()
+
+        assertFailsWith<MemoryPlacementException> {
+            service(
+                memories = listOf(incoming),
+                extractor = extractor,
+                tree = tree,
+            ).place(MemoryPlaceRequest(userId, listOf(incoming)))
+        }
+        assertEquals(0, tree.calls)
+    }
+
+    @Test
+    fun `rejects a cycle among batch memories before persistence`() = runBlocking {
+        val first = memory(100)
+        val second = memory(101)
+        val extractor = RecordingExtractor {
+            MemoryPlacementResponse(
+                decisions = listOf(
+                    MemoryPlacementDecision(first.id, second.id),
+                    MemoryPlacementDecision(second.id, first.id),
+                ),
+            )
+        }
+        val tree = RecordingTree()
+
+        assertFailsWith<MemoryPlacementException> {
+            service(
+                memories = listOf(first, second),
+                extractor = extractor,
+                tree = tree,
+            ).place(MemoryPlaceRequest(userId, listOf(first, second)))
+        }
+        assertEquals(0, tree.calls)
+    }
+
+    @Test
+    fun `rejects incomplete or duplicate extractor responses`() = runBlocking {
+        val first = memory(100)
+        val second = memory(101)
+        val incompleteExtractor = RecordingExtractor {
+            MemoryPlacementResponse(
+                decisions = listOf(MemoryPlacementDecision(first.id, null)),
+            )
+        }
+        assertFailsWith<MemoryPlacementException> {
+            service(
+                memories = listOf(first, second),
+                extractor = incompleteExtractor,
+                tree = RecordingTree(),
+            ).place(MemoryPlaceRequest(userId, listOf(first, second)))
+        }
+
+        val duplicateExtractor = RecordingExtractor {
+            MemoryPlacementResponse(
+                decisions = listOf(
+                    MemoryPlacementDecision(first.id, null),
+                    MemoryPlacementDecision(first.id, null),
+                ),
+            )
+        }
+        assertFailsWith<MemoryPlacementException> {
+            service(
+                memories = listOf(first, second),
+                extractor = duplicateExtractor,
+                tree = RecordingTree(),
+            ).place(MemoryPlaceRequest(userId, listOf(first, second)))
+        }
+    }
+
+    @Test
+    fun `rejects duplicate memory ids when creating a placement request`() {
+        val duplicate = memory(100)
+
+        assertFailsWith<IllegalArgumentException> {
+            MemoryPlaceRequest(userId, listOf(duplicate, duplicate))
+        }
+    }
+
+    @Test
+    fun `placement request owns a snapshot of the input memories`() {
+        val memory = memory(100)
+        val input = mutableListOf(memory)
+        val request = MemoryPlaceRequest(userId, input)
+
+        input += memory
+
+        assertEquals(listOf(memory), request.memories)
+    }
+
+    private fun service(
+        memories: List<Memory>,
+        extractor: RecordingExtractor,
+        tree: RecordingTree,
+        visibleTreeDepth: Int = 2,
+    ) = MemoryPlacementService(
+        memoryReader = FixedMemoryReader(memories),
+        extractor = extractor,
+        tree = tree,
+        visibleTreeDepth = visibleTreeDepth,
+    )
+
+    private fun memory(
+        id: Int,
+        childrenIds: List<Int> = emptyList(),
+        visibility: MemoryVisibility = MemoryVisibility.PUBLIC,
+    ) = Memory(
+        id = id,
+        childrenIds = childrenIds,
+        createdByUserId = userId.value,
+        content = "memory-$id",
+        subject = "subject-$id",
+        memoryType = MemoryType.REFERENCE,
+        certainty = MemoryCertainty.OBSERVED,
+        visibility = visibility,
+        evidenceRefs = listOf(id),
+        createdAt = id * 1_000L,
+    )
+
+    private class FixedMemoryReader(
+        private val memories: List<Memory>,
+    ) : MemoryReader {
+        override fun getMemories(userId: UserId): List<Memory> = memories
+    }
+
+    private class RecordingTree : MemoryTreeStore {
+        var calls = 0
+        val parentChildIds = mutableListOf<Pair<Int, Int>>()
+
+        override fun attachChildren(request: MemoryTreeAttachRequest) {
+            calls++
+            request.parentByChild.forEach { (childId, parentId) ->
+                parentChildIds += parentId to childId
+            }
+        }
+    }
+
+    private class RecordingExtractor(
+        private val response: () -> MemoryPlacementResponse,
+    ) : MemoryPlacementExtractor {
+        var calls = 0
+        lateinit var input: MemoryPlacementInput
+
+        override suspend fun analyze(input: MemoryPlacementInput): MemoryPlacementResponse {
+            calls++
+            this.input = input
+            return response()
+        }
+    }
+}

@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.application.memory.analysis.MemoryExtractionException
-import com.homeassistant.application.memory.analysis.MemoryExtractor
+import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
+import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryVisibility

@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerRequest
-import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
-import com.homeassistant.application.memory.read.MemorySearchUnavailableException
-import com.homeassistant.application.memory.read.SearchMemoriesRequest
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerRequest
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswer
+import com.homeassistant.application.port.input.memory.search.MemorySearchUnavailableException
+import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
@@ -13,7 +13,7 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.post
 
-internal fun Route.memoryAnswerRoutes(memoryGroundedChatbot: MemoryGroundedChatbot?) {
+internal fun Route.memoryAnswerRoutes(memoryGroundedChatbot: MemoryAnswer?) {
     post(AppConfig.ROUTE_MEMORY_ANSWER) {
         val principal = call.principal<HttpUserPrincipal>()
         if (principal == null) {

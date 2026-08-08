@@ -1,15 +1,15 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.memory.analysis.MemoryAnalysisResult
-import com.homeassistant.application.memory.memorygroundedchat.MemoryGroundedChatbot
-import com.homeassistant.application.memory.memorygroundedchat.MemoryAnswerContextProvider
-import com.homeassistant.application.memory.read.MemoryIndex
-import com.homeassistant.application.memory.read.MemoryIndexSearchScope
-import com.homeassistant.application.memory.read.MemoryReader
-import com.homeassistant.application.memory.read.MemorySearcher
-import com.homeassistant.application.memory.read.SemanticMemoryIndexSearcher
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
+import com.homeassistant.application.usecase.memory.answer.MemoryGroundedChatbot
+import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
+import com.homeassistant.application.port.output.memory.search.MemoryIndex
+import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
+import com.homeassistant.application.port.output.memory.read.MemoryReader
+import com.homeassistant.application.usecase.memory.search.MemorySearcher
+import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessPolicy

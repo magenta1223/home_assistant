@@ -1,13 +1,13 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
-import com.homeassistant.application.memory.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.memory.analysis.MemoryAnalysisService
-import com.homeassistant.application.memory.analysis.MemoryExtractionException
-import com.homeassistant.application.memory.analysis.MemoryExtractor
-import com.homeassistant.application.memory.write.MemoryProposalsPersister
-import com.homeassistant.application.memory.write.MemoryWriter
+import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
+import com.homeassistant.application.port.output.memory.analysis.MemoryExtractionException
+import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
+import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
+import com.homeassistant.application.port.output.memory.write.MemoryWriter
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory

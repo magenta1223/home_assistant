@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.slackconversation.handle.SlackPrincipalResolver
+import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
+import com.homeassistant.application.port.output.slackconversation.SlackPrincipalResolver
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.HouseholdAccessPolicy

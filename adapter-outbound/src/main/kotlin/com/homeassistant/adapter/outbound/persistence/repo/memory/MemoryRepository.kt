@@ -2,10 +2,10 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
-import com.homeassistant.application.memory.read.MemoryReader
-import com.homeassistant.application.memory.tree.MemoryTreeAttachRequest
-import com.homeassistant.application.memory.tree.MemoryTreeStore
-import com.homeassistant.application.memory.write.MemoryWriter
+import com.homeassistant.application.port.output.memory.read.MemoryReader
+import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
+import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
+import com.homeassistant.application.port.output.memory.write.MemoryWriter
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.identity.UserId

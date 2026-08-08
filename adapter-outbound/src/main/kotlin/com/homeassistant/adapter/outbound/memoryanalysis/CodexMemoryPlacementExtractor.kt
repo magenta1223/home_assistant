@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.application.memory.tree.MemoryPlacementDecision
-import com.homeassistant.application.memory.tree.MemoryPlacementException
-import com.homeassistant.application.memory.tree.MemoryPlacementExtractor
-import com.homeassistant.application.memory.tree.MemoryPlacementInput
-import com.homeassistant.application.memory.tree.MemoryPlacementResponse
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementDecision
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementException
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementExtractor
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
+import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.common.json.JsonSerializer.parseToJsonElement

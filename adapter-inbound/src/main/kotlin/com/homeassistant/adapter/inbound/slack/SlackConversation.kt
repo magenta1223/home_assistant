@@ -1,15 +1,15 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.slackconversation.handle.ConversationAnswerPublisher
-import com.homeassistant.application.slackconversation.handle.HandleSlackConversation
-import com.homeassistant.application.slackconversation.handle.SlackConversationMessage
+import com.homeassistant.application.port.output.slackconversation.ConversationAnswerPublisher
+import com.homeassistant.application.port.input.slackconversation.SlackConversationHandler
+import com.homeassistant.application.port.input.slackconversation.SlackConversationMessage
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 internal class SlackConversationService(
-    private val handleConversation: HandleSlackConversation,
+    private val handleConversation: SlackConversationHandler,
     private val executor: Executor = Executors.newCachedThreadPool(),
 ) {
     private val queues = ConcurrentHashMap<SlackActorKey, SerialTaskQueue>()
@@ -25,7 +25,7 @@ internal class SlackConversationService(
     }
 }
 
-internal class SlackConversationAnswerPublisher(
+class SlackConversationAnswerPublisher(
     private val slack: SlackClient,
 ) : ConversationAnswerPublisher {
     override fun postAnswer(channelId: String, answer: String): String =

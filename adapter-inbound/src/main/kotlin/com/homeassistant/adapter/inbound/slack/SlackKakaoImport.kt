@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
-import com.homeassistant.application.slackconversation.SlackPrincipal
-import com.homeassistant.application.memory.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
+import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.slack.api.model.event.MessageFileShareEvent
 import java.nio.ByteBuffer
 import java.nio.charset.CharacterCodingException

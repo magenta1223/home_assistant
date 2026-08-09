@@ -28,6 +28,7 @@ internal class VectorSemanticMemoryIndexWriter(
                         put("childrenIds", memory.childrenIds.joinToString(","))
                         put("createdByUserId", memory.createdByUserId)
                         put("visibility", memory.visibility.name)
+                        put("allowedUserIds", memory.allowedUserIds.sorted().joinToString(","))
                         put("memoryType", memory.memoryType.name)
                         put("subject", memory.subject)
                     },

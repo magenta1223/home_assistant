@@ -1,11 +1,14 @@
 package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCertainty
+import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
@@ -15,11 +18,49 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.nio.file.Files
+import org.jetbrains.exposed.sql.update
+import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 
 class MemoryRepositoryTest {
+    @Test
+    fun `legacy private memory migrates to creator-only restricted access`() {
+        val databasePath = Files.createTempFile("legacy-private-memory", ".db")
+        try {
+            val database = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(database)
+            val memories = MemoryRepository(database)
+            val creator = UserId("member-1")
+            val evidence = sourceRecords.saveAll(
+                SourceDescriptor("test", "legacy"),
+                listOf(SourceRecordDraft("legacy", "legacy")),
+            ).recordsToAnalyze.single()
+            val memory = memories.write(memoryProposal(evidence.id, "legacy"), creator)
+            transaction(database) {
+                MemoryTable.update({ MemoryTable.id eq memory.id }) { it[visibility] = "PRIVATE" }
+                SourceRecordTable.update({ SourceRecordTable.id eq evidence.id }) {
+                    it[audienceExplicit] = false
+                }
+            }
+
+            val migratedDatabase = DatabaseFactory.init(databasePath.toString())
+            val migratedMemories = MemoryRepository(migratedDatabase)
+            val migratedSource = SourceRecordRepositoryImpl(migratedDatabase)
+
+            assertEquals(MemoryVisibility.RESTRICTED, migratedMemories.getMemories(creator).single().visibility)
+            assertEquals(setOf(creator.value), migratedMemories.getMemories(creator).single().allowedUserIds)
+            assertEquals(0, migratedMemories.getMemories(UserId("member-2")).size)
+            assertEquals(
+                MemoryAccess.restricted(listOf(creator)),
+                migratedSource.findBySource(SourceDescriptor("test", "legacy")).single().access,
+            )
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
     @Test
     fun `stores one creation time and reads it from an existing memory`() {
         val databasePath = Files.createTempFile("memory-created-at", ".db")
@@ -49,25 +90,60 @@ class MemoryRepositoryTest {
     }
 
     @Test
-    fun `private memory remains visible only to the uploader`() {
+    fun `restricted memory is visible to every selected user and nobody else`() {
         val databasePath = Files.createTempFile("private-memory", ".db")
         try {
             val database = DatabaseFactory.init(databasePath.toString())
             val sourceRecords = SourceRecordRepositoryImpl(database)
             val memories = MemoryRepository(database)
             val uploader = UserId("member-1")
-            val otherMember = UserId("member-2")
+            val participant = UserId("member-2")
+            val otherMember = UserId("member-3")
             val record = sourceRecords.saveAll(
                 SourceDescriptor(type = "test", name = "visibility"),
                 listOf(SourceRecordDraft("private", "private")),
+                MemoryAccess.restricted(listOf(uploader, participant)),
             ).recordsToAnalyze.single()
             memories.write(
-                memoryProposal(record.id, "private").copy(visibility = MemoryVisibility.PRIVATE),
+                memoryProposal(record.id, "private"),
                 uploader,
             )
 
             assertEquals(1, memories.getMemories(uploader).size)
+            assertEquals(1, memories.getMemories(participant).size)
             assertEquals(0, memories.getMemories(otherMember).size)
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `memory backed by multiple sources receives their viewer intersection`() {
+        val databasePath = Files.createTempFile("memory-access-intersection", ".db")
+        try {
+            val database = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(database)
+            val memories = MemoryRepository(database)
+            val member1 = UserId("member-1")
+            val member2 = UserId("member-2")
+            val member3 = UserId("member-3")
+            val first = sourceRecords.saveAll(
+                SourceDescriptor("test", "first"),
+                listOf(SourceRecordDraft("first", "first")),
+                MemoryAccess.restricted(listOf(member1, member2)),
+            ).recordsToAnalyze.single()
+            val second = sourceRecords.saveAll(
+                SourceDescriptor("test", "second"),
+                listOf(SourceRecordDraft("second", "second")),
+                MemoryAccess.restricted(listOf(member2, member3)),
+            ).recordsToAnalyze.single()
+            val proposal = memoryProposal(first.id, "combined").copy(evidenceIds = listOf(first.id, second.id))
+
+            memories.write(proposal, member1)
+
+            assertEquals(0, memories.getMemories(member1).size)
+            assertEquals(1, memories.getMemories(member2).size)
+            assertEquals(0, memories.getMemories(member3).size)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -200,7 +276,6 @@ class MemoryRepositoryTest {
         memoryType = MemoryType.REFERENCE,
         certainty = MemoryCertainty.OBSERVED,
         evidenceIds = listOf(evidenceId),
-        visibility = MemoryVisibility.PUBLIC,
     )
 
     private fun MemoryRepository.write(proposal: MemoryProposal, createdBy: UserId) = commit(

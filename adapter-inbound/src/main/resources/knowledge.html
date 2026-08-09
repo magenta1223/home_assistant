@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Home Second Brain · 지식 주입</title>
+  <style>
+    :root { color-scheme: light; font-family: Inter, Pretendard, system-ui, sans-serif; background: #f4f1ea; color: #1d2a26; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea; }
+    main { width: min(760px, calc(100% - 32px)); margin: 48px auto; }
+    header { margin-bottom: 28px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 42px); letter-spacing: -0.04em; }
+    header p { margin: 0; color: #607069; }
+    form { background: rgba(255,255,255,.88); border: 1px solid #d9ded8; border-radius: 22px; padding: 24px; box-shadow: 0 22px 55px rgba(36,53,46,.09); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    label, legend { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: #43524c; }
+    input, select, textarea, button { width: 100%; font: inherit; }
+    input, select, textarea { border: 1px solid #cbd3cd; border-radius: 12px; padding: 12px 13px; background: #fff; color: #1d2a26; }
+    textarea { min-height: 250px; resize: vertical; line-height: 1.55; }
+    .field { margin-bottom: 18px; }
+    fieldset { border: 0; padding: 0; margin: 0 0 18px; }
+    .audience { display: flex; gap: 10px; margin-bottom: 12px; }
+    .choice { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid #d4dbd5; border-radius: 12px; background: #fafbf9; }
+    .choice input { width: auto; }
+    #users { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+    button { border: 0; border-radius: 13px; padding: 14px; background: #1e5b46; color: white; font-weight: 800; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    #status { white-space: pre-wrap; margin-top: 16px; padding: 14px; border-radius: 12px; background: #e8eee9; min-height: 48px; color: #304039; }
+    .hint { font-size: 12px; color: #738079; margin-top: 6px; }
+    @media (max-width: 620px) { main { margin: 24px auto; } .grid { grid-template-columns: 1fr; } form { padding: 18px; } }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>지식 주입</h1>
+    <p>소스와 열람자를 명시하고, second brain에 근거가 남는 메모리를 추가합니다.</p>
+  </header>
+  <form id="knowledge-form">
+    <div class="field">
+      <label for="token">API 토큰</label>
+      <input id="token" type="password" autocomplete="current-password" required>
+      <div class="hint">토큰은 이 브라우저 탭 안에서만 사용하며 저장하지 않습니다.</div>
+    </div>
+    <div class="grid">
+      <div class="field">
+        <label for="sourceType">소스</label>
+        <select id="sourceType">
+          <option value="TEXT">직접 작성</option>
+          <option value="KAKAO">카카오톡 내보내기</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="sourceName">소스 이름</label>
+        <input id="sourceName" placeholder="예: 가족 대화 2026-08" required>
+      </div>
+    </div>
+    <fieldset>
+      <legend>열람 범위</legend>
+      <div class="audience">
+        <label class="choice"><input type="radio" name="audience" value="restricted" checked> 지정 사용자</label>
+        <label class="choice"><input type="radio" name="audience" value="public"> 전체 공개</label>
+      </div>
+      <div id="users"><span class="hint">API 토큰을 입력하면 사용자 목록을 불러옵니다.</span></div>
+    </fieldset>
+    <div class="field">
+      <label for="text">데이터</label>
+      <input id="file" type="file" accept=".txt,text/plain">
+      <div class="hint">텍스트 파일을 선택하거나 아래에 직접 붙여 넣으세요.</div>
+      <textarea id="text" placeholder="지식 텍스트를 입력하거나 카카오톡 내보내기 내용을 붙여 넣으세요." required></textarea>
+    </div>
+    <button id="submit" type="submit">분석하고 저장</button>
+    <div id="status" role="status">준비됨</div>
+  </form>
+</main>
+<script>
+  const token = document.getElementById('token');
+  const users = document.getElementById('users');
+  const status = document.getElementById('status');
+  let loadTimer;
+
+  document.getElementById('file').addEventListener('change', async function (event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    document.getElementById('text').value = decodeText(bytes);
+    if (!document.getElementById('sourceName').value) document.getElementById('sourceName').value = file.name;
+  });
+
+  function decodeText(bytes) {
+    if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes.slice(2));
+    if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes.slice(2));
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (_) {
+      return new TextDecoder('euc-kr').decode(bytes);
+    }
+  }
+
+  token.addEventListener('input', function () {
+    clearTimeout(loadTimer);
+    loadTimer = setTimeout(loadUsers, 350);
+  });
+
+  document.querySelectorAll('input[name="audience"]').forEach(function (radio) {
+    radio.addEventListener('change', function () {
+      users.style.opacity = radio.value === 'public' && radio.checked ? '.45' : '1';
+    });
+  });
+
+  async function loadUsers() {
+    if (!token.value) return;
+    const response = await fetch('/api/knowledge/users', {
+      headers: { Authorization: 'Bearer ' + token.value }
+    });
+    if (!response.ok) {
+      users.innerHTML = '<span class="hint">유효한 API 토큰을 입력하세요.</span>';
+      return;
+    }
+    const body = await response.json();
+    users.innerHTML = '';
+    body.userIds.forEach(function (userId) {
+      const label = document.createElement('label');
+      label.className = 'choice';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.name = 'userId';
+      input.value = userId;
+      const text = document.createElement('span');
+      text.textContent = userId;
+      label.append(input, text);
+      users.appendChild(label);
+    });
+  }
+
+  document.getElementById('knowledge-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    const submit = document.getElementById('submit');
+    const isPublic = document.querySelector('input[name="audience"]:checked').value === 'public';
+    const allowedUserIds = Array.from(document.querySelectorAll('input[name="userId"]:checked')).map(function (item) {
+      return item.value;
+    });
+    if (!isPublic && allowedUserIds.length === 0) {
+      status.textContent = '열람할 사용자를 한 명 이상 선택하세요.';
+      return;
+    }
+    submit.disabled = true;
+    status.textContent = '분석 중입니다…';
+    try {
+      const response = await fetch('/api/knowledge/import/analyze', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + token.value,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          sourceType: document.getElementById('sourceType').value,
+          sourceName: document.getElementById('sourceName').value,
+          isPublic: isPublic,
+          allowedUserIds: isPublic ? [] : allowedUserIds,
+          text: document.getElementById('text').value
+        })
+      });
+      const body = await response.json();
+      if (!response.ok) throw new Error(body.error || '저장하지 못했습니다.');
+      status.textContent = '완료: 소스 레코드 ' + body.importedRecordCount + '개, 메모리 ' + body.memoryCount + '개를 저장했습니다.';
+    } catch (error) {
+      status.textContent = '실패: ' + error.message;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

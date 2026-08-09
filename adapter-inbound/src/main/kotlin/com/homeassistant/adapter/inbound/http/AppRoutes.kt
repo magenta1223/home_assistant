@@ -11,13 +11,15 @@ fun Application.configureRoutes(
     memoryAnalysis: MemoryAnalysis,
     memoryGroundedChatbot: MemoryAnswer? = null,
     httpApiKeys: Map<String, UserId> = emptyMap(),
+    memberUserIds: Set<UserId> = httpApiKeys.values.toSet(),
     readiness: () -> Boolean = { true },
 ) {
     configureHttpAuthentication(httpApiKeys)
     routing {
         healthRoutes(readiness)
+        knowledgePageRoute()
         authenticate(HTTP_AUTHENTICATION_NAME) {
-            kakaoMemoryAnalysisRoutes(memoryAnalysis)
+            knowledgeInjectionRoutes(memoryAnalysis, memberUserIds)
             memoryAnswerRoutes(memoryGroundedChatbot)
         }
     }

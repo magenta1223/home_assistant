@@ -19,6 +19,7 @@ data class Memory(
     val memoryType: MemoryType,
     val certainty: MemoryCertainty,
     val visibility: MemoryVisibility,
+    val allowedUserIds: Set<String> = emptySet(),
     val evidenceRefs: List<Int>,
     /** Storage creation time in epoch milliseconds; this is not the event time described by the memory. */
     val createdAt: Long,
@@ -29,10 +30,13 @@ data class Memory(
         require(content.isNotBlank()) { "memory content is required" }
         require(subject.isNotBlank()) { "memory subject is required" }
         require(createdByUserId.isNotBlank()) { "createdByUserId is required" }
+        MemoryAccess(visibility, allowedUserIds)
         require(evidenceRefs.isNotEmpty()) { "memory evidence is required" }
         require(createdAt >= 0) { "memory creation time must not be negative" }
     }
 
-    fun isVisibleTo(requester: UserId): Boolean =
-        visibility.isVisibleTo(UserId(createdByUserId), requester)
+    fun isVisibleTo(requester: UserId): Boolean = access.isVisibleTo(requester)
+
+    val access: MemoryAccess
+        get() = MemoryAccess(visibility, allowedUserIds)
 }

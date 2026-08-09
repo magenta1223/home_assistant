@@ -2,8 +2,10 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryViewerTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
@@ -13,6 +15,7 @@ import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
@@ -53,6 +56,8 @@ internal class MemoryRepository(
             }
         }
 
+        val accessByRecordId = existingRecordIds.associateWith(::sourceAccess)
+
         val now = clock.millis()
         val memories = proposals.map { item ->
             val existing = MemoryTable.selectAll()
@@ -63,6 +68,9 @@ internal class MemoryRepository(
                 existing.toMemory()
             } else {
                 val proposal = item.proposal
+                val access = MemoryAccess.intersection(
+                    proposal.evidenceIds.distinct().map(accessByRecordId::getValue),
+                )
                 val memoryId = MemoryTable.insert {
                     it[childrenIds] = emptyList<Int>().encodeToString()
                     it[createdByUserId] = createdBy.value
@@ -70,7 +78,7 @@ internal class MemoryRepository(
                     it[subject] = proposal.subject
                     it[memoryType] = proposal.memoryType.name
                     it[certainty] = proposal.certainty.name
-                    it[visibility] = proposal.visibility.name
+                    it[visibility] = access.visibility.name
                     it[idempotencyKey] = item.idempotencyKey
                     it[createdAt] = now
                     it[updatedAt] = now
@@ -81,8 +89,14 @@ internal class MemoryRepository(
                         it[MemoryEvidenceTable.sourceRecordId] = sourceRecordId
                     }
                 }
+                access.allowedUserIds.forEach { allowedUserId ->
+                    MemoryViewerTable.insert {
+                        it[MemoryViewerTable.memoryId] = memoryId
+                        it[userId] = allowedUserId
+                    }
+                }
                 ensureOutbox(memoryId, now)
-                proposal.toMemory(createdBy, memoryId, now)
+                proposal.toMemory(createdBy, memoryId, now, access)
             }
         }
         if (recordIds.isNotEmpty()) {
@@ -184,12 +198,20 @@ internal class MemoryRepository(
             memoryType = MemoryType.valueOf(this[MemoryTable.memoryType]),
             certainty = MemoryCertainty.valueOf(this[MemoryTable.certainty]),
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
+            allowedUserIds = MemoryViewerTable.select(MemoryViewerTable.userId)
+                .where { MemoryViewerTable.memoryId eq memoryId }
+                .mapTo(linkedSetOf()) { it[MemoryViewerTable.userId] },
             evidenceRefs = evidenceRefs,
             createdAt = this[MemoryTable.createdAt],
         )
     }
 
-    private fun MemoryProposal.toMemory(userId: UserId, memoryId: Int, createdAt: Long): Memory {
+    private fun MemoryProposal.toMemory(
+        userId: UserId,
+        memoryId: Int,
+        createdAt: Long,
+        access: MemoryAccess,
+    ): Memory {
         return Memory(
             id = memoryId,
             childrenIds = emptyList(),
@@ -198,10 +220,24 @@ internal class MemoryRepository(
             subject = subject,
             memoryType = memoryType,
             certainty = certainty,
-            visibility = visibility,
+            visibility = access.visibility,
+            allowedUserIds = access.allowedUserIds,
             evidenceRefs = evidenceIds,
             createdAt = createdAt,
         )
+    }
+
+    private fun sourceAccess(sourceRecordId: Int): MemoryAccess {
+        val visibility = SourceRecordTable.select(SourceRecordTable.visibility)
+            .where { SourceRecordTable.id eq sourceRecordId }
+            .single()[SourceRecordTable.visibility]
+            .let(MemoryVisibility::valueOf)
+        val viewers = if (visibility == MemoryVisibility.PUBLIC) emptySet() else {
+            SourceRecordViewerTable.select(SourceRecordViewerTable.userId)
+                .where { SourceRecordViewerTable.sourceRecordId eq sourceRecordId }
+                .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
+        }
+        return MemoryAccess(visibility, viewers)
     }
 
     private companion object {

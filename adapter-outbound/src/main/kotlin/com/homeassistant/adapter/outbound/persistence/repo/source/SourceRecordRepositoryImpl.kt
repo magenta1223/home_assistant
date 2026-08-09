@@ -1,18 +1,27 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
+import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordRepository
 import com.homeassistant.domain.source.SourceRecordSaveResult
+import com.homeassistant.domain.source.SourceAccessConflictException
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class SourceRecordRepositoryImpl(private val db: Database) : SourceRecordRepository {
 
-    override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>): SourceRecordSaveResult = transaction(db) {
+    override fun saveAll(
+        source: SourceDescriptor,
+        records: List<SourceRecordDraft>,
+        access: MemoryAccess,
+    ): SourceRecordSaveResult = transaction(db) {
         val recordsToAnalyze = mutableListOf<SourceRecord>()
         var importedRecordCount = 0
         var retriedRecordCount = 0
@@ -51,7 +60,15 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 }
             }
             if (existing != null) {
-                val existingRecord = existing.toSourceRecord().let { stored ->
+                val existingAccess = if (existing[SourceRecordTable.audienceExplicit]) {
+                    existing.toAccess().also { storedAccess ->
+                        if (storedAccess != access) throw SourceAccessConflictException(source.name)
+                    }
+                } else {
+                    assignAccess(existing[SourceRecordTable.id], access)
+                    access
+                }
+                val existingRecord = existing.toSourceRecord().copy(access = existingAccess).let { stored ->
                     if (stored.deduplicationKey == record.deduplicationKey) stored else stored.copy(
                         deduplicationKey = record.deduplicationKey,
                         content = record.content,
@@ -78,9 +95,17 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 it[deduplicationKey] = record.deduplicationKey
                 it[createdAt] = System.currentTimeMillis()
                 it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
+                it[visibility] = access.visibility.name
+                it[audienceExplicit] = true
             }[SourceRecordTable.id]
+            access.allowedUserIds.forEach { allowedUserId ->
+                SourceRecordViewerTable.insert {
+                    it[sourceRecordId] = id
+                    it[userId] = allowedUserId
+                }
+            }
             analysisStarted = true
-            recordsToAnalyze += record.toSourceRecord(id)
+            recordsToAnalyze += record.toSourceRecord(id, access)
             importedRecordCount++
         }
         SourceRecordSaveResult(
@@ -102,12 +127,13 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             .map { it.toSourceRecord() }
     }
 
-    private fun SourceRecordDraft.toSourceRecord(id: Int): SourceRecord =
+    private fun SourceRecordDraft.toSourceRecord(id: Int, access: MemoryAccess): SourceRecord =
         SourceRecord(
             id = id,
             deduplicationKey = deduplicationKey,
             content = content,
             analysisStatus = SourceRecordAnalysisStatus.PENDING,
+            access = access,
         )
 
     private fun ResultRow.toSourceRecord(): SourceRecord =
@@ -116,7 +142,35 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             deduplicationKey = this[SourceRecordTable.deduplicationKey],
             content = this[SourceRecordTable.content],
             analysisStatus = SourceRecordAnalysisStatus.valueOf(this[SourceRecordTable.analysisStatus]),
+            access = toAccess(),
         )
+
+    private fun ResultRow.toAccess(): MemoryAccess {
+        val recordId = this[SourceRecordTable.id]
+        val visibility = MemoryVisibility.valueOf(this[SourceRecordTable.visibility])
+        val viewers = if (visibility == MemoryVisibility.PUBLIC) emptySet() else {
+            SourceRecordViewerTable.select(SourceRecordViewerTable.userId)
+                .where { SourceRecordViewerTable.sourceRecordId eq recordId }
+                .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
+        }
+        return MemoryAccess(visibility, viewers)
+    }
+
+    private fun assignAccess(recordId: Int, access: MemoryAccess) {
+        SourceRecordViewerTable.deleteWhere {
+            SourceRecordViewerTable.sourceRecordId eq recordId
+        }
+        SourceRecordTable.update({ SourceRecordTable.id eq recordId }) {
+            it[visibility] = access.visibility.name
+            it[audienceExplicit] = true
+        }
+        access.allowedUserIds.forEach { allowedUserId ->
+            SourceRecordViewerTable.insert {
+                it[SourceRecordViewerTable.sourceRecordId] = recordId
+                it[userId] = allowedUserId
+            }
+        }
+    }
 
     private companion object {
         const val CONTEXT_RECORD_LIMIT = 20

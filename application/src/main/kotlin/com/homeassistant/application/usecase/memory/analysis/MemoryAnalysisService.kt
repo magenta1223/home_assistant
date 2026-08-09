@@ -5,6 +5,8 @@ import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
+import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
+import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
 import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
@@ -13,8 +15,8 @@ import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxPr
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceRecordRepository
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
@@ -30,9 +32,17 @@ class MemoryAnalysisService(
     override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult {
         val userId = UserId(request.userId)
         requireAuthorized(userId)
+        requireAuthorizedAudience(request.access.allowedUserIds)
         val parsedSource = request.source
-        val sourceRecordSave = requireAvailable {
-            sourceRecords.saveAll(parsedSource.source, parsedSource.records)
+        val sourceRecordSave = try {
+            requireAvailable {
+                sourceRecords.saveAll(parsedSource.source, parsedSource.records, request.access)
+            }
+        } catch (error: MemoryAnalysisUnavailableException) {
+            if (error.cause is SourceAccessConflictException) {
+                throw ConflictingSourceAudienceException(parsedSource.source.name)
+            }
+            throw error
         }
         val recordsToAnalyze = sourceRecordSave.recordsToAnalyze
 
@@ -67,14 +77,22 @@ class MemoryAnalysisService(
             importedRecordCount = sourceRecordSave.importedRecordCount,
             retriedRecordCount = sourceRecordSave.retriedRecordCount,
             alreadyAnalyzedRecordCount = sourceRecordSave.alreadyAnalyzedRecordCount,
-            publicMemoryCount = proposals.count { it.visibility == MemoryVisibility.PUBLIC },
-            privateMemoryCount = proposals.count { it.visibility == MemoryVisibility.PRIVATE },
+            visibility = request.access.visibility,
+            allowedUserIds = request.access.allowedUserIds,
+            memoryCount = proposals.size,
             memories = proposals,
         )
     }
 
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
+    }
+
+    private fun requireAuthorizedAudience(userIds: Set<String>) {
+        val invalid = userIds.filterTo(linkedSetOf()) { raw ->
+            runCatching { UserId(raw) }.getOrNull()?.let(accessPolicy::isAuthorized) != true
+        }
+        if (invalid.isNotEmpty()) throw InvalidMemoryAudienceException(invalid)
     }
 
     private suspend fun <T> requireAvailable(operation: suspend () -> T): T =

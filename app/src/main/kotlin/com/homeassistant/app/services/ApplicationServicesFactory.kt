@@ -53,6 +53,7 @@ object ApplicationServicesFactory {
         )
         val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val slackConfig = SlackConfig.fromEnv()
+        val memberUserIds = (httpUsers + slackConfig?.identityDirectory?.userIds.orEmpty()).toSet()
         val slackAccessPolicy = slackConfig?.identityDirectory?.accessPolicy
         val httpAccessPolicy = HouseholdAccessPolicies.fixed(httpUsers)
         val accessPolicy = if (slackAccessPolicy == null && httpUsers.isEmpty()) {
@@ -95,7 +96,6 @@ object ApplicationServicesFactory {
         val slackRuntime = slackConfig?.let { config ->
             SlackRuntimeFactory.create(
                 config = config,
-                memoryAnalysis = memoryAnalysisService,
             ) { slackClient ->
                 if (conversationClient == null) {
                     log.info("Slack conversation disabled: configuration missing or invalid")
@@ -123,6 +123,7 @@ object ApplicationServicesFactory {
             memoryAnalysis = memoryAnalysisService,
             memoryGroundedChatbot = memoryAnswer,
             slackRuntime = slackRuntime,
+            memberUserIds = memberUserIds,
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
         )

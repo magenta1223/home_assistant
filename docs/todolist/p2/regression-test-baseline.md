@@ -11,7 +11,7 @@
 
 1. leaf memory 검색과 limit 적용을 검증한다.
 2. Codex 분석 실패 후 같은 import가 재시도되는지 검증한다.
-3. PRIVATE memory가 다른 사용자에게 노출되지 않는지 검증한다.
+3. RESTRICTED memory가 허용되지 않은 사용자에게 노출되지 않는지 검증한다.
 4. batch attach가 cycle과 부분 저장을 막는 기존 테스트를 유지한다.
 5. Kakao parser 대표 fixture만 추가한다.
 6. LLM 문장 품질은 단위 테스트 대신 고정 입력 evaluation으로 분리한다.

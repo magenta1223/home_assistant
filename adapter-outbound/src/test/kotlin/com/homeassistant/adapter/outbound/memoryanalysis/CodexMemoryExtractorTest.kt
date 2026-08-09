@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
@@ -17,56 +17,43 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 class CodexMemoryExtractorTest {
     @Test
-    fun `visibility is required by the output schema`() {
+    fun `visibility is not delegated to the model`() {
         val root = Json.parseToJsonElement(MemoryAnalysisOutputContract.schema).jsonObject
         val memorySchema = root["properties"]!!.jsonObject["memories"]!!
             .jsonObject["items"]!!.jsonObject
         val required = memorySchema["required"]!!.jsonArray.map { it.jsonPrimitive.content }
 
-        assertContains(required, "visibility")
+        assertFalse("visibility" in required)
+        assertContains(MemoryAnalysisPrompt.system(), "열람 권한은 사용자가 입력 단계에서 지정")
     }
 
     @Test
-    fun `missing visibility is rejected`() = runBlocking {
-        val extractor = CodexMemoryExtractor(
-            client = RecordingClient(
-                responses = mutableListOf(response(visibility = null)),
-            ),
-        )
-
-        assertFailsWith<IllegalArgumentException> {
-            extractor.analyze(document(recordCount = 1))
-        }
-    }
-
-    @Test
-    fun `private visibility survives chunk merge`() = runBlocking {
+    fun `chunk candidates merge without access metadata`() = runBlocking {
         val client = RecordingClient(
             responses = mutableListOf(
-                response(text = "private fact", evidenceIds = listOf("r1"), visibility = "PRIVATE"),
-                response(text = "shared fact", evidenceIds = listOf("r2"), visibility = "PUBLIC"),
-                response(text = "private fact", evidenceIds = listOf("r1"), visibility = "PRIVATE"),
+                response(text = "first fact", evidenceIds = listOf("r1")),
+                response(text = "second fact", evidenceIds = listOf("r2")),
+                response(text = "first fact", evidenceIds = listOf("r1")),
             ),
         )
         val memories = CodexMemoryExtractor(client, chunkSize = 1).analyze(document(recordCount = 2))
 
-        assertEquals(MemoryVisibility.PRIVATE, memories.single().visibility)
-        assertContains(client.calls.last().userMessage, "\"visibility\": \"PRIVATE\"")
-        assertContains(client.calls.last().system, "더 제한적인 PRIVATE")
+        assertEquals("first fact", memories.single().content)
+        assertFalse(client.calls.last().userMessage.contains("visibility"))
     }
 
     @Test
-    fun `duplicate visibility conflict resolves to private`() = runBlocking {
+    fun `duplicate meaning and evidence is removed`() = runBlocking {
         val client = RecordingClient(
             responses = mutableListOf(
                 """
                 {"memories":[
-                  ${memoryJson(visibility = "PUBLIC")},
-                  ${memoryJson(visibility = "PRIVATE")}
+                  ${memoryJson()},
+                  ${memoryJson()}
                 ]}
                 """.trimIndent(),
             ),
@@ -75,25 +62,16 @@ class CodexMemoryExtractorTest {
         val memories = CodexMemoryExtractor(client).analyze(document(recordCount = 1))
 
         assertEquals(1, memories.size)
-        assertEquals(MemoryVisibility.PRIVATE, memories.single().visibility)
-    }
-
-    @Test
-    fun `analysis prompt classifies sensitive and ambiguous information conservatively`() {
-        val prompt = MemoryAnalysisPrompt.system()
-
-        assertTrue(listOf("건강", "금융", "자격 증명", "민감한 관계", "개인적인 고민").all(prompt::contains))
-        assertContains(prompt, "애매하면 반드시 PRIVATE")
     }
 
     @Test
     fun `context records are rendered separately and cannot become evidence`() = runBlocking {
         val client = RecordingClient(
-            responses = mutableListOf(response(evidenceIds = listOf("c99"), visibility = "PRIVATE")),
+            responses = mutableListOf(response(evidenceIds = listOf("c99"))),
         )
         val input = document(recordCount = 1).copy(
             contextRecords = listOf(
-                SourceRecord(99, "context", "earlier message", SourceRecordAnalysisStatus.ANALYZED),
+                SourceRecord(99, "context", "earlier message", SourceRecordAnalysisStatus.ANALYZED, MemoryAccess.PUBLIC),
             ),
         )
 
@@ -170,7 +148,7 @@ class CodexMemoryExtractorTest {
     fun `oversized merge input falls back to deterministic deduplication`() = runBlocking {
         val client = FunctionalClient { _, userMessage, _ ->
             val evidenceId = if (userMessage.contains("r1 |")) "r1" else "r2"
-            response(text = "fact-$evidenceId", evidenceIds = listOf(evidenceId), visibility = "PUBLIC")
+            response(text = "fact-$evidenceId", evidenceIds = listOf(evidenceId))
         }
 
         val memories = CodexMemoryExtractor(
@@ -190,7 +168,6 @@ class CodexMemoryExtractorTest {
             response(
                 text = "overlap fact",
                 evidenceIds = listOf("r2"),
-                visibility = if (userMessage.contains("r1 |")) "PUBLIC" else "PRIVATE",
             )
         }
 
@@ -203,30 +180,26 @@ class CodexMemoryExtractorTest {
 
         assertEquals(2, client.calls.size)
         assertEquals(1, memories.size)
-        assertEquals(MemoryVisibility.PRIVATE, memories.single().visibility)
     }
 
     private fun document(recordCount: Int): SourceDocument = SourceDocument(
         source = SourceDescriptor(type = "test", name = "source"),
         records = (1..recordCount).map {
-            SourceRecord(it, "key-$it", "content-$it", SourceRecordAnalysisStatus.PENDING)
+            SourceRecord(it, "key-$it", "content-$it", SourceRecordAnalysisStatus.PENDING, MemoryAccess.PUBLIC)
         },
     )
 
     private fun response(
         text: String = "fact",
         evidenceIds: List<String> = listOf("r1"),
-        visibility: String?,
-    ): String = """{"memories":[${memoryJson(text, evidenceIds, visibility)}]}"""
+    ): String = """{"memories":[${memoryJson(text, evidenceIds)}]}"""
 
     private fun memoryJson(
         text: String = "fact",
         evidenceIds: List<String> = listOf("r1"),
-        visibility: String?,
     ): String {
-        val visibilityJson = visibility?.let { ",\"visibility\":\"$it\"" }.orEmpty()
         val evidenceJson = evidenceIds.joinToString(",") { "\"$it\"" }
-        return """{"text":"$text","subject":"subject","memoryType":"REFERENCE","certainty":"OBSERVED"$visibilityJson,"evidenceRecordIds":[$evidenceJson]}"""
+        return """{"text":"$text","subject":"subject","memoryType":"REFERENCE","certainty":"OBSERVED","evidenceRecordIds":[$evidenceJson]}"""
     }
 
     private class RecordingClient(

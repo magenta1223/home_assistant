@@ -38,7 +38,7 @@ memory-topic 관계를 검색 보조 projection으로 두는 것**이다. 한 me
 4. 관계를 JSON 배열이 아닌 정규화된 table로 저장한다.
    - Topic 방식: `topics`, `memory_topics`, 선택적으로 `topic_parent`
    - Tree 방식: memory/container의 nullable `parent_id` 또는 관계 table
-5. visibility 규칙을 정의한다. PRIVATE memory가 PUBLIC topic/container에 연결돼도 다른 사용자에게 노출되지 않아야 한다.
+5. visibility 규칙을 정의한다. RESTRICTED memory가 PUBLIC topic/container에 연결돼도 허용되지 않은 사용자에게 노출되지 않아야 한다.
 6. cycle, orphan, 중복 관계, 삭제/병합 시 동작을 DB와 domain invariant로 고정한다.
 7. 기존 `childrenIds`를 새 구조로 옮기는 idempotent migration과 rollback 전 백업 절차를 만든다.
 8. 검색 seed 확장이 새 관계를 사용하되 direct semantic result를 제거하거나 순서를 바꾸지 않게 한다.
@@ -48,7 +48,7 @@ memory-topic 관계를 검색 보조 projection으로 두는 것**이다. 한 me
 
 - memory와 분류/container 개념의 차이가 domain model에 드러난다.
 - 배치 관계의 cardinality와 single/multi-parent 규칙이 DB schema로 강제된다.
-- PRIVATE memory가 관계 확장 과정에서 다른 사용자에게 노출되지 않는다.
+- RESTRICTED memory가 관계 확장 과정에서 허용되지 않은 사용자에게 노출되지 않는다.
 - 기존 memory를 손실 없이 migration하고 재실행해도 관계가 중복되지 않는다.
 - 대표 fixture에서 사람이 이해할 수 있는 분류 품질을 보이고, direct 검색 recall을 훼손하지 않는다.
 

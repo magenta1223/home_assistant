@@ -132,12 +132,12 @@ class MemoryAnswerContextProviderTest {
     }
 
     @Test
-    fun `private child is excluded before child relevance search`() {
+    fun `restricted child is excluded before child relevance search`() {
         val parent = memory(1, childrenIds = listOf(2, 3))
         val privateChild = memory(
             id = 2,
-            visibility = MemoryVisibility.PRIVATE,
-            createdByUserId = "member-2",
+            visibility = MemoryVisibility.RESTRICTED,
+            allowedUserIds = setOf("member-2"),
         )
         val visibleChild = memory(3)
         val memories = listOf(parent, privateChild, visibleChild)
@@ -192,6 +192,7 @@ class MemoryAnswerContextProviderTest {
         childrenIds: List<Int> = emptyList(),
         visibility: MemoryVisibility = MemoryVisibility.PUBLIC,
         createdByUserId: String = userId.value,
+        allowedUserIds: Set<String> = emptySet(),
     ) = Memory(
         id = id,
         childrenIds = childrenIds,
@@ -201,6 +202,7 @@ class MemoryAnswerContextProviderTest {
         memoryType = MemoryType.REFERENCE,
         certainty = MemoryCertainty.OBSERVED,
         visibility = visibility,
+        allowedUserIds = allowedUserIds,
         evidenceRefs = listOf(id),
         createdAt = id * 1_000L,
     )

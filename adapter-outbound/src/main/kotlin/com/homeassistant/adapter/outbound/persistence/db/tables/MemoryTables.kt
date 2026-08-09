@@ -33,3 +33,13 @@ internal object MemoryEvidenceTable : Table("memory_evidence") {
         index(false, sourceRecordId)
     }
 }
+
+internal object MemoryViewerTable : Table("memory_viewers") {
+    val memoryId = integer("memory_id").references(MemoryTable.id)
+    val userId = text("user_id")
+    override val primaryKey = PrimaryKey(memoryId, userId)
+
+    init {
+        index(false, userId, memoryId)
+    }
+}

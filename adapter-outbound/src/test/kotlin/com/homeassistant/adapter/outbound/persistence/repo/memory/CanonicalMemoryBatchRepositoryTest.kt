@@ -10,7 +10,6 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -216,7 +215,6 @@ class CanonicalMemoryBatchRepositoryTest {
         memoryType = MemoryType.REFERENCE,
         certainty = MemoryCertainty.OBSERVED,
         evidenceIds = listOf(evidenceId),
-        visibility = MemoryVisibility.PUBLIC,
     )
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")

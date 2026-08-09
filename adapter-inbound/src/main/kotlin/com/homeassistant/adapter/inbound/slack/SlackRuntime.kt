@@ -1,6 +1,5 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.slackconversation.SlackConversationHandler
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
@@ -16,7 +15,6 @@ data class SlackConfig(
     val botToken: String,
     val teamId: String,
     val identityDirectory: SlackIdentityDirectory,
-    val maxFileSizeBytes: Long,
 ) {
     companion object {
         fun fromEnv(): SlackConfig? {
@@ -30,17 +28,11 @@ data class SlackConfig(
                 SlackIdentityDirectoryFactory.fromJson(teamId, mappingsJson)
             }.getOrNull() ?: return null
 
-            val maxFileSizeBytes = Env[HomeAppConfig.ENV_VAR_SLACK_MAX_FILE_SIZE_BYTES]
-                ?.toLongOrNull()
-                ?.takeIf { it > 0 }
-                ?: HomeAppConfig.DEFAULT_SLACK_MAX_FILE_SIZE_BYTES
-
             return SlackConfig(
                 appToken = appToken,
                 botToken = botToken,
                 teamId = teamId,
                 identityDirectory = identityDirectory,
-                maxFileSizeBytes = maxFileSizeBytes,
             )
         }
     }
@@ -49,22 +41,13 @@ data class SlackConfig(
 object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
-        memoryAnalysis: MemoryAnalysis,
         conversationHandlerFactory: (SlackClient) -> SlackConversationHandler?,
     ): SlackRuntime {
         val slackClient = SlackApiClient(config.botToken)
         val executor = Executors.newFixedThreadPool(2)
         val conversationService = conversationHandlerFactory(slackClient)
-            ?.let(::SlackConversationService)
-        val workflow = SlackKakaoAnalysisWorkflow(
-            slackClient = slackClient,
-            memoryAnalysis = memoryAnalysis,
-            maxFileSizeBytes = config.maxFileSizeBytes,
-        )
+            ?.let { SlackConversationService(it, executor) }
         val listeners = SlackListeners(
-            config = config,
-            workflow = workflow,
-            executor = executor,
             conversationService = conversationService,
         )
         return SlackSocketRuntime(

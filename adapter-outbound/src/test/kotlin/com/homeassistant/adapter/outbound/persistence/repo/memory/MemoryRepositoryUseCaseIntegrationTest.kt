@@ -20,10 +20,10 @@ import com.homeassistant.application.usecase.slackconversation.HouseholdContextP
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
+import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import java.nio.file.Files
@@ -39,15 +39,19 @@ class MemoryRepositoryUseCaseIntegrationTest {
     @Test
     fun `search answer and Slack context read visible memories without caller transaction`() {
         withRepositories("memory-search-integration") { stores ->
-            val familyMemory = stores.saveMemory(member, "family", MemoryVisibility.PUBLIC)
-            val ownPrivateMemory = stores.saveMemory(member, "own-private", MemoryVisibility.PRIVATE)
-            val otherPrivateMemory = stores.saveMemory(
+            val publicMemory = stores.saveMemory(member, "public", MemoryAccess.PUBLIC)
+            val ownRestrictedMemory = stores.saveMemory(
+                member,
+                "own-restricted",
+                MemoryAccess.restricted(listOf(member)),
+            )
+            val otherRestrictedMemory = stores.saveMemory(
                 UserId("member-2"),
-                "other-private",
-                MemoryVisibility.PRIVATE,
+                "other-restricted",
+                MemoryAccess.restricted(listOf(UserId("member-2"))),
             )
             val index = FilteringIndexSearcher(
-                listOf(otherPrivateMemory.id, familyMemory.id, ownPrivateMemory.id),
+                listOf(otherRestrictedMemory.id, publicMemory.id, ownRestrictedMemory.id),
             )
             val searcher = MemorySearcher(
                 memories = stores.canonicalMemories,
@@ -58,10 +62,10 @@ class MemoryRepositoryUseCaseIntegrationTest {
             val searchResult = searcher.search(SearchMemoriesRequest(member.value, "question"))
 
             assertEquals(
-                listOf(familyMemory.id, ownPrivateMemory.id),
+                listOf(publicMemory.id, ownRestrictedMemory.id),
                 searchResult.matches.map { it.memoryId },
             )
-            assertFalse(otherPrivateMemory.id in index.lastScope.allowedMemoryIds.orEmpty())
+            assertFalse(otherRestrictedMemory.id in index.lastScope.allowedMemoryIds.orEmpty())
 
             val answerContext = MemoryAnswerContextProvider(searcher, stores.canonicalMemories, index)
             val answer = MemoryGroundedChatbot(answerContext).answer(
@@ -72,17 +76,17 @@ class MemoryRepositoryUseCaseIntegrationTest {
                 "question",
             )
 
-            assertEquals(familyMemory.id, answer.matches.first().memoryId)
+            assertEquals(publicMemory.id, answer.matches.first().memoryId)
             assertTrue(slackContext.hasMatches)
-            assertTrue(slackContext.reference.contains(familyMemory.content))
+            assertTrue(slackContext.reference.contains(publicMemory.content))
         }
     }
 
     @Test
     fun `placement reads and attaches through the real repository without caller transaction`() = runBlocking {
         withRepositories("memory-placement-integration") { stores ->
-            val root = stores.saveMemory(member, "root", MemoryVisibility.PUBLIC)
-            val incoming = stores.saveMemory(member, "incoming", MemoryVisibility.PUBLIC)
+            val root = stores.saveMemory(member, "root", MemoryAccess.PUBLIC)
+            val incoming = stores.saveMemory(member, "incoming", MemoryAccess.PUBLIC)
             val placement = MemoryPlacementService(
                 memoryReader = stores.canonicalMemories,
                 extractor = {
@@ -113,11 +117,12 @@ class MemoryRepositoryUseCaseIntegrationTest {
     private fun RepositoryStores.saveMemory(
         userId: UserId,
         content: String,
-        visibility: MemoryVisibility,
+        access: MemoryAccess,
     ): Memory {
         val evidence = sourceRecords.saveAll(
             SourceDescriptor(type = "test", name = content),
             listOf(SourceRecordDraft(content, content)),
+            access,
         ).recordsToAnalyze.single()
         val proposal = MemoryProposal(
                 content = content,
@@ -125,7 +130,6 @@ class MemoryRepositoryUseCaseIntegrationTest {
                 memoryType = MemoryType.REFERENCE,
                 certainty = MemoryCertainty.OBSERVED,
                 evidenceIds = listOf(evidence.id),
-                visibility = visibility,
             )
         return canonicalMemoryBatchWriter.commit(
             userId,

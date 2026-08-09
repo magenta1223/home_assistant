@@ -62,10 +62,14 @@ missing or unhealthy.
 
 The project is now a **home second brain**, not a general chat assistant. The primary flow is:
 
-1. Import source records, currently Kakao exports.
-2. Analyze source records and immediately save the resulting topics and memories as canonical records.
-3. Search and retrieve canonical memories with their source evidence and optional topic context.
-4. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
+1. Explicitly inject plain text or Kakao source records through the local knowledge page.
+2. Select PUBLIC access or an immutable set of authorized application user IDs for each source.
+3. Analyze source records and immediately save the resulting topics and memories as canonical records.
+4. Search and retrieve canonical memories with their source evidence and optional topic context.
+5. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
+
+Slack is a memory-backed answer channel only. Do not add source upload, memory creation, or memory
+editing workflows to Slack; those belong to the local knowledge page.
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
@@ -109,7 +113,8 @@ failures into that contract. Output ports and adapters must not construct applic
 
 - `http/` - Ktor routes and HTTP request/response DTO mapping.
 - `kakao/` - Kakao export parsing at the source-format boundary.
-- `slack/` - Slack Socket Mode, event listeners, blocks, modals, queueing, and message delivery mapping.
+- `slack/` - Slack Socket Mode, DM event listeners, conversation queueing, and answer delivery mapping.
+- `text/` - direct-text source parsing at the inbound boundary.
 
 ### adapter-outbound
 
@@ -130,17 +135,21 @@ failures into that contract. Output ports and adapters must not construct applic
 - `identity/` - single-household user identity and authorization policy. There is no family/subgroup scope.
 - `source/` - source-agnostic imported records, analysis documents, and the source-record persistence port.
 - `topicanalysis/` - topic grouping and proposal models.
-- `memory/` - canonical memory and FAMILY/PRIVATE visibility policy. FAMILY is globally visible to authorized users; PRIVATE requires the requesting `userId` to match `createdByUserId`.
+- `memory/` - canonical memory access policy. PUBLIC is visible to every authorized user; RESTRICTED
+  is visible only to its explicit `allowedUserIds`. Extracted memories inherit source access, and
+  evidence with different restricted scopes uses their viewer intersection.
 
 ### app
 
-Ktor + Netty server. Current routes:
+Ktor + Netty server bound to `127.0.0.1`. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
-- `POST /api/kakao/import/analyze` -> analyzes supplied Kakao text and immediately saves the resulting topics and canonical memories.
+- `GET /knowledge` -> local knowledge injection page.
+- `GET /api/knowledge/users` -> returns selectable authorized application user IDs.
+- `POST /api/knowledge/import/analyze` -> imports text or Kakao data with an explicit audience and immediately saves canonical memories.
 - `POST /api/memories/answer` -> retrieves visible canonical memories and builds a direct answer.
 
-HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` remains unauthenticated.
+HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` and the data-free `/knowledge` shell remain unauthenticated.
 
 `ApplicationServices.kt` is the composition root for repositories, use cases, Codex extraction, embeddings, vector search, Slack, and HTTP adapters.
 

@@ -3,6 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryViewerTable
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingTask
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
@@ -126,6 +127,9 @@ internal class MemoryIndexingOutboxRepository(
             memoryType = MemoryType.valueOf(this[MemoryTable.memoryType]),
             certainty = MemoryCertainty.valueOf(this[MemoryTable.certainty]),
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
+            allowedUserIds = MemoryViewerTable.select(MemoryViewerTable.userId)
+                .where { MemoryViewerTable.memoryId eq memoryId }
+                .mapTo(linkedSetOf()) { it[MemoryViewerTable.userId] },
             evidenceRefs = evidenceRefs,
             createdAt = this[MemoryTable.createdAt],
         )

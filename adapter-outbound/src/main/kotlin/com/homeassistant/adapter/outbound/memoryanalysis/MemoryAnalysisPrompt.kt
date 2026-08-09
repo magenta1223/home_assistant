@@ -1,7 +1,6 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.domain.memory.MemoryType
-import com.homeassistant.domain.memory.MemoryVisibility
 
 internal object MemoryAnalysisPrompt {
     private val retentionCriteria =
@@ -28,9 +27,7 @@ internal object MemoryAnalysisPrompt {
         evidenceRecordIds는 NEW_RECORDS에 제공된 r1, r2 같은 ID만 사용하세요.
         실제로 말하지 않은 사실을 확정하지 말고 관찰/발화/추론/불확실성을 구분하세요.
         memoryType은 ${MemoryType.entries.joinToString(", ") { it.name }} 중 하나만 사용하세요.
-        visibility는 일반적인 가족 공동 정보에만 ${MemoryVisibility.PUBLIC}을 사용하세요.
-        건강, 금융, 자격 증명, 민감한 관계, 개인적인 고민에는 ${MemoryVisibility.PRIVATE}을 사용하세요.
-        공개 여부가 애매하면 반드시 ${MemoryVisibility.PRIVATE}을 선택하세요.
+        열람 권한은 사용자가 입력 단계에서 지정하므로 판단하거나 출력하지 마세요.
         응답은 아래 JSON Schema를 준수하는 JSON object 하나여야 합니다.
 
         $schema
@@ -44,8 +41,7 @@ internal object MemoryAnalysisPrompt {
         evidenceRecordIds는 후보 목록에 포함된 원본 r1, r2 같은 ID만 사용하세요.
         실제로 말하지 않은 사실을 확정하지 말고 관찰/발화/추론/불확실성을 구분하세요.
         memoryType은 ${MemoryType.entries.joinToString(", ") { it.name }} 중 하나만 사용하세요.
-        각 후보의 visibility를 보존하세요. 같은 memory 후보의 visibility가 충돌하면
-        더 제한적인 ${MemoryVisibility.PRIVATE}을 선택하세요.
+        열람 권한은 후보 내용에 포함하지 마세요.
         응답은 아래 JSON Schema를 준수하는 JSON object 하나여야 합니다.
 
         $schema

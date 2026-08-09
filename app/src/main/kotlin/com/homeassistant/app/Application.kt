@@ -23,7 +23,12 @@ fun main() {
     System.setOut(PrintStream(System.out, true, Charsets.UTF_8))
     System.setErr(PrintStream(System.err, true, Charsets.UTF_8))
     log.info("Starting server on port ${AppConfig.DEFAULT_PORT}")
-    embeddedServer(Netty, port = AppConfig.DEFAULT_PORT, module = Application::module).start(wait = true)
+    embeddedServer(
+        Netty,
+        host = AppConfig.DEFAULT_HOST,
+        port = AppConfig.DEFAULT_PORT,
+        module = Application::module,
+    ).start(wait = true)
 }
 
 fun Application.module() {
@@ -56,6 +61,7 @@ fun Application.module() {
         services.memoryAnalysis,
         services.memoryGroundedChatbot,
         httpApiKeys,
+        services.memberUserIds,
         readiness = { services.isReady },
     )
 }

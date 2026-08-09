@@ -3,6 +3,9 @@
 - 상태: DONE
 - 목표: Weekend MVP
 
+> 이 방식은 `explicit-knowledge-audience.md`에서 폐기되었다. 현재 LLM은 권한을 판단하지
+> 않으며, 입력자가 지정한 source audience를 canonical memory가 상속한다.
+
 ## 현재 동작
 
 현재 LLM 출력 schema에는 visibility가 없다. extractor도 visibility를 설정하지 않으므로 모든 memory가 `MemoryProposal`의 기본값인 `PUBLIC`으로 저장된다.

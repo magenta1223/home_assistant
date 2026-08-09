@@ -40,7 +40,7 @@ raw 검색이 필요하면 answer endpoint와 별도의 명시적인 search 계�
 ## 회귀 테스트와 evaluation
 
 - 동일 사용자·질문·memory fixture에서 HTTP와 Slack이 같은 answer context를 사용한다.
-- PRIVATE memory와 그 evidence가 다른 사용자 context에 포함되지 않는다.
+- RESTRICTED memory와 그 evidence가 허용되지 않은 사용자 context에 포함되지 않는다.
 - direct seed와 허용된 child 확장만 answer generator에 전달된다.
 - evidence가 없는 질문은 저장된 memory에 답이 없다고 응답한다.
 - 낮은 certainty와 상충 evidence fixture에서 단정형 답변이 나오지 않는지 고정 evaluation으로 확인한다.

@@ -21,6 +21,9 @@ interface SlackIdentityDirectory : SlackPrincipalResolver {
     /** Provides the access policy derived from configured Slack members. */
     val accessPolicy: HouseholdAccessPolicy
 
+    /** Immutable application users configured for this Slack workspace. */
+    val userIds: Set<UserId>
+
     /** Resolves a configured Slack actor to its application principal. */
     override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
 }
@@ -28,8 +31,9 @@ interface SlackIdentityDirectory : SlackPrincipalResolver {
 private class ConfiguredSlackIdentityDirectory(
     private val principals: Map<SlackActor, SlackPrincipal>,
 ) : SlackIdentityDirectory {
+    override val userIds: Set<UserId> = principals.values.mapTo(linkedSetOf()) { it.userId }
     override val accessPolicy: HouseholdAccessPolicy =
-        HouseholdAccessPolicies.fixed(principals.values.map { it.userId })
+        HouseholdAccessPolicies.fixed(userIds)
 
     override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal? {
         if (teamId.isNullOrBlank() || slackUserId.isNullOrBlank()) return null

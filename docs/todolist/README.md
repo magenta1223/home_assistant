@@ -33,11 +33,12 @@
 | 문서 | 결과 |
 |---|---|
 | [atomic-memory-analysis-persistence.md](done/atomic-memory-analysis-persistence.md) | 분석 batch 원자 저장, 안정적 idempotency key, durable indexing outbox와 전체 reindex 복구 |
+| [explicit-knowledge-audience.md](done/explicit-knowledge-audience.md) | 명시적 PUBLIC/열람자 ACL, 로컬 지식 주입 페이지, Slack 쓰기 경로 제거 |
 | [managed-embedding-server.md](done/managed-embedding-server.md) | Windows standalone Ollama 설치·모델 준비·managed server lifecycle 구현 |
 | [memory-read-transaction-boundary.md](done/memory-read-transaction-boundary.md) | repository 소유 transaction으로 검색·답변·Slack 문맥·배치 읽기 경로 복구 |
 | [memory-search-ranking-and-limit.md](done/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |
 | [retryable-memory-analysis.md](done/retryable-memory-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
-| [model-inferred-memory-visibility.md](done/model-inferred-memory-visibility.md) | 모델이 PUBLIC/PRIVATE을 명시적으로 결정 |
+| [model-inferred-memory-visibility.md](done/model-inferred-memory-visibility.md) | 과거 모델 추론 방식 기록; 명시적 source audience로 대체됨 |
 | [kakao-import-integrity.md](done/kakao-import-integrity.md) | 파일명 독립 dedup, 날짜 보존, 검증된 증분 문맥, 제한된 대용량 분석 |
 | [memory-created-at-context.md](done/memory-created-at-context.md) | memory 생성 일자를 응답 context에 제공 |
 | [simplify-memory-placement.md](done/simplify-memory-placement.md) | 의미 없는 정렬·부모 재인덱싱·attach 응답 제거 |

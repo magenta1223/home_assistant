@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
 import kotlinx.coroutines.async
@@ -42,7 +41,7 @@ internal class CodexMemoryExtractor(
             }
             mergeMemories(document, chunkMemories)
         }
-        return memories.resolveDuplicateVisibilities()
+        return memories.distinctByMeaningAndEvidence()
     }
 
     private suspend fun analyzeChunk(document: SourceDocument): List<MemoryProposal> =
@@ -58,7 +57,7 @@ internal class CodexMemoryExtractor(
     ): List<MemoryProposal> {
         if (chunkMemories.isEmpty()) return emptyList()
         val mergeInput = renderMemoryProposals(document, chunkMemories)
-        if (mergeInput.length > maxMergeInputChars) return chunkMemories.resolveDuplicateVisibilities()
+        if (mergeInput.length > maxMergeInputChars) return chunkMemories.distinctByMeaningAndEvidence()
         return requestMemories(
             document = document,
             system = MemoryAnalysisPrompt.mergeSystem(),
@@ -88,7 +87,6 @@ internal class CodexMemoryExtractor(
                 memoryType = memory.memoryType,
                 certainty = memory.certainty,
                 evidenceIds = evidence.map { it.id },
-                visibility = memory.visibility,
             )
         }
     }
@@ -133,7 +131,6 @@ internal class CodexMemoryExtractor(
                 subject = memory.subject,
                 memoryType = memory.memoryType,
                 certainty = memory.certainty,
-                visibility = memory.visibility,
                 evidenceRecordIds = memory.evidenceIds.map { evidenceId ->
                     document.records.first { it.id == evidenceId }.promptId
                 },
@@ -155,15 +152,5 @@ private val SourceRecord.promptId: String
 private val SourceRecord.contextPromptId: String
     get() = "c$id"
 
-private fun List<MemoryProposal>.resolveDuplicateVisibilities(): List<MemoryProposal> =
-    LinkedHashMap<Pair<String, Set<Int>>, MemoryProposal>().also { unique ->
-        forEach { memory ->
-            val key = memory.content to memory.evidenceIds.toSet()
-            val existing = unique[key]
-            if (existing == null ||
-                existing.visibility == MemoryVisibility.PUBLIC && memory.visibility == MemoryVisibility.PRIVATE
-            ) {
-                unique[key] = memory
-            }
-        }
-    }.values.toList()
+private fun List<MemoryProposal>.distinctByMeaningAndEvidence(): List<MemoryProposal> =
+    distinctBy { memory -> memory.content to memory.evidenceIds.toSet() }

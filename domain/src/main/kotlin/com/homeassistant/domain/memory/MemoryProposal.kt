@@ -13,5 +13,4 @@ data class MemoryProposal(
     val certainty: MemoryCertainty,
     @SerialName("evidenceRefs")
     val evidenceIds: List<Int>,
-    val visibility: MemoryVisibility,
 )

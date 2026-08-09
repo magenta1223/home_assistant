@@ -3,16 +3,43 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.source.SourceAccessConflictException
 import java.nio.file.Files
 import java.sql.DriverManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class SourceRecordRepositoryTest {
+    @Test
+    fun `an existing source cannot be silently reopened with a different audience`() {
+        val databasePath = Files.createTempFile("source-record-access", ".db")
+        try {
+            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val source = SourceDescriptor("text", "knowledge")
+            repository.saveAll(
+                source,
+                listOf(draft("same")),
+                MemoryAccess.restricted(listOf(UserId("member-1"))),
+            )
+
+            assertFailsWith<SourceAccessConflictException> {
+                repository.saveAll(
+                    source,
+                    listOf(draft("same")),
+                    MemoryAccess.restricted(listOf(UserId("member-2"))),
+                )
+            }
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
     @Test
     fun `incremental import returns only the analyzed prefix verified by the current upload`() {
         val databasePath = Files.createTempFile("source-record-context", ".db")
@@ -94,11 +121,17 @@ class SourceRecordRepositoryTest {
 
             val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("test", "legacy")
-            val saved = repository.saveAll(source, listOf(SourceRecordDraft("legacy-key", "legacy content")))
+            val access = MemoryAccess.restricted(listOf(UserId("member-1"), UserId("member-2")))
+            val saved = repository.saveAll(
+                source,
+                listOf(SourceRecordDraft("legacy-key", "legacy content")),
+                access,
+            )
 
             assertTrue(saved.recordsToAnalyze.isEmpty())
             assertEquals(1, saved.alreadyAnalyzedRecordCount)
             assertEquals(SourceRecordAnalysisStatus.ANALYZED, repository.findBySource(source).single().analysisStatus)
+            assertEquals(access, repository.findBySource(source).single().access)
         } finally {
             Files.deleteIfExists(databasePath)
         }

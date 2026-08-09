@@ -4,6 +4,8 @@ import com.homeassistant.domain.memory.Memory
 
 data class MemoryIndexingTask(
     val outboxId: Int,
+    /** Monotonically increasing claim generation used to fence stale workers. */
+    val attempt: Int,
     val memory: Memory,
 )
 
@@ -17,10 +19,12 @@ interface MemoryIndexingOutbox {
         staleProcessingBefore: Long,
     ): List<MemoryIndexingTask>
 
-    fun markCompleted(outboxId: Int, now: Long)
+    /** Returns true only when the matching in-progress generation was transitioned. */
+    fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long): Boolean
 
-    fun markFailed(outboxId: Int, error: String, now: Long)
+    /** Returns true only when the matching in-progress generation was transitioned. */
+    fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long): Boolean
 
-    /** Queues every canonical memory, resetting prior queue state, for disaster recovery/rebuilds. */
+    /** Queues every canonical memory without resetting its claim generation. */
     fun enqueueAll(now: Long): Int
 }

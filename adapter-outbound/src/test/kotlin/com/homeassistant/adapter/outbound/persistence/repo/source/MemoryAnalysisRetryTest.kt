@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
+import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
@@ -22,6 +23,7 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import java.nio.file.Files
+import org.jetbrains.exposed.sql.Database
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,14 +36,15 @@ class MemoryAnalysisRetryTest {
     fun `renamed cumulative import passes analyzed history as context for its new tail`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-renamed-context", ".db")
         try {
-            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
             val original = SourceDescriptor("kakao", "original.txt")
             val initial = sourceRecords.saveAll(original, listOf(draft("old-1"), draft("old-2")))
-            sourceRecords.markAnalyzed(initial.recordsToAnalyze.map { it.id })
+            markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
             val extractor = RecordingExtractor { document ->
                 listOf(proposal(document, MemoryVisibility.PUBLIC))
             }
-            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+            val service = service(sourceRecords, db, extractor, RecordingMemoryWriter())
             val renamed = original.copy(name = "renamed.txt")
 
             val result = service.execute(
@@ -71,12 +74,13 @@ class MemoryAnalysisRetryTest {
     fun `same source name with a different conversation does not inherit database context`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-same-name-isolation", ".db")
         try {
-            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("kakao", "KakaoTalkChats.txt")
             val unrelated = sourceRecords.saveAll(source, listOf(draft("other-conversation")))
-            sourceRecords.markAnalyzed(unrelated.recordsToAnalyze.map { it.id })
+            markAnalyzed(db, unrelated.recordsToAnalyze.map { it.id })
             val extractor = RecordingExtractor { emptyList() }
-            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+            val service = service(sourceRecords, db, extractor, RecordingMemoryWriter())
 
             service.execute(
                 MemoryAnalysisRequest(
@@ -96,12 +100,13 @@ class MemoryAnalysisRetryTest {
     fun `memory persistence failure leaves source pending`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-persistence-failure", ".db")
         try {
-            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
             val extractor = RecordingExtractor { document ->
                 listOf(proposal(document, MemoryVisibility.PUBLIC))
             }
             val failure = IllegalStateException("persistence failed")
-            val service = service(sourceRecords, extractor, RecordingMemoryWriter(failure))
+            val service = service(sourceRecords, db, extractor, RecordingMemoryWriter(failure))
             val request = request("a")
 
             val unavailable = assertFailsWith<MemoryAnalysisUnavailableException> { service.execute(request) }
@@ -119,7 +124,8 @@ class MemoryAnalysisRetryTest {
     fun `extractor failure remains pending then retry succeeds and later upload is duplicate`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-retry", ".db")
         try {
-            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
             var shouldFail = true
             val extractor = RecordingExtractor { document ->
                 if (shouldFail) {
@@ -129,7 +135,7 @@ class MemoryAnalysisRetryTest {
                 listOf(proposal(document, MemoryVisibility.PRIVATE))
             }
             val writer = RecordingMemoryWriter()
-            val service = service(sourceRecords, extractor, writer)
+            val service = service(sourceRecords, db, extractor, writer)
             val request = request("a")
 
             assertFailsWith<MemoryAnalysisUnavailableException> { service.execute(request) }
@@ -161,10 +167,11 @@ class MemoryAnalysisRetryTest {
     fun `partial new upload analyzes pending and new records together and reports counts`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-partial-retry", ".db")
         try {
-            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("test", "source")
             val initial = sourceRecords.saveAll(source, listOf(draft("pending"), draft("analyzed")))
-            sourceRecords.markAnalyzed(
+            markAnalyzed(db,
                 listOf(initial.recordsToAnalyze.single { it.deduplicationKey == "analyzed" }.id),
             )
             val extractor = RecordingExtractor { document ->
@@ -173,7 +180,7 @@ class MemoryAnalysisRetryTest {
                     proposal(document.copy(records = listOf(document.records[1])), MemoryVisibility.PUBLIC),
                 )
             }
-            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+            val service = service(sourceRecords, db, extractor, RecordingMemoryWriter())
 
             val result = service.execute(
                 MemoryAnalysisRequest(
@@ -202,19 +209,20 @@ class MemoryAnalysisRetryTest {
     fun `analyzed records after the first pending record are not used as future context`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-pending-context-boundary", ".db")
         try {
-            val sourceRecords = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("kakao", "conversation.txt")
             val initial = sourceRecords.saveAll(
                 source,
                 listOf(draft("prefix"), draft("pending"), draft("future-analyzed")),
             )
-            sourceRecords.markAnalyzed(
+            markAnalyzed(db,
                 initial.recordsToAnalyze
                     .filter { it.deduplicationKey != "pending" }
                     .map { it.id },
             )
             val extractor = RecordingExtractor { emptyList() }
-            val service = service(sourceRecords, extractor, RecordingMemoryWriter())
+            val service = service(sourceRecords, db, extractor, RecordingMemoryWriter())
 
             service.execute(
                 MemoryAnalysisRequest(
@@ -236,12 +244,17 @@ class MemoryAnalysisRetryTest {
 
     private fun service(
         sourceRecords: SourceRecordRepositoryImpl,
+        db: Database,
         extractor: MemoryExtractor,
         writer: RecordingMemoryWriter,
     ) = MemoryAnalysisService(
         memoryExtractor = extractor,
         sourceRecords = sourceRecords,
-        memorySaver = MemoryProposalsPersister(writer.bind(sourceRecords)),
+        memorySaver = MemoryProposalsPersister { createdBy, proposals, recordIds ->
+            writer.commit(createdBy, proposals, recordIds).also {
+                markAnalyzed(db, recordIds)
+            }
+        },
         accessPolicy = HouseholdAccessPolicies.fixed(listOf(USER_ID)),
     )
 
@@ -251,6 +264,10 @@ class MemoryAnalysisRetryTest {
     )
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
+
+    private fun markAnalyzed(db: Database, recordIds: Collection<Int>) {
+        MemoryRepository(db).commit(USER_ID, emptyList(), recordIds)
+    }
 
     private fun proposal(document: SourceDocument, visibility: MemoryVisibility): MemoryProposal = MemoryProposal(
         content = "memory-${document.records.single().deduplicationKey}",
@@ -276,11 +293,6 @@ class MemoryAnalysisRetryTest {
         private val failure: RuntimeException? = null,
     ) : CanonicalMemoryBatchWriter {
         val memories = mutableListOf<Memory>()
-        private lateinit var sourceRecords: SourceRecordRepositoryImpl
-
-        fun bind(sourceRecords: SourceRecordRepositoryImpl) = apply {
-            this.sourceRecords = sourceRecords
-        }
 
         override fun commit(
             createdBy: UserId,
@@ -302,7 +314,6 @@ class MemoryAnalysisRetryTest {
                     createdAt = (memories.size + 1) * 1_000L,
                 ).also(memories::add)
             }
-            sourceRecords.markAnalyzed(analyzedSourceRecordIds)
             return saved
         }
     }

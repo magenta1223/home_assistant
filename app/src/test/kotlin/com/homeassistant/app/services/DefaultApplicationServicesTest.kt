@@ -16,6 +16,7 @@ class DefaultApplicationServicesTest {
     fun `starts embedding before inbound runtime and closes it last`() {
         val events = mutableListOf<String>()
         val embedding = RecordingEmbeddingRuntime(events)
+        val indexing = RecordingIndexingWorker(events)
         val slack = object : SlackRuntime {
             override fun startAsync() {
                 events += "slack.start"
@@ -30,6 +31,7 @@ class DefaultApplicationServicesTest {
             memoryGroundedChatbot = MemoryAnswer { error("unused") },
             slackRuntime = slack,
             embeddingRuntime = embedding,
+            indexingWorker = indexing,
         )
 
         assertFalse(services.isReady)
@@ -38,7 +40,14 @@ class DefaultApplicationServicesTest {
         services.close()
 
         assertEquals(
-            listOf("embedding.start", "slack.start", "slack.close", "embedding.close"),
+            listOf(
+                "embedding.start",
+                "indexing.start",
+                "slack.start",
+                "slack.close",
+                "indexing.close",
+                "embedding.close",
+            ),
             events,
         )
         assertFalse(services.isReady)
@@ -48,6 +57,7 @@ class DefaultApplicationServicesTest {
     fun `closes embedding runtime when inbound runtime close fails`() {
         val events = mutableListOf<String>()
         val embedding = RecordingEmbeddingRuntime(events)
+        val indexing = RecordingIndexingWorker(events)
         val slack = object : SlackRuntime {
             override fun startAsync() = Unit
 
@@ -61,12 +71,22 @@ class DefaultApplicationServicesTest {
             memoryGroundedChatbot = MemoryAnswer { error("unused") },
             slackRuntime = slack,
             embeddingRuntime = embedding,
+            indexingWorker = indexing,
         )
         services.start()
 
         assertFailsWith<IllegalStateException> { services.close() }
 
-        assertEquals(listOf("embedding.start", "slack.close", "embedding.close"), events)
+        assertEquals(
+            listOf(
+                "embedding.start",
+                "indexing.start",
+                "slack.close",
+                "indexing.close",
+                "embedding.close",
+            ),
+            events,
+        )
         assertFalse(embedding.isReady)
     }
 
@@ -88,6 +108,18 @@ class DefaultApplicationServicesTest {
         override fun close() {
             events += "embedding.close"
             isReady = false
+        }
+    }
+
+    private class RecordingIndexingWorker(
+        private val events: MutableList<String>,
+    ) : IndexingWorker {
+        override fun start() {
+            events += "indexing.start"
+        }
+
+        override fun close() {
+            events += "indexing.close"
         }
     }
 }

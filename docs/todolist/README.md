@@ -16,7 +16,6 @@
 
 | 문서 | 목적 |
 |---|---|
-| [atomic-memory-analysis-persistence.md](p1/atomic-memory-analysis-persistence.md) | 분석 batch의 memory·evidence·source 상태를 원자적이고 idempotent하게 저장 |
 | [unified-evidence-grounded-answer.md](p1/unified-evidence-grounded-answer.md) | HTTP·Slack 답변 경로를 통일하고 evidence와 certainty를 실제 응답에 전달 |
 | [explicit-memory-placement-model.md](p1/explicit-memory-placement-model.md) | topic, tag, container tree 중 명시적인 장기 배치 모델 결정 |
 
@@ -33,6 +32,7 @@
 
 | 문서 | 결과 |
 |---|---|
+| [atomic-memory-analysis-persistence.md](done/atomic-memory-analysis-persistence.md) | 분석 batch 원자 저장, 안정적 idempotency key, durable indexing outbox와 전체 reindex 복구 |
 | [managed-embedding-server.md](done/managed-embedding-server.md) | Windows standalone Ollama 설치·모델 준비·managed server lifecycle 구현 |
 | [memory-read-transaction-boundary.md](done/memory-read-transaction-boundary.md) | repository 소유 transaction으로 검색·답변·Slack 문맥·배치 읽기 경로 복구 |
 | [memory-search-ranking-and-limit.md](done/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |

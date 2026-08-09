@@ -6,9 +6,6 @@ interface SourceRecordRepository {
     /** Stores new drafts and returns both new and previously pending records for analysis. */
     fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>): SourceRecordSaveResult
 
-    /** Marks records only after their extracted memories have been persisted successfully. */
-    fun markAnalyzed(recordIds: Collection<Int>)
-
     /** Returns source records belonging to the specified source. */
     fun findBySource(source: SourceDescriptor): List<SourceRecord>
 

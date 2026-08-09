@@ -1,6 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
+import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -15,11 +17,12 @@ class SourceRecordRepositoryTest {
     fun `incremental import returns only the analyzed prefix verified by the current upload`() {
         val databasePath = Files.createTempFile("source-record-context", ".db")
         try {
-            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("kakao", "conversation")
             val existingDrafts = (1..25).map { draft("old-$it") }
             val initial = repository.saveAll(source, existingDrafts)
-            repository.markAnalyzed(initial.recordsToAnalyze.map { it.id })
+            markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
 
             val incremental = repository.saveAll(
                 source.copy(name = "renamed-conversation"),
@@ -38,10 +41,11 @@ class SourceRecordRepositoryTest {
     fun `returns pending records for retry alongside newly imported records`() {
         val databasePath = Files.createTempFile("source-record-retry", ".db")
         try {
-            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val db = DatabaseFactory.init(databasePath.toString())
+            val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("test", "source")
             val first = repository.saveAll(source, listOf(draft("a"), draft("b")))
-            repository.markAnalyzed(listOf(first.recordsToAnalyze.single { it.deduplicationKey == "b" }.id))
+            markAnalyzed(db, listOf(first.recordsToAnalyze.single { it.deduplicationKey == "b" }.id))
 
             val second = repository.saveAll(source, listOf(draft("a"), draft("b"), draft("c")))
 
@@ -51,7 +55,7 @@ class SourceRecordRepositoryTest {
             assertEquals(listOf("a", "c"), second.recordsToAnalyze.map { it.deduplicationKey })
             assertTrue(second.recordsToAnalyze.all { it.analysisStatus == SourceRecordAnalysisStatus.PENDING })
 
-            repository.markAnalyzed(second.recordsToAnalyze.map { it.id })
+            markAnalyzed(db, second.recordsToAnalyze.map { it.id })
             val completed = repository.saveAll(source, listOf(draft("a"), draft("b"), draft("c")))
             assertTrue(completed.recordsToAnalyze.isEmpty())
             assertEquals(3, completed.alreadyAnalyzedRecordCount)
@@ -154,4 +158,8 @@ class SourceRecordRepositoryTest {
     }
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
+
+    private fun markAnalyzed(db: org.jetbrains.exposed.sql.Database, recordIds: Collection<Int>) {
+        MemoryRepository(db).commit(UserId("test-member"), emptyList(), recordIds)
+    }
 }

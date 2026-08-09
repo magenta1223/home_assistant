@@ -31,11 +31,12 @@ internal class MemoryIndexingOutboxRepository(
 
         rows.mapNotNull { row ->
             val outboxId = row[IndexingOutboxTable.id]
+            val attempt = row[IndexingOutboxTable.attempts] + 1
             val claimed = IndexingOutboxTable.update({
                 (IndexingOutboxTable.id eq outboxId) and readyCondition(retryBefore, staleProcessingBefore)
             }) {
                 it[status] = OUTBOX_PROCESSING
-                it[attempts] = row[IndexingOutboxTable.attempts] + 1
+                it[attempts] = attempt
                 it[updatedAt] = now
             }
             if (claimed == 0) return@mapNotNull null
@@ -44,24 +45,32 @@ internal class MemoryIndexingOutboxRepository(
                 .where { MemoryTable.id eq row[IndexingOutboxTable.targetId] }
                 .single()
                 .toMemory()
-            MemoryIndexingTask(outboxId, memory)
+            MemoryIndexingTask(outboxId, attempt, memory)
         }
     }
 
-    override fun markCompleted(outboxId: Int, now: Long): Unit = transaction(db) {
-        IndexingOutboxTable.update({ IndexingOutboxTable.id eq outboxId }) {
+    override fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long): Boolean = transaction(db) {
+        IndexingOutboxTable.update({
+            (IndexingOutboxTable.id eq outboxId) and
+                (IndexingOutboxTable.status eq OUTBOX_PROCESSING) and
+                (IndexingOutboxTable.attempts eq expectedAttempt)
+        }) {
             it[status] = OUTBOX_COMPLETED
             it[lastError] = null
             it[updatedAt] = now
-        }
+        } == 1
     }
 
-    override fun markFailed(outboxId: Int, error: String, now: Long): Unit = transaction(db) {
-        IndexingOutboxTable.update({ IndexingOutboxTable.id eq outboxId }) {
+    override fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long): Boolean = transaction(db) {
+        IndexingOutboxTable.update({
+            (IndexingOutboxTable.id eq outboxId) and
+                (IndexingOutboxTable.status eq OUTBOX_PROCESSING) and
+                (IndexingOutboxTable.attempts eq expectedAttempt)
+        }) {
             it[status] = OUTBOX_FAILED
             it[lastError] = error.take(MAX_ERROR_LENGTH)
             it[updatedAt] = now
-        }
+        } == 1
     }
 
     override fun enqueueAll(now: Long): Int = transaction(db) {
@@ -85,7 +94,6 @@ internal class MemoryIndexingOutboxRepository(
             } else {
                 IndexingOutboxTable.update({ IndexingOutboxTable.id eq existing[IndexingOutboxTable.id] }) {
                     it[status] = OUTBOX_PENDING
-                    it[attempts] = 0
                     it[lastError] = null
                     it[updatedAt] = now
                 }

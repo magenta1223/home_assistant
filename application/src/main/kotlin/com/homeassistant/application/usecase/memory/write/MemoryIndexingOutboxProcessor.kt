@@ -7,6 +7,7 @@ import java.time.Clock
 data class MemoryIndexingRunResult(
     val completed: Int,
     val failed: Int,
+    val superseded: Int = 0,
 )
 
 /** Projects durable outbox work after the canonical database transaction has committed. */
@@ -33,23 +34,28 @@ class MemoryIndexingOutboxProcessor(
         )
         var completed = 0
         var failed = 0
+        var superseded = 0
         tasks.forEach { task ->
             val failure = runCatching {
                 check(indexWriter.upsert(task.memory)) { "Semantic index writer rejected memory ${task.memory.id}" }
             }.exceptionOrNull()
             if (failure == null) {
-                outbox.markCompleted(task.outboxId, clock.millis())
-                completed++
+                if (outbox.markCompleted(task.outboxId, task.attempt, clock.millis())) {
+                    completed++
+                } else {
+                    superseded++
+                }
             } else {
-                outbox.markFailed(
+                val accepted = outbox.markFailed(
                     task.outboxId,
+                    task.attempt,
                     failure.message ?: failure::class.simpleName ?: "Indexing failed",
                     clock.millis(),
                 )
-                failed++
+                if (accepted) failed++ else superseded++
             }
         }
-        return MemoryIndexingRunResult(completed, failed)
+        return MemoryIndexingRunResult(completed, failed, superseded)
     }
 
     /** Requeues and attempts every canonical memory, including memories missing an outbox row. */

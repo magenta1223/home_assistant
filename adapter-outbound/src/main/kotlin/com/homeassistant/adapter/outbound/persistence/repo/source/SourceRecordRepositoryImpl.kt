@@ -92,13 +92,6 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         )
     }
 
-    override fun markAnalyzed(recordIds: Collection<Int>): Unit = transaction(db) {
-        if (recordIds.isEmpty()) return@transaction
-        SourceRecordTable.update({ SourceRecordTable.id inList recordIds }) {
-            it[analysisStatus] = SourceRecordAnalysisStatus.ANALYZED.name
-        }
-    }
-
     override fun findBySource(source: SourceDescriptor): List<SourceRecord> = transaction(db) {
         SourceRecordTable.selectAll()
             .where {

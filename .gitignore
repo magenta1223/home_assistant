@@ -12,6 +12,7 @@ bin/
 build/
 out/
 runtime/ollama/
+runtime/qdrant/
 
 *.log
 

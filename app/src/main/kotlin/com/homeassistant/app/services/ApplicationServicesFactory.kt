@@ -7,7 +7,7 @@ import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtracto
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
+import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
@@ -43,10 +43,11 @@ object ApplicationServicesFactory {
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-        val vectorStore = QdrantVectorStoreFactory.create(
+        val managedVectorStore = ManagedQdrantVectorStoreFactory.create(
             baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
             collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
         )
+        val vectorStore = managedVectorStore.store
         val memoryIndexWriter = SemanticMemoryIndexWriterFactory.create(textEmbedder, vectorStore)
         val memoryIndexing = MemoryIndexingOutboxProcessor(
             outbox = repositories.memoryIndexingOutbox,
@@ -117,6 +118,7 @@ object ApplicationServicesFactory {
             memoryAnalysis = memoryAnalysisService,
             slackRuntime = slackRuntime,
             householdMembers = householdMembers,
+            vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
         )

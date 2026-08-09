@@ -14,6 +14,9 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 # One-time Windows setup for the managed Ollama runtime and embedding model
 .\gradlew.bat setupEmbedding
 
+# One-time Windows setup for every project-managed runtime, including Qdrant
+.\gradlew.bat setupRuntime
+
 # Run all tests
 ./gradlew test
 
@@ -38,7 +41,7 @@ Hosted LLM providers and provider-selection environment variables are not suppor
 | Variable | Default | Notes |
 |---|---|---|
 | `EMBEDDING_MODEL` | `qllama/multilingual-e5-base` | Model prepared by `setupEmbedding` and verified as 768-dimensional at application startup |
-| `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
+| `QDRANT_URL` | `http://127.0.0.1:6333` | Managed Qdrant loopback endpoint; non-local URLs are rejected |
 | `QDRANT_COLLECTION` | `canonical_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
 | `SLACK_MEMBER_SCOPES_JSON` | - | Deprecated one-time migration input; existing mappings reserve their old `userId` until the member completes Slack registration, then the variable may be removed |
@@ -53,6 +56,11 @@ model. The application starts and stops this project-owned `ollama serve` proces
 `127.0.0.1:11435`; do not start a separate Ollama server on that port. Normal application startup
 never downloads binaries or models and fails with a setup instruction when the managed runtime is
 missing or unhealthy.
+
+`setupQdrant` downloads and verifies the pinned official Windows Qdrant executable under the
+gitignored `runtime/qdrant/` directory. Normal application startup owns that process on
+`127.0.0.1:6333`, stores durable vector data under `runtime/qdrant/storage/`, disables telemetry,
+and stops Qdrant with the server. Docker is not used. `setupRuntime` prepares both managed runtimes.
 
 ## Project Direction
 
@@ -121,7 +129,7 @@ failures into that contract. Output ports and adapters must not construct applic
 - `topicanalysis/` - Codex-backed topic extraction implementations.
 - `embedding/ollama/` - pinned Windows Ollama installation, managed server lifecycle, and local text embedding.
 - `persistence/` - SQLite/Exposed repositories for household members, source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
-- `vector/qdrant/` - Qdrant vector storage implementation.
+- `vector/qdrant/` - pinned Windows Qdrant installation, managed server lifecycle, and vector storage.
 - `vector/memory/` - canonical-memory semantic index implementation.
 
 ### common and configuration

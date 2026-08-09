@@ -3,7 +3,7 @@ package com.homeassistant.app.memory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
-import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
+import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
@@ -18,28 +18,36 @@ fun main(args: Array<String>) {
     val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
         ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
     val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
-    managedEmbedding.runtime.start()
+    val managedVectorStore = ManagedQdrantVectorStoreFactory.create(
+        baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
+        collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
+    )
+    managedVectorStore.runtime.start()
     try {
-        val vectorStore = QdrantVectorStoreFactory.create(
-            baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
-            collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
-        )
-        val result = MemoryIndexingOutboxProcessor(
-            outbox = repositories.memoryIndexingOutbox,
-            indexWriter = SemanticMemoryIndexWriterFactory.create(managedEmbedding.embedder, vectorStore),
-            retryDelayMillis = 0,
-        ).reindexAll()
-        log.info(
-            "Canonical memory reindex finished: completed={} failed={} superseded={}",
-            result.completed,
-            result.failed,
-            result.superseded,
-        )
-        check(result.failed == 0 && result.superseded == 0) {
-            "Canonical memory reindex incomplete: failed=${result.failed} superseded=${result.superseded}"
+        managedEmbedding.runtime.start()
+        try {
+            val result = MemoryIndexingOutboxProcessor(
+                outbox = repositories.memoryIndexingOutbox,
+                indexWriter = SemanticMemoryIndexWriterFactory.create(
+                    managedEmbedding.embedder,
+                    managedVectorStore.store,
+                ),
+                retryDelayMillis = 0,
+            ).reindexAll()
+            log.info(
+                "Canonical memory reindex finished: completed={} failed={} superseded={}",
+                result.completed,
+                result.failed,
+                result.superseded,
+            )
+            check(result.failed == 0 && result.superseded == 0) {
+                "Canonical memory reindex incomplete: failed=${result.failed} superseded=${result.superseded}"
+            }
+        } finally {
+            managedEmbedding.runtime.close()
         }
     } finally {
-        managedEmbedding.runtime.close()
+        managedVectorStore.runtime.close()
     }
 }
 

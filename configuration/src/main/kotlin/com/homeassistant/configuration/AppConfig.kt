@@ -16,7 +16,8 @@ object AppConfig {
     const val DEFAULT_OLLAMA_HOST           = "127.0.0.1:11435"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://$DEFAULT_OLLAMA_HOST"
     const val DEFAULT_OLLAMA_RUNTIME_DIR    = "runtime/ollama"
-    const val DEFAULT_QDRANT_URL            = "http://localhost:6333"
+    const val DEFAULT_QDRANT_URL            = "http://127.0.0.1:6333"
+    const val DEFAULT_QDRANT_RUNTIME_DIR    = "runtime/qdrant"
     const val DEFAULT_QDRANT_COLLECTION     = "canonical_memories"
     const val DEFAULT_EMBEDDING_MODEL_NAME  = "qllama/multilingual-e5-base"
     const val DEFAULT_EMBEDDING_VECTOR_SIZE = 768

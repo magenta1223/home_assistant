@@ -13,6 +13,18 @@ tasks.register("setupEmbedding") {
     dependsOn(":app:setupEmbedding")
 }
 
+tasks.register("setupQdrant") {
+    group = "application"
+    description = "Installs the pinned Windows Qdrant runtime."
+    dependsOn(":app:setupQdrant")
+}
+
+tasks.register("setupRuntime") {
+    group = "application"
+    description = "Prepares all project-managed local runtimes."
+    dependsOn("setupEmbedding", "setupQdrant")
+}
+
 subprojects {
     group = "com.homeassistant"
     version = "1.0.0"

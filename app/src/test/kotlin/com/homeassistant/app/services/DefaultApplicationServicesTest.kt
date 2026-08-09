@@ -2,6 +2,7 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
+import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import kotlin.test.Test
@@ -12,8 +13,9 @@ import kotlin.test.assertTrue
 
 class DefaultApplicationServicesTest {
     @Test
-    fun `starts embedding before inbound runtime and closes it last`() {
+    fun `starts managed runtimes before inbound runtime and closes them afterward`() {
         val events = mutableListOf<String>()
+        val vector = RecordingVectorRuntime(events)
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
         val slack = object : SlackRuntime {
@@ -28,6 +30,7 @@ class DefaultApplicationServicesTest {
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
             slackRuntime = slack,
+            vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
         )
@@ -39,12 +42,14 @@ class DefaultApplicationServicesTest {
 
         assertEquals(
             listOf(
+                "vector.start",
                 "embedding.start",
                 "indexing.start",
                 "slack.start",
                 "slack.close",
                 "indexing.close",
                 "embedding.close",
+                "vector.close",
             ),
             events,
         )
@@ -52,8 +57,9 @@ class DefaultApplicationServicesTest {
     }
 
     @Test
-    fun `closes embedding runtime when inbound runtime close fails`() {
+    fun `closes managed runtimes when inbound runtime close fails`() {
         val events = mutableListOf<String>()
+        val vector = RecordingVectorRuntime(events)
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
         val slack = object : SlackRuntime {
@@ -67,6 +73,7 @@ class DefaultApplicationServicesTest {
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
             slackRuntime = slack,
+            vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
         )
@@ -76,15 +83,18 @@ class DefaultApplicationServicesTest {
 
         assertEquals(
             listOf(
+                "vector.start",
                 "embedding.start",
                 "indexing.start",
                 "slack.close",
                 "indexing.close",
                 "embedding.close",
+                "vector.close",
             ),
             events,
         )
         assertFalse(embedding.isReady)
+        assertFalse(vector.isReady)
     }
 
     private fun unusedMemoryAnalysis() = object : MemoryAnalysis {
@@ -104,6 +114,23 @@ class DefaultApplicationServicesTest {
 
         override fun close() {
             events += "embedding.close"
+            isReady = false
+        }
+    }
+
+    private class RecordingVectorRuntime(
+        private val events: MutableList<String>,
+    ) : VectorServerRuntime {
+        override var isReady: Boolean = false
+            private set
+
+        override fun start() {
+            events += "vector.start"
+            isReady = true
+        }
+
+        override fun close() {
+            events += "vector.close"
             isReady = false
         }
     }

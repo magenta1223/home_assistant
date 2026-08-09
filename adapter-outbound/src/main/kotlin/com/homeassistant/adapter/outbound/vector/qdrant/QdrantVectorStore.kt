@@ -48,7 +48,9 @@ internal class QdrantVectorStore(
                     put("distance", "Cosine")
                 })
             }.toString()
-            transport.request("PUT", "/collections/$collection", body)
+            if (!transport.exists("/collections/$collection")) {
+                transport.request("PUT", "/collections/$collection", body)
+            }
             collectionReady = true
         }
     }

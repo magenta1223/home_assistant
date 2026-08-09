@@ -8,10 +8,10 @@ import java.nio.charset.StandardCharsets
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-/** Runs Codex conversation turns and validates the configured CLI version. */
+/** Runs Codex conversation turns and validates that the local CLI is available. */
 interface CodexConversationClient : ConversationTurnClient {
-    /** Verifies that the configured Codex executable has the expected version. */
-    fun validateVersion(): Boolean
+    /** Verifies that the configured Codex executable can be launched. */
+    fun isAvailable(): Boolean
 }
 
 internal class ProcessCodexConversationClient(
@@ -20,9 +20,9 @@ internal class ProcessCodexConversationClient(
 ) : CodexConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun validateVersion(): Boolean {
+    override fun isAvailable(): Boolean {
         val process = runCatching {
-            ProcessBuilder(config.executable.toString(), "--version")
+            ProcessBuilder(config.executable, "--version")
                 .directory(config.workDir.toFile())
                 .redirectErrorStream(true)
                 .start()
@@ -33,7 +33,7 @@ internal class ProcessCodexConversationClient(
         }
         val output = process.inputStream.bufferedReader().use(BufferedReader::readText)
         val version = VERSION_PATTERN.find(output)?.groupValues?.get(1)
-        return process.exitValue() == 0 && version == config.expectedVersion
+        return process.exitValue() == 0 && version != null
     }
 
     override fun start(
@@ -94,9 +94,8 @@ internal class ProcessCodexConversationClient(
     ): ConversationTurnResult {
         if (prompt.isBlank()) return ConversationTurnResult.Failure("EMPTY_PROMPT")
         val process = runCatching {
-            ProcessBuilder(listOf(config.executable.toString()) + args)
+            ProcessBuilder(listOf(config.executable) + args)
                 .directory(config.workDir.toFile())
-                .also(::configureEnvironment)
                 .start()
         }.getOrElse {
             return ConversationTurnResult.Failure("START_FAILED")
@@ -150,15 +149,6 @@ internal class ProcessCodexConversationClient(
         return ConversationTurnResult.Success(finalAnswer)
     }
 
-    private fun configureEnvironment(builder: ProcessBuilder) {
-        val inherited = builder.environment()
-            .filterKeys { it in SAFE_INHERITED_ENVIRONMENT_KEYS }
-        builder.environment().clear()
-        builder.environment().putAll(inherited)
-        builder.environment()["CODEX_HOME"] = config.codexHome.toString()
-        builder.environment()["OPENAI_API_KEY"] = config.apiKey
-    }
-
     private fun destroyProcessTree(process: Process) {
         process.descendants().forEach(ProcessHandle::destroyForcibly)
         process.destroyForcibly()
@@ -166,19 +156,6 @@ internal class ProcessCodexConversationClient(
 
     private companion object {
         val VERSION_PATTERN = Regex("""codex-cli\s+([0-9A-Za-z.+-]+)""")
-        val SAFE_INHERITED_ENVIRONMENT_KEYS = setOf(
-            "PATH",
-            "Path",
-            "SystemRoot",
-            "WINDIR",
-            "TEMP",
-            "TMP",
-            "TMPDIR",
-            "LANG",
-            "LC_ALL",
-            "SSL_CERT_FILE",
-            "SSL_CERT_DIR",
-        )
         const val VERSION_TIMEOUT_SECONDS = 5L
         const val READER_JOIN_SECONDS = 5L
         const val MAX_STDERR_CHARS = 8_000

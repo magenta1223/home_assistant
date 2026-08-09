@@ -31,8 +31,9 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 Copy `.env` to the project root (already present; gitignored). Key variables:
 
-Topic analysis always uses the Codex CLI resolved from `PATH` (`codex.cmd` on Windows). Hosted
-LLM providers and provider-selection environment variables are not supported.
+Topic analysis and Slack memory answers use the locally installed and authenticated Codex CLI
+resolved from `PATH` (`codex.cmd` on Windows). Run `codex login` as the server user before startup.
+Hosted LLM providers and provider-selection environment variables are not supported.
 
 | Variable | Default | Notes |
 |---|---|---|
@@ -42,12 +43,7 @@ LLM providers and provider-selection environment variables are not supported.
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
 | `SLACK_MEMBER_SCOPES_JSON` | - | Deprecated one-time migration input; existing mappings reserve their old `userId` until the member completes Slack registration, then the variable may be removed |
 | `HTTP_MEMBER_API_KEYS_JSON` | - | Optional JSON array of `{userId, token}` records for HTTP Bearer authentication; tokens must be high-entropy and never committed |
-| `CODEX_EXECUTABLE` | - | Absolute path to the version-specific service Codex executable |
-| `CODEX_EXPECTED_VERSION` | `0.144.5` | Exact service CLI version validated at startup |
-| `CODEX_WORK_DIR` | - | Dedicated minimal service workspace; must not contain the application DB |
-| `CODEX_HOME` | - | Persistent service-only Codex home, separate from the operator CLI |
-| `CODEX_API_KEY` | - | Service secret mapped to `OPENAI_API_KEY` only in the Codex child process |
-| `CODEX_TIMEOUT_SECONDS` | `120` | Positive per-turn process timeout |
+| `CODEX_TIMEOUT_SECONDS` | `600` | Optional positive timeout for each local Codex conversation turn |
 
 Server port and DB path are configured in `AppConfig` and Ktor application config.
 

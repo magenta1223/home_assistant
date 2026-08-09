@@ -1,0 +1,52 @@
+package com.homeassistant.adapter.outbound.codex.conversation
+
+import java.nio.file.Files
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertNotNull
+import kotlin.test.assertNull
+import kotlin.test.assertTrue
+
+class CodexConversationConfigTest {
+    @Test
+    fun `local configuration needs no service credentials`() {
+        val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
+
+        val config = CodexConversationConfig.local(
+            readEnv = { null },
+            executable = "local-codex",
+            temporaryDirectory = temporaryDirectory,
+        )
+
+        assertNotNull(config)
+        assertEquals("local-codex", config.executable)
+        assertEquals(600L, config.timeout.seconds)
+        assertTrue(Files.isDirectory(config.workDir))
+    }
+
+    @Test
+    fun `local configuration honors a positive timeout override`() {
+        val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
+
+        val config = CodexConversationConfig.local(
+            readEnv = { name -> if (name == "CODEX_TIMEOUT_SECONDS") "42" else null },
+            executable = "local-codex",
+            temporaryDirectory = temporaryDirectory,
+        )
+
+        assertEquals(42L, assertNotNull(config).timeout.seconds)
+    }
+
+    @Test
+    fun `local configuration rejects a non-positive timeout`() {
+        val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
+
+        val config = CodexConversationConfig.local(
+            readEnv = { "0" },
+            executable = "local-codex",
+            temporaryDirectory = temporaryDirectory,
+        )
+
+        assertNull(config)
+    }
+}

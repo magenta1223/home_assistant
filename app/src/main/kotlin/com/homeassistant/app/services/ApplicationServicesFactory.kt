@@ -89,9 +89,9 @@ object ApplicationServicesFactory {
             memories = repositories.canonicalMemories,
             semanticSearcher = semanticMemoryIndexSearcher,
         )
-        val conversationClient = CodexConversationConfig.fromEnv()
+        val conversationClient = CodexConversationConfig.local()
             ?.let(CodexConversationClientFactory::create)
-            ?.takeIf { it.validateVersion() }
+            ?.takeIf { it.isAvailable() }
         val memoryConversation = conversationClient?.let {
             val now = System.currentTimeMillis()
             repositories.memoryConversationSessions.failStaleProcessing(
@@ -106,7 +106,7 @@ object ApplicationServicesFactory {
         }
         val slackRuntime = slackConfig?.let { config ->
             if (memoryConversation == null) {
-                log.info("Slack memory answers disabled: conversation configuration missing or invalid")
+                log.info("Slack memory answers disabled: local Codex CLI is unavailable or its timeout is invalid")
             }
             SlackRuntimeFactory.create(config, memoryConversation, householdMembers)
         }

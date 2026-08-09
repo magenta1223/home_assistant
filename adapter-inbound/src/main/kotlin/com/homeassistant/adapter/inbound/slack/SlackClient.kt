@@ -15,6 +15,9 @@ interface SlackClient {
         threadTs: String? = null,
     ): SlackMessageDelivery
 
+    /** Opens a modal in response to a Slack interaction trigger. */
+    fun openModal(triggerId: String, view: Map<String, Any>)
+
 }
 
 data class SlackMessageDelivery(val responseTs: String)
@@ -51,6 +54,16 @@ internal class SlackApiClient(
         val responseTs = response.ts?.takeIf(String::isNotBlank)
             ?: throw SlackMessageDeliveryException("MISSING_RESPONSE_TS")
         return SlackMessageDelivery(responseTs)
+    }
+
+    override fun openModal(triggerId: String, view: Map<String, Any>) {
+        val response = slack.methods(botToken).viewsOpen { req ->
+            req.triggerId(triggerId)
+                .viewAsString(JsonSerializer.json.encodeToString(view.toJsonElement()))
+        }
+        if (!response.isOk) {
+            throw SlackMessageDeliveryException(response.error ?: "MODAL_API_REJECTED")
+        }
     }
 
 }

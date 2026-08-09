@@ -2,13 +2,13 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
+import com.homeassistant.application.port.input.identity.HouseholdMembers
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.domain.identity.UserId
 
 internal class DefaultApplicationServices(
     override val memoryAnalysis: MemoryAnalysis,
     override val slackRuntime: SlackRuntime?,
-    override val memberUserIds: Set<UserId> = emptySet(),
+    override val householdMembers: HouseholdMembers = HouseholdMembers.NONE,
     private val embeddingRuntime: EmbeddingServerRuntime,
     private val indexingWorker: IndexingWorker = IndexingWorker.NONE,
 ) : ApplicationServices {

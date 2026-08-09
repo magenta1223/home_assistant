@@ -40,7 +40,7 @@ LLM providers and provider-selection environment variables are not supported.
 | `QDRANT_URL` | `http://localhost:6333` | Required only when wiring vector search |
 | `QDRANT_COLLECTION` | `canonical_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
-| `SLACK_MEMBER_SCOPES_JSON` | - | Server-owned mapping of Slack members to immutable application `userId` values |
+| `SLACK_MEMBER_SCOPES_JSON` | - | Deprecated one-time migration input; existing mappings reserve their old `userId` until the member completes Slack registration, then the variable may be removed |
 | `HTTP_MEMBER_API_KEYS_JSON` | - | Optional JSON array of `{userId, token}` records for HTTP Bearer authentication; tokens must be high-entropy and never committed |
 | `CODEX_EXECUTABLE` | - | Absolute path to the version-specific service Codex executable |
 | `CODEX_EXPECTED_VERSION` | `0.144.5` | Exact service CLI version validated at startup |
@@ -66,14 +66,18 @@ The project is now a **home second brain**, not a general chat assistant. The pr
 2. Select PUBLIC access or an immutable set of authorized application user IDs for each source.
 3. Analyze source records and immediately save the resulting topics and memories as canonical records.
 4. Search and retrieve canonical memories with their source evidence and optional topic context.
-5. Answer household questions through authenticated Slack DMs using short-lived Codex threads.
+5. Register household members from their first Slack DM using a name-entry modal.
+6. Answer household questions through registered Slack DMs using short-lived Codex threads.
 
-Slack is a memory-backed answer channel only. Do not add source upload, memory creation, or memory
-editing workflows to Slack; those belong to the local knowledge page.
+Slack is a member-registration and memory-backed answer channel only. An unknown member's first DM
+receives a registration button; its modal collects a display name, persists the authenticated Slack
+identity, and then resumes the original question. Do not add source upload, memory creation, or
+memory editing workflows to Slack; those belong to the local knowledge page. Slack Interactivity
+must be enabled for the registration button and modal; Socket Mode carries those interactions.
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
-Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack maps its identity to an application `userId` and only relays requests and answers; keep authorization, memory retrieval, idempotency, and session expiry in the technology-neutral memory conversation use case.
+Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack resolves its authenticated identity through the persisted household-member registry and only relays registration, requests, and answers; keep authorization, memory retrieval, idempotency, and session expiry in the technology-neutral application use cases.
 
 ## Module Architecture
 
@@ -112,7 +116,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 - `http/` - Ktor routes and HTTP request/response DTO mapping.
 - `kakao/` - Kakao export parsing at the source-format boundary.
-- `slack/` - Slack Socket Mode, DM event listeners, conversation queueing, and answer delivery mapping.
+- `slack/` - Slack Socket Mode, member-registration blocks/modals, DM event listeners, conversation queueing, and answer delivery mapping.
 - `text/` - direct-text source parsing at the inbound boundary.
 
 ### adapter-outbound
@@ -120,7 +124,7 @@ failures into that contract. Output ports and adapters must not construct applic
 - `codex/` - Codex CLI transport and conversation-turn implementations.
 - `topicanalysis/` - Codex-backed topic extraction implementations.
 - `embedding/ollama/` - pinned Windows Ollama installation, managed server lifecycle, and local text embedding.
-- `persistence/` - SQLite/Exposed repositories for source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
+- `persistence/` - SQLite/Exposed repositories for household members, source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
 - `vector/qdrant/` - Qdrant vector storage implementation.
 - `vector/memory/` - canonical-memory semantic index implementation.
 
@@ -131,7 +135,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 ### domain
 
-- `identity/` - single-household user identity and authorization policy. There is no family/subgroup scope.
+- `identity/` - persisted single-household member identity, display name, and authorization policy. Slack IDs identify accounts; member-entered names are display values only. There is no family/subgroup scope.
 - `source/` - source-agnostic imported records, analysis documents, and the source-record persistence port.
 - `topicanalysis/` - topic grouping and proposal models.
 - `memory/` - canonical memory access policy. PUBLIC is visible to every authorized user; RESTRICTED
@@ -144,7 +148,7 @@ Ktor + Netty server bound to `127.0.0.1`. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
 - `GET /knowledge` -> local knowledge injection page.
-- `GET /api/knowledge/users` -> returns selectable authorized application user IDs.
+- `GET /api/knowledge/users` -> returns registered Slack members with selectable application user IDs and display names.
 - `POST /api/knowledge/import/analyze` -> imports text or Kakao data with an explicit audience and immediately saves canonical memories.
 
 HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` and the data-free `/knowledge` shell remain unauthenticated.

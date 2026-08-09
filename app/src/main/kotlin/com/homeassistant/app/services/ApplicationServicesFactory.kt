@@ -24,6 +24,8 @@ import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersist
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
+import com.homeassistant.application.port.input.identity.ConversationIdentity
+import com.homeassistant.application.usecase.identity.HouseholdMemberService
 import org.slf4j.LoggerFactory
 
 
@@ -35,6 +37,7 @@ object ApplicationServicesFactory {
         httpUsers: Collection<UserId> = emptyList(),
     ): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
+        val householdMembers = HouseholdMemberService(repositories.householdMembers)
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
@@ -51,16 +54,15 @@ object ApplicationServicesFactory {
         )
         val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val slackConfig = SlackConfig.fromEnv()
-        val memberUserIds = (httpUsers + slackConfig?.identityDirectory?.userIds.orEmpty()).toSet()
-        val slackAccessPolicy = slackConfig?.identityDirectory?.accessPolicy
+        slackConfig?.legacyMemberMappings.orEmpty().forEach { legacy ->
+            householdMembers.reserveLegacy(
+                identity = ConversationIdentity(legacy.teamId, legacy.slackUserId),
+                userId = legacy.userId,
+            )
+        }
         val httpAccessPolicy = HouseholdAccessPolicies.fixed(httpUsers)
-        val accessPolicy = if (slackAccessPolicy == null && httpUsers.isEmpty()) {
-            HouseholdAccessPolicies.denyAll()
-        } else {
-            HouseholdAccessPolicy { userId ->
-                (slackAccessPolicy?.isAuthorized(userId) == true) ||
-                    httpAccessPolicy.isAuthorized(userId)
-            }
+        val accessPolicy = HouseholdAccessPolicy { userId ->
+            householdMembers.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
         }
         val memorySaver = MemoryProposalsPersister(
             batchWriter = repositories.canonicalMemoryBatchWriter,
@@ -104,17 +106,17 @@ object ApplicationServicesFactory {
         }
         val slackRuntime = slackConfig?.let { config ->
             if (memoryConversation == null) {
-                log.info("Slack conversation disabled: configuration missing or invalid")
+                log.info("Slack memory answers disabled: conversation configuration missing or invalid")
             }
-            SlackRuntimeFactory.create(config, memoryConversation)
+            SlackRuntimeFactory.create(config, memoryConversation, householdMembers)
         }
         if (slackRuntime == null) {
-            log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
+            log.info("Slack Socket Mode disabled: Slack token or team configuration is missing")
         }
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
             slackRuntime = slackRuntime,
-            memberUserIds = memberUserIds,
+            householdMembers = householdMembers,
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
         )

@@ -5,6 +5,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRe
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
+import com.homeassistant.adapter.outbound.persistence.repo.identity.HouseholdMemberRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
@@ -17,6 +18,7 @@ object RepositoryFactory {
             canonicalMemories = canonicalMemories,
             memoryTree = canonicalMemories,
             memoryConversationSessions = MemoryConversationSessionRepository(db),
+            householdMembers = HouseholdMemberRepository(db),
         )
     }
 }

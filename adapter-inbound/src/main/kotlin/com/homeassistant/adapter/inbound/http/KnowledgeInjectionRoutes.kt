@@ -8,6 +8,7 @@ import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAud
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
+import com.homeassistant.application.port.input.identity.HouseholdMembers
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.UserId
@@ -34,10 +35,14 @@ internal fun Route.knowledgePageRoute() {
 
 internal fun Route.knowledgeInjectionRoutes(
     memoryAnalysis: MemoryAnalysis,
-    memberUserIds: Set<UserId>,
+    householdMembers: HouseholdMembers,
 ) {
     get(AppConfig.ROUTE_KNOWLEDGE_USERS) {
-        call.respond(KnowledgeUsersResponse(memberUserIds.map(UserId::value).sorted()))
+        call.respond(
+            KnowledgeUsersResponse(
+                householdMembers.list().map { KnowledgeUserResponse(it.userId.value, it.displayName) },
+            ),
+        )
     }
 
     post(AppConfig.ROUTE_KNOWLEDGE_IMPORT_ANALYZE) {
@@ -127,4 +132,10 @@ internal data class KnowledgeImportRequest(
 internal enum class KnowledgeSourceType { KAKAO, TEXT }
 
 @Serializable
-private data class KnowledgeUsersResponse(val userIds: List<String>)
+private data class KnowledgeUsersResponse(val users: List<KnowledgeUserResponse>)
+
+@Serializable
+private data class KnowledgeUserResponse(
+    val userId: String,
+    val name: String,
+)

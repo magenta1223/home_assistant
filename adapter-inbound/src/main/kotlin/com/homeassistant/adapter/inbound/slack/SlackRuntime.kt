@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.identity.HouseholdMembers
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -14,25 +15,24 @@ data class SlackConfig(
     val appToken: String,
     val botToken: String,
     val teamId: String,
-    val identityDirectory: SlackIdentityDirectory,
+    val legacyMemberMappings: List<LegacySlackMemberMapping>,
 ) {
     companion object {
         fun fromEnv(): SlackConfig? {
             val appToken = Env[HomeAppConfig.ENV_VAR_SLACK_APP_TOKEN]?.takeIf { it.isNotBlank() }
             val botToken = Env[HomeAppConfig.ENV_VAR_SLACK_BOT_TOKEN]?.takeIf { it.isNotBlank() }
             val teamId = Env[HomeAppConfig.ENV_VAR_SLACK_TEAM_ID]?.takeIf { it.isNotBlank() }
-            val mappingsJson = Env[HomeAppConfig.ENV_VAR_SLACK_MEMBER_SCOPES_JSON]
+            if (appToken == null || botToken == null || teamId == null) return null
+            val legacyMemberMappings = Env[HomeAppConfig.ENV_VAR_SLACK_MEMBER_SCOPES_JSON]
                 ?.takeIf { it.isNotBlank() }
-            if (appToken == null || botToken == null || teamId == null || mappingsJson == null) return null
-            val identityDirectory = runCatching {
-                SlackIdentityDirectoryFactory.fromJson(teamId, mappingsJson)
-            }.getOrNull() ?: return null
+                ?.let { LegacySlackMemberMappings.fromJson(teamId, it) }
+                .orEmpty()
 
             return SlackConfig(
                 appToken = appToken,
                 botToken = botToken,
                 teamId = teamId,
-                identityDirectory = identityDirectory,
+                legacyMemberMappings = legacyMemberMappings,
             )
         }
     }
@@ -42,12 +42,17 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         memoryConversation: MemoryConversation?,
+        householdMembers: HouseholdMembers,
     ): SlackRuntime {
         val slackClient = SlackApiClient(config.botToken)
         val executor = Executors.newFixedThreadPool(2)
-        val conversationService = memoryConversation?.let {
-            SlackConversationService(config.identityDirectory, it, slackClient, executor)
-        }
+        val conversationService = SlackConversationService(
+            configuredTeamId = config.teamId,
+            householdMembers = householdMembers,
+            memoryConversation = memoryConversation,
+            slack = slackClient,
+            executor = executor,
+        )
         val listeners = SlackListeners(
             conversationService = conversationService,
         )

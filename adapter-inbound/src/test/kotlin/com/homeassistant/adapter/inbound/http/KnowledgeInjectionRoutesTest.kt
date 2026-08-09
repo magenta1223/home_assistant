@@ -3,9 +3,13 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
+import com.homeassistant.application.port.input.identity.ConversationIdentity
+import com.homeassistant.application.port.input.identity.HouseholdMembers
+import com.homeassistant.application.port.input.identity.RegisterHouseholdMemberRequest
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.identity.HouseholdMember
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
@@ -58,7 +62,10 @@ class KnowledgeInjectionRoutesTest {
             configureRoutes(
                 memoryAnalysis = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
-                memberUserIds = setOf(UserId("operator"), UserId("member-1"), UserId("member-2")),
+                householdMembers = FixedHouseholdMembers(
+                    HouseholdMember(UserId("member-1"), "첫째"),
+                    HouseholdMember(UserId("member-2"), "둘째"),
+                ),
             )
         }
 
@@ -79,6 +86,7 @@ class KnowledgeInjectionRoutesTest {
 
         assertEquals(HttpStatusCode.OK, users.status)
         assertTrue(users.bodyAsText().contains("member-2"))
+        assertTrue(users.bodyAsText().contains("둘째"))
         assertEquals(HttpStatusCode.OK, response.status)
         val captured = analysis.requests.single()
         assertEquals("operator", captured.userId)
@@ -138,6 +146,17 @@ class KnowledgeInjectionRoutesTest {
                 memories = listOf(proposal),
             )
         }
+    }
+
+    private class FixedHouseholdMembers(
+        private vararg val members: HouseholdMember,
+    ) : HouseholdMembers {
+        override fun find(identity: ConversationIdentity): HouseholdMember? = null
+
+        override fun register(request: RegisterHouseholdMemberRequest): HouseholdMember =
+            error("not used")
+
+        override fun list(): List<HouseholdMember> = members.toList()
     }
 
     private companion object {

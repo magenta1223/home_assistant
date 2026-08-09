@@ -18,6 +18,8 @@ internal object DatabaseFactory {
                 SlackCodexSessionTable,
                 SlackCodexActiveSessionTable,
                 SlackMessageReceiptTable,
+                HouseholdMemberTable,
+                ConversationIdentityTable,
             )
             migrateLegacyPrivateAccess()
         }

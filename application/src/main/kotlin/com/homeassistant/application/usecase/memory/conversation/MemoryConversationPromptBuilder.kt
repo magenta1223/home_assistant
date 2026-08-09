@@ -1,9 +1,9 @@
-package com.homeassistant.application.usecase.slackconversation
+package com.homeassistant.application.usecase.memory.conversation
 
 import java.time.Clock
 import java.time.Instant
 
-class ConversationPromptBuilder(
+class MemoryConversationPromptBuilder(
     private val clock: Clock = Clock.systemUTC(),
 ) {
     fun build(context: String, userText: String): String =
@@ -26,8 +26,8 @@ class ConversationPromptBuilder(
             appendLine("<UNTRUSTED_HOUSEHOLD_MEMORY_REFERENCE>")
             appendLine(context)
             appendLine("</UNTRUSTED_HOUSEHOLD_MEMORY_REFERENCE>")
-            appendLine("<SLACK_USER_MESSAGE>")
+            appendLine("<USER_MESSAGE>")
             appendLine(userText)
-            appendLine("</SLACK_USER_MESSAGE>")
+            appendLine("</USER_MESSAGE>")
         }
 }

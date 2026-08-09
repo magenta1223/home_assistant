@@ -16,7 +16,6 @@
 
 | 문서 | 목적 |
 |---|---|
-| [unified-evidence-grounded-answer.md](p1/unified-evidence-grounded-answer.md) | HTTP·Slack 답변 경로를 통일하고 evidence와 certainty를 실제 응답에 전달 |
 | [explicit-memory-placement-model.md](p1/explicit-memory-placement-model.md) | topic, tag, container tree 중 명시적인 장기 배치 모델 결정 |
 
 ### P2
@@ -45,3 +44,4 @@
 | [tree-aware-memory-context-expansion.md](done/tree-aware-memory-context-expansion.md) | 직접 검색 seed를 유지하며 관련 하위 memory를 제한적으로 context에 확장 |
 | [explicit-application-ports.md](done/explicit-application-ports.md) | application의 input/output port와 use case 구현 경계 명시화 |
 | [usecase-specific-application-exceptions.md](done/usecase-specific-application-exceptions.md) | application 예외 생성과 노출을 use case별 input 계약으로 제한 |
+| [unified-evidence-grounded-answer.md](done/unified-evidence-grounded-answer.md) | HTTP 답변 경로 폐기 결정에 따라 통합 계획 취소; Slack은 공통 memory conversation 유스케이스를 중개 |

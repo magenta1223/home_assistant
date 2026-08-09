@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.codex.conversation
 
-import com.homeassistant.application.port.output.slackconversation.ConversationTurnClient
-import com.homeassistant.application.port.output.slackconversation.ConversationTurnResult
+import com.homeassistant.application.port.output.memory.conversation.ConversationTurnClient
+import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.nio.charset.StandardCharsets

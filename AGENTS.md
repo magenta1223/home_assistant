@@ -73,7 +73,7 @@ editing workflows to Slack; those belong to the local knowledge page.
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
-Do not reintroduce `/api/chat`, platform-neutral conversation sessions, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Keep Slack identity, authorization, memory retrieval, idempotency, and session expiry inside the Kotlin application.
+Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack maps its identity to an application `userId` and only relays requests and answers; keep authorization, memory retrieval, idempotency, and session expiry in the technology-neutral memory conversation use case.
 
 ## Module Architecture
 
@@ -102,8 +102,7 @@ application-driven integrations in `adapter-outbound`.
 - `port/output/` - technology-neutral capabilities required from persistence, semantic search,
   extraction, placement, and conversation adapters.
 - `usecase/` - technology-independent orchestration that implements input ports and uses output ports.
-- `port/input/memory/` and `usecase/memory/` - memory analysis, search, answer, and placement flows.
-- `port/input/slackconversation/` and `usecase/slackconversation/` - authorized Slack conversation flow.
+- `port/input/memory/` and `usecase/memory/` - memory analysis, search, conversation, answer context, and placement flows.
 
 Application exception types are use-case failure contracts. Declare them beside the corresponding
 input port with an `internal` constructor, and let the use-case implementation translate collaborator
@@ -121,7 +120,7 @@ failures into that contract. Output ports and adapters must not construct applic
 - `codex/` - Codex CLI transport and conversation-turn implementations.
 - `topicanalysis/` - Codex-backed topic extraction implementations.
 - `embedding/ollama/` - pinned Windows Ollama installation, managed server lifecycle, and local text embedding.
-- `persistence/` - SQLite/Exposed repositories for source records, topics, canonical memories, indexing outbox, and Slack sessions.
+- `persistence/` - SQLite/Exposed repositories for source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
 - `vector/qdrant/` - Qdrant vector storage implementation.
 - `vector/memory/` - canonical-memory semantic index implementation.
 
@@ -147,7 +146,6 @@ Ktor + Netty server bound to `127.0.0.1`. Current routes:
 - `GET /knowledge` -> local knowledge injection page.
 - `GET /api/knowledge/users` -> returns selectable authorized application user IDs.
 - `POST /api/knowledge/import/analyze` -> imports text or Kakao data with an explicit audience and immediately saves canonical memories.
-- `POST /api/memories/answer` -> retrieves visible canonical memories and builds a direct answer.
 
 HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` and the data-free `/knowledge` shell remain unauthenticated.
 

@@ -4,7 +4,6 @@ import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.port.input.memory.answer.MemoryAnswer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -28,7 +27,6 @@ class DefaultApplicationServicesTest {
         }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
-            memoryGroundedChatbot = MemoryAnswer { error("unused") },
             slackRuntime = slack,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
@@ -68,7 +66,6 @@ class DefaultApplicationServicesTest {
         }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
-            memoryGroundedChatbot = MemoryAnswer { error("unused") },
             slackRuntime = slack,
             embeddingRuntime = embedding,
             indexingWorker = indexing,

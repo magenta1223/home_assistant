@@ -1,41 +1,58 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.port.output.slackconversation.ConversationAnswerPublisher
-import com.homeassistant.application.port.input.slackconversation.SlackConversationHandler
-import com.homeassistant.application.port.input.slackconversation.SlackConversationMessage
+import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.memory.conversation.MemoryConversationParticipant
+import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequest
+import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
+import com.homeassistant.application.port.input.memory.conversation.MemoryConversationResult
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
 internal class SlackConversationService(
-    private val handleConversation: SlackConversationHandler,
+    private val identityDirectory: SlackIdentityDirectory,
+    private val memoryConversation: MemoryConversation,
+    private val slack: SlackClient,
     private val executor: Executor = Executors.newCachedThreadPool(),
 ) {
     private val queues = ConcurrentHashMap<SlackActorKey, SerialTaskQueue>()
 
-    fun submit(message: SlackConversationMessage) {
+    fun submit(message: SlackDirectMessage) {
         val actor = SlackActorKey(message.teamId, message.slackUserId)
         queues.computeIfAbsent(actor) { SerialTaskQueue(executor) }
             .execute { handle(message) }
     }
 
-    internal fun handle(message: SlackConversationMessage) {
-        handleConversation.execute(message)
+    internal fun handle(message: SlackDirectMessage) {
+        val userId = identityDirectory.resolve(message.teamId, message.slackUserId) ?: return
+        val key = MemoryConversationRequestKey(message.channelId, message.messageTs)
+        when (
+            val result = memoryConversation.answer(
+                MemoryConversationRequest(
+                    participant = MemoryConversationParticipant(
+                        scopeId = message.teamId,
+                        participantId = message.slackUserId,
+                        userId = userId,
+                    ),
+                    key = key,
+                    question = message.text,
+                ),
+            )
+        ) {
+            is MemoryConversationResult.AnswerReady -> {
+                runCatching {
+                    slack.postMessage(message.channelId, result.answer, emptyList())
+                }.onSuccess { delivery ->
+                    memoryConversation.markDelivered(key, delivery.responseTs)
+                }
+            }
+            MemoryConversationResult.Failed -> postRetryableError(message.channelId)
+            MemoryConversationResult.AlreadyHandled -> Unit
+        }
     }
-}
 
-class SlackConversationAnswerPublisher(
-    private val slack: SlackClient,
-) : ConversationAnswerPublisher {
-    override fun postAnswer(channelId: String, answer: String): String =
-        slack.postMessage(
-            channelId = channelId,
-            text = answer,
-            blocks = emptyList(),
-        ).responseTs
-
-    override fun postRetryableError(channelId: String) {
+    private fun postRetryableError(channelId: String) {
         runCatching {
             slack.postMessage(
                 channelId = channelId,
@@ -45,6 +62,14 @@ class SlackConversationAnswerPublisher(
         }
     }
 }
+
+internal data class SlackDirectMessage(
+    val teamId: String,
+    val slackUserId: String,
+    val channelId: String,
+    val messageTs: String,
+    val text: String,
+)
 
 private data class SlackActorKey(
     val teamId: String,

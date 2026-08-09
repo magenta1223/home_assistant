@@ -1,7 +1,5 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
-import com.homeassistant.application.port.output.slackconversation.SlackPrincipalResolver
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
@@ -16,28 +14,28 @@ data class SlackMemberScopeConfig(
     val userId: String,
 )
 
-/** Maps Slack identities to application principals and exposes access policy. */
-interface SlackIdentityDirectory : SlackPrincipalResolver {
+/** Maps Slack identities to application users and exposes access policy. */
+interface SlackIdentityDirectory {
     /** Provides the access policy derived from configured Slack members. */
     val accessPolicy: HouseholdAccessPolicy
 
     /** Immutable application users configured for this Slack workspace. */
     val userIds: Set<UserId>
 
-    /** Resolves a configured Slack actor to its application principal. */
-    override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal?
+    /** Resolves a configured Slack actor to its application user. */
+    fun resolve(teamId: String?, slackUserId: String?): UserId?
 }
 
 private class ConfiguredSlackIdentityDirectory(
-    private val principals: Map<SlackActor, SlackPrincipal>,
+    private val users: Map<SlackActor, UserId>,
 ) : SlackIdentityDirectory {
-    override val userIds: Set<UserId> = principals.values.mapTo(linkedSetOf()) { it.userId }
+    override val userIds: Set<UserId> = users.values.toCollection(linkedSetOf())
     override val accessPolicy: HouseholdAccessPolicy =
         HouseholdAccessPolicies.fixed(userIds)
 
-    override fun resolve(teamId: String?, slackUserId: String?): SlackPrincipal? {
+    override fun resolve(teamId: String?, slackUserId: String?): UserId? {
         if (teamId.isNullOrBlank() || slackUserId.isNullOrBlank()) return null
-        return principals[SlackActor(teamId, slackUserId)]
+        return users[SlackActor(teamId, slackUserId)]
     }
 }
 
@@ -50,23 +48,18 @@ object SlackIdentityDirectoryFactory {
         val records = JsonSerializer.json.decodeFromString<List<SlackMemberScopeConfig>>(json)
         require(records.isNotEmpty()) { "SLACK_MEMBER_SCOPES_JSON must not be empty" }
 
-        val principals = LinkedHashMap<SlackActor, SlackPrincipal>()
+        val users = LinkedHashMap<SlackActor, UserId>()
         records.forEach { record ->
             require(record.teamId == configuredTeamId) {
                 "Slack member mapping team does not match SLACK_TEAM_ID"
             }
-            val principal = SlackPrincipal(
-                teamId = record.teamId,
-                slackUserId = record.slackUserId,
-                userId = UserId(record.userId),
-            )
-            val previous = principals.put(
+            val previous = users.put(
                 SlackActor(record.teamId, record.slackUserId),
-                principal,
+                UserId(record.userId),
             )
             require(previous == null) { "Duplicate Slack member mapping" }
         }
-        return ConfiguredSlackIdentityDirectory(principals)
+        return ConfiguredSlackIdentityDirectory(users)
     }
 }
 

@@ -28,6 +28,16 @@ import kotlin.test.assertTrue
 
 class KnowledgeInjectionRoutesTest {
     @Test
+    fun `memory answers are not exposed over HTTP`() = testApplication {
+        application {
+            install(ContentNegotiation) { json(JsonSerializer.json) }
+            configureRoutes(RecordingMemoryAnalysis())
+        }
+
+        assertEquals(HttpStatusCode.NotFound, client.post("/api/memories/answer").status)
+    }
+
+    @Test
     fun `knowledge page is hosted without exposing data`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }

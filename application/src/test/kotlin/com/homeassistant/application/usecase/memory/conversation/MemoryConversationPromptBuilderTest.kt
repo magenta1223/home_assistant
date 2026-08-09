@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.slackconversation
+package com.homeassistant.application.usecase.memory.conversation
 
 import com.homeassistant.application.port.input.memory.search.MemorySearchMatch
 import java.time.Clock
@@ -8,13 +8,13 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
-class ConversationPromptBuilderTest {
+class MemoryConversationPromptBuilderTest {
     @Test
     fun `reference exposes storage order as ISO time without treating it as event time`() {
         val older = memoryMatch(1, "2026-01-01T00:00:00Z")
         val newer = memoryMatch(2, "2026-08-01T12:30:00Z")
         val reference = listOf(older, newer).joinToString("\n", transform = ::memoryReferenceLine)
-        val prompt = ConversationPromptBuilder(
+        val prompt = MemoryConversationPromptBuilder(
             Clock.fixed(Instant.parse("2026-08-08T10:00:00Z"), ZoneOffset.UTC),
         ).build(reference, "Which one is current?")
 
@@ -22,6 +22,7 @@ class ConversationPromptBuilderTest {
         assertContains(prompt, "Current time is 2026-08-08T10:00:00Z")
         assertContains(prompt, "savedAt is when it was stored, not necessarily when its event happened")
         assertContains(prompt, "instead of claiming that one is the latest")
+        assertContains(prompt, "<USER_MESSAGE>")
     }
 
     private fun memoryMatch(id: Int, createdAt: String) = MemorySearchMatch(

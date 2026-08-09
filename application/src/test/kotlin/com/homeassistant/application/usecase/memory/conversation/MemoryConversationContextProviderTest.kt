@@ -1,12 +1,11 @@
-package com.homeassistant.application.usecase.slackconversation
+package com.homeassistant.application.usecase.memory.conversation
 
-import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.port.output.memory.search.MemoryIndex
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.read.MemoryReader
+import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
-import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
@@ -17,9 +16,9 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
-class HouseholdContextProviderTest {
+class MemoryConversationContextProviderTest {
     @Test
-    fun `Slack reference includes a relevant expanded child with provenance`() {
+    fun `reference includes a relevant expanded child with provenance`() {
         val parent = memory(1, childrenIds = listOf(2))
         val child = memory(2)
         val memories = listOf(parent, child)
@@ -47,14 +46,11 @@ class HouseholdContextProviderTest {
             searcher = semanticSearcher,
             accessPolicy = HouseholdAccessPolicy { it == USER_ID },
         )
-        val provider = HouseholdContextProvider(
+        val provider = MemoryConversationContextProvider(
             MemoryAnswerContextProvider(memorySearcher, reader, semanticSearcher),
         )
 
-        val context = provider.context(
-            SlackPrincipal("team-1", "slack-1", USER_ID),
-            "question",
-        )
+        val context = provider.context(USER_ID, "question")
 
         assertTrue(context.hasMatches)
         assertContains(context.reference, "memory-${parent.id}")

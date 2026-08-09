@@ -1,7 +1,6 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.slack.SlackConfig
-import com.homeassistant.adapter.inbound.slack.SlackConversationAnswerPublisher
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtractorFactory
@@ -9,7 +8,6 @@ import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationCl
 import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantVectorStoreFactory
-import com.homeassistant.application.usecase.memory.answer.MemoryGroundedChatbot
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
@@ -24,8 +22,8 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
-import com.homeassistant.application.usecase.slackconversation.HandleSlackConversation
-import com.homeassistant.application.usecase.slackconversation.HouseholdContextProvider
+import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
+import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import org.slf4j.LoggerFactory
 
 
@@ -89,39 +87,32 @@ object ApplicationServicesFactory {
             memories = repositories.canonicalMemories,
             semanticSearcher = semanticMemoryIndexSearcher,
         )
-        val memoryAnswer = MemoryGroundedChatbot(answerContext)
         val conversationClient = CodexConversationConfig.fromEnv()
             ?.let(CodexConversationClientFactory::create)
             ?.takeIf { it.validateVersion() }
+        val memoryConversation = conversationClient?.let {
+            val now = System.currentTimeMillis()
+            repositories.memoryConversationSessions.failStaleProcessing(
+                before = now - HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+                now = now,
+            )
+            HandleMemoryConversation(
+                sessions = repositories.memoryConversationSessions,
+                contextProvider = MemoryConversationContextProvider(answerContext),
+                conversationClient = it,
+            )
+        }
         val slackRuntime = slackConfig?.let { config ->
-            SlackRuntimeFactory.create(
-                config = config,
-            ) { slackClient ->
-                if (conversationClient == null) {
-                    log.info("Slack conversation disabled: configuration missing or invalid")
-                    null
-                } else {
-                    val now = System.currentTimeMillis()
-                    repositories.slackCodexSessions.failStaleProcessing(
-                        before = now - HandleSlackConversation.SESSION_IDLE_TIMEOUT_MILLIS,
-                        now = now,
-                    )
-                    HandleSlackConversation(
-                        identities = config.identityDirectory,
-                        sessions = repositories.slackCodexSessions,
-                        contextProvider = HouseholdContextProvider(answerContext),
-                        conversationClient = conversationClient,
-                        answerPublisher = SlackConversationAnswerPublisher(slackClient),
-                    )
-                }
+            if (memoryConversation == null) {
+                log.info("Slack conversation disabled: configuration missing or invalid")
             }
+            SlackRuntimeFactory.create(config, memoryConversation)
         }
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token, team, or member mapping configuration is missing")
         }
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
-            memoryGroundedChatbot = memoryAnswer,
             slackRuntime = slackRuntime,
             memberUserIds = memberUserIds,
             embeddingRuntime = managedEmbedding.runtime,

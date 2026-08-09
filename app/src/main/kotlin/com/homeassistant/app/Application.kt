@@ -59,7 +59,6 @@ fun Application.module() {
     monitor.subscribe(ApplicationStopped) { services.close() }
     configureRoutes(
         services.memoryAnalysis,
-        services.memoryGroundedChatbot,
         httpApiKeys,
         services.memberUserIds,
         readiness = { services.isReady },

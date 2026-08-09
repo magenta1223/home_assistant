@@ -2,10 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.port.input.memory.answer.MemoryAnswerRequest
 import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementDecision
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
 import com.homeassistant.application.port.output.memory.search.MemoryIndex
@@ -13,10 +11,9 @@ import com.homeassistant.application.port.output.memory.search.MemoryIndexSearch
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
-import com.homeassistant.application.usecase.memory.answer.MemoryGroundedChatbot
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
-import com.homeassistant.application.usecase.slackconversation.HouseholdContextProvider
+import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
@@ -37,7 +34,7 @@ class MemoryRepositoryUseCaseIntegrationTest {
     private val member = UserId("member-1")
 
     @Test
-    fun `search answer and Slack context read visible memories without caller transaction`() {
+    fun `search and conversation context read visible memories without caller transaction`() {
         withRepositories("memory-search-integration") { stores ->
             val publicMemory = stores.saveMemory(member, "public", MemoryAccess.PUBLIC)
             val ownRestrictedMemory = stores.saveMemory(
@@ -68,17 +65,13 @@ class MemoryRepositoryUseCaseIntegrationTest {
             assertFalse(otherRestrictedMemory.id in index.lastScope.allowedMemoryIds.orEmpty())
 
             val answerContext = MemoryAnswerContextProvider(searcher, stores.canonicalMemories, index)
-            val answer = MemoryGroundedChatbot(answerContext).answer(
-                MemoryAnswerRequest(member.value, "question"),
-            )
-            val slackContext = HouseholdContextProvider(answerContext).context(
-                SlackPrincipal("team-1", "slack-member-1", member),
+            val conversationContext = MemoryConversationContextProvider(answerContext).context(
+                member,
                 "question",
             )
 
-            assertEquals(publicMemory.id, answer.matches.first().memoryId)
-            assertTrue(slackContext.hasMatches)
-            assertTrue(slackContext.reference.contains(publicMemory.content))
+            assertTrue(conversationContext.hasMatches)
+            assertTrue(conversationContext.reference.contains(publicMemory.content))
         }
     }
 

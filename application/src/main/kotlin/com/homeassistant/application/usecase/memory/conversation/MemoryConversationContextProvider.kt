@@ -1,29 +1,27 @@
-package com.homeassistant.application.usecase.slackconversation
+package com.homeassistant.application.usecase.memory.conversation
 
 import com.homeassistant.application.port.input.memory.search.MemorySearchMatch
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.port.input.slackconversation.SlackPrincipal
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
+import com.homeassistant.domain.identity.UserId
 import java.time.Instant
 
-/** Builds a bounded household-memory context for a Slack question. */
-interface HouseholdContextSource {
-    /** Builds household-memory context relevant to a question. */
-    fun context(principal: SlackPrincipal, question: String): HouseholdContext
+fun interface MemoryConversationContextSource {
+    fun context(userId: UserId, question: String): MemoryConversationContext
 }
 
-class HouseholdContextProvider(
+class MemoryConversationContextProvider(
     private val answerContext: MemoryAnswerContextProvider,
-) : HouseholdContextSource {
-    override fun context(principal: SlackPrincipal, question: String): HouseholdContext {
+) : MemoryConversationContextSource {
+    override fun context(userId: UserId, question: String): MemoryConversationContext {
         val result = answerContext.context(
             SearchMemoriesRequest(
-                userId = principal.userId.value,
+                userId = userId.value,
                 query = question,
                 limit = MAX_MATCHES,
             ),
         )
-        return HouseholdContext(
+        return MemoryConversationContext(
             reference = result.contextMatches.joinToString("\n", transform = ::memoryReferenceLine)
                 .take(MAX_CONTEXT_CHARS),
             hasMatches = result.directMatches.isNotEmpty(),
@@ -40,7 +38,7 @@ internal fun memoryReferenceLine(match: MemorySearchMatch): String =
     "- [savedAt=${Instant.ofEpochMilli(match.createdAt)}; source=${match.source}; " +
         "score=${match.score}; parentMemoryId=${match.parentMemoryId ?: "none"}; depth=${match.depth}] ${match.content}"
 
-data class HouseholdContext(
+data class MemoryConversationContext(
     val reference: String,
     val hasMatches: Boolean,
 )

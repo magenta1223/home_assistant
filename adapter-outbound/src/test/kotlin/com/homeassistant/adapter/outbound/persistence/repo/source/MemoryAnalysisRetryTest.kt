@@ -7,7 +7,8 @@ import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRe
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
-import com.homeassistant.application.port.output.memory.write.MemoryWriter
+import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
+import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.domain.identity.HouseholdAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
@@ -240,7 +241,7 @@ class MemoryAnalysisRetryTest {
     ) = MemoryAnalysisService(
         memoryExtractor = extractor,
         sourceRecords = sourceRecords,
-        memorySaver = MemoryProposalsPersister(writer) { true },
+        memorySaver = MemoryProposalsPersister(writer.bind(sourceRecords)),
         accessPolicy = HouseholdAccessPolicies.fixed(listOf(USER_ID)),
     )
 
@@ -273,22 +274,36 @@ class MemoryAnalysisRetryTest {
 
     private class RecordingMemoryWriter(
         private val failure: RuntimeException? = null,
-    ) : MemoryWriter {
+    ) : CanonicalMemoryBatchWriter {
         val memories = mutableListOf<Memory>()
+        private lateinit var sourceRecords: SourceRecordRepositoryImpl
 
-        override fun write(proposal: MemoryProposal, createdBy: UserId): Memory {
+        fun bind(sourceRecords: SourceRecordRepositoryImpl) = apply {
+            this.sourceRecords = sourceRecords
+        }
+
+        override fun commit(
+            createdBy: UserId,
+            proposals: List<IdempotentMemoryProposal>,
+            analyzedSourceRecordIds: Collection<Int>,
+        ): List<Memory> {
             failure?.let { throw it }
-            return Memory(
-                id = memories.size + 1,
-                createdByUserId = createdBy.value,
-                content = proposal.content,
-                subject = proposal.subject,
-                memoryType = proposal.memoryType,
-                certainty = proposal.certainty,
-                visibility = proposal.visibility,
-                evidenceRefs = proposal.evidenceIds,
-                createdAt = (memories.size + 1) * 1_000L,
-            ).also(memories::add)
+            val saved = proposals.map { item ->
+                val proposal = item.proposal
+                Memory(
+                    id = memories.size + 1,
+                    createdByUserId = createdBy.value,
+                    content = proposal.content,
+                    subject = proposal.subject,
+                    memoryType = proposal.memoryType,
+                    certainty = proposal.certainty,
+                    visibility = proposal.visibility,
+                    evidenceRefs = proposal.evidenceIds,
+                    createdAt = (memories.size + 1) * 1_000L,
+                ).also(memories::add)
+            }
+            sourceRecords.markAnalyzed(analyzedSourceRecordIds)
+            return saved
         }
     }
 

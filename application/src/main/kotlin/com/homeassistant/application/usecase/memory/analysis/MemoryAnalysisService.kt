@@ -9,6 +9,7 @@ import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequ
 import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
+import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.domain.identity.HouseholdAccessDeniedException
 import com.homeassistant.domain.identity.HouseholdAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -24,6 +25,7 @@ class MemoryAnalysisService(
     private val memorySaver: MemoryProposalsPersister,
     private val accessPolicy: HouseholdAccessPolicy,
     private val memoryPlacement: MemoryPlacement = MemoryPlacement.NoOpMemoryPlacement,
+    private val memoryIndexing: MemoryIndexingOutboxProcessor? = null,
 ) : MemoryAnalysis {
     override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult {
         val userId = UserId(request.userId)
@@ -52,8 +54,11 @@ class MemoryAnalysisService(
                 ),
             )
         }
-        val savedMemories = requireAvailable { memorySaver.persist(userId, proposals) }
-        requireAvailable { sourceRecords.markAnalyzed(recordsToAnalyze.map { it.id }) }
+        val savedMemories = requireAvailable {
+            memorySaver.persist(userId, proposals, recordsToAnalyze.map { it.id })
+        }
+        runCatching { memoryIndexing?.processAvailable() }
+            .onFailure { error -> log.warn("Memory indexing deferred", error) }
         runCatching { memoryPlacement.place(MemoryPlaceRequest(userId, savedMemories)) }
             .onFailure { error -> log.warn("Memory tree placement deferred", error) }
         return MemoryAnalysisResult(

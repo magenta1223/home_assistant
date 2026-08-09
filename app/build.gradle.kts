@@ -21,6 +21,14 @@ tasks.register<JavaExec>("setupEmbedding") {
     workingDir = rootProject.projectDir
 }
 
+tasks.register<JavaExec>("reindexMemories") {
+    group = "application"
+    description = "Rebuilds the semantic index from every canonical memory in SQLite."
+    mainClass.set("com.homeassistant.app.memory.MemoryReindexKt")
+    classpath = sourceSets["main"].runtimeClasspath
+    workingDir = rootProject.projectDir
+}
+
 dependencies {
     implementation(project(":adapter-inbound"))
     implementation(project(":adapter-outbound"))

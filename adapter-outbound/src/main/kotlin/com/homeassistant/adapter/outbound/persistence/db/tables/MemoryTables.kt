@@ -11,6 +11,8 @@ internal object MemoryTable : Table("memories") {
     val memoryType = text("memory_type")
     val certainty = text("certainty")
     val visibility = text("visibility")
+    /** Null only for canonical memories created before durable batch persistence was introduced. */
+    val idempotencyKey = text("idempotency_key").nullable()
     val createdAt = long("created_at")
     val updatedAt = long("updated_at")
     override val primaryKey = PrimaryKey(id)
@@ -18,6 +20,7 @@ internal object MemoryTable : Table("memories") {
     init {
         index(false, createdByUserId, visibility)
         index(false, memoryType)
+        uniqueIndex(idempotencyKey)
     }
 }
 

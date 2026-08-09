@@ -1,8 +1,8 @@
 # Memory 분석 결과 저장의 원자성과 idempotency
 
-- 상태: TODO
+- 상태: DONE
 - 우선순위: P1
-- 선행 작업: P0 인덱싱·배치 durable retry 설계 확정
+- 완료일: 2026-08-09
 
 ## 문제
 
@@ -52,3 +52,11 @@ transaction에서 `ANALYZED`로 바꾼다. batch 중간 또는 source 상태 갱
 
 - 서로 다른 import에서 의미적으로 유사한 memory를 LLM으로 병합하는 기능
 - 기존 전체 memory의 사후 semantic deduplication
+
+## 실제 변경 내용
+
+- 의미·소유권 필드와 정렬된 evidence 집합으로 SHA-256 idempotency key를 생성한다.
+- memory, evidence, semantic-index outbox, source `ANALYZED` 전환을 한 SQLite transaction에서 commit한다.
+- 임베딩과 Qdrant 호출은 durable outbox processor와 30초 주기 worker가 transaction 밖에서 수행한다.
+- 실패 작업은 retry delay와 processing lease를 이용해 재시도하며, 누락된 outbox 행도 전체 reindex가 복구한다.
+- `gradlew reindexMemories`로 SQLite의 모든 canonical memory를 Qdrant에 다시 투영할 수 있다.

@@ -2,10 +2,13 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
-import com.homeassistant.application.port.output.memory.write.MemoryWriter
+import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
+import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.identity.UserId
@@ -14,6 +17,7 @@ import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.time.Clock
@@ -21,7 +25,7 @@ import java.time.Clock
 internal class MemoryRepository(
     private val db: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : MemoryReader, MemoryWriter, MemoryTreeStore {
+) : MemoryReader, CanonicalMemoryBatchWriter, MemoryTreeStore {
 
     override fun getMemories(userId: UserId): List<Memory> = transaction(db) {
         MemoryTable.selectAll()
@@ -29,27 +33,84 @@ internal class MemoryRepository(
             .filter { it.isVisibleTo(userId) }
     }
 
-    override fun write(proposal: MemoryProposal, createdBy: UserId): Memory = transaction(db) {
-        require(proposal.evidenceIds.isNotEmpty()) { "memory evidence is required" }
-        val now = clock.millis()
-        val memoryId = MemoryTable.insert {
-            it[childrenIds] = emptyList<Int>().encodeToString()
-            it[createdByUserId] = createdBy.value
-            it[content] = proposal.content
-            it[subject] = proposal.subject
-            it[memoryType] = proposal.memoryType.name
-            it[certainty] = proposal.certainty.name
-            it[visibility] = proposal.visibility.name
-            it[createdAt] = now
-            it[updatedAt] = now
-        }[MemoryTable.id]
-        proposal.evidenceIds.distinct().forEach { sourceRecordId ->
-            MemoryEvidenceTable.insert {
-                it[MemoryEvidenceTable.memoryId] = memoryId
-                it[MemoryEvidenceTable.sourceRecordId] = sourceRecordId
+    override fun commit(
+        createdBy: UserId,
+        proposals: List<IdempotentMemoryProposal>,
+        analyzedSourceRecordIds: Collection<Int>,
+    ): List<Memory> = transaction(db) {
+        val recordIds = analyzedSourceRecordIds.distinct()
+        val existingRecordIds = if (recordIds.isEmpty()) emptySet() else {
+            SourceRecordTable.select(SourceRecordTable.id)
+                .where { SourceRecordTable.id inList recordIds }
+                .mapTo(mutableSetOf()) { it[SourceRecordTable.id] }
+        }
+        require(existingRecordIds.size == recordIds.size) { "Analyzed source records do not all exist" }
+        proposals.forEach { item ->
+            require(item.idempotencyKey.isNotBlank()) { "memory idempotency key is required" }
+            require(item.proposal.evidenceIds.isNotEmpty()) { "memory evidence is required" }
+            require(item.proposal.evidenceIds.all { it in existingRecordIds }) {
+                "Memory evidence must belong to the analyzed source batch"
             }
         }
-        proposal.toMemory(createdBy, memoryId, now)
+
+        val now = clock.millis()
+        val memories = proposals.map { item ->
+            val existing = MemoryTable.selectAll()
+                .where { MemoryTable.idempotencyKey eq item.idempotencyKey }
+                .singleOrNull()
+            if (existing != null) {
+                ensureOutbox(existing[MemoryTable.id], now)
+                existing.toMemory()
+            } else {
+                val proposal = item.proposal
+                val memoryId = MemoryTable.insert {
+                    it[childrenIds] = emptyList<Int>().encodeToString()
+                    it[createdByUserId] = createdBy.value
+                    it[content] = proposal.content
+                    it[subject] = proposal.subject
+                    it[memoryType] = proposal.memoryType.name
+                    it[certainty] = proposal.certainty.name
+                    it[visibility] = proposal.visibility.name
+                    it[idempotencyKey] = item.idempotencyKey
+                    it[createdAt] = now
+                    it[updatedAt] = now
+                }[MemoryTable.id]
+                proposal.evidenceIds.distinct().forEach { sourceRecordId ->
+                    MemoryEvidenceTable.insert {
+                        it[MemoryEvidenceTable.memoryId] = memoryId
+                        it[MemoryEvidenceTable.sourceRecordId] = sourceRecordId
+                    }
+                }
+                ensureOutbox(memoryId, now)
+                proposal.toMemory(createdBy, memoryId, now)
+            }
+        }
+        if (recordIds.isNotEmpty()) {
+            SourceRecordTable.update({ SourceRecordTable.id inList recordIds }) {
+                it[analysisStatus] = SourceRecordAnalysisStatus.ANALYZED.name
+            }
+        }
+        memories
+    }
+
+    private fun ensureOutbox(memoryId: Int, now: Long) {
+        val exists = IndexingOutboxTable.select(IndexingOutboxTable.id)
+            .where {
+                (IndexingOutboxTable.targetType eq MEMORY_TARGET_TYPE) and
+                    (IndexingOutboxTable.targetId eq memoryId)
+            }
+            .limit(1)
+            .any()
+        if (!exists) {
+            IndexingOutboxTable.insert {
+                it[targetType] = MEMORY_TARGET_TYPE
+                it[targetId] = memoryId
+                it[status] = OUTBOX_PENDING
+                it[attempts] = 0
+                it[lastError] = null
+                it[updatedAt] = now
+            }
+        }
     }
 
     override fun attachChildren(request: MemoryTreeAttachRequest): Unit = transaction(db) {
@@ -107,7 +168,7 @@ internal class MemoryRepository(
         }
     }
 
-    private fun ResultRow.toMemory(): Memory {
+    internal fun ResultRow.toMemory(): Memory {
         val memoryId = this[MemoryTable.id]
         val evidenceRefs = MemoryEvidenceTable.select(MemoryEvidenceTable.sourceRecordId)
             .where { MemoryEvidenceTable.memoryId eq memoryId }
@@ -141,5 +202,10 @@ internal class MemoryRepository(
             evidenceRefs = evidenceIds,
             createdAt = createdAt,
         )
+    }
+
+    private companion object {
+        const val MEMORY_TARGET_TYPE = "CANONICAL_MEMORY"
+        const val OUTBOX_PENDING = "PENDING"
     }
 }

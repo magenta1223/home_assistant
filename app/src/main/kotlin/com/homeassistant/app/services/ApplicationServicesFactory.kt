@@ -23,6 +23,7 @@ import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWrite
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
+import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.application.usecase.slackconversation.HandleSlackConversation
 import com.homeassistant.application.usecase.slackconversation.HouseholdContextProvider
 import org.slf4j.LoggerFactory
@@ -46,6 +47,10 @@ object ApplicationServicesFactory {
             collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
         )
         val memoryIndexWriter = SemanticMemoryIndexWriterFactory.create(textEmbedder, vectorStore)
+        val memoryIndexing = MemoryIndexingOutboxProcessor(
+            outbox = repositories.memoryIndexingOutbox,
+            indexWriter = memoryIndexWriter,
+        )
         val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val slackConfig = SlackConfig.fromEnv()
         val slackAccessPolicy = slackConfig?.identityDirectory?.accessPolicy
@@ -59,8 +64,7 @@ object ApplicationServicesFactory {
             }
         }
         val memorySaver = MemoryProposalsPersister(
-            memoryWriter = repositories.memoryWriter,
-            memoryIndexWriter = memoryIndexWriter,
+            batchWriter = repositories.canonicalMemoryBatchWriter,
         )
         val memoryAnalysisService = MemoryAnalysisService(
             memoryExtractor = MemoryExtractorFactory.create(),
@@ -72,6 +76,7 @@ object ApplicationServicesFactory {
                 extractor = MemoryPlacementExtractorFactory.create(),
                 tree = repositories.memoryTree,
             ),
+            memoryIndexing = memoryIndexing,
         )
         val memorySearcherImpl = MemorySearcher(
             memories = repositories.canonicalMemories,
@@ -119,6 +124,7 @@ object ApplicationServicesFactory {
             memoryGroundedChatbot = memoryAnswer,
             slackRuntime = slackRuntime,
             embeddingRuntime = managedEmbedding.runtime,
+            indexingWorker = MemoryIndexingWorker(memoryIndexing),
         )
     }
 }

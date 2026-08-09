@@ -11,6 +11,7 @@ import com.homeassistant.application.port.output.memory.placement.MemoryPlacemen
 import com.homeassistant.application.port.output.memory.search.MemoryIndex
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
+import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.answer.MemoryGroundedChatbot
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
@@ -118,17 +119,19 @@ class MemoryRepositoryUseCaseIntegrationTest {
             SourceDescriptor(type = "test", name = content),
             listOf(SourceRecordDraft(content, content)),
         ).recordsToAnalyze.single()
-        return memoryWriter.write(
-            MemoryProposal(
+        val proposal = MemoryProposal(
                 content = content,
                 subject = content,
                 memoryType = MemoryType.REFERENCE,
                 certainty = MemoryCertainty.OBSERVED,
                 evidenceIds = listOf(evidence.id),
                 visibility = visibility,
-            ),
+            )
+        return canonicalMemoryBatchWriter.commit(
             userId,
-        )
+            listOf(IdempotentMemoryProposal("${userId.value}:$content", proposal)),
+            listOf(evidence.id),
+        ).single()
     }
 
     private class FilteringIndexSearcher(

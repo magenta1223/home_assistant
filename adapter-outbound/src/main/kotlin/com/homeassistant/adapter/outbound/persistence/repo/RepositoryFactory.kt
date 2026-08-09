@@ -3,6 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
+import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.slackconversation.SlackCodexSessionRepository
 
 object RepositoryFactory {
@@ -11,7 +12,8 @@ object RepositoryFactory {
         val canonicalMemories = MemoryRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
-            memoryWriter = canonicalMemories,
+            canonicalMemoryBatchWriter = canonicalMemories,
+            memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
             memoryTree = canonicalMemories,
             slackCodexSessions = SlackCodexSessionRepository(db),

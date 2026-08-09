@@ -10,12 +10,14 @@ internal class DefaultApplicationServices(
     override val memoryGroundedChatbot: MemoryAnswer,
     override val slackRuntime: SlackRuntime?,
     private val embeddingRuntime: EmbeddingServerRuntime,
+    private val indexingWorker: IndexingWorker = IndexingWorker.NONE,
 ) : ApplicationServices {
     override val isReady: Boolean
         get() = embeddingRuntime.isReady
 
     override fun start() {
         embeddingRuntime.start()
+        indexingWorker.start()
         slackRuntime?.startAsync()
     }
 
@@ -23,7 +25,11 @@ internal class DefaultApplicationServices(
         try {
             slackRuntime?.close()
         } finally {
-            embeddingRuntime.close()
+            try {
+                indexingWorker.close()
+            } finally {
+                embeddingRuntime.close()
+            }
         }
     }
 }

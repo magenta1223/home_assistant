@@ -16,7 +16,7 @@ internal fun interface CodexCompletionClient {
 
 internal class CodexCliClient(
     private val executable: String = defaultCodexExecutable(),
-    private val timeoutMillis: Long = 180_000,
+    private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
     private val processExecutor: CodexProcessExecutor = SystemCodexProcessExecutor,
 ) : CodexCompletionClient {
     override suspend fun complete(
@@ -33,6 +33,9 @@ internal class CodexCliClient(
                 executable,
                 "exec",
                 "--ephemeral",
+                "--ignore-user-config",
+                "--ignore-rules",
+                "--config", "model_reasoning_effort=\"low\"",
                 "--sandbox", "read-only",
                 "--skip-git-repo-check",
                 "--output-schema", schemaFile.toString(),
@@ -61,6 +64,10 @@ internal class CodexCliClient(
         appendLine()
         appendLine("[user]")
         append(userMessage)
+    }
+
+    private companion object {
+        const val DEFAULT_TIMEOUT_MILLIS = 10 * 60 * 1_000L
     }
 }
 

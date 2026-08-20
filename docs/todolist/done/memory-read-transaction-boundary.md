@@ -25,7 +25,7 @@ repository 단위 테스트는 호출자가 `transaction(database)`로 감싸기
 3. 기존 repository 테스트에서 호출자 측 `transaction(database)` wrapper를 제거해 transaction 소유권을
    persistence adapter 계약으로 고정했다.
 4. `RepositoryFactory`의 실제 repository를 `MemorySearcher`, `MemoryGroundedChatbot`,
-   `HouseholdContextProvider`, `MemoryPlacementService`에 연결하는 통합 테스트를 추가했다.
+   memory context provider와 `MemoryPlacementService`에 연결하는 통합 테스트를 추가했다.
 5. 통합 테스트에서 PUBLIC과 본인 PRIVATE memory 검색, 타인 PRIVATE 제외, HTTP 답변용 조회,
    Slack context 조회, tree attach까지 caller transaction 없이 검증한다.
 

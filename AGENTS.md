@@ -70,8 +70,8 @@ The project is now a **home second brain**, not a general chat assistant. The pr
 2. Select PUBLIC access or an immutable set of authorized application user IDs for each source.
 3. Analyze source records and immediately save the resulting topics and memories as canonical records.
 4. Search and retrieve canonical memories with their source evidence and optional topic context.
-5. Register household members from their first Slack DM using a name-entry modal.
-6. Answer household questions through registered Slack DMs using short-lived Codex threads.
+5. Register application users from their first Slack DM using a name-entry modal.
+6. Answer memory-backed questions through registered Slack DMs using short-lived Codex threads.
 
 Slack is a member-registration and memory-backed answer channel only. An unknown member's first DM
 receives a registration button; its modal collects a display name, persists the authenticated Slack
@@ -81,7 +81,7 @@ must be enabled for the registration button and modal; Socket Mode carries those
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
-Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack resolves its authenticated identity through the persisted household-member registry and only relays registration, requests, and answers; keep authorization, memory retrieval, idempotency, and session expiry in the technology-neutral application use cases.
+Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack maps signed events to a technology-neutral conversation identity and only relays registration, requests, and answers. The application layer resolves that identity through the persisted user registry and owns registration state, pending-question resumption, authorization, memory retrieval, idempotency, and session expiry.
 
 ## Module Architecture
 
@@ -106,7 +106,7 @@ application-driven integrations in `adapter-outbound`.
 
 ### application
 
-- `port/input/` - use-case entry contracts plus their request and result models, grouped by feature.
+- `port/input/` - use-case entry contracts plus their request and result models, grouped by feature. `MemoryAnswerWorkflow` owns user resolution, registration, memory-answer routing, and channel delivery state.
 - `port/output/` - technology-neutral capabilities required from persistence, semantic search,
   extraction, placement, and conversation adapters.
 - `usecase/` - technology-independent orchestration that implements input ports and uses output ports.
@@ -120,7 +120,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 - `http/` - Ktor routes and HTTP request/response DTO mapping.
 - `kakao/` - Kakao export parsing at the source-format boundary.
-- `slack/` - Slack Socket Mode, member-registration blocks/modals, DM event listeners, conversation queueing, and answer delivery mapping.
+- `slack/` - Slack Socket Mode, user-registration blocks/modals, DM event mapping, transport queueing, and application-result delivery. It does not own user or memory-answer workflow state.
 - `text/` - direct-text source parsing at the inbound boundary.
 
 ### adapter-outbound
@@ -128,7 +128,7 @@ failures into that contract. Output ports and adapters must not construct applic
 - `codex/` - Codex CLI transport and conversation-turn implementations.
 - `topicanalysis/` - Codex-backed topic extraction implementations.
 - `embedding/ollama/` - pinned Windows Ollama installation, managed server lifecycle, and local text embedding.
-- `persistence/` - SQLite/Exposed repositories for household members, source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
+- `persistence/` - SQLite/Exposed repositories for registered users, pending registration questions, source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
 - `vector/qdrant/` - pinned Windows Qdrant installation, managed server lifecycle, and vector storage.
 - `vector/memory/` - canonical-memory semantic index implementation.
 
@@ -139,7 +139,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 ### domain
 
-- `identity/` - persisted single-household member identity, display name, and authorization policy. Slack IDs identify accounts; member-entered names are display values only. There is no family/subgroup scope.
+- `identity/` - persisted application user identity, display name, and authorization policy. Slack IDs identify accounts; user-entered names are display values only. There is no group scope.
 - `source/` - source-agnostic imported records, analysis documents, and the source-record persistence port.
 - `topicanalysis/` - topic grouping and proposal models.
 - `memory/` - canonical memory access policy. PUBLIC is visible to every authorized user; RESTRICTED

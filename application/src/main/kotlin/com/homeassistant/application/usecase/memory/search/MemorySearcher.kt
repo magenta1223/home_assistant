@@ -9,19 +9,19 @@ import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.search.MemoryIndex
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
-import com.homeassistant.domain.identity.HouseholdAccessDeniedException
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserAccessDeniedException
+import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 
 
 class MemorySearcher(
     private val memories: MemoryReader,
     private val searcher: SemanticMemoryIndexSearcher,
-    private val accessPolicy: HouseholdAccessPolicy,
+    private val accessPolicy: UserAccessPolicy,
 ) : MemorySearch {
     override fun search(request: SearchMemoriesRequest): SearchMemoriesResult {
         val userId = UserId(request.userId)
-        if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
+        if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val query = request.query.trim()
 
         return try {

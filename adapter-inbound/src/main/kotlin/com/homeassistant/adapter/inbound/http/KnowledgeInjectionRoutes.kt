@@ -8,9 +8,9 @@ import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAud
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
-import com.homeassistant.application.port.input.identity.HouseholdMembers
+import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.domain.identity.HouseholdAccessDeniedException
+import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
 import io.ktor.http.ContentType
@@ -35,12 +35,12 @@ internal fun Route.knowledgePageRoute() {
 
 internal fun Route.knowledgeInjectionRoutes(
     memoryAnalysis: MemoryAnalysis,
-    householdMembers: HouseholdMembers,
+    users: UserRegistry,
 ) {
     get(AppConfig.ROUTE_KNOWLEDGE_USERS) {
         call.respond(
             KnowledgeUsersResponse(
-                householdMembers.list().map { KnowledgeUserResponse(it.userId.value, it.displayName) },
+                users.list().map { KnowledgeUserResponse(it.userId.value, it.displayName) },
             ),
         )
     }
@@ -113,8 +113,8 @@ internal fun Route.knowledgeInjectionRoutes(
             )
         } catch (error: MemoryAnalysisUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
-        } catch (_: HouseholdAccessDeniedException) {
-            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "household access denied"))
+        } catch (_: UserAccessDeniedException) {
+            call.respond(HttpStatusCode.Forbidden, mapOf("error" to "user access denied"))
         }
     }
 }

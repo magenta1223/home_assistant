@@ -1,7 +1,6 @@
 package com.homeassistant.adapter.inbound.slack
 
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
-import com.homeassistant.application.port.input.identity.HouseholdMembers
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerWorkflow
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -41,20 +40,18 @@ data class SlackConfig(
 object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
-        memoryConversation: MemoryConversation?,
-        householdMembers: HouseholdMembers,
+        memoryAnswerWorkflow: MemoryAnswerWorkflow,
     ): SlackRuntime {
         val slackClient = SlackApiClient(config.botToken)
         val executor = Executors.newFixedThreadPool(2)
-        val conversationService = SlackConversationService(
+        val memoryAnswerAdapter = SlackMemoryAnswerAdapter(
             configuredTeamId = config.teamId,
-            householdMembers = householdMembers,
-            memoryConversation = memoryConversation,
+            memoryAnswerWorkflow = memoryAnswerWorkflow,
             slack = slackClient,
             executor = executor,
         )
         val listeners = SlackListeners(
-            conversationService = conversationService,
+            memoryAnswerAdapter = memoryAnswerAdapter,
         )
         return SlackSocketRuntime(
             config = config,

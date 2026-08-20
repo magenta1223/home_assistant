@@ -14,7 +14,7 @@ import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextPr
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryAccess
@@ -53,7 +53,7 @@ class MemoryRepositoryUseCaseIntegrationTest {
             val searcher = MemorySearcher(
                 memories = stores.canonicalMemories,
                 searcher = index,
-                accessPolicy = HouseholdAccessPolicy { it == member },
+                accessPolicy = UserAccessPolicy { it == member },
             )
 
             val searchResult = searcher.search(SearchMemoriesRequest(member.value, "question"))

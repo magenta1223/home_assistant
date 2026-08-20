@@ -11,7 +11,7 @@ import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
-import com.homeassistant.domain.identity.HouseholdAccessPolicies
+import com.homeassistant.domain.identity.UserAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryAccess
@@ -280,7 +280,7 @@ class MemoryAnalysisRetryTest {
                 markAnalyzed(db, recordIds)
             }
         },
-        accessPolicy = HouseholdAccessPolicies.fixed(listOf(USER_ID)),
+        accessPolicy = UserAccessPolicies.fixed(listOf(USER_ID)),
     )
 
     private fun request(key: String, access: MemoryAccess = MemoryAccess.PUBLIC) = MemoryAnalysisRequest(

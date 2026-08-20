@@ -8,6 +8,7 @@ internal object DatabaseFactory {
     fun init(dbPath: String): Database {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
+            migrateLegacyTableNames()
             SchemaUtils.createMissingTablesAndColumns(
                 MemoryTable,
                 MemoryEvidenceTable,
@@ -18,13 +19,29 @@ internal object DatabaseFactory {
                 SlackCodexSessionTable,
                 SlackCodexActiveSessionTable,
                 SlackMessageReceiptTable,
-                HouseholdMemberTable,
+                UserTable,
                 ConversationIdentityTable,
+                PendingRegistrationQuestionTable,
             )
             migrateLegacyPrivateAccess()
         }
         return db
     }
+
+    private fun Transaction.migrateLegacyTableNames() {
+        renameTableIfNeeded("household_members", "registered_users")
+        renameTableIfNeeded("pending_household_conversations", "pending_registration_questions")
+    }
+
+    private fun Transaction.renameTableIfNeeded(legacyName: String, currentName: String) {
+        if (!tableExists(legacyName) || tableExists(currentName)) return
+        exec("ALTER TABLE \"$legacyName\" RENAME TO \"$currentName\"")
+    }
+
+    private fun Transaction.tableExists(name: String): Boolean =
+        exec(
+            "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '${name.replace("'", "''")}'",
+        ) { result -> result.next() } ?: false
 
     private fun migrateLegacyPrivateAccess() {
         val legacyPrivateMemories = MemoryTable.selectAll()

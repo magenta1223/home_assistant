@@ -20,7 +20,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
 internal data class MemoryAnalysisLlmResponse(
-    @property:SerialDescription("Evidence-backed atomic household memories. Return an empty array when there are no reusable memories.")
+    @property:SerialDescription("Evidence-backed atomic memories. Return an empty array when there are no reusable memories.")
     val memories: List<MemoryLlmResponse>,
 )
 
@@ -29,7 +29,7 @@ internal data class MemoryAnalysisLlmResponse(
 internal data class MemoryLlmResponse(
     @property:SerialDescription("One atomic memory statement supported by the cited evidence. Do not combine unrelated facts.")
     val text: String,
-    @property:SerialDescription("Person, place, object, family member, or household entity the memory is about.")
+    @property:SerialDescription("Person, place, object, organization, or other entity the memory is about.")
     val subject: String,
     @property:SerialDescription("Allowed MemoryType enum value for this single memory.")
     val memoryType: MemoryType,

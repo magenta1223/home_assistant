@@ -60,7 +60,7 @@ fun Application.module() {
     configureRoutes(
         services.memoryAnalysis,
         httpApiKeys,
-        services.householdMembers,
+        services.users,
         readiness = { services.isReady },
     )
 }

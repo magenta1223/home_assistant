@@ -13,8 +13,8 @@ import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisServi
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
-import com.homeassistant.domain.identity.HouseholdAccessPolicies
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserAccessPolicies
+import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexSearcherFactory
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
@@ -25,7 +25,8 @@ import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxPr
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.port.input.identity.ConversationIdentity
-import com.homeassistant.application.usecase.identity.HouseholdMemberService
+import com.homeassistant.application.usecase.identity.UserRegistryService
+import com.homeassistant.application.usecase.memory.answer.MemoryAnswerWorkflowService
 import org.slf4j.LoggerFactory
 
 
@@ -37,7 +38,7 @@ object ApplicationServicesFactory {
         httpUsers: Collection<UserId> = emptyList(),
     ): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
-        val householdMembers = HouseholdMemberService(repositories.householdMembers)
+        val users = UserRegistryService(repositories.users)
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
@@ -56,14 +57,14 @@ object ApplicationServicesFactory {
         val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val slackConfig = SlackConfig.fromEnv()
         slackConfig?.legacyMemberMappings.orEmpty().forEach { legacy ->
-            householdMembers.reserveLegacy(
+            users.reserveLegacy(
                 identity = ConversationIdentity(legacy.teamId, legacy.slackUserId),
                 userId = legacy.userId,
             )
         }
-        val httpAccessPolicy = HouseholdAccessPolicies.fixed(httpUsers)
-        val accessPolicy = HouseholdAccessPolicy { userId ->
-            householdMembers.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
+        val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)
+        val accessPolicy = UserAccessPolicy { userId ->
+            users.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
         }
         val memorySaver = MemoryProposalsPersister(
             batchWriter = repositories.canonicalMemoryBatchWriter,
@@ -105,11 +106,16 @@ object ApplicationServicesFactory {
                 conversationClient = it,
             )
         }
+        val memoryAnswerWorkflow = MemoryAnswerWorkflowService(
+            users = users,
+            pendingQuestions = repositories.pendingRegistrationQuestions,
+            memoryConversation = memoryConversation,
+        )
         val slackRuntime = slackConfig?.let { config ->
             if (memoryConversation == null) {
                 log.info("Slack memory answers disabled: local Codex CLI is unavailable or its timeout is invalid")
             }
-            SlackRuntimeFactory.create(config, memoryConversation, householdMembers)
+            SlackRuntimeFactory.create(config, memoryAnswerWorkflow)
         }
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token or team configuration is missing")
@@ -117,7 +123,7 @@ object ApplicationServicesFactory {
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
             slackRuntime = slackRuntime,
-            householdMembers = householdMembers,
+            users = users,
             vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),

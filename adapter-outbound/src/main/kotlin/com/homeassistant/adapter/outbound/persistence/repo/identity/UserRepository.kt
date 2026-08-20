@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.repo.identity
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.ConversationIdentityTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.HouseholdMemberTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.UserTable
 import com.homeassistant.application.port.input.identity.ConversationIdentity
-import com.homeassistant.application.port.output.identity.HouseholdMemberStore
-import com.homeassistant.domain.identity.HouseholdMember
+import com.homeassistant.application.port.output.identity.UserStore
+import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
@@ -16,13 +16,13 @@ import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
 
-internal class HouseholdMemberRepository(
+internal class UserRepository(
     private val db: Database,
-) : HouseholdMemberStore {
-    override fun find(identity: ConversationIdentity): HouseholdMember? = transaction(db) {
+) : UserStore {
+    override fun find(identity: ConversationIdentity): RegisteredUser? = transaction(db) {
         identityRow(identity)
             ?.let { memberRow(it[ConversationIdentityTable.userId]) }
-            ?.toRegisteredMember()
+            ?.toRegisteredUser()
     }
 
     override fun register(
@@ -30,12 +30,12 @@ internal class HouseholdMemberRepository(
         proposedUserId: UserId,
         displayName: String,
         now: Long,
-    ): HouseholdMember = transaction(db) {
+    ): RegisteredUser = transaction(db) {
         val existingIdentity = identityRow(identity)
         val userId = if (existingIdentity == null) {
-            HouseholdMemberTable.insert {
-                it[HouseholdMemberTable.userId] = proposedUserId.value
-                it[HouseholdMemberTable.displayName] = displayName
+            UserTable.insert {
+                it[UserTable.userId] = proposedUserId.value
+                it[UserTable.displayName] = displayName
                 it[createdAt] = now
                 it[updatedAt] = now
             }
@@ -50,27 +50,27 @@ internal class HouseholdMemberRepository(
             existingIdentity[ConversationIdentityTable.userId]
         }
 
-        HouseholdMemberTable.update({ HouseholdMemberTable.userId eq userId }) {
-            it[HouseholdMemberTable.displayName] = displayName
+        UserTable.update({ UserTable.userId eq userId }) {
+            it[UserTable.displayName] = displayName
             it[updatedAt] = now
         }
-        requireNotNull(memberRow(userId).toRegisteredMember())
+        requireNotNull(memberRow(userId).toRegisteredUser())
     }
 
-    override fun list(): List<HouseholdMember> = transaction(db) {
-        HouseholdMemberTable.selectAll()
-            .mapNotNull { it.toRegisteredMember() }
-            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, HouseholdMember::displayName))
+    override fun list(): List<RegisteredUser> = transaction(db) {
+        UserTable.selectAll()
+            .mapNotNull { it.toRegisteredUser() }
+            .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, RegisteredUser::displayName))
     }
 
     override fun isRegistered(userId: UserId): Boolean = transaction(db) {
-        memberRow(userId.value)?.toRegisteredMember() != null
+        memberRow(userId.value)?.toRegisteredUser() != null
     }
 
     override fun reserve(identity: ConversationIdentity, userId: UserId, now: Long) {
         transaction(db) {
-            HouseholdMemberTable.insertIgnore {
-                it[HouseholdMemberTable.userId] = userId.value
+            UserTable.insertIgnore {
+                it[UserTable.userId] = userId.value
                 it[displayName] = null
                 it[createdAt] = now
                 it[updatedAt] = now
@@ -93,15 +93,15 @@ internal class HouseholdMemberRepository(
             .singleOrNull()
 
     private fun memberRow(userId: String): ResultRow? =
-        HouseholdMemberTable.selectAll()
-            .where { HouseholdMemberTable.userId eq userId }
+        UserTable.selectAll()
+            .where { UserTable.userId eq userId }
             .singleOrNull()
 
-    private fun ResultRow?.toRegisteredMember(): HouseholdMember? {
+    private fun ResultRow?.toRegisteredUser(): RegisteredUser? {
         val row = this ?: return null
-        val displayName = row[HouseholdMemberTable.displayName]?.takeIf(String::isNotBlank) ?: return null
-        return HouseholdMember(
-            userId = UserId(row[HouseholdMemberTable.userId]),
+        val displayName = row[UserTable.displayName]?.takeIf(String::isNotBlank) ?: return null
+        return RegisteredUser(
+            userId = UserId(row[UserTable.userId]),
             displayName = displayName,
         )
     }

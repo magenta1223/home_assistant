@@ -4,7 +4,7 @@ import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
 /**
- * An approved, independently searchable household memory.
+ * An approved, independently searchable canonical memory.
  *
  * A memory with children is a short description of a knowledge area; a memory
  * without children is an atomic fact. Both are represented by this same type.

@@ -1,11 +1,11 @@
 package com.homeassistant.application.port.output.identity
 
 import com.homeassistant.application.port.input.identity.ConversationIdentity
-import com.homeassistant.domain.identity.HouseholdMember
+import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 
-interface HouseholdMemberStore {
-    fun find(identity: ConversationIdentity): HouseholdMember?
+interface UserStore {
+    fun find(identity: ConversationIdentity): RegisteredUser?
 
     /** Atomically creates or completes a member registration for this identity. */
     fun register(
@@ -13,9 +13,9 @@ interface HouseholdMemberStore {
         proposedUserId: UserId,
         displayName: String,
         now: Long,
-    ): HouseholdMember
+    ): RegisteredUser
 
-    fun list(): List<HouseholdMember>
+    fun list(): List<RegisteredUser>
 
     fun isRegistered(userId: UserId): Boolean
 

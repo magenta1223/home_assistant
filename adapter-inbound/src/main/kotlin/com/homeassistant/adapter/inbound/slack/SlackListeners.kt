@@ -1,50 +1,50 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerWorkflow
 import com.slack.api.bolt.App
 import com.slack.api.model.event.MessageEvent
 
 internal class SlackListeners(
-    private val conversationService: SlackConversationService?,
+    private val memoryAnswerAdapter: SlackMemoryAnswerAdapter?,
 ) {
     fun register(app: App) {
-        conversationService?.let {
-            registerConversation(app, it)
-            registerMemberRegistration(app, it)
+        memoryAnswerAdapter?.let {
+            registerDirectMessages(app, it)
+            registerUserRegistration(app, it)
         }
     }
 
-    private fun registerMemberRegistration(app: App, service: SlackConversationService) {
-        app.blockAction(SlackConversationService.REGISTER_ACTION_ID) { request, context ->
+    private fun registerUserRegistration(app: App, adapter: SlackMemoryAnswerAdapter) {
+        app.blockAction(SlackMemoryAnswerAdapter.REGISTER_ACTION_ID) { request, context ->
             val payload = request.payload
             val teamId = payload.team?.id
             val slackUserId = payload.user?.id
-            val channelId = payload.channel?.id
             val triggerId = payload.triggerId
             if (!teamId.isNullOrBlank() && !slackUserId.isNullOrBlank() &&
-                !channelId.isNullOrBlank() && !triggerId.isNullOrBlank()
+                !triggerId.isNullOrBlank()
             ) {
                 runCatching {
-                    service.openRegistrationModal(teamId, slackUserId, channelId, triggerId)
+                    adapter.openRegistrationModal(teamId, slackUserId, triggerId)
                 }
             }
             context.ack()
         }
 
-        app.viewSubmission(SlackConversationService.REGISTER_VIEW_CALLBACK_ID) { request, context ->
+        app.viewSubmission(SlackMemoryAnswerAdapter.REGISTER_VIEW_CALLBACK_ID) { request, context ->
             val payload = request.payload
             val displayName = payload.view?.state?.values
-                ?.get(SlackConversationService.DISPLAY_NAME_BLOCK_ID)
-                ?.get(SlackConversationService.DISPLAY_NAME_ACTION_ID)
+                ?.get(SlackMemoryAnswerAdapter.DISPLAY_NAME_BLOCK_ID)
+                ?.get(SlackMemoryAnswerAdapter.DISPLAY_NAME_ACTION_ID)
                 ?.value
                 .orEmpty()
                 .trim()
-            if (displayName.isEmpty() || displayName.length > SlackConversationService.MAX_DISPLAY_NAME_LENGTH) {
+            if (displayName.isEmpty() || displayName.length > MemoryAnswerWorkflow.MAX_DISPLAY_NAME_LENGTH) {
                 return@viewSubmission context.ackWithErrors(
-                    mapOf(SlackConversationService.DISPLAY_NAME_BLOCK_ID to "이름을 1~50자로 입력해주세요."),
+                    mapOf(SlackMemoryAnswerAdapter.DISPLAY_NAME_BLOCK_ID to "이름을 1~50자로 입력해주세요."),
                 )
             }
 
-            val accepted = service.submitRegistration(
+            val accepted = adapter.submitRegistration(
                 teamId = payload.team?.id.orEmpty(),
                 slackUserId = payload.user?.id.orEmpty(),
                 channelId = payload.view?.privateMetadata.orEmpty(),
@@ -52,7 +52,7 @@ internal class SlackListeners(
             )
             if (!accepted) {
                 context.ackWithErrors(
-                    mapOf(SlackConversationService.DISPLAY_NAME_BLOCK_ID to "등록 요청을 확인할 수 없습니다."),
+                    mapOf(SlackMemoryAnswerAdapter.DISPLAY_NAME_BLOCK_ID to "등록 요청을 확인할 수 없습니다."),
                 )
             } else {
                 context.ack()
@@ -60,9 +60,9 @@ internal class SlackListeners(
         }
     }
 
-    private fun registerConversation(app: App, service: SlackConversationService) {
+    private fun registerDirectMessages(app: App, adapter: SlackMemoryAnswerAdapter) {
         app.event(MessageEvent::class.java) { payload, ctx ->
-            directMessage(payload.teamId, payload.event)?.let(service::submit)
+            directMessage(payload.teamId, payload.event)?.let(adapter::submit)
             ctx.ack()
         }
     }

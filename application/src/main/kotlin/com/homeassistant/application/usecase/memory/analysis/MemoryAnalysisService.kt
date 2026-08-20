@@ -12,8 +12,8 @@ import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
-import com.homeassistant.domain.identity.HouseholdAccessDeniedException
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserAccessDeniedException
+import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceAccessConflictException
@@ -25,7 +25,7 @@ class MemoryAnalysisService(
     private val memoryExtractor: MemoryExtractor,
     private val sourceRecords: SourceRecordRepository,
     private val memorySaver: MemoryProposalsPersister,
-    private val accessPolicy: HouseholdAccessPolicy,
+    private val accessPolicy: UserAccessPolicy,
     private val memoryPlacement: MemoryPlacement = MemoryPlacement.NoOpMemoryPlacement,
     private val memoryIndexing: MemoryIndexingOutboxProcessor? = null,
 ) : MemoryAnalysis {
@@ -85,7 +85,7 @@ class MemoryAnalysisService(
     }
 
     private fun requireAuthorized(userId: UserId) {
-        if (!accessPolicy.isAuthorized(userId)) throw HouseholdAccessDeniedException()
+        if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
     }
 
     private fun requireAuthorizedAudience(userIds: Set<String>) {

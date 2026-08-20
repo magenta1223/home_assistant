@@ -4,12 +4,12 @@ import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.application.port.input.identity.ConversationIdentity
-import com.homeassistant.application.port.input.identity.HouseholdMembers
-import com.homeassistant.application.port.input.identity.RegisterHouseholdMemberRequest
+import com.homeassistant.application.port.input.identity.UserRegistry
+import com.homeassistant.application.port.input.identity.RegisterUserRequest
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.identity.HouseholdMember
+import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryType
@@ -62,9 +62,9 @@ class KnowledgeInjectionRoutesTest {
             configureRoutes(
                 memoryAnalysis = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
-                householdMembers = FixedHouseholdMembers(
-                    HouseholdMember(UserId("member-1"), "첫째"),
-                    HouseholdMember(UserId("member-2"), "둘째"),
+                users = FixedUserRegistry(
+                    RegisteredUser(UserId("member-1"), "첫째"),
+                    RegisteredUser(UserId("member-2"), "둘째"),
                 ),
             )
         }
@@ -148,15 +148,15 @@ class KnowledgeInjectionRoutesTest {
         }
     }
 
-    private class FixedHouseholdMembers(
-        private vararg val members: HouseholdMember,
-    ) : HouseholdMembers {
-        override fun find(identity: ConversationIdentity): HouseholdMember? = null
+    private class FixedUserRegistry(
+        private vararg val users: RegisteredUser,
+    ) : UserRegistry {
+        override fun find(identity: ConversationIdentity): RegisteredUser? = null
 
-        override fun register(request: RegisterHouseholdMemberRequest): HouseholdMember =
+        override fun register(request: RegisterUserRequest): RegisteredUser =
             error("not used")
 
-        override fun list(): List<HouseholdMember> = members.toList()
+        override fun list(): List<RegisteredUser> = users.toList()
     }
 
     private companion object {

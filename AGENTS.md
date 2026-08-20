@@ -112,6 +112,11 @@ application-driven integrations in `adapter-outbound`.
 - `usecase/` - technology-independent orchestration that implements input ports and uses output ports.
 - `port/input/memory/` and `usecase/memory/` - memory analysis, search, conversation, answer context, and placement flows.
 
+`application/usecase/README.md` is the comprehensive use-case map. Every leaf package containing
+concrete use-case implementations must also contain a `README.md` with at least one Mermaid
+`sequenceDiagram` covering its normal flow and important branches. Update the corresponding README
+in the same change whenever input/output ports, orchestration order, or failure behavior changes.
+
 Application exception types are use-case failure contracts. Declare them beside the corresponding
 input port with an `internal` constructor, and let the use-case implementation translate collaborator
 failures into that contract. Output ports and adapters must not construct application exceptions.

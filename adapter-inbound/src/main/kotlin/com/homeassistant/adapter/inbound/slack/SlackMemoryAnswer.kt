@@ -1,28 +1,26 @@
 package com.homeassistant.adapter.inbound.slack
 
+import com.homeassistant.application.port.input.memory.answer.CompleteUserRegistrationRequest
+import com.homeassistant.application.port.input.memory.answer.ConversationRequestKey
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerWorkflow
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerRequest
+import com.homeassistant.application.port.input.memory.answer.MemoryAnswerResult
+import com.homeassistant.application.port.input.memory.answer.UserRegistrationResult
+import com.homeassistant.application.port.input.memory.answer.UserRegistrationStartResult
+import com.homeassistant.application.port.input.memory.answer.UserRegistrationValidationResult
 import com.homeassistant.application.port.input.identity.ConversationIdentity
-import com.homeassistant.application.port.input.identity.HouseholdMembers
-import com.homeassistant.application.port.input.identity.RegisterHouseholdMemberRequest
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversationParticipant
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequest
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversationResult
-import com.homeassistant.domain.identity.UserId
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-internal class SlackConversationService(
+internal class SlackMemoryAnswerAdapter(
     private val configuredTeamId: String,
-    private val householdMembers: HouseholdMembers,
-    private val memoryConversation: MemoryConversation?,
+    private val memoryAnswerWorkflow: MemoryAnswerWorkflow,
     private val slack: SlackClient,
     private val executor: Executor = Executors.newCachedThreadPool(),
 ) {
     private val queues = ConcurrentHashMap<SlackActorKey, SerialTaskQueue>()
-    private val pendingRegistrations = ConcurrentHashMap<SlackActorKey, SlackDirectMessage>()
 
     fun submit(message: SlackDirectMessage) {
         val actor = SlackActorKey(message.teamId, message.slackUserId)
@@ -32,24 +30,24 @@ internal class SlackConversationService(
 
     internal fun handle(message: SlackDirectMessage) {
         if (message.teamId != configuredTeamId) return
-        val identity = message.identity()
-        val member = householdMembers.find(identity)
-        if (member == null) {
-            requestRegistration(message)
-            return
-        }
-        answer(message, member.userId)
+        val request = message.toApplicationRequest()
+        render(request.key, memoryAnswerWorkflow.receive(request), request.identity)
     }
 
     internal fun openRegistrationModal(
         teamId: String,
         slackUserId: String,
-        channelId: String,
         triggerId: String,
     ) {
         if (teamId != configuredTeamId) return
-        if (householdMembers.find(ConversationIdentity(teamId, slackUserId)) != null) return
-        slack.openModal(triggerId, registrationModal(channelId))
+        when (val result = memoryAnswerWorkflow.beginRegistration(ConversationIdentity(teamId, slackUserId))) {
+            is UserRegistrationStartResult.Ready ->
+                slack.openModal(triggerId, registrationModal(result.replyKey.streamId))
+            UserRegistrationStartResult.AlreadyRegistered,
+            UserRegistrationStartResult.NoPendingQuestion,
+            UserRegistrationStartResult.Failed,
+            -> Unit
+        }
     }
 
     internal fun submitRegistration(
@@ -58,82 +56,71 @@ internal class SlackConversationService(
         channelId: String,
         displayName: String,
     ): Boolean {
-        val normalizedName = displayName.trim()
         if (teamId != configuredTeamId || channelId.isBlank()) return false
-        if (normalizedName.isEmpty() || normalizedName.length > MAX_DISPLAY_NAME_LENGTH) return false
+        val validation = memoryAnswerWorkflow.validateRegistration(displayName)
+        if (validation !is UserRegistrationValidationResult.Valid) return false
 
         val actor = SlackActorKey(teamId, slackUserId)
         queues.computeIfAbsent(actor) { SerialTaskQueue(executor) }
-            .execute { completeRegistration(actor, channelId, normalizedName) }
+            .execute { completeRegistration(actor, channelId, validation.displayName) }
         return true
     }
 
     private fun completeRegistration(actor: SlackActorKey, channelId: String, displayName: String) {
-        val member = runCatching {
-            householdMembers.register(
-                RegisterHouseholdMemberRequest(
+        when (
+            val result = memoryAnswerWorkflow.completeRegistration(
+                CompleteUserRegistrationRequest(
                     identity = ConversationIdentity(actor.teamId, actor.slackUserId),
                     displayName = displayName,
                 ),
-            )
-        }.getOrElse {
-            postRegistrationError(channelId)
-            return
-        }
-        val pendingMessage = pendingRegistrations.remove(actor)
-        runCatching {
-            slack.postMessage(
-                channelId = channelId,
-                text = "${member.displayName}님, 등록되었습니다.",
-                blocks = emptyList(),
-            )
-        }
-        if (pendingMessage != null) answer(pendingMessage, member.userId)
-    }
-
-    private fun requestRegistration(message: SlackDirectMessage) {
-        val actor = SlackActorKey(message.teamId, message.slackUserId)
-        if (pendingRegistrations.putIfAbsent(actor, message) != null) return
-        runCatching {
-            slack.postMessage(
-                channelId = message.channelId,
-                text = "처음 오셨네요. 답변을 받으려면 사용자 등록을 완료해주세요.",
-                blocks = registrationPromptBlocks(),
-            )
-        }.onFailure {
-            pendingRegistrations.remove(actor, message)
-        }
-    }
-
-    private fun answer(message: SlackDirectMessage, userId: UserId) {
-        val conversation = memoryConversation
-        if (conversation == null) {
-            postRetryableError(message.channelId)
-            return
-        }
-        val key = MemoryConversationRequestKey(message.channelId, message.messageTs)
-        when (
-            val result = conversation.answer(
-                MemoryConversationRequest(
-                    participant = MemoryConversationParticipant(
-                        scopeId = message.teamId,
-                        participantId = message.slackUserId,
-                        userId = userId,
-                    ),
-                    key = key,
-                    question = message.text,
-                ),
-            )
-        ) {
-            is MemoryConversationResult.AnswerReady -> {
+            ) { registration ->
                 runCatching {
-                    slack.postMessage(message.channelId, result.answer, emptyList())
-                }.onSuccess { delivery ->
-                    conversation.markDelivered(key, delivery.responseTs)
+                    slack.postMessage(
+                        channelId = registration.replyKey.streamId,
+                        text = "${registration.displayName}님, 등록되었습니다.",
+                        blocks = emptyList(),
+                    )
                 }
             }
-            MemoryConversationResult.Failed -> postRetryableError(message.channelId)
-            MemoryConversationResult.AlreadyHandled -> Unit
+        ) {
+            is UserRegistrationResult.Completed -> render(result.replyKey, result.conversation)
+            UserRegistrationResult.InvalidDisplayName,
+            UserRegistrationResult.NoPendingQuestion,
+            UserRegistrationResult.Failed,
+            -> postRegistrationError(channelId)
+        }
+    }
+
+    private fun render(
+        key: ConversationRequestKey,
+        result: MemoryAnswerResult,
+        registrationIdentity: ConversationIdentity? = null,
+    ) {
+        when (result) {
+            MemoryAnswerResult.RegistrationRequired -> runCatching {
+                slack.postMessage(
+                    channelId = key.streamId,
+                    text = "처음 오셨네요. 답변을 받으려면 사용자 등록을 완료해주세요.",
+                    blocks = registrationPromptBlocks(),
+                )
+            }.onFailure {
+                registrationIdentity?.let { identity ->
+                    memoryAnswerWorkflow.registrationPromptDeliveryFailed(identity, key)
+                }
+            }
+            MemoryAnswerResult.RegistrationPending,
+            MemoryAnswerResult.AlreadyHandled,
+            -> Unit
+            is MemoryAnswerResult.AnswerReady -> {
+                runCatching {
+                    slack.postMessage(key.streamId, result.answer, emptyList())
+                }.onSuccess { delivery ->
+                    memoryAnswerWorkflow.markDelivered(key, delivery.responseTs)
+                }
+            }
+            MemoryAnswerResult.Unavailable,
+            MemoryAnswerResult.Failed,
+            -> postRetryableError(key.streamId)
         }
     }
 
@@ -157,8 +144,12 @@ internal class SlackConversationService(
         }
     }
 
-    private fun SlackDirectMessage.identity(): ConversationIdentity =
-        ConversationIdentity(teamId, slackUserId)
+    private fun SlackDirectMessage.toApplicationRequest(): MemoryAnswerRequest =
+        MemoryAnswerRequest(
+            identity = ConversationIdentity(teamId, slackUserId),
+            key = ConversationRequestKey(channelId, messageTs),
+            question = text,
+        )
 
     private fun registrationPromptBlocks(): List<Map<String, Any>> = listOf(
         mapOf(
@@ -197,7 +188,7 @@ internal class SlackConversationService(
                 "element" to mapOf(
                     "type" to "plain_text_input",
                     "action_id" to DISPLAY_NAME_ACTION_ID,
-                    "max_length" to MAX_DISPLAY_NAME_LENGTH,
+                    "max_length" to MemoryAnswerWorkflow.MAX_DISPLAY_NAME_LENGTH,
                     "placeholder" to mapOf("type" to "plain_text", "text" to "사용할 이름을 입력하세요"),
                 ),
             ),
@@ -205,11 +196,10 @@ internal class SlackConversationService(
     )
 
     companion object {
-        const val REGISTER_ACTION_ID = "register_household_member"
-        const val REGISTER_VIEW_CALLBACK_ID = "register_household_member"
+        const val REGISTER_ACTION_ID = "register_user"
+        const val REGISTER_VIEW_CALLBACK_ID = "register_user"
         const val DISPLAY_NAME_BLOCK_ID = "display_name"
         const val DISPLAY_NAME_ACTION_ID = "display_name_input"
-        const val MAX_DISPLAY_NAME_LENGTH = 50
     }
 }
 

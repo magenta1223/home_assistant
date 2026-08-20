@@ -6,7 +6,7 @@ import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
@@ -44,7 +44,7 @@ class MemoryConversationContextProviderTest {
         val memorySearcher = MemorySearcher(
             memories = reader,
             searcher = semanticSearcher,
-            accessPolicy = HouseholdAccessPolicy { it == USER_ID },
+            accessPolicy = UserAccessPolicy { it == USER_ID },
         )
         val provider = MemoryConversationContextProvider(
             MemoryAnswerContextProvider(memorySearcher, reader, semanticSearcher),

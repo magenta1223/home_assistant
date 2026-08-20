@@ -1,5 +1,6 @@
 package com.homeassistant.application.port.input.memory.conversation
 
+import com.homeassistant.application.port.input.memory.answer.ConversationRequestKey
 import com.homeassistant.domain.identity.UserId
 
 data class MemoryConversationParticipant(
@@ -13,15 +14,7 @@ data class MemoryConversationParticipant(
     }
 }
 
-data class MemoryConversationRequestKey(
-    val streamId: String,
-    val requestId: String,
-) {
-    init {
-        require(streamId.isNotBlank()) { "streamId is required" }
-        require(requestId.isNotBlank()) { "requestId is required" }
-    }
-}
+typealias MemoryConversationRequestKey = ConversationRequestKey
 
 data class MemoryConversationRequest(
     val participant: MemoryConversationParticipant,

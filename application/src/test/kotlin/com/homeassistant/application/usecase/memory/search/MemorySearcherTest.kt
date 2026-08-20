@@ -7,7 +7,7 @@ import com.homeassistant.application.port.output.memory.search.MemoryIndex
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 
-import com.homeassistant.domain.identity.HouseholdAccessPolicy
+import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryCertainty
@@ -96,7 +96,7 @@ class MemorySearcherTest {
     ) = MemorySearcher(
         memories = FixedMemoryReader(memories),
         searcher = searcher,
-        accessPolicy = HouseholdAccessPolicy { it == userId },
+        accessPolicy = UserAccessPolicy { it == userId },
     )
 
     private fun request(limit: Int = 5) = SearchMemoriesRequest(

@@ -68,7 +68,7 @@ internal class OllamaServerRuntime(
     private val requiredExecutable: Path? = null,
     private val requiredModelsDirectory: Path? = null,
     private val embeddingProbe: (() -> Unit)? = null,
-    private val startTimeout: Duration = Duration.ofSeconds(30),
+    private val startTimeout: Duration = Duration.ofSeconds(90),
     private val enforceFreePort: Boolean = true,
     private val processStarter: OllamaProcessStarter = OllamaProcessStarter { processCommand, processEnvironment ->
         ProcessBuilder(processCommand)

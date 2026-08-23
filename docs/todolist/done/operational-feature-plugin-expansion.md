@@ -1,8 +1,9 @@
 # 운영 기능 플러그인 확장 기준
 
-- 상태: TODO
+- 상태: CANCELED
 - 우선순위: Feature P2
 - 선행 작업: Feature P0 및 Slack 지식 주입 운영 결과
+- 종료일: 2026-08-20
 
 ## 목표
 
@@ -27,3 +28,23 @@ Slack 지식 주입의 운영 결과를 바탕으로, 후속 운영 기능과 �
 
 - 검증 전 추상화를 위한 플러그인 SDK 공개
 - 모든 Slack command를 운영 기능으로 전환하는 일괄 재작성
+
+## 취소 사유
+
+일반화의 근거로 삼으려던 Slack 지식 주입과 운영 기능 공통 아키텍처를 현재 제품 방향에 따라
+취소했다. 첫 구현체의 운영 결과나 두 번째 반복 사례가 없는 상태에서 manifest/registry/plugin
+계약을 만드는 것은 이 문서의 원칙과 YAGNI에 어긋난다.
+
+## 실제 상태와 검증
+
+- 운영 기능 manifest, registry, channel capability 또는 plugin SDK는 구현되지 않았다.
+- Slack은 등록과 memory 답변 adapter 경계만 유지한다.
+- 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
+
+## 사용자에게 보이는 변화
+
+없다. 구현되지 않은 확장 계획을 현재 작업 목록에서 제거한 문서 정리다.
+
+## 남은 제약
+
+- 실제로 서로 다른 두 운영 기능 또는 채널에서 반복이 확인되면 그 근거를 바탕으로 새 계획을 작성한다.

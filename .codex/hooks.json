@@ -1,0 +1,18 @@
+{
+  "description": "Finish repository work by reconciling docs/todolist before the final response.",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pwsh -NoLogo -NoProfile -NonInteractive -File .codex/hooks/finish-docs-review.ps1",
+            "commandWindows": "powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File .codex/hooks/finish-docs-review.ps1",
+            "timeout": 30,
+            "statusMessage": "Reconciling completed work with docs/todolist"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -1,8 +1,9 @@
 # Slack 지식 주입
 
-- 상태: TODO
+- 상태: CANCELED
 - 우선순위: Feature P1
 - 선행 작업: Feature P0 Slack 운영 채널 아키텍처
+- 종료일: 2026-08-20
 
 ## 목표
 
@@ -29,3 +30,25 @@ application use case를 호출한다.
 
 - Slack을 통한 canonical memory 직접 편집
 - 대화 답변과 지식 주입의 세션·권한 상태 공유
+
+## 취소 사유
+
+현재 제품 방향은 Slack을 사용자 등록과 memory 기반 답변 채널로만 사용하고, source upload와 memory
+생성은 로컬 `/knowledge` 페이지에서만 수행하도록 명시한다. 이 계획은 그 경계를 위반하므로 구현하지
+않고 취소한다.
+
+## 실제 상태와 검증
+
+- Slack adapter에는 지식 주입 진입점, source 수집 modal, audience 선택 또는 import 실행 경로가 없다.
+- 명시적 PUBLIC/RESTRICTED audience를 사용하는 지식 주입은 로컬
+  `/api/knowledge/import/analyze` 경로에 구현되어 있다.
+- 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
+
+## 사용자에게 보이는 변화
+
+Slack에서는 등록과 기억 기반 질문만 제공한다. 지식 추가는 로컬 `/knowledge` 페이지에서 수행한다.
+
+## 남은 제약
+
+- Slack 지식 주입을 다시 도입하려면 제품 방향, 권한·감사 경계와 로컬 전용 쓰기 정책을 먼저
+  재결정해야 한다.

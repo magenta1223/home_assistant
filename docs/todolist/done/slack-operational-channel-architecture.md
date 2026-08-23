@@ -1,8 +1,9 @@
 # Slack 운영 채널 아키텍처
 
-- 상태: TODO
+- 상태: CANCELED
 - 우선순위: Feature P0
 - 선행 작업: 없음
+- 종료일: 2026-08-20
 
 ## 목표
 
@@ -48,3 +49,23 @@ Slack을 단일 슬래시 명령 모음이 아닌 웹 UI와 동등한 운영 채
 - 임의의 범용 플러그인 마켓플레이스
 - Slack 외 채널의 실제 구현
 - 기존 canonical memory 권한 모델 변경
+
+## 종료 내용
+
+계획의 1~2단계인 사용자 등록·memory 답변 application 경계 분리는 완료했고
+`slack-memory-answer-application-boundary.md`에 별도 완료 이력으로 남겼다. 나머지 운영 기능 registry,
+공통 interaction 상태, 감사 저장소와 Slack 지식 주입 기반은 구현하지 않는다.
+
+현재 제품 방향은 Slack을 사용자 등록과 memory 기반 답변 채널로만 유지하고, source upload와 memory
+생성·편집은 로컬 `/knowledge` 페이지가 담당하도록 제한한다. 따라서 Slack을 웹 UI급 운영 채널로
+확장한다는 이 계획은 취소한다.
+
+## 검증
+
+- Slack inbound에는 등록·DM memory 답변 경로만 있고 source import route나 운영 기능 registry가 없다.
+- 로컬 지식 주입은 `/knowledge`와 `/api/knowledge/import/analyze`에 유지되어 있다.
+- 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
+
+## 남은 제약
+
+- 향후 Slack의 책임을 다시 넓히려면 현재 제품 방향을 먼저 변경하고 별도 계획으로 재검토해야 한다.

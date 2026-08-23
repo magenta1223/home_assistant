@@ -41,8 +41,14 @@ function Invoke-LoggedCommand {
     )
 
     Write-DeployLog "Running: $FilePath $($Arguments -join ' ')"
-    $output = & $FilePath @Arguments 2>&1
-    $commandExitCode = $LASTEXITCODE
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = "Continue"
+        $output = & $FilePath @Arguments 2>&1
+        $commandExitCode = $LASTEXITCODE
+    } finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
     foreach ($line in $output) {
         Write-DeployLog $line.ToString()
     }

@@ -27,7 +27,7 @@ $exitCode = 0
 New-Item -ItemType Directory -Path $deployDirectory -Force | Out-Null
 
 function Write-DeployLog {
-    param([Parameter(Mandatory = $true)][string]$Message)
+    param([Parameter(Mandatory = $true)][AllowEmptyString()][string]$Message)
 
     $line = "$(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') $Message"
     Write-Host $line

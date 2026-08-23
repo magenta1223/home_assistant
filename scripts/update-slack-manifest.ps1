@@ -17,7 +17,10 @@ if ([string]::IsNullOrWhiteSpace($appId)) {
 $resolvedManifestPath = (Resolve-Path -LiteralPath $ManifestPath).Path
 $manifest = Get-Content -LiteralPath $resolvedManifestPath -Raw -Encoding UTF8
 $null = $manifest | ConvertFrom-Json
-$headers = @{ Authorization = "Bearer $configToken" }
+$curl = (Get-Command curl.exe -ErrorAction Stop).Source
+Add-Type -AssemblyName System.Web.Extensions
+$jsonSerializer = [System.Web.Script.Serialization.JavaScriptSerializer]::new()
+$jsonSerializer.MaxJsonLength = 10MB
 
 function Invoke-SlackManifestApi {
     param(
@@ -25,18 +28,42 @@ function Invoke-SlackManifestApi {
         [Parameter(Mandatory = $true)][hashtable]$Payload
     )
 
-    $body = $Payload | ConvertTo-Json -Compress -Depth 20
-    $response = Invoke-RestMethod `
-        -Method Post `
-        -Uri "https://slack.com/api/$Method" `
-        -Headers $headers `
-        -ContentType "application/json; charset=utf-8" `
-        -TimeoutSec $TimeoutSeconds `
-        -Body $body
+    Write-Host "Calling Slack API $Method."
+    $serializablePayload = [System.Collections.Generic.Dictionary[string,object]]::new()
+    foreach ($entry in $Payload.GetEnumerator()) {
+        $serializablePayload.Add([string]$entry.Key, [string]$entry.Value)
+    }
+    $body = $jsonSerializer.Serialize($serializablePayload)
+    $bodyPath = [System.IO.Path]::GetTempFileName()
+    try {
+        [System.IO.File]::WriteAllText(
+            $bodyPath,
+            $body,
+            [System.Text.UTF8Encoding]::new($false)
+        )
+        $responseLines = & $curl `
+            --max-time $TimeoutSeconds `
+            --silent `
+            --show-error `
+            --request POST `
+            --header "Authorization: Bearer $configToken" `
+            --header "Content-Type: application/json; charset=utf-8" `
+            --data-binary "@$bodyPath" `
+            "https://slack.com/api/$Method"
+        if ($LASTEXITCODE -ne 0) {
+            throw "$Method request failed with curl exit code $LASTEXITCODE"
+        }
+    } finally {
+        Remove-Item -LiteralPath $bodyPath -Force -ErrorAction SilentlyContinue
+    }
+
+    $responseBody = $responseLines -join [Environment]::NewLine
+    $response = $responseBody | ConvertFrom-Json
     if (-not $response.ok) {
         $details = if ($response.errors) { $response.errors | ConvertTo-Json -Compress -Depth 20 } else { $response.error }
         throw "$Method failed: $details"
     }
+    Write-Host "Slack API $Method succeeded."
     return $response
 }
 

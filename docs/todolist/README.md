@@ -83,5 +83,5 @@
 | [slack-memory-answer-application-boundary.md](done/slack-memory-answer-application-boundary.md) | 사용자 등록·최초 질문 재개·memory 답변 routing을 application으로 이동하고 Slack을 변환·렌더링 adapter로 제한 |
 | [regression-test-baseline.md](done/regression-test-baseline.md) | 데이터 손실·권한 누출·검색 결과 소실을 막는 최소 회귀 테스트 기준선 확립 |
 | [slack-operational-channel-architecture.md](done/slack-operational-channel-architecture.md) | 범용 운영 채널 계획은 취소하고 작은 slash-command registry 경계만 도입 |
-| [slack-knowledge-injection.md](done/slack-knowledge-injection.md) | `/knowedge` modal을 기존 `MemoryAnalysis` 흐름에 연결 |
+| [slack-knowledge-injection.md](done/slack-knowledge-injection.md) | `/knowledge` modal을 기존 `MemoryAnalysis` 흐름에 연결 |
 | [operational-feature-plugin-expansion.md](done/operational-feature-plugin-expansion.md) | manifest·명령 registry까지만 도입하고 범용 plugin 일반화는 보류 |

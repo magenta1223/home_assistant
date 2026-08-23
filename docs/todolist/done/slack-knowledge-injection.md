@@ -33,7 +33,7 @@ application use case를 호출한다.
 
 ## 실제 상태와 검증
 
-- manifest에 `/knowedge` slash command와 `commands` scope를 선언했다.
+- manifest에 `/knowledge` slash command와 `commands` scope를 선언했다.
 - 등록된 사용자만 modal을 열 수 있고 source 이름·형식·PUBLIC/RESTRICTED audience·본문을 받는다.
 - `KnowledgeInjectionWorkflow`가 Slack identity를 application user로 해석한 뒤 기존
   `MemoryAnalysis`를 호출한다.
@@ -43,7 +43,7 @@ application use case를 호출한다.
 
 ## 사용자에게 보이는 변화
 
-등록된 사용자는 Slack에서 `/knowedge`를 실행해 지식을 추가할 수 있다. 로컬 `/knowledge` 흐름도
+등록된 사용자는 Slack에서 `/knowledge`를 실행해 지식을 추가할 수 있다. 로컬 `/knowledge` 흐름도
 그대로 유지된다.
 
 ## 남은 제약

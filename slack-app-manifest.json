@@ -16,7 +16,7 @@
     },
     "slash_commands": [
       {
-        "command": "/knowedge",
+        "command": "/knowledge",
         "description": "새 지식을 분석하고 저장합니다.",
         "usage_hint": "입력창을 엽니다",
         "should_escape": false

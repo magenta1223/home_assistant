@@ -301,7 +301,7 @@ internal class SlackKnowledgeInjectionCommand(
         field(blockId, actionId)?.selectedOptions.orEmpty().mapNotNullTo(linkedSetOf()) { it.value }
 
     companion object {
-        const val COMMAND_NAME = "/knowedge"
+        const val COMMAND_NAME = "/knowledge"
         const val VIEW_CALLBACK_ID = "knowledge_injection_submit"
         const val SOURCE_NAME_BLOCK_ID = "knowledge_source_name"
         const val SOURCE_NAME_ACTION_ID = "knowledge_source_name_input"

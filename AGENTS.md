@@ -70,7 +70,7 @@ and stops Qdrant with the server. Docker is not used. `setupRuntime` prepares bo
 The project is now a **home second brain**, not a general chat assistant. The primary flow is:
 
 1. Explicitly inject plain text or Kakao source records through the local knowledge page or the
-   registered-user Slack `/knowedge` modal.
+   registered-user Slack `/knowledge` modal.
 2. Select PUBLIC access or an immutable set of authorized application user IDs for each source.
 3. Analyze source records and immediately save the resulting topics and memories as canonical records.
 4. Search and retrieve canonical memories with their source evidence and optional topic context.
@@ -78,7 +78,7 @@ The project is now a **home second brain**, not a general chat assistant. The pr
 6. Answer memory-backed questions through registered Slack DMs using short-lived Codex threads.
 
 Slack supports member registration, memory-backed answers, and explicit knowledge injection through
-the `/knowedge` slash-command modal. An unknown member's first DM receives a registration button; its
+the `/knowledge` slash-command modal. An unknown member's first DM receives a registration button; its
 modal collects a display name, persists the authenticated Slack identity, and then resumes the
 original question. Canonical memory editing remains on the local knowledge page. Slack Interactivity
 must be enabled for registration and knowledge modals; Socket Mode carries those interactions.

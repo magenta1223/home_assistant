@@ -62,7 +62,7 @@ registry만 구현하고, 업무 규칙은 `KnowledgeInjectionWorkflow`에 유�
 
 ## 검증
 
-- Slack inbound에는 등록·DM memory 답변과 `/knowedge` 지식 주입 경로가 있다.
+- Slack inbound에는 등록·DM memory 답변과 `/knowledge` 지식 주입 경로가 있다.
 - 로컬 지식 주입은 `/knowledge`와 `/api/knowledge/import/analyze`에 그대로 유지되어 있다.
 - 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
 

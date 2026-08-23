@@ -1,5 +1,6 @@
 param(
-    [string]$ManifestPath = (Join-Path $PSScriptRoot "..\slack-app-manifest.json")
+    [string]$ManifestPath = (Join-Path $PSScriptRoot "..\slack-app-manifest.json"),
+    [ValidateRange(5, 300)][int]$TimeoutSeconds = 30
 )
 
 $ErrorActionPreference = "Stop"
@@ -30,6 +31,7 @@ function Invoke-SlackManifestApi {
         -Uri "https://slack.com/api/$Method" `
         -Headers $headers `
         -ContentType "application/json; charset=utf-8" `
+        -TimeoutSec $TimeoutSeconds `
         -Body $body
     if (-not $response.ok) {
         $details = if ($response.errors) { $response.errors | ConvertTo-Json -Compress -Depth 20 } else { $response.error }

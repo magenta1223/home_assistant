@@ -96,7 +96,9 @@ function Stop-RuntimeTask {
     Start-Sleep -Seconds 2
     $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
         Where-Object { $_.LocalPort -in $RuntimePorts })
-    $processIds = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
+    $processIds = @($listeners |
+        Sort-Object { if ($_.LocalPort -eq 8080) { 0 } else { 1 } } |
+        Select-Object -ExpandProperty OwningProcess -Unique)
     $runtimeProcesses = @()
 
     foreach ($processId in $processIds) {
@@ -113,9 +115,15 @@ function Stop-RuntimeTask {
             continue
         }
         Write-DeployLog "Stopping project runtime process tree PID $($process.ProcessId)."
-        $null = Invoke-LoggedCommand -FilePath "taskkill.exe" -Arguments @(
-            "/PID", $process.ProcessId.ToString(), "/T", "/F"
-        )
+        $output = & taskkill.exe /PID $process.ProcessId /T /F 2>&1
+        $commandExitCode = $LASTEXITCODE
+        foreach ($line in $output) {
+            Write-DeployLog $line.ToString()
+        }
+        if ($commandExitCode -ne 0 -and
+            $null -ne (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue)) {
+            throw "Failed to stop project runtime PID $($process.ProcessId)."
+        }
     }
 
     $deadline = [DateTime]::UtcNow.AddSeconds(30)

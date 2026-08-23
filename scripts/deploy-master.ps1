@@ -5,6 +5,7 @@ param(
     [string]$RepositoryPath = (Join-Path $PSScriptRoot ".."),
     [string]$RuntimeTaskName = "HomeSecondBrain",
     [string]$HealthUrl = "http://127.0.0.1:8080/health",
+    [int[]]$RuntimePorts = @(8080, 6333, 11435),
     [ValidateRange(10, 600)][int]$HealthTimeoutSeconds = 180
 )
 
@@ -77,21 +78,58 @@ function Get-RuntimeTask {
 
 function Stop-RuntimeTask {
     $task = Get-RuntimeTask
-    if ($task.State -ne "Running") {
-        return
+    if ($task.State -eq "Running") {
+        Write-DeployLog "Stopping scheduled task '$RuntimeTaskName'."
+        Stop-ScheduledTask -TaskName $RuntimeTaskName -TaskPath "\"
+
+        $deadline = [DateTime]::UtcNow.AddSeconds(30)
+        do {
+            Start-Sleep -Milliseconds 500
+            $task = Get-RuntimeTask
+        } while ($task.State -eq "Running" -and [DateTime]::UtcNow -lt $deadline)
+
+        if ($task.State -eq "Running") {
+            throw "Scheduled task '$RuntimeTaskName' did not stop within 30 seconds."
+        }
     }
 
-    Write-DeployLog "Stopping scheduled task '$RuntimeTaskName'."
-    Stop-ScheduledTask -TaskName $RuntimeTaskName -TaskPath "\"
+    Start-Sleep -Seconds 2
+    $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+        Where-Object { $_.LocalPort -in $RuntimePorts })
+    $processIds = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
+    $runtimeProcesses = @()
+
+    foreach ($processId in $processIds) {
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction Stop
+        $evidence = "$($process.ExecutablePath) $($process.CommandLine)"
+        if ($evidence.IndexOf($repository, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
+            throw "Refusing to stop PID $processId because it is not owned by repository '$repository'."
+        }
+        $runtimeProcesses += $process
+    }
+
+    foreach ($process in $runtimeProcesses) {
+        if ($null -eq (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue)) {
+            continue
+        }
+        Write-DeployLog "Stopping project runtime process tree PID $($process.ProcessId)."
+        $null = Invoke-LoggedCommand -FilePath "taskkill.exe" -Arguments @(
+            "/PID", $process.ProcessId.ToString(), "/T", "/F"
+        )
+    }
 
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
+        $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
+            Where-Object { $_.LocalPort -in $RuntimePorts })
+        if ($listeners.Count -eq 0) {
+            break
+        }
         Start-Sleep -Milliseconds 500
-        $task = Get-RuntimeTask
-    } while ($task.State -eq "Running" -and [DateTime]::UtcNow -lt $deadline)
+    } while ([DateTime]::UtcNow -lt $deadline)
 
-    if ($task.State -eq "Running") {
-        throw "Scheduled task '$RuntimeTaskName' did not stop within 30 seconds."
+    if ($listeners.Count -ne 0) {
+        throw "Project runtime ports remained open after shutdown: $($listeners.LocalPort -join ',')."
     }
 }
 

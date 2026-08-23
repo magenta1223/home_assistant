@@ -46,6 +46,8 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
 - local `master`가 `origin/master`로 fast-forward될 수 없으면 중단한다.
 - 전체 테스트가 실패하면 실행 중인 런타임 작업을 재시작하거나 배포본을 변경하지 않는다.
 - 새 배포본 생성이 실패하면 런타임 작업을 다시 시작하려고 시도한다.
+- 작업 스케줄러가 남긴 자식 프로세스는 실행 파일 또는 명령줄이 저장소 경로에 속하는지 확인한
+  뒤에만 프로세스 트리 단위로 종료한다.
 - `/health`가 성공한 경우에만 성공 SHA를 기록한다. 실패한 SHA는 다음 주기에 다시 시도한다.
 - Git checkout을 되돌리는 자동 rollback은 수행하지 않는다. health 실패 시 로그를 확인하고 수동으로
   이전 정상 커밋을 복구한다.

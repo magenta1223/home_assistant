@@ -2,7 +2,7 @@
 
 [CmdletBinding()]
 param(
-    [string]$RepositoryPath = (Join-Path $PSScriptRoot ".."),
+    [string]$RepositoryPath,
     [string]$RuntimeTaskName = "HomeSecondBrain",
     [string]$HealthUrl = "http://127.0.0.1:8080/health",
     [int[]]$RuntimePorts = @(8080, 6333, 11435),
@@ -12,6 +12,9 @@ param(
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
 
+if ([string]::IsNullOrWhiteSpace($RepositoryPath)) {
+    $RepositoryPath = Join-Path $PSScriptRoot ".."
+}
 $repository = (Resolve-Path -LiteralPath $RepositoryPath).Path
 $deployDirectory = Join-Path $repository "runtime\deploy"
 $logPath = Join-Path $deployDirectory "deploy.log"

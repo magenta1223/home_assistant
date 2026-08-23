@@ -17,6 +17,9 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 # One-time Windows setup for every project-managed runtime, including Qdrant
 .\gradlew.bat setupRuntime
 
+# Validate and update the Slack app from slack-app-manifest.json
+.\gradlew.bat updateSlackManifest
+
 # Run all tests
 ./gradlew test
 
@@ -66,22 +69,23 @@ and stops Qdrant with the server. Docker is not used. `setupRuntime` prepares bo
 
 The project is now a **home second brain**, not a general chat assistant. The primary flow is:
 
-1. Explicitly inject plain text or Kakao source records through the local knowledge page.
+1. Explicitly inject plain text or Kakao source records through the local knowledge page or the
+   registered-user Slack `/knowedge` modal.
 2. Select PUBLIC access or an immutable set of authorized application user IDs for each source.
 3. Analyze source records and immediately save the resulting topics and memories as canonical records.
 4. Search and retrieve canonical memories with their source evidence and optional topic context.
 5. Register application users from their first Slack DM using a name-entry modal.
 6. Answer memory-backed questions through registered Slack DMs using short-lived Codex threads.
 
-Slack is a member-registration and memory-backed answer channel only. An unknown member's first DM
-receives a registration button; its modal collects a display name, persists the authenticated Slack
-identity, and then resumes the original question. Do not add source upload, memory creation, or
-memory editing workflows to Slack; those belong to the local knowledge page. Slack Interactivity
-must be enabled for the registration button and modal; Socket Mode carries those interactions.
+Slack supports member registration, memory-backed answers, and explicit knowledge injection through
+the `/knowedge` slash-command modal. An unknown member's first DM receives a registration button; its
+modal collects a display name, persists the authenticated Slack identity, and then resumes the
+original question. Canonical memory editing remains on the local knowledge page. Slack Interactivity
+must be enabled for registration and knowledge modals; Socket Mode carries those interactions.
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
-Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack maps signed events to a technology-neutral conversation identity and only relays registration, requests, and answers. The application layer resolves that identity through the persisted user registry and owns registration state, pending-question resumption, authorization, memory retrieval, idempotency, and session expiry.
+Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack maps signed events and interactions to a technology-neutral conversation identity and only relays registration, answer, and knowledge-injection requests. The application layer resolves that identity through the persisted user registry and owns registration state, pending-question resumption, authorization, memory analysis and retrieval, idempotency, and session expiry.
 
 ## Module Architecture
 
@@ -106,7 +110,7 @@ application-driven integrations in `adapter-outbound`.
 
 ### application
 
-- `port/input/` - use-case entry contracts plus their request and result models, grouped by feature. `MemoryAnswerWorkflow` owns user resolution, registration, memory-answer routing, and channel delivery state.
+- `port/input/` - use-case entry contracts plus their request and result models, grouped by feature. `MemoryAnswerWorkflow` owns user resolution, registration, memory-answer routing, and channel delivery state; `KnowledgeInjectionWorkflow` resolves channel identities before memory analysis.
 - `port/output/` - technology-neutral capabilities required from persistence, semantic search,
   extraction, placement, and conversation adapters.
 - `usecase/` - technology-independent orchestration that implements input ports and uses output ports.
@@ -125,7 +129,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 - `http/` - Ktor routes and HTTP request/response DTO mapping.
 - `kakao/` - Kakao export parsing at the source-format boundary.
-- `slack/` - Slack Socket Mode, user-registration blocks/modals, DM event mapping, transport queueing, and application-result delivery. It does not own user or memory-answer workflow state.
+- `slack/` - Slack Socket Mode, slash-command registry, registration/knowledge modals, DM event mapping, transport queueing, and application-result delivery. It does not own user, memory-answer, or knowledge-analysis business state.
 - `text/` - direct-text source parsing at the inbound boundary.
 
 ### adapter-outbound

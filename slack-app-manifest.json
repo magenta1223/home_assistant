@@ -1,0 +1,48 @@
+{
+  "display_information": {
+    "name": "Home Second Brain",
+    "description": "가족 지식을 저장하고 기억을 바탕으로 답변합니다.",
+    "background_color": "#1E5B46"
+  },
+  "features": {
+    "app_home": {
+      "home_tab_enabled": false,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "home-second-brain",
+      "always_online": false
+    },
+    "slash_commands": [
+      {
+        "command": "/knowedge",
+        "description": "새 지식을 분석하고 저장합니다.",
+        "usage_hint": "입력창을 엽니다",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "chat:write",
+        "commands",
+        "im:history"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": [
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

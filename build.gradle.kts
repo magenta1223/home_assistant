@@ -25,6 +25,22 @@ tasks.register("setupRuntime") {
     dependsOn("setupEmbedding", "setupQdrant")
 }
 
+tasks.register<Exec>("updateSlackManifest") {
+    group = "application"
+    description = "Validates and updates the Slack app from slack-app-manifest.json."
+    workingDir(rootDir)
+    commandLine(
+        "powershell.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        rootProject.file("scripts/update-slack-manifest.ps1").absolutePath,
+    )
+}
+
 subprojects {
     group = "com.homeassistant"
     version = "1.0.0"

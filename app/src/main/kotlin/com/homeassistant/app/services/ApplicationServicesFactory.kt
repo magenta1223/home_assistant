@@ -10,6 +10,7 @@ import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddin
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
+import com.homeassistant.application.usecase.memory.analysis.KnowledgeInjectionWorkflowService
 import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
@@ -81,6 +82,10 @@ object ApplicationServicesFactory {
             ),
             memoryIndexing = memoryIndexing,
         )
+        val knowledgeInjectionWorkflow = KnowledgeInjectionWorkflowService(
+            users = users,
+            memoryAnalysis = memoryAnalysisService,
+        )
         val memorySearcherImpl = MemorySearcher(
             memories = repositories.canonicalMemories,
             accessPolicy = accessPolicy,
@@ -115,7 +120,7 @@ object ApplicationServicesFactory {
             if (memoryConversation == null) {
                 log.info("Slack memory answers disabled: local Codex CLI is unavailable or its timeout is invalid")
             }
-            SlackRuntimeFactory.create(config, memoryAnswerWorkflow)
+            SlackRuntimeFactory.create(config, memoryAnswerWorkflow, knowledgeInjectionWorkflow)
         }
         if (slackRuntime == null) {
             log.info("Slack Socket Mode disabled: Slack token or team configuration is missing")

@@ -56,16 +56,16 @@ Slack을 단일 슬래시 명령 모음이 아닌 웹 UI와 동등한 운영 채
 `slack-memory-answer-application-boundary.md`에 별도 완료 이력으로 남겼다. 나머지 운영 기능 registry,
 공통 interaction 상태, 감사 저장소와 Slack 지식 주입 기반은 구현하지 않는다.
 
-현재 제품 방향은 Slack을 사용자 등록과 memory 기반 답변 채널로만 유지하고, source upload와 memory
-생성·편집은 로컬 `/knowledge` 페이지가 담당하도록 제한한다. 따라서 Slack을 웹 UI급 운영 채널로
-확장한다는 이 계획은 취소한다.
+범용 운영 기능 registry, 공통 interaction 상태와 감사 저장소를 한 번에 도입하는 계획은 취소한다.
+이후 명시적으로 승인된 지식 주입 범위에서는 작은 `SlackSlashCommand` 계약과 중복을 거부하는
+registry만 구현하고, 업무 규칙은 `KnowledgeInjectionWorkflow`에 유지했다.
 
 ## 검증
 
-- Slack inbound에는 등록·DM memory 답변 경로만 있고 source import route나 운영 기능 registry가 없다.
-- 로컬 지식 주입은 `/knowledge`와 `/api/knowledge/import/analyze`에 유지되어 있다.
+- Slack inbound에는 등록·DM memory 답변과 `/knowedge` 지식 주입 경로가 있다.
+- 로컬 지식 주입은 `/knowledge`와 `/api/knowledge/import/analyze`에 그대로 유지되어 있다.
 - 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
 
 ## 남은 제약
 
-- 향후 Slack의 책임을 다시 넓히려면 현재 제품 방향을 먼저 변경하고 별도 계획으로 재검토해야 한다.
+- 후속 command는 실제 반복이 확인된 범위만 `SlackSlashCommand` 구현으로 추가한다.

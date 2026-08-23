@@ -18,6 +18,9 @@ interface SlackClient {
     /** Opens a modal in response to a Slack interaction trigger. */
     fun openModal(triggerId: String, view: Map<String, Any>)
 
+    /** Sends an ephemeral follow-up through a Slack interaction response URL. */
+    fun respond(responseUrl: String, text: String)
+
 }
 
 data class SlackMessageDelivery(val responseTs: String)
@@ -63,6 +66,20 @@ internal class SlackApiClient(
         }
         if (!response.isOk) {
             throw SlackMessageDeliveryException(response.error ?: "MODAL_API_REJECTED")
+        }
+    }
+
+    override fun respond(responseUrl: String, text: String) {
+        val payload = mapOf(
+            "response_type" to "ephemeral",
+            "text" to text,
+        )
+        val response = slack.send(
+            responseUrl,
+            JsonSerializer.json.encodeToString(payload.toJsonElement()),
+        )
+        if (response.code?.let { it in 200..299 } != true) {
+            throw SlackMessageDeliveryException("RESPONSE_URL_REJECTED_${response.code}")
         }
     }
 

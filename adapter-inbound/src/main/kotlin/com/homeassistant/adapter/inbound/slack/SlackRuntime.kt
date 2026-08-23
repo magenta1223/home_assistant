@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.inbound.slack
 
 import com.homeassistant.application.port.input.memory.answer.MemoryAnswerWorkflow
+import com.homeassistant.application.port.input.memory.analysis.KnowledgeInjectionWorkflow
 import com.homeassistant.configuration.AppConfig as HomeAppConfig
 import com.homeassistant.configuration.Env
 import com.slack.api.bolt.App
@@ -41,6 +42,7 @@ object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,
         memoryAnswerWorkflow: MemoryAnswerWorkflow,
+        knowledgeInjectionWorkflow: KnowledgeInjectionWorkflow,
     ): SlackRuntime {
         val slackClient = SlackApiClient(config.botToken)
         val executor = Executors.newFixedThreadPool(2)
@@ -50,8 +52,19 @@ object SlackRuntimeFactory {
             slack = slackClient,
             executor = executor,
         )
+        val slashCommands = SlackSlashCommandRegistry(
+            listOf(
+                SlackKnowledgeInjectionCommand(
+                    configuredTeamId = config.teamId,
+                    workflow = knowledgeInjectionWorkflow,
+                    slack = slackClient,
+                    executor = executor,
+                ),
+            ),
+        )
         val listeners = SlackListeners(
             memoryAnswerAdapter = memoryAnswerAdapter,
+            slashCommands = slashCommands,
         )
         return SlackSocketRuntime(
             config = config,

@@ -31,14 +31,14 @@ Slack 지식 주입의 운영 결과를 바탕으로, 후속 운영 기능과 �
 
 ## 취소 사유
 
-일반화의 근거로 삼으려던 Slack 지식 주입과 운영 기능 공통 아키텍처를 현재 제품 방향에 따라
-취소했다. 첫 구현체의 운영 결과나 두 번째 반복 사례가 없는 상태에서 manifest/registry/plugin
-계약을 만드는 것은 이 문서의 원칙과 YAGNI에 어긋난다.
+Slack 지식 주입에는 command 이름과 interaction callback 중복만 막는 작은 registry가 필요해
+구현했다. 하지만 서로 다른 두 번째 기능의 운영 결과가 없는 상태에서 channel capability,
+manifest/plugin SDK까지 일반화하는 것은 이 문서의 원칙과 YAGNI에 어긋나므로 넓은 계획은 취소한다.
 
 ## 실제 상태와 검증
 
-- 운영 기능 manifest, registry, channel capability 또는 plugin SDK는 구현되지 않았다.
-- Slack은 등록과 memory 답변 adapter 경계만 유지한다.
+- Slack app manifest와 작은 slash-command registry만 구현되었다.
+- 범용 channel capability, workflow plugin 또는 공개 plugin SDK는 구현하지 않았다.
 - 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
 
 ## 사용자에게 보이는 변화

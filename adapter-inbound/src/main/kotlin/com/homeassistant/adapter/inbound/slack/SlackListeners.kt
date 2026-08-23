@@ -6,8 +6,10 @@ import com.slack.api.model.event.MessageEvent
 
 internal class SlackListeners(
     private val memoryAnswerAdapter: SlackMemoryAnswerAdapter?,
+    private val slashCommands: SlackSlashCommandRegistry,
 ) {
     fun register(app: App) {
+        slashCommands.register(app)
         memoryAnswerAdapter?.let {
             registerDirectMessages(app, it)
             registerUserRegistration(app, it)

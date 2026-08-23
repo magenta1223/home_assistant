@@ -33,7 +33,6 @@
 | 문서 | 목적 |
 |---|---|
 | [memory-query-performance.md](p2/memory-query-performance.md) | 전체 조회와 N+1 query 제거 |
-| [regression-test-baseline.md](p2/regression-test-baseline.md) | 안정화 시점의 최소 회귀 테스트 |
 
 ## 운영 채널 기능 계획
 
@@ -48,20 +47,16 @@
 
 | 문서 | 목적 |
 |---|---|
-| [slack-operational-channel-architecture.md](feature/p0/slack-operational-channel-architecture.md) | Slack을 웹 UI급 운영 채널로 확장하기 위한 채널·기능·권한·감사·플러그인 공통 구조 결정 |
 | [api-intelligence-and-billing-model.md](feature/p0/api-intelligence-and-billing-model.md) | 외부 고객 제품의 공식 모델 API 지능 계약과 BYOK·관리형 과금 모델 결정 |
 
 ### Feature P1
 
-| 문서 | 목적 |
-|---|---|
-| [slack-knowledge-injection.md](feature/p1/slack-knowledge-injection.md) | 공통 구조의 첫 구현체로 Slack 지식 주입 workflow 도입 |
+현재 등록된 작업 없음.
 
 ### Feature P2
 
 | 문서 | 목적 |
 |---|---|
-| [operational-feature-plugin-expansion.md](feature/p2/operational-feature-plugin-expansion.md) | 후속 운영 기능을 플러그인 계약으로 확장하는 기준 마련 |
 | [multi-family-group-expansion.md](feature/p2/multi-family-group-expansion.md) | 약 1,000개 가족 그룹을 위한 로컬 우선·중앙 조율·비동기 작업 운영 구조 결정 |
 
 ## 완료된 작업
@@ -86,3 +81,7 @@
 | [usecase-specific-application-exceptions.md](done/usecase-specific-application-exceptions.md) | application 예외 생성과 노출을 use case별 input 계약으로 제한 |
 | [unified-evidence-grounded-answer.md](done/unified-evidence-grounded-answer.md) | HTTP 답변 경로 폐기 결정에 따라 통합 계획 취소; Slack은 공통 memory conversation 유스케이스를 중개 |
 | [slack-memory-answer-application-boundary.md](done/slack-memory-answer-application-boundary.md) | 사용자 등록·최초 질문 재개·memory 답변 routing을 application으로 이동하고 Slack을 변환·렌더링 adapter로 제한 |
+| [regression-test-baseline.md](done/regression-test-baseline.md) | 데이터 손실·권한 누출·검색 결과 소실을 막는 최소 회귀 테스트 기준선 확립 |
+| [slack-operational-channel-architecture.md](done/slack-operational-channel-architecture.md) | 범용 운영 채널 계획은 취소하고 작은 slash-command registry 경계만 도입 |
+| [slack-knowledge-injection.md](done/slack-knowledge-injection.md) | `/knowedge` modal을 기존 `MemoryAnalysis` 흐름에 연결 |
+| [operational-feature-plugin-expansion.md](done/operational-feature-plugin-expansion.md) | manifest·명령 registry까지만 도입하고 범용 plugin 일반화는 보류 |

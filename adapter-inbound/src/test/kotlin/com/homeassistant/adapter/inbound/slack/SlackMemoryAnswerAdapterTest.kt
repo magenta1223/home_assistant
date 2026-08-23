@@ -211,6 +211,8 @@ class SlackMemoryAnswerAdapterTest {
         override fun openModal(triggerId: String, view: Map<String, Any>) {
             modals += triggerId to view
         }
+
+        override fun respond(responseUrl: String, text: String) = Unit
     }
 
     private data class PostedMessage(

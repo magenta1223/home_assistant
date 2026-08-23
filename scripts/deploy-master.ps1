@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param(
     [string]$RepositoryPath = (Join-Path $PSScriptRoot ".."),
-    [string]$ServiceName = "HomeSecondBrain",
+    [string]$RuntimeTaskName = "HomeSecondBrain",
     [string]$HealthUrl = "http://127.0.0.1:8080/health",
     [ValidateRange(10, 600)][int]$HealthTimeoutSeconds = 180
 )
@@ -71,6 +71,35 @@ function Test-Health {
     return $false
 }
 
+function Get-RuntimeTask {
+    return Get-ScheduledTask -TaskName $RuntimeTaskName -TaskPath "\" -ErrorAction Stop
+}
+
+function Stop-RuntimeTask {
+    $task = Get-RuntimeTask
+    if ($task.State -ne "Running") {
+        return
+    }
+
+    Write-DeployLog "Stopping scheduled task '$RuntimeTaskName'."
+    Stop-ScheduledTask -TaskName $RuntimeTaskName -TaskPath "\"
+
+    $deadline = [DateTime]::UtcNow.AddSeconds(30)
+    do {
+        Start-Sleep -Milliseconds 500
+        $task = Get-RuntimeTask
+    } while ($task.State -eq "Running" -and [DateTime]::UtcNow -lt $deadline)
+
+    if ($task.State -eq "Running") {
+        throw "Scheduled task '$RuntimeTaskName' did not stop within 30 seconds."
+    }
+}
+
+function Start-RuntimeTask {
+    Write-DeployLog "Starting scheduled task '$RuntimeTaskName'."
+    Start-ScheduledTask -TaskName $RuntimeTaskName -TaskPath "\"
+}
+
 try {
     try {
         $lockHandle = [System.IO.File]::Open(
@@ -120,42 +149,54 @@ try {
             throw "Local master is not a strict fast-forward of origin/master. Resolve it manually."
         }
 
-        $null = Get-Service -Name $ServiceName -ErrorAction Stop
+        $null = Get-RuntimeTask
         $null = Invoke-Git -Arguments @("merge", "--ff-only", "origin/master")
         $localSha = Invoke-Git -Arguments @("rev-parse", "HEAD")
     }
 
-    if ($deployedSha -eq $localSha) {
-        Write-DeployLog "No new commit to deploy ($localSha)."
-        return
-    }
-
-    $service = Get-Service -Name $ServiceName -ErrorAction Stop
-
-    Push-Location -LiteralPath $repository
-    try {
-        $null = Invoke-LoggedCommand -FilePath $gradle -Arguments @("--no-daemon", "test")
-    } finally {
-        Pop-Location
-    }
-
-    $service.Refresh()
-    if ($service.Status -eq [System.ServiceProcess.ServiceControllerStatus]::Stopped) {
-        Write-DeployLog "Starting Windows service '$ServiceName'."
-        Start-Service -Name $ServiceName
+    $null = Get-RuntimeTask
+    $requiresDeployment = $deployedSha -ne $localSha
+    if ($requiresDeployment) {
+        Push-Location -LiteralPath $repository
+        try {
+            $null = Invoke-LoggedCommand -FilePath $gradle -Arguments @("--no-daemon", "test")
+        } finally {
+            Pop-Location
+        }
     } else {
-        Write-DeployLog "Restarting Windows service '$ServiceName'."
-        Restart-Service -Name $ServiceName -Force
+        Write-DeployLog "No new commit to deploy ($localSha); performing the scheduled daily restart."
     }
+
+    Stop-RuntimeTask
+
+    if ($requiresDeployment) {
+        try {
+            Push-Location -LiteralPath $repository
+            try {
+                $null = Invoke-LoggedCommand -FilePath $gradle -Arguments @("--no-daemon", ":app:installDist")
+            } finally {
+                Pop-Location
+            }
+        } catch {
+            Start-RuntimeTask
+            throw
+        }
+    }
+
+    Start-RuntimeTask
 
     if (-not (Test-Health)) {
-        throw "Service '$ServiceName' did not become healthy within $HealthTimeoutSeconds seconds."
+        throw "Scheduled task '$RuntimeTaskName' did not become healthy within $HealthTimeoutSeconds seconds."
     }
 
-    $temporaryShaPath = "$deployedShaPath.tmp"
-    Set-Content -LiteralPath $temporaryShaPath -Value $localSha -Encoding ASCII
-    Move-Item -LiteralPath $temporaryShaPath -Destination $deployedShaPath -Force
-    Write-DeployLog "Deployment completed successfully: $localSha"
+    if ($requiresDeployment) {
+        $temporaryShaPath = "$deployedShaPath.tmp"
+        Set-Content -LiteralPath $temporaryShaPath -Value $localSha -Encoding ASCII
+        Move-Item -LiteralPath $temporaryShaPath -Destination $deployedShaPath -Force
+        Write-DeployLog "Deployment completed successfully: $localSha"
+    } else {
+        Write-DeployLog "Scheduled daily restart completed successfully: $localSha"
+    }
 } catch {
     $exitCode = 1
     Write-DeployLog "Deployment failed: $($_.Exception.Message)"

@@ -261,6 +261,29 @@ internal class SlackKnowledgeInjectionCommand(
                     ),
                 ),
                 inputBlock(
+                    FILE_BLOCK_ID,
+                    "카카오톡 내보내기 파일 (.txt, 선택)",
+                    mapOf(
+                        "type" to "file_input",
+                        "action_id" to FILE_ACTION_ID,
+                        "filetypes" to listOf("txt"),
+                        "max_files" to 1,
+                    ),
+                    optional = true,
+                ),
+                inputBlock(
+                    TEXT_BLOCK_ID,
+                    "내용 붙여넣기 (선택)",
+                    mapOf(
+                        "type" to "plain_text_input",
+                        "action_id" to TEXT_ACTION_ID,
+                        "multiline" to true,
+                        "max_length" to MAX_DATA_LENGTH,
+                        "placeholder" to plainText("직접 작성하거나 카카오톡 내보내기 내용을 붙여 넣으세요."),
+                    ),
+                    optional = true,
+                ),
+                inputBlock(
                     AUDIENCE_BLOCK_ID,
                     "열람 범위",
                     mapOf(
@@ -282,29 +305,6 @@ internal class SlackKnowledgeInjectionCommand(
                         "options" to viewerOptions,
                         "initial_options" to listOf(requesterOption),
                         "placeholder" to plainText("사용자를 선택하세요"),
-                    ),
-                    optional = true,
-                ),
-                inputBlock(
-                    TEXT_BLOCK_ID,
-                    "내용 붙여넣기 (선택)",
-                    mapOf(
-                        "type" to "plain_text_input",
-                        "action_id" to TEXT_ACTION_ID,
-                        "multiline" to true,
-                        "max_length" to MAX_DATA_LENGTH,
-                        "placeholder" to plainText("직접 작성하거나 카카오톡 내보내기 내용을 붙여 넣으세요."),
-                    ),
-                    optional = true,
-                ),
-                inputBlock(
-                    FILE_BLOCK_ID,
-                    "카카오톡 내보내기 파일 (.txt, 선택)",
-                    mapOf(
-                        "type" to "file_input",
-                        "action_id" to FILE_ACTION_ID,
-                        "filetypes" to listOf("txt"),
-                        "max_files" to 1,
                     ),
                     optional = true,
                 ),

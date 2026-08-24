@@ -62,6 +62,15 @@ class SlackKnowledgeInjectionCommandTest {
         assertEquals("file_input", fileElement["type"])
         assertEquals(listOf("txt"), fileElement["filetypes"])
         assertEquals(1, fileElement["max_files"])
+        assertEquals(
+            listOf(
+                SlackKnowledgeInjectionCommand.SOURCE_NAME_BLOCK_ID,
+                SlackKnowledgeInjectionCommand.SOURCE_TYPE_BLOCK_ID,
+                SlackKnowledgeInjectionCommand.FILE_BLOCK_ID,
+                SlackKnowledgeInjectionCommand.TEXT_BLOCK_ID,
+            ),
+            blocks.take(4).map { it["block_id"] },
+        )
 
         val errors = command.submit(
             teamId = "team-1",

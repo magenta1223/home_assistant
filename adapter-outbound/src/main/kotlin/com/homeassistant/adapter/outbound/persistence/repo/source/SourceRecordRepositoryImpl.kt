@@ -62,7 +62,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             if (existing != null) {
                 val existingAccess = if (existing[SourceRecordTable.audienceExplicit]) {
                     existing.toAccess().also { storedAccess ->
-                        if (storedAccess != access) throw SourceAccessConflictException(source.name)
+                        if (storedAccess != access) throw SourceAccessConflictException(source.name, storedAccess)
                     }
                 } else {
                     assignAccess(existing[SourceRecordTable.id], access)

@@ -3,6 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
@@ -34,6 +35,26 @@ import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 class MemoryAnalysisRetryTest {
+    @Test
+    fun `audience conflict reports the existing access scope`() = runBlocking {
+        val databasePath = Files.createTempFile("analysis-audience-conflict", ".db")
+        try {
+            val db = DatabaseFactory.init(databasePath.toString())
+            val sourceRecords = SourceRecordRepositoryImpl(db)
+            val request = request("same", MemoryAccess.restricted(listOf(USER_ID)))
+            sourceRecords.saveAll(request.source.source, request.source.records, MemoryAccess.PUBLIC)
+
+            val failure = assertFailsWith<ConflictingSourceAudienceException> {
+                service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingMemoryWriter())
+                    .execute(request)
+            }
+
+            assertEquals(MemoryAccess.PUBLIC, failure.existingAccess)
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
     @Test
     fun `unknown audience user is rejected before source data is stored`() = runBlocking {
         val databasePath = Files.createTempFile("analysis-invalid-audience", ".db")

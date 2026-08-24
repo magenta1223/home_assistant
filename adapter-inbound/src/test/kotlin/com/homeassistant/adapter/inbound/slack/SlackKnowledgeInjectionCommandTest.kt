@@ -7,6 +7,7 @@ import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRe
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.slack.api.model.File as SlackFile
 import com.slack.api.model.view.ViewState
@@ -21,6 +22,35 @@ import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SlackKnowledgeInjectionCommandTest {
+    @Test
+    fun `audience conflict tells the user exactly which viewers to select`() {
+        val message = SlackKnowledgeInjectionCommand.conflictingAudienceMessage(
+            MemoryAccess.restricted(listOf(UserId("member-2"), UserId("member-1"))),
+            listOf(
+                RegisteredUser(UserId("member-1"), "첫째"),
+                RegisteredUser(UserId("member-2"), "둘째"),
+            ),
+        )
+
+        assertEquals(
+            "같은 내용이 이미 지정 사용자 범위로 등록되어 있습니다.\n" +
+                "다시 등록하려면 ‘지정 사용자’를 선택한 뒤 열람 사용자를 다음과 정확히 " +
+                "맞춰주세요: 둘째, 첫째.\n" +
+                "기존 열람 범위는 재등록으로 변경할 수 없습니다.",
+            message,
+        )
+    }
+
+    @Test
+    fun `public audience conflict tells the user to select public`() {
+        assertEquals(
+            "같은 내용이 이미 전체 공개로 등록되어 있습니다.\n" +
+                "다시 등록하려면 열람 범위에서 ‘전체 공개’를 선택해주세요. " +
+                "기존 열람 범위는 재등록으로 변경할 수 없습니다.",
+            SlackKnowledgeInjectionCommand.conflictingAudienceMessage(MemoryAccess.PUBLIC, emptyList()),
+        )
+    }
+
     @Test
     fun `repository manifest declares the implemented command`() {
         val manifestPath = generateSequence(Path.of("").toAbsolutePath()) { it.parent }

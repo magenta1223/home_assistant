@@ -17,6 +17,7 @@ import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.slack.api.bolt.App
 import com.slack.api.model.File
@@ -187,8 +188,13 @@ internal class SlackKnowledgeInjectionCommand(
             "사용자 등록이 필요합니다. 앱과의 DM에서 등록을 완료한 뒤 다시 시도해주세요."
         } catch (_: DuplicateSourceRecordsException) {
             "이 소스의 모든 레코드는 이미 분석되었습니다."
-        } catch (_: ConflictingSourceAudienceException) {
-            "같은 소스가 다른 열람 범위로 이미 등록되어 있습니다."
+        } catch (error: ConflictingSourceAudienceException) {
+            val viewers = when (val preparation = workflow.prepare(input.identity)) {
+                is KnowledgeInjectionPreparation.Ready ->
+                    (listOf(preparation.requester) + preparation.availableViewers).distinctBy { it.userId }
+                else -> emptyList()
+            }
+            conflictingAudienceMessage(error.existingAccess, viewers)
         } catch (_: InvalidMemoryAudienceException) {
             "열람 권한이 없는 사용자가 포함되어 있습니다."
         } catch (_: UserAccessDeniedException) {
@@ -376,6 +382,27 @@ internal class SlackKnowledgeInjectionCommand(
         private const val MAX_KAKAO_FILE_BYTES = 5 * 1024 * 1024
         private val SOURCE_TYPES = setOf(SOURCE_TYPE_TEXT, SOURCE_TYPE_KAKAO)
         private val AUDIENCES = setOf(AUDIENCE_RESTRICTED, AUDIENCE_PUBLIC)
+
+        internal fun conflictingAudienceMessage(
+            existingAccess: MemoryAccess,
+            availableViewers: List<RegisteredUser>,
+        ): String = when (existingAccess.visibility) {
+            MemoryVisibility.PUBLIC ->
+                "같은 내용이 이미 전체 공개로 등록되어 있습니다.\n" +
+                    "다시 등록하려면 열람 범위에서 ‘전체 공개’를 선택해주세요. " +
+                    "기존 열람 범위는 재등록으로 변경할 수 없습니다."
+            MemoryVisibility.RESTRICTED -> {
+                val displayNameByUserId = availableViewers.associate { it.userId.value to it.displayName }
+                val viewerNames = existingAccess.allowedUserIds
+                    .map { displayNameByUserId[it] ?: it }
+                    .sorted()
+                    .joinToString(", ")
+                "같은 내용이 이미 지정 사용자 범위로 등록되어 있습니다.\n" +
+                    "다시 등록하려면 ‘지정 사용자’를 선택한 뒤 열람 사용자를 다음과 정확히 " +
+                    "맞춰주세요: $viewerNames.\n" +
+                    "기존 열람 범위는 재등록으로 변경할 수 없습니다."
+            }
+        }
     }
 }
 

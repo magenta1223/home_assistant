@@ -40,4 +40,5 @@ class InvalidMemoryAudienceException internal constructor(
 
 class ConflictingSourceAudienceException internal constructor(
     val sourceName: String,
+    val existingAccess: MemoryAccess,
 ) : RuntimeException("source already exists with a different audience: $sourceName")

@@ -39,8 +39,9 @@ class MemoryAnalysisService(
                 sourceRecords.saveAll(parsedSource.source, parsedSource.records, request.access)
             }
         } catch (error: MemoryAnalysisUnavailableException) {
-            if (error.cause is SourceAccessConflictException) {
-                throw ConflictingSourceAudienceException(parsedSource.source.name)
+            val conflict = error.cause as? SourceAccessConflictException
+            if (conflict != null) {
+                throw ConflictingSourceAudienceException(parsedSource.source.name, conflict.existingAccess)
             }
             throw error
         }

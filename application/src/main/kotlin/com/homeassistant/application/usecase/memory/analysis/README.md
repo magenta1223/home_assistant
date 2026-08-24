@@ -49,27 +49,33 @@ sequenceDiagram
         Analysis->>Access: audience 인가
     end
     Analysis->>Sources: saveAll(source, records, access)
-    Sources-->>Analysis: recordsToAnalyze + contextRecords
-    alt 새 분석 대상이 없음
-        Analysis-->>Caller: DuplicateSourceRecordsException
-    else 분석 대상 존재
-        Analysis->>Extractor: analyze(SourceDocument)
-        Extractor-->>Analysis: MemoryProposal 목록
-        Analysis->>Persister: persist(userId, proposals, recordIds)
-        Persister-->>Analysis: canonical memories
-        par best-effort indexing
-            Analysis->>Indexing: processAvailable()
-        and best-effort placement
-            Analysis->>Placement: place(saved memories)
+    alt 동일 record가 다른 열람 범위로 저장됨
+        Sources-->>Analysis: SourceAccessConflictException(existingAccess)
+        Analysis-->>Caller: ConflictingSourceAudienceException(existingAccess)
+    else 저장 성공
+        Sources-->>Analysis: recordsToAnalyze + contextRecords
+        alt 새 분석 대상이 없음
+            Analysis-->>Caller: DuplicateSourceRecordsException
+        else 분석 대상 존재
+            Analysis->>Extractor: analyze(SourceDocument)
+            Extractor-->>Analysis: MemoryProposal 목록
+            Analysis->>Persister: persist(userId, proposals, recordIds)
+            Persister-->>Analysis: canonical memories
+            par best-effort indexing
+                Analysis->>Indexing: processAvailable()
+            and best-effort placement
+                Analysis->>Placement: place(saved memories)
+            end
+            Analysis-->>Caller: MemoryAnalysisResult
         end
-        Analysis-->>Caller: MemoryAnalysisResult
     end
 ```
 
 ## 실패 계약
 
 - 등록되지 않은 작성자 또는 audience는 domain access exception/application audience exception으로 거절한다.
-- 동일 source가 다른 access scope로 이미 저장돼 있으면 `ConflictingSourceAudienceException`으로 변환한다.
+- 동일 source record가 다른 access scope로 이미 저장돼 있으면 기존 scope를 포함한
+  `ConflictingSourceAudienceException`으로 변환하여 호출자가 정확한 재등록 방법을 안내할 수 있게 한다.
 - source 저장, extraction, canonical commit 실패는 `MemoryAnalysisUnavailableException`으로 변환한다.
 - indexing과 placement 실패는 canonical commit을 취소하지 않으며 후속 복구 대상으로 남긴다.
 - 채널 identity가 등록된 application user로 해석되지 않으면 지식 주입을 시작하거나 실행하지 않는다.

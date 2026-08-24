@@ -19,6 +19,7 @@ interface SourceRecordRepository {
 
 class SourceAccessConflictException(
     val sourceName: String,
+    val existingAccess: MemoryAccess,
 ) : RuntimeException("Source records already exist with a different access scope: $sourceName")
 
 data class SourceRecordSaveResult(

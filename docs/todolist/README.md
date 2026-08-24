@@ -20,7 +20,9 @@
 
 ### P0
 
-현재 등록된 작업 없음.
+| 문서 | 목적 |
+|---|---|
+| [qdrant-windows-app-control-reliability.md](p0/qdrant-windows-app-control-reliability.md) | Windows App Control의 unsigned Qdrant 재평가 차단으로 인한 서버 기동 불능을 복구하고 재발 방지 |
 
 ### P1
 
@@ -32,6 +34,7 @@
 
 | 문서 | 목적 |
 |---|---|
+| [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application에서 serialization·logging 구현 결합을 제거하고 외부 전달 경계를 명시적인 port로 강화 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 전체 조회와 N+1 query 제거 |
 
 ## 운영 채널 기능 계획

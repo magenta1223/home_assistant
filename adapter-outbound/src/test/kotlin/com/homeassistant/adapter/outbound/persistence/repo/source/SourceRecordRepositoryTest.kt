@@ -22,19 +22,21 @@ class SourceRecordRepositoryTest {
         try {
             val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("text", "knowledge")
+            val existingAccess = MemoryAccess.restricted(listOf(UserId("member-1")))
             repository.saveAll(
                 source,
                 listOf(draft("same")),
-                MemoryAccess.restricted(listOf(UserId("member-1"))),
+                existingAccess,
             )
 
-            assertFailsWith<SourceAccessConflictException> {
+            val failure = assertFailsWith<SourceAccessConflictException> {
                 repository.saveAll(
                     source,
                     listOf(draft("same")),
                     MemoryAccess.restricted(listOf(UserId("member-2"))),
                 )
             }
+            assertEquals(existingAccess, failure.existingAccess)
         } finally {
             Files.deleteIfExists(databasePath)
         }

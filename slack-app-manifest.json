@@ -18,7 +18,7 @@
       {
         "command": "/knowledge",
         "description": "새 지식을 분석하고 저장합니다.",
-        "usage_hint": "입력창을 엽니다",
+        "usage_hint": "텍스트 또는 카카오톡 파일 입력창을 엽니다",
         "should_escape": false
       }
     ]
@@ -28,6 +28,7 @@
       "bot": [
         "chat:write",
         "commands",
+        "files:read",
         "im:history"
       ]
     }

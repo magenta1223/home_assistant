@@ -19,6 +19,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.slack.api.bolt.App
+import com.slack.api.model.File
 import com.slack.api.model.view.ViewState
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
@@ -97,55 +98,91 @@ internal class SlackKnowledgeInjectionCommand(
     ): Map<String, String> {
         val metadata = runCatching {
             JsonSerializer.json.decodeFromString<KnowledgeModalMetadata>(privateMetadata)
-        }.getOrNull() ?: return mapOf(DATA_BLOCK_ID to "요청 정보를 확인할 수 없습니다. 다시 시작해주세요.")
+        }.getOrNull() ?: return mapOf(TEXT_BLOCK_ID to "요청 정보를 확인할 수 없습니다. 다시 시작해주세요.")
         if (teamId != configuredTeamId || metadata.teamId != teamId || metadata.slackUserId != slackUserId) {
-            return mapOf(DATA_BLOCK_ID to "요청한 사용자를 확인할 수 없습니다. 다시 시작해주세요.")
+            return mapOf(TEXT_BLOCK_ID to "요청한 사용자를 확인할 수 없습니다. 다시 시작해주세요.")
         }
 
         val sourceName = values.value(SOURCE_NAME_BLOCK_ID, SOURCE_NAME_ACTION_ID).trim()
-        val text = values.value(DATA_BLOCK_ID, DATA_ACTION_ID).trim()
+        val text = values.value(TEXT_BLOCK_ID, TEXT_ACTION_ID).trim()
+        val files = values.files(FILE_BLOCK_ID, FILE_ACTION_ID)
+        val fileId = files.singleOrNull()?.id?.takeIf(String::isNotBlank)
         val sourceType = values.selectedValue(SOURCE_TYPE_BLOCK_ID, SOURCE_TYPE_ACTION_ID)
         val audience = values.selectedValue(AUDIENCE_BLOCK_ID, AUDIENCE_ACTION_ID)
         val selectedUserIds = values.selectedValues(VIEWERS_BLOCK_ID, VIEWERS_ACTION_ID)
         val errors = linkedMapOf<String, String>()
         if (sourceName.isEmpty()) errors[SOURCE_NAME_BLOCK_ID] = "소스 이름을 입력해주세요."
-        if (text.isEmpty()) errors[DATA_BLOCK_ID] = "지식 데이터를 입력해주세요."
         if (sourceType !in SOURCE_TYPES) errors[SOURCE_TYPE_BLOCK_ID] = "지원하는 소스 형식을 선택해주세요."
+        if (files.size > 1) errors[FILE_BLOCK_ID] = "파일은 하나만 첨부해주세요."
+        if (files.size == 1 && fileId == null) errors[FILE_BLOCK_ID] = "첨부한 파일 정보를 확인할 수 없습니다."
+        when (sourceType) {
+            SOURCE_TYPE_TEXT -> {
+                if (text.isEmpty()) errors[TEXT_BLOCK_ID] = "지식 데이터를 입력해주세요."
+                if (files.isNotEmpty()) errors[FILE_BLOCK_ID] = "파일은 카카오톡 내보내기 형식에서만 사용할 수 있습니다."
+            }
+            SOURCE_TYPE_KAKAO -> when {
+                text.isEmpty() && files.isEmpty() ->
+                    errors[TEXT_BLOCK_ID] = "내용을 붙여 넣거나 카카오톡 내보내기 파일을 첨부해주세요."
+                text.isNotEmpty() && files.isNotEmpty() ->
+                    errors[FILE_BLOCK_ID] = "붙여넣기와 파일 중 하나만 선택해주세요."
+            }
+        }
         if (audience !in AUDIENCES) errors[AUDIENCE_BLOCK_ID] = "열람 범위를 선택해주세요."
         if (audience == AUDIENCE_RESTRICTED && selectedUserIds.isEmpty()) {
             errors[VIEWERS_BLOCK_ID] = "열람할 사용자를 한 명 이상 선택해주세요."
         }
         if (errors.isNotEmpty()) return errors
 
-        val source = runCatching { parseSource(sourceType, sourceName, text) }
-            .getOrElse { return mapOf(DATA_BLOCK_ID to (it.message ?: "소스 데이터를 읽을 수 없습니다.")) }
-        if (source.records.isEmpty()) {
-            return mapOf(DATA_BLOCK_ID to "분석할 소스 레코드를 찾지 못했습니다.")
-        }
         val access = if (audience == AUDIENCE_PUBLIC) {
             MemoryAccess.PUBLIC
         } else {
             runCatching { MemoryAccess.restricted(selectedUserIds.map(::UserId)) }
                 .getOrElse { return mapOf(VIEWERS_BLOCK_ID to "유효한 열람자를 선택해주세요.") }
         }
-        val request = KnowledgeInjectionRequest(
+        val input = PendingKnowledgeInjection(
             identity = ConversationIdentity(teamId, slackUserId),
-            source = source,
+            sourceType = sourceType,
+            sourceName = sourceName,
+            text = text.takeIf(String::isNotEmpty),
+            fileId = fileId,
             access = access,
         )
         return runCatching {
-            executor.execute { analyze(metadata.responseUrl, request) }
+            executor.execute { analyze(metadata.responseUrl, input) }
         }.fold(
             onSuccess = { emptyMap() },
-            onFailure = { mapOf(DATA_BLOCK_ID to "분석 작업을 시작하지 못했습니다. 다시 시도해주세요.") },
+            onFailure = {
+                val blockId = if (input.fileId == null) TEXT_BLOCK_ID else FILE_BLOCK_ID
+                mapOf(blockId to "분석 작업을 시작하지 못했습니다. 다시 시도해주세요.")
+            },
         )
     }
 
-    private fun analyze(responseUrl: String, request: KnowledgeInjectionRequest) {
+    private fun analyze(responseUrl: String, input: PendingKnowledgeInjection) {
         runCatching { slack.respond(responseUrl, "지식을 분석하고 있습니다…") }
         val message = try {
+            val text = input.text ?: slack.readTextFile(input.fileId.orEmpty(), MAX_KAKAO_FILE_BYTES).text
+            val source = try {
+                parseSource(input.sourceType, input.sourceName, text)
+            } catch (error: IllegalArgumentException) {
+                throw InvalidSourceDataException(error)
+            }
+            if (source.records.isEmpty()) throw NoSourceRecordsException()
+            val request = KnowledgeInjectionRequest(input.identity, source, input.access)
             val result = runBlocking { workflow.execute(request) }
             "완료: 소스 레코드 ${result.importedRecordCount}개, 메모리 ${result.memoryCount}개를 저장했습니다."
+        } catch (error: SlackFileReadException) {
+            when (error.category) {
+                "UNSUPPORTED_FILE_TYPE" -> "카카오톡 내보내기 .txt 파일만 사용할 수 있습니다."
+                "FILE_TOO_LARGE" -> "파일은 5MB 이하여야 합니다."
+                "INVALID_UTF8" -> "UTF-8로 저장된 카카오톡 내보내기 파일만 사용할 수 있습니다."
+                "EMPTY_FILE" -> "첨부한 파일이 비어 있습니다."
+                else -> "첨부한 파일을 읽지 못했습니다. 다시 시도해주세요."
+            }
+        } catch (_: NoSourceRecordsException) {
+            "분석할 소스 레코드를 찾지 못했습니다."
+        } catch (_: InvalidSourceDataException) {
+            "소스 데이터를 읽을 수 없습니다. 입력 형식을 확인해주세요."
         } catch (_: KnowledgeInjectionRegistrationRequiredException) {
             "사용자 등록이 필요합니다. 앱과의 DM에서 등록을 완료한 뒤 다시 시도해주세요."
         } catch (_: DuplicateSourceRecordsException) {
@@ -249,15 +286,27 @@ internal class SlackKnowledgeInjectionCommand(
                     optional = true,
                 ),
                 inputBlock(
-                    DATA_BLOCK_ID,
-                    "데이터",
+                    TEXT_BLOCK_ID,
+                    "내용 붙여넣기 (선택)",
                     mapOf(
                         "type" to "plain_text_input",
-                        "action_id" to DATA_ACTION_ID,
+                        "action_id" to TEXT_ACTION_ID,
                         "multiline" to true,
                         "max_length" to MAX_DATA_LENGTH,
-                        "placeholder" to plainText("지식 텍스트 또는 카카오톡 내보내기 내용을 붙여 넣으세요."),
+                        "placeholder" to plainText("직접 작성하거나 카카오톡 내보내기 내용을 붙여 넣으세요."),
                     ),
+                    optional = true,
+                ),
+                inputBlock(
+                    FILE_BLOCK_ID,
+                    "카카오톡 내보내기 파일 (.txt, 선택)",
+                    mapOf(
+                        "type" to "file_input",
+                        "action_id" to FILE_ACTION_ID,
+                        "filetypes" to listOf("txt"),
+                        "max_files" to 1,
+                    ),
+                    optional = true,
                 ),
             ),
         )
@@ -300,6 +349,9 @@ internal class SlackKnowledgeInjectionCommand(
     private fun Map<String, Map<String, ViewState.Value>>.selectedValues(blockId: String, actionId: String): Set<String> =
         field(blockId, actionId)?.selectedOptions.orEmpty().mapNotNullTo(linkedSetOf()) { it.value }
 
+    private fun Map<String, Map<String, ViewState.Value>>.files(blockId: String, actionId: String): List<File> =
+        field(blockId, actionId)?.files.orEmpty()
+
     companion object {
         const val COMMAND_NAME = "/knowledge"
         const val VIEW_CALLBACK_ID = "knowledge_injection_submit"
@@ -311,18 +363,34 @@ internal class SlackKnowledgeInjectionCommand(
         const val AUDIENCE_ACTION_ID = "knowledge_audience_select"
         const val VIEWERS_BLOCK_ID = "knowledge_viewers"
         const val VIEWERS_ACTION_ID = "knowledge_viewers_select"
-        const val DATA_BLOCK_ID = "knowledge_data"
-        const val DATA_ACTION_ID = "knowledge_data_input"
+        const val TEXT_BLOCK_ID = "knowledge_text"
+        const val TEXT_ACTION_ID = "knowledge_text_input"
+        const val FILE_BLOCK_ID = "knowledge_file"
+        const val FILE_ACTION_ID = "knowledge_file_input"
         private const val SOURCE_TYPE_TEXT = "TEXT"
         private const val SOURCE_TYPE_KAKAO = "KAKAO"
         private const val AUDIENCE_RESTRICTED = "RESTRICTED"
         private const val AUDIENCE_PUBLIC = "PUBLIC"
         private const val MAX_SOURCE_NAME_LENGTH = 100
         private const val MAX_DATA_LENGTH = 3_000
+        private const val MAX_KAKAO_FILE_BYTES = 5 * 1024 * 1024
         private val SOURCE_TYPES = setOf(SOURCE_TYPE_TEXT, SOURCE_TYPE_KAKAO)
         private val AUDIENCES = setOf(AUDIENCE_RESTRICTED, AUDIENCE_PUBLIC)
     }
 }
+
+private data class PendingKnowledgeInjection(
+    val identity: ConversationIdentity,
+    val sourceType: String,
+    val sourceName: String,
+    val text: String?,
+    val fileId: String?,
+    val access: MemoryAccess,
+)
+
+private class NoSourceRecordsException : RuntimeException()
+
+private class InvalidSourceDataException(cause: Throwable) : RuntimeException(cause)
 
 internal data class SlackKnowledgeCommandInvocation(
     val teamId: String,

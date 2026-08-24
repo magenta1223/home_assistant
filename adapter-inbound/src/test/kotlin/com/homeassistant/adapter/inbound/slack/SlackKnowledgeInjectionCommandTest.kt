@@ -8,6 +8,7 @@ import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryVisibility
+import com.slack.api.model.File as SlackFile
 import com.slack.api.model.view.ViewState
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -30,6 +31,9 @@ class SlackKnowledgeInjectionCommandTest {
             .map { it.jsonObject["command"]!!.jsonPrimitive.content }
 
         assertTrue(SlackKnowledgeInjectionCommand.COMMAND_NAME in commands)
+        val scopes = manifest["oauth_config"]!!.jsonObject["scopes"]!!.jsonObject["bot"]!!.jsonArray
+            .map { it.jsonPrimitive.content }
+        assertTrue("files:read" in scopes)
     }
 
     @Test
@@ -52,6 +56,12 @@ class SlackKnowledgeInjectionCommandTest {
         assertNull(command.open(invocation))
         val modal = slack.modals.single().second
         assertEquals(SlackKnowledgeInjectionCommand.VIEW_CALLBACK_ID, modal["callback_id"])
+        val blocks = modal["blocks"] as List<Map<String, Any>>
+        val fileBlock = blocks.single { it["block_id"] == SlackKnowledgeInjectionCommand.FILE_BLOCK_ID }
+        val fileElement = fileBlock["element"] as Map<String, Any>
+        assertEquals("file_input", fileElement["type"])
+        assertEquals(listOf("txt"), fileElement["filetypes"])
+        assertEquals(1, fileElement["max_files"])
 
         val errors = command.submit(
             teamId = "team-1",
@@ -121,12 +131,153 @@ class SlackKnowledgeInjectionCommandTest {
         assertTrue(workflow.requests.isEmpty())
     }
 
-    private fun validValues(viewerId: String?): Map<String, Map<String, ViewState.Value>> = mapOf(
+    @Test
+    fun `kakao export can be submitted as a text file`() {
+        val requester = RegisteredUser(UserId("member-1"), "첫째")
+        val workflow = RecordingKnowledgeInjectionWorkflow(
+            KnowledgeInjectionPreparation.Ready(requester, listOf(requester)),
+        )
+        val slack = RecordingSlackClient(
+            mapOf("file-1" to SlackTextFile("KakaoTalk_20260824.txt", KAKAO_EXPORT)),
+        )
+        val command = SlackKnowledgeInjectionCommand("team-1", workflow, slack, Runnable::run)
+        command.open(
+            SlackKnowledgeCommandInvocation(
+                "team-1",
+                "slack-1",
+                "channel-1",
+                "trigger-1",
+                "https://hooks.slack.test/response",
+            ),
+        )
+
+        val errors = command.submit(
+            "team-1",
+            "slack-1",
+            slack.modals.single().second["private_metadata"] as String,
+            validValues("member-1", sourceType = "KAKAO", text = "", fileId = "file-1"),
+        )
+
+        assertTrue(errors.isEmpty())
+        assertEquals(listOf("file-1"), slack.readFileIds)
+        val request = workflow.requests.single()
+        assertEquals("kakao", request.source.source.type)
+        assertEquals(1, request.source.records.size)
+    }
+
+    @Test
+    fun `kakao export can still be submitted as pasted text`() {
+        val requester = RegisteredUser(UserId("member-1"), "첫째")
+        val workflow = RecordingKnowledgeInjectionWorkflow(
+            KnowledgeInjectionPreparation.Ready(requester, listOf(requester)),
+        )
+        val slack = RecordingSlackClient()
+        val command = SlackKnowledgeInjectionCommand("team-1", workflow, slack, Runnable::run)
+        command.open(
+            SlackKnowledgeCommandInvocation(
+                "team-1",
+                "slack-1",
+                "channel-1",
+                "trigger-1",
+                "https://hooks.slack.test/response",
+            ),
+        )
+
+        val errors = command.submit(
+            "team-1",
+            "slack-1",
+            slack.modals.single().second["private_metadata"] as String,
+            validValues("member-1", sourceType = "KAKAO", text = KAKAO_EXPORT),
+        )
+
+        assertTrue(errors.isEmpty())
+        assertTrue(slack.readFileIds.isEmpty())
+        assertEquals("kakao", workflow.requests.single().source.source.type)
+    }
+
+    @Test
+    fun `file upload is rejected for direct text source`() {
+        val requester = RegisteredUser(UserId("member-1"), "첫째")
+        val workflow = RecordingKnowledgeInjectionWorkflow(
+            KnowledgeInjectionPreparation.Ready(requester, listOf(requester)),
+        )
+        val slack = RecordingSlackClient()
+        val command = SlackKnowledgeInjectionCommand("team-1", workflow, slack, Runnable::run)
+        command.open(
+            SlackKnowledgeCommandInvocation(
+                "team-1",
+                "slack-1",
+                "channel-1",
+                "trigger-1",
+                "https://hooks.slack.test/response",
+            ),
+        )
+
+        val errors = command.submit(
+            "team-1",
+            "slack-1",
+            slack.modals.single().second["private_metadata"] as String,
+            validValues("member-1", fileId = "file-1"),
+        )
+
+        assertEquals(
+            "파일은 카카오톡 내보내기 형식에서만 사용할 수 있습니다.",
+            errors[SlackKnowledgeInjectionCommand.FILE_BLOCK_ID],
+        )
+        assertTrue(workflow.requests.isEmpty())
+    }
+
+    @Test
+    fun `kakao export requires either pasted text or one file`() {
+        val requester = RegisteredUser(UserId("member-1"), "첫째")
+        val workflow = RecordingKnowledgeInjectionWorkflow(
+            KnowledgeInjectionPreparation.Ready(requester, listOf(requester)),
+        )
+        val slack = RecordingSlackClient()
+        val command = SlackKnowledgeInjectionCommand("team-1", workflow, slack, Runnable::run)
+        command.open(
+            SlackKnowledgeCommandInvocation(
+                "team-1",
+                "slack-1",
+                "channel-1",
+                "trigger-1",
+                "https://hooks.slack.test/response",
+            ),
+        )
+        val metadata = slack.modals.single().second["private_metadata"] as String
+
+        val missing = command.submit(
+            "team-1",
+            "slack-1",
+            metadata,
+            validValues("member-1", sourceType = "KAKAO", text = ""),
+        )
+        val ambiguous = command.submit(
+            "team-1",
+            "slack-1",
+            metadata,
+            validValues("member-1", sourceType = "KAKAO", text = KAKAO_EXPORT, fileId = "file-1"),
+        )
+
+        assertEquals(
+            "내용을 붙여 넣거나 카카오톡 내보내기 파일을 첨부해주세요.",
+            missing[SlackKnowledgeInjectionCommand.TEXT_BLOCK_ID],
+        )
+        assertEquals("붙여넣기와 파일 중 하나만 선택해주세요.", ambiguous[SlackKnowledgeInjectionCommand.FILE_BLOCK_ID])
+        assertTrue(workflow.requests.isEmpty())
+    }
+
+    private fun validValues(
+        viewerId: String?,
+        sourceType: String = "TEXT",
+        text: String = "현관 비밀번호는 매달 바뀐다",
+        fileId: String? = null,
+    ): Map<String, Map<String, ViewState.Value>> = mapOf(
         SlackKnowledgeInjectionCommand.SOURCE_NAME_BLOCK_ID to mapOf(
             SlackKnowledgeInjectionCommand.SOURCE_NAME_ACTION_ID to value("가족 규칙"),
         ),
         SlackKnowledgeInjectionCommand.SOURCE_TYPE_BLOCK_ID to mapOf(
-            SlackKnowledgeInjectionCommand.SOURCE_TYPE_ACTION_ID to selected("TEXT"),
+            SlackKnowledgeInjectionCommand.SOURCE_TYPE_ACTION_ID to selected(sourceType),
         ),
         SlackKnowledgeInjectionCommand.AUDIENCE_BLOCK_ID to mapOf(
             SlackKnowledgeInjectionCommand.AUDIENCE_ACTION_ID to selected("RESTRICTED"),
@@ -134,8 +285,11 @@ class SlackKnowledgeInjectionCommandTest {
         SlackKnowledgeInjectionCommand.VIEWERS_BLOCK_ID to mapOf(
             SlackKnowledgeInjectionCommand.VIEWERS_ACTION_ID to selectedMany(viewerId),
         ),
-        SlackKnowledgeInjectionCommand.DATA_BLOCK_ID to mapOf(
-            SlackKnowledgeInjectionCommand.DATA_ACTION_ID to value("현관 비밀번호는 매달 바뀐다"),
+        SlackKnowledgeInjectionCommand.TEXT_BLOCK_ID to mapOf(
+            SlackKnowledgeInjectionCommand.TEXT_ACTION_ID to value(text),
+        ),
+        SlackKnowledgeInjectionCommand.FILE_BLOCK_ID to mapOf(
+            SlackKnowledgeInjectionCommand.FILE_ACTION_ID to files(fileId),
         ),
     )
 
@@ -147,6 +301,10 @@ class SlackKnowledgeInjectionCommandTest {
 
     private fun selectedMany(value: String?) = ViewState.Value().apply {
         selectedOptions = value?.let { listOf(ViewState.SelectedOption().apply { this.value = it }) }.orEmpty()
+    }
+
+    private fun files(fileId: String?) = ViewState.Value().apply {
+        files = fileId?.let { listOf(SlackFile().apply { id = it }) }.orEmpty()
     }
 
     private class RecordingKnowledgeInjectionWorkflow(
@@ -173,9 +331,12 @@ class SlackKnowledgeInjectionCommandTest {
         }
     }
 
-    private class RecordingSlackClient : SlackClient {
+    private class RecordingSlackClient(
+        private val files: Map<String, SlackTextFile> = emptyMap(),
+    ) : SlackClient {
         val modals = mutableListOf<Pair<String, Map<String, Any>>>()
         val responses = mutableListOf<Pair<String, String>>()
+        val readFileIds = mutableListOf<String>()
 
         override fun postMessage(
             channelId: String,
@@ -191,5 +352,13 @@ class SlackKnowledgeInjectionCommandTest {
         override fun respond(responseUrl: String, text: String) {
             responses += responseUrl to text
         }
+
+        override fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile {
+            readFileIds += fileId
+            return files.getValue(fileId)
+        }
+    }
+    private companion object {
+        const val KAKAO_EXPORT = "2026년 8월 24일 오전 10:00, 엄마 : 현관 비밀번호는 매달 바뀐다"
     }
 }

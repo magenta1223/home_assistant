@@ -4,6 +4,9 @@ import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.common.json.JsonSerializer.toJsonElement
 import com.slack.api.Slack
 import kotlinx.serialization.encodeToString
+import java.net.URI
+import java.nio.ByteBuffer
+import java.nio.charset.CodingErrorAction
 
 /** Provides the Slack operations used by inbound workflows. */
 interface SlackClient {
@@ -21,13 +24,24 @@ interface SlackClient {
     /** Sends an ephemeral follow-up through a Slack interaction response URL. */
     fun respond(responseUrl: String, text: String)
 
+    /** Downloads one Slack-hosted UTF-8 text file without persisting it locally. */
+    fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile
 }
 
 data class SlackMessageDelivery(val responseTs: String)
 
+data class SlackTextFile(
+    val name: String,
+    val text: String,
+)
+
 class SlackMessageDeliveryException(
     val category: String,
 ) : RuntimeException("Slack message delivery failed: $category")
+
+class SlackFileReadException(
+    val category: String,
+) : RuntimeException("Slack file read failed: $category")
 
 internal class SlackApiClient(
     private val botToken: String,
@@ -82,6 +96,51 @@ internal class SlackApiClient(
             throw SlackMessageDeliveryException("RESPONSE_URL_REJECTED_${response.code}")
         }
     }
+
+    override fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile {
+        require(fileId.isNotBlank()) { "fileId is required" }
+        require(maxBytes > 0) { "maxBytes must be positive" }
+        val info = slack.methods(botToken).filesInfo { request -> request.file(fileId) }
+        if (!info.isOk) throw SlackFileReadException(info.error ?: "FILE_INFO_REJECTED")
+        val file = info.file ?: throw SlackFileReadException("MISSING_FILE_INFO")
+        val name = file.name?.takeIf(String::isNotBlank)
+            ?: throw SlackFileReadException("MISSING_FILE_NAME")
+        if (!name.endsWith(".txt", ignoreCase = true)) {
+            throw SlackFileReadException("UNSUPPORTED_FILE_TYPE")
+        }
+        if (file.size?.let { it > maxBytes } == true) {
+            throw SlackFileReadException("FILE_TOO_LARGE")
+        }
+        val downloadUrl = file.urlPrivateDownload?.takeIf(String::isNotBlank)
+            ?: file.urlPrivate?.takeIf(String::isNotBlank)
+            ?: throw SlackFileReadException("MISSING_DOWNLOAD_URL")
+        val uri = runCatching { URI(downloadUrl) }
+            .getOrElse { throw SlackFileReadException("INVALID_DOWNLOAD_URL") }
+        if (uri.scheme != "https" || !isSlackHost(uri.host)) {
+            throw SlackFileReadException("UNTRUSTED_DOWNLOAD_URL")
+        }
+
+        val bytes = slack.httpClient.get(downloadUrl, emptyMap(), botToken).use { response ->
+            if (!response.isSuccessful) throw SlackFileReadException("DOWNLOAD_REJECTED_${response.code}")
+            val body = response.body ?: throw SlackFileReadException("MISSING_FILE_BODY")
+            if (body.contentLength() > maxBytes) throw SlackFileReadException("FILE_TOO_LARGE")
+            body.byteStream().use { input -> input.readNBytes(maxBytes + 1) }
+        }
+        if (bytes.size > maxBytes) throw SlackFileReadException("FILE_TOO_LARGE")
+        val text = runCatching {
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(bytes))
+                .toString()
+                .removePrefix("\uFEFF")
+        }.getOrElse { throw SlackFileReadException("INVALID_UTF8") }
+        if (text.isBlank()) throw SlackFileReadException("EMPTY_FILE")
+        return SlackTextFile(name, text)
+    }
+
+    private fun isSlackHost(host: String?): Boolean =
+        host?.lowercase()?.let { it == "slack.com" || it.endsWith(".slack.com") } == true
 
 }
 

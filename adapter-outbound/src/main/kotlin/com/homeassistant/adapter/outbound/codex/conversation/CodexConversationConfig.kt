@@ -11,8 +11,13 @@ data class CodexConversationConfig(
     val executable: String,
     val workDir: Path,
     val timeout: Duration,
+    val model: String = DEFAULT_MODEL,
+    val reasoningEffort: String = DEFAULT_REASONING_EFFORT,
 ) {
     companion object {
+        const val DEFAULT_MODEL = "gpt-5.6-luna"
+        const val DEFAULT_REASONING_EFFORT = "medium"
+
         fun local(
             readEnv: (String) -> String? = { Env[it] },
             executable: String = defaultCodexExecutable(),

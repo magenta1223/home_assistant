@@ -41,11 +41,7 @@ object ManagedOllamaEmbeddingFactory {
         val embedder = OllamaEmbeddingFactory.create(endpoint.baseUrl, model)
         val runtime = OllamaServerRuntime(
             command = listOf(executable.toString(), "serve"),
-            environment = mapOf(
-                "OLLAMA_HOST" to endpoint.hostAndPort,
-                "OLLAMA_MODELS" to modelsDirectory.toString(),
-                "OLLAMA_DEBUG" to "false",
-            ),
+            environment = environment(endpoint, modelsDirectory),
             endpoint = endpoint,
             requiredExecutable = executable,
             requiredModelsDirectory = modelsDirectory,
@@ -53,6 +49,13 @@ object ManagedOllamaEmbeddingFactory {
         )
         return ManagedOllamaEmbedding(runtime, embedder)
     }
+
+    internal fun environment(endpoint: OllamaEndpoint, modelsDirectory: Path): Map<String, String> = mapOf(
+        "OLLAMA_HOST" to endpoint.hostAndPort,
+        "OLLAMA_MODELS" to modelsDirectory.toString(),
+        "OLLAMA_DEBUG" to "false",
+        "OLLAMA_KEEP_ALIVE" to "-1",
+    )
 
     private const val READINESS_PROBE_TEXT = "home second brain embedding readiness"
 }

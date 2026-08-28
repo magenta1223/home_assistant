@@ -5,6 +5,7 @@ import com.homeassistant.application.port.output.memory.conversation.Conversatio
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.nio.charset.StandardCharsets
+import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
@@ -41,9 +42,12 @@ internal class ProcessCodexConversationClient(
         onThreadStarted: (String) -> Unit,
     ): ConversationTurnResult =
         execute(
+            operation = "start",
             args = listOf(
                 "exec",
                 "--json",
+                "--model",
+                config.model,
                 "--sandbox",
                 "read-only",
                 "--skip-git-repo-check",
@@ -53,6 +57,8 @@ internal class ProcessCodexConversationClient(
                 "approval_policy=\"never\"",
                 "-c",
                 "web_search=\"disabled\"",
+                "-c",
+                "model_reasoning_effort=\"${config.reasoningEffort}\"",
                 "-C",
                 config.workDir.toString(),
                 "-",
@@ -66,10 +72,13 @@ internal class ProcessCodexConversationClient(
             return ConversationTurnResult.Failure("INVALID_THREAD_ID")
         }
         return execute(
+            operation = "resume",
             args = listOf(
                 "exec",
                 "resume",
                 "--json",
+                "--model",
+                config.model,
                 "--skip-git-repo-check",
                 "--ignore-user-config",
                 "--ignore-rules",
@@ -79,6 +88,8 @@ internal class ProcessCodexConversationClient(
                 "sandbox_mode=\"read-only\"",
                 "-c",
                 "web_search=\"disabled\"",
+                "-c",
+                "model_reasoning_effort=\"${config.reasoningEffort}\"",
                 threadId,
                 "-",
             ),
@@ -88,18 +99,34 @@ internal class ProcessCodexConversationClient(
     }
 
     private fun execute(
+        operation: String,
         args: List<String>,
         prompt: String,
         onThreadStarted: (String) -> Unit,
     ): ConversationTurnResult {
         if (prompt.isBlank()) return ConversationTurnResult.Failure("EMPTY_PROMPT")
+        val executionStartedAt = System.nanoTime()
         val process = runCatching {
             ProcessBuilder(listOf(config.executable) + args)
                 .directory(config.workDir.toFile())
                 .start()
         }.getOrElse {
+            log.warn(
+                "Latency stage=codex-process-start operation={} result=failure model={} category={} elapsedMs={}",
+                operation,
+                config.model,
+                it.javaClass.simpleName,
+                elapsedMillis(executionStartedAt),
+            )
             return ConversationTurnResult.Failure("START_FAILED")
         }
+        log.info(
+            "Latency stage=codex-process-start operation={} result=success model={} reasoningEffort={} elapsedMs={}",
+            operation,
+            config.model,
+            config.reasoningEffort,
+            elapsedMillis(executionStartedAt),
+        )
 
         val state = CodexEventState()
         val stderr = StringBuilder()
@@ -107,7 +134,15 @@ internal class ProcessCodexConversationClient(
         readers.submit {
             process.inputStream.bufferedReader(StandardCharsets.UTF_8).useLines { lines ->
                 lines.forEach { line ->
-                    eventParser.parse(line, state, onThreadStarted)
+                    eventParser.parse(line, state) { threadId ->
+                        log.info(
+                            "Latency stage=codex-thread-ready operation={} model={} elapsedMs={}",
+                            operation,
+                            config.model,
+                            elapsedMillis(executionStartedAt),
+                        )
+                        onThreadStarted(threadId)
+                    }
                 }
             }
         }
@@ -135,10 +170,25 @@ internal class ProcessCodexConversationClient(
         if (!process.waitFor(config.timeout.toMillis(), TimeUnit.MILLISECONDS)) {
             destroyProcessTree(process)
             readers.shutdownNow()
+            log.warn(
+                "Latency stage=codex-turn operation={} result=timeout model={} elapsedMs={}",
+                operation,
+                config.model,
+                elapsedMillis(executionStartedAt),
+            )
             return ConversationTurnResult.Failure("TIMEOUT")
         }
         readers.shutdown()
         readers.awaitTermination(READER_JOIN_SECONDS, TimeUnit.SECONDS)
+        log.info(
+            "Latency stage=codex-turn operation={} result=completed model={} exitCode={} threadReady={} answerReady={} elapsedMs={}",
+            operation,
+            config.model,
+            process.exitValue(),
+            state.threadStarted.get(),
+            state.answer.get() != null,
+            elapsedMillis(executionStartedAt),
+        )
 
         if (stderr.isNotEmpty()) log.debug("Codex stderr category=PROCESS_OUTPUT")
         state.failure.get()?.let { return ConversationTurnResult.Failure(it) }
@@ -154,9 +204,12 @@ internal class ProcessCodexConversationClient(
         process.destroyForcibly()
     }
 
+    private fun elapsedMillis(startedAt: Long): Long =
+        Duration.ofNanos(System.nanoTime() - startedAt).toMillis()
+
     private companion object {
         val VERSION_PATTERN = Regex("""codex-cli\s+([0-9A-Za-z.+-]+)""")
-        const val VERSION_TIMEOUT_SECONDS = 5L
+        const val VERSION_TIMEOUT_SECONDS = 30L
         const val READER_JOIN_SECONDS = 5L
         const val MAX_STDERR_CHARS = 8_000
         const val MAX_STDERR_LINE_CHARS = 500

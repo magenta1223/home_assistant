@@ -11,6 +11,7 @@ import com.homeassistant.application.port.output.memory.conversation.MemoryConve
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
+import java.time.Duration
 import java.util.concurrent.atomic.AtomicReference
 
 class HandleMemoryConversation(
@@ -27,17 +28,29 @@ class HandleMemoryConversation(
         if (claimed == null) return existingResult(request.key)
 
         val active = sessions.active(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)
+        val contextStartedAt = System.nanoTime()
         val context = try {
             contextProvider.context(request.participant.userId, request.question)
         } catch (error: Exception) {
-            log.warn("Memory context retrieval failed category={}", error.javaClass.simpleName)
+            log.warn(
+                "Memory context retrieval failed category={} elapsedMs={}",
+                error.javaClass.simpleName,
+                elapsedMillis(contextStartedAt),
+            )
             sessions.markFailed(request.key, now())
             return MemoryConversationResult.Failed
         }
+        log.info(
+            "Latency stage=memory-conversation-context elapsedMs={} hasMatches={} sessionMode={}",
+            elapsedMillis(contextStartedAt),
+            context.hasMatches,
+            if (active == null) "start" else "resume",
+        )
         if (!context.hasMatches) return answerReady(request.key, NO_MATCH_ANSWER)
 
         val prompt = promptBuilder.build(context.reference, request.question)
         val startedSession = AtomicReference<MemoryConversationSession>()
+        val turnStartedAt = System.nanoTime()
         val result = if (active == null) {
             conversationClient.start(prompt) { threadId ->
                 val session = sessions.createAndActivate(request.participant, threadId, now())
@@ -47,6 +60,12 @@ class HandleMemoryConversation(
         } else {
             conversationClient.resume(active.conversationThreadId, prompt)
         }
+        log.info(
+            "Latency stage=memory-conversation-turn elapsedMs={} sessionMode={} result={}",
+            elapsedMillis(turnStartedAt),
+            if (active == null) "start" else "resume",
+            if (result is ConversationTurnResult.Success) "success" else "failure",
+        )
 
         return when (result) {
             is ConversationTurnResult.Failure -> {
@@ -93,6 +112,9 @@ class HandleMemoryConversation(
     }
 
     private fun now(): Long = clock.millis()
+
+    private fun elapsedMillis(startedAt: Long): Long =
+        Duration.ofNanos(System.nanoTime() - startedAt).toMillis()
 
     companion object {
         const val SESSION_IDLE_TIMEOUT_MILLIS = 600_000L

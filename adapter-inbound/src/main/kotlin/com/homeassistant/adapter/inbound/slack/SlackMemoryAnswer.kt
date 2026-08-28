@@ -9,6 +9,8 @@ import com.homeassistant.application.port.input.memory.answer.UserRegistrationRe
 import com.homeassistant.application.port.input.memory.answer.UserRegistrationStartResult
 import com.homeassistant.application.port.input.memory.answer.UserRegistrationValidationResult
 import com.homeassistant.application.port.input.identity.ConversationIdentity
+import org.slf4j.LoggerFactory
+import java.time.Duration
 import java.util.ArrayDeque
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executor
@@ -20,6 +22,7 @@ internal class SlackMemoryAnswerAdapter(
     private val slack: SlackClient,
     private val executor: Executor = Executors.newCachedThreadPool(),
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
     private val queues = ConcurrentHashMap<SlackActorKey, SerialTaskQueue>()
 
     fun submit(message: SlackDirectMessage) {
@@ -31,7 +34,14 @@ internal class SlackMemoryAnswerAdapter(
     internal fun handle(message: SlackDirectMessage) {
         if (message.teamId != configuredTeamId) return
         val request = message.toApplicationRequest()
-        render(request.key, memoryAnswerWorkflow.receive(request), request.identity)
+        val workflowStartedAt = System.nanoTime()
+        val result = memoryAnswerWorkflow.receive(request)
+        log.info(
+            "Latency stage=slack-memory-workflow elapsedMs={} result={}",
+            elapsedMillis(workflowStartedAt),
+            result.javaClass.simpleName,
+        )
+        render(request.key, result, request.identity)
     }
 
     internal fun openRegistrationModal(
@@ -112,10 +122,21 @@ internal class SlackMemoryAnswerAdapter(
             MemoryAnswerResult.AlreadyHandled,
             -> Unit
             is MemoryAnswerResult.AnswerReady -> {
+                val deliveryStartedAt = System.nanoTime()
                 runCatching {
                     slack.postMessage(key.streamId, result.answer, emptyList())
                 }.onSuccess { delivery ->
                     memoryAnswerWorkflow.markDelivered(key, delivery.responseTs)
+                    log.info(
+                        "Latency stage=slack-answer-delivery result=success elapsedMs={}",
+                        elapsedMillis(deliveryStartedAt),
+                    )
+                }.onFailure { error ->
+                    log.warn(
+                        "Latency stage=slack-answer-delivery result=failure category={} elapsedMs={}",
+                        error.javaClass.simpleName,
+                        elapsedMillis(deliveryStartedAt),
+                    )
                 }
             }
             MemoryAnswerResult.Unavailable,
@@ -150,6 +171,9 @@ internal class SlackMemoryAnswerAdapter(
             key = ConversationRequestKey(channelId, messageTs),
             question = text,
         )
+
+    private fun elapsedMillis(startedAt: Long): Long =
+        Duration.ofNanos(System.nanoTime() - startedAt).toMillis()
 
     private fun registrationPromptBlocks(): List<Map<String, Any>> = listOf(
         mapOf(

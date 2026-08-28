@@ -7,11 +7,22 @@ import java.nio.file.Files
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class OllamaServerRuntimeTest {
+    @Test
+    fun `managed embedding model stays loaded for the server lifetime`() {
+        val environment = ManagedOllamaEmbeddingFactory.environment(
+            endpoint = OllamaEndpoint("127.0.0.1", 11435),
+            modelsDirectory = Files.createTempDirectory("ollama-models-"),
+        )
+
+        assertEquals("-1", environment["OLLAMA_KEEP_ALIVE"])
+    }
+
     @Test
     fun `missing managed executable fails with setup instruction before launch`() {
         val directory = Files.createTempDirectory("missing-ollama")

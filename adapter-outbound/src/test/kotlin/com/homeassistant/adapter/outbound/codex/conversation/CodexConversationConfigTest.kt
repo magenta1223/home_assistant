@@ -21,6 +21,8 @@ class CodexConversationConfigTest {
         assertNotNull(config)
         assertEquals("local-codex", config.executable)
         assertEquals(600L, config.timeout.seconds)
+        assertEquals("gpt-5.6-luna", config.model)
+        assertEquals("medium", config.reasoningEffort)
         assertTrue(Files.isDirectory(config.workDir))
     }
 

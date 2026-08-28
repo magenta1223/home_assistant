@@ -8,6 +8,8 @@ import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.domain.identity.UserId
+import org.slf4j.LoggerFactory
+import java.time.Duration
 
 /** Builds bounded answer context while leaving direct memory retrieval unchanged. */
 class MemoryAnswerContextProvider(
@@ -15,17 +17,33 @@ class MemoryAnswerContextProvider(
     private val memories: MemoryReader,
     private val semanticSearcher: SemanticMemoryIndexSearcher,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
+
     fun context(request: SearchMemoriesRequest): MemoryAnswerContext {
+        val totalStartedAt = System.nanoTime()
+        val directSearchStartedAt = System.nanoTime()
         val seedResult = memorySearcher.search(request)
+        log.info(
+            "Latency stage=memory-direct-search elapsedMs={} matchCount={}",
+            elapsedMillis(directSearchStartedAt),
+            seedResult.matches.size,
+        )
         if (seedResult.matches.isEmpty()) {
+            log.info("Latency stage=memory-answer-context elapsedMs={} expandedCount=0", elapsedMillis(totalStartedAt))
             return MemoryAnswerContext(seedResult.query, seedResult.matches, seedResult.matches)
         }
         val finalContextLimit = request.limit + MAX_EXPANDED_MATCHES
 
         val userId = UserId(request.userId)
+        val visibleMemoryLoadStartedAt = System.nanoTime()
         val visibleMemoriesById = memories.getMemories(userId)
             .filter { it.isVisibleTo(userId) }
             .associateBy { it.id }
+        log.info(
+            "Latency stage=memory-visible-load elapsedMs={} memoryCount={}",
+            elapsedMillis(visibleMemoryLoadStartedAt),
+            visibleMemoriesById.size,
+        )
         val seedIds = seedResult.matches.mapTo(mutableSetOf()) { it.memoryId }
         val seedScoreById = seedResult.matches.associate { it.memoryId to it.score }
         val parentByCandidateId = linkedMapOf<Int, Int>()
@@ -43,14 +61,22 @@ class MemoryAnswerContextProvider(
                 }
         }
         if (parentByCandidateId.isEmpty()) {
+            log.info("Latency stage=memory-answer-context elapsedMs={} expandedCount=0", elapsedMillis(totalStartedAt))
             return MemoryAnswerContext(seedResult.query, seedResult.matches, seedResult.matches)
         }
 
         val searchLimit = minOf(parentByCandidateId.size, SearchMemoriesRequest.MAX_LIMIT)
+        val childSearchStartedAt = System.nanoTime()
         val rankedChildren = semanticSearcher.search(
             query = seedResult.query,
             limit = searchLimit,
             scope = MemoryIndexSearchScope(parentByCandidateId.keys),
+        )
+        log.info(
+            "Latency stage=memory-child-search elapsedMs={} candidateCount={} matchCount={}",
+            elapsedMillis(childSearchStartedAt),
+            parentByCandidateId.size,
+            rankedChildren.size,
         )
         val expandedCountByParent = mutableMapOf<Int, Int>()
         val expandedMatches = rankedChildren
@@ -82,8 +108,17 @@ class MemoryAnswerContextProvider(
             query = seedResult.query,
             directMatches = seedResult.matches,
             contextMatches = (seedResult.matches + expandedMatches).take(finalContextLimit),
-        )
+        ).also {
+            log.info(
+                "Latency stage=memory-answer-context elapsedMs={} expandedCount={}",
+                elapsedMillis(totalStartedAt),
+                expandedMatches.size,
+            )
+        }
     }
+
+    private fun elapsedMillis(startedAt: Long): Long =
+        Duration.ofNanos(System.nanoTime() - startedAt).toMillis()
 
     companion object {
         const val MAX_EXPANSION_DEPTH = 1

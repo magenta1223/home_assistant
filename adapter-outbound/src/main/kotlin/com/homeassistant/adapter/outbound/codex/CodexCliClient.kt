@@ -32,10 +32,11 @@ internal class CodexCliClient(
             val command = listOf(
                 executable,
                 "exec",
+                "--model", MEMORY_GENERATION_MODEL,
                 "--ephemeral",
                 "--ignore-user-config",
                 "--ignore-rules",
-                "--config", "model_reasoning_effort=\"low\"",
+                "--config", "model_reasoning_effort=\"$MEMORY_GENERATION_REASONING_EFFORT\"",
                 "--sandbox", "read-only",
                 "--skip-git-repo-check",
                 "--output-schema", schemaFile.toString(),
@@ -68,6 +69,8 @@ internal class CodexCliClient(
 
     private companion object {
         const val DEFAULT_TIMEOUT_MILLIS = 10 * 60 * 1_000L
+        const val MEMORY_GENERATION_MODEL = "gpt-5.6-sol"
+        const val MEMORY_GENERATION_REASONING_EFFORT = "high"
     }
 }
 

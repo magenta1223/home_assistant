@@ -21,7 +21,11 @@ sequenceDiagram
         Sessions-->>Conversation: 기존 receipt
         Conversation-->>Workflow: 기존 AnswerReady 또는 AlreadyHandled
     else 새 요청 claim
-        Conversation->>Sessions: active(participant, idle=10분)
+        Conversation->>Sessions: lease(participant, idle=10분)
+        alt idle lease 만료
+            Sessions-->>Conversation: Expired(threadId)
+            Conversation->>Client: end(threadId)
+        end
         Conversation->>Context: context(userId, question)
         alt direct memory match 없음
             Conversation->>Sessions: markAnswerReady(고정 no-match 답변)
@@ -39,9 +43,29 @@ sequenceDiagram
                 Conversation->>Sessions: touch + markAnswerReady
                 Conversation-->>Workflow: AnswerReady
             else turn 실패
+                Conversation->>Client: end(threadId)
                 Conversation->>Sessions: markFailed + clearActive
                 Conversation-->>Workflow: Failed
             end
+        end
+    end
+```
+
+## Idle session 만료
+
+```mermaid
+sequenceDiagram
+    participant Worker as MemoryConversationExpiryWorker
+    participant Expiry as ExpireIdleMemoryConversations
+    participant Sessions as MemoryConversationSessionStore
+    participant Client as ConversationTurnClient
+
+    loop 짧은 주기
+        Worker->>Expiry: execute()
+        Expiry->>Sessions: expireIdle(now - 10분)
+        Sessions-->>Expiry: 만료되어 비활성화된 sessions
+        loop 각 session
+            Expiry->>Client: end(threadId)
         end
     end
 ```
@@ -60,8 +84,10 @@ sequenceDiagram
 
 ## 규칙
 
-- 10분 idle lease가 지난 thread는 재개하지 않고 다음 질문에서 새 thread를 시작한다.
+- 활성 session은 scope, participant, application user ID가 모두 일치할 때만 임대한다.
+- 10분 idle lease가 지난 thread는 즉시 비활성화하고 live Codex 구독을 해제하며 다시 재개하지 않는다.
 - 같은 request key는 다시 Codex에 보내지 않는다.
 - answer를 만들었지만 채널 전송 전인 `ANSWER_READY`는 동일 이벤트 재처리 시 기존 answer를 반환한다.
 - memory match가 없으면 Codex를 호출하지 않고 고정된 no-match 답변을 반환한다.
 - prompt의 memory reference는 신뢰하지 않는 데이터로 감싸며 그 안의 지시를 실행하지 않는다.
+- Codex adapter는 매 turn에 `{"answer": string}` output schema를 적용하고 검증된 answer만 반환한다.

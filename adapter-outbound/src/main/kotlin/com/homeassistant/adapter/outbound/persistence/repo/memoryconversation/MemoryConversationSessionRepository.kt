@@ -5,6 +5,7 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationReceipt
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationRequestStatus
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
+import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexActiveSessionTable
@@ -16,6 +17,7 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
+import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -102,11 +104,11 @@ internal class MemoryConversationSessionRepository(
         sessionRow(id).toSession()
     }
 
-    override fun active(
+    override fun lease(
         participant: MemoryConversationParticipant,
         now: Long,
         idleTimeoutMillis: Long,
-    ): MemoryConversationSession? = transaction(db) {
+    ): MemoryConversationSessionLease = transaction(db) {
         require(idleTimeoutMillis > 0) { "idleTimeoutMillis must be positive" }
         val pointer = SlackCodexActiveSessionTable.selectAll()
             .where {
@@ -114,19 +116,23 @@ internal class MemoryConversationSessionRepository(
                     (SlackCodexActiveSessionTable.slackUserId eq participant.participantId)
             }
             .singleOrNull()
-            ?: return@transaction null
+            ?: return@transaction MemoryConversationSessionLease.None
         val row = SlackCodexSessionTable.selectAll()
             .where { SlackCodexSessionTable.id eq pointer[SlackCodexActiveSessionTable.sessionId] }
             .singleOrNull()
         if (row == null || !row.matches(participant)) {
             deleteActive(participant)
-            return@transaction null
+            return@transaction MemoryConversationSessionLease.None
         }
+        val session = row.toSession()
         if (now - row[SlackCodexSessionTable.lastActiveAt] >= idleTimeoutMillis) {
             deleteActive(participant)
-            return@transaction null
+            return@transaction MemoryConversationSessionLease.Expired(session)
         }
-        row.toSession()
+        SlackCodexSessionTable.update({ SlackCodexSessionTable.id eq session.id }) {
+            it[lastActiveAt] = now
+        }
+        MemoryConversationSessionLease.Active(session.copy(lastActiveAt = now))
     }
 
     override fun clearActive(participant: MemoryConversationParticipant) {
@@ -147,6 +153,15 @@ internal class MemoryConversationSessionRepository(
             }
             check(updated == 1) { "Session ownership mismatch" }
         }
+    }
+
+    override fun expireIdle(beforeInclusive: Long): List<MemoryConversationSession> = transaction(db) {
+        val expired = (SlackCodexActiveSessionTable innerJoin SlackCodexSessionTable)
+            .selectAll()
+            .where { SlackCodexSessionTable.lastActiveAt lessEq beforeInclusive }
+            .map { it.toSession() }
+        expired.forEach { deleteActive(it.participant) }
+        expired
     }
 
     override fun failStaleProcessing(before: Long, now: Long): Int = transaction(db) {

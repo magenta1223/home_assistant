@@ -18,6 +18,8 @@ class DefaultApplicationServicesTest {
         val vector = RecordingVectorRuntime(events)
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
+        val expiry = RecordingConversationExpiryWorker(events)
+        val codex = AutoCloseable { events += "codex.close" }
         val slack = object : SlackRuntime {
             override fun startAsync() {
                 events += "slack.start"
@@ -33,6 +35,8 @@ class DefaultApplicationServicesTest {
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
+            conversationExpiryWorker = expiry,
+            codexRuntime = codex,
         )
 
         assertFalse(services.isReady)
@@ -45,8 +49,11 @@ class DefaultApplicationServicesTest {
                 "vector.start",
                 "embedding.start",
                 "indexing.start",
+                "expiry.start",
                 "slack.start",
                 "slack.close",
+                "expiry.close",
+                "codex.close",
                 "indexing.close",
                 "embedding.close",
                 "vector.close",
@@ -62,6 +69,8 @@ class DefaultApplicationServicesTest {
         val vector = RecordingVectorRuntime(events)
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
+        val expiry = RecordingConversationExpiryWorker(events)
+        val codex = AutoCloseable { events += "codex.close" }
         val slack = object : SlackRuntime {
             override fun startAsync() = Unit
 
@@ -76,6 +85,8 @@ class DefaultApplicationServicesTest {
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
+            conversationExpiryWorker = expiry,
+            codexRuntime = codex,
         )
         services.start()
 
@@ -86,7 +97,10 @@ class DefaultApplicationServicesTest {
                 "vector.start",
                 "embedding.start",
                 "indexing.start",
+                "expiry.start",
                 "slack.close",
+                "expiry.close",
+                "codex.close",
                 "indexing.close",
                 "embedding.close",
                 "vector.close",
@@ -144,6 +158,18 @@ class DefaultApplicationServicesTest {
 
         override fun close() {
             events += "indexing.close"
+        }
+    }
+
+    private class RecordingConversationExpiryWorker(
+        private val events: MutableList<String>,
+    ) : ConversationExpiryWorker {
+        override fun start() {
+            events += "expiry.start"
+        }
+
+        override fun close() {
+            events += "expiry.close"
         }
     }
 }

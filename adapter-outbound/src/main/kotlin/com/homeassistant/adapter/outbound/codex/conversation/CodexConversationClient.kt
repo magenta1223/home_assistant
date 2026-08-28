@@ -10,9 +10,12 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /** Runs Codex conversation turns and validates that the local CLI is available. */
-interface CodexConversationClient : ConversationTurnClient {
+interface CodexConversationClient : ConversationTurnClient, AutoCloseable {
     /** Verifies that the configured Codex executable can be launched. */
     fun isAvailable(): Boolean
+
+    /** Starts and initializes the long-lived Codex runtime. */
+    fun startServer(): Boolean
 }
 
 internal class ProcessCodexConversationClient(
@@ -203,6 +206,12 @@ internal class ProcessCodexConversationClient(
         process.descendants().forEach(ProcessHandle::destroyForcibly)
         process.destroyForcibly()
     }
+
+    override fun startServer(): Boolean = true
+
+    override fun end(threadId: String) = Unit
+
+    override fun close() = Unit
 
     private fun elapsedMillis(startedAt: Long): Long =
         Duration.ofNanos(System.nanoTime() - startedAt).toMillis()

@@ -13,6 +13,8 @@ internal class DefaultApplicationServices(
     private val vectorRuntime: VectorServerRuntime,
     private val embeddingRuntime: EmbeddingServerRuntime,
     private val indexingWorker: IndexingWorker = IndexingWorker.NONE,
+    private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
+    private val codexRuntime: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
         get() = vectorRuntime.isReady && embeddingRuntime.isReady
@@ -21,6 +23,7 @@ internal class DefaultApplicationServices(
         vectorRuntime.start()
         embeddingRuntime.start()
         indexingWorker.start()
+        conversationExpiryWorker.start()
         slackRuntime?.startAsync()
     }
 
@@ -29,12 +32,20 @@ internal class DefaultApplicationServices(
             slackRuntime?.close()
         } finally {
             try {
-                indexingWorker.close()
+                conversationExpiryWorker.close()
             } finally {
                 try {
-                    embeddingRuntime.close()
+                    codexRuntime?.close()
                 } finally {
-                    vectorRuntime.close()
+                    try {
+                        indexingWorker.close()
+                    } finally {
+                        try {
+                            embeddingRuntime.close()
+                        } finally {
+                            vectorRuntime.close()
+                        }
+                    }
                 }
             }
         }

@@ -8,6 +8,7 @@ import com.homeassistant.application.port.output.memory.conversation.Conversatio
 import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationRequestStatus
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
+import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -27,7 +28,14 @@ class HandleMemoryConversation(
         val claimed = sessions.claimRequest(request.key, now())
         if (claimed == null) return existingResult(request.key)
 
-        val active = sessions.active(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)
+        val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
+            is MemoryConversationSessionLease.Active -> lease.session
+            is MemoryConversationSessionLease.Expired -> {
+                conversationClient.end(lease.session.conversationThreadId)
+                null
+            }
+            MemoryConversationSessionLease.None -> null
+        }
         val contextStartedAt = System.nanoTime()
         val context = try {
             contextProvider.context(request.participant.userId, request.question)
@@ -69,6 +77,9 @@ class HandleMemoryConversation(
 
         return when (result) {
             is ConversationTurnResult.Failure -> {
+                (active ?: startedSession.get())
+                    ?.conversationThreadId
+                    ?.let(conversationClient::end)
                 sessions.markFailed(request.key, now())
                 sessions.clearActive(request.participant)
                 MemoryConversationResult.Failed

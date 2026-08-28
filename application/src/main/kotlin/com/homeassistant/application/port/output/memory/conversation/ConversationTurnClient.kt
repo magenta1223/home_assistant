@@ -9,4 +9,7 @@ sealed interface ConversationTurnResult {
 interface ConversationTurnClient {
     fun start(prompt: String, onThreadStarted: (String) -> Unit): ConversationTurnResult
     fun resume(threadId: String, prompt: String): ConversationTurnResult
+
+    /** Ends this application's live use of a conversation thread. */
+    fun end(threadId: String)
 }

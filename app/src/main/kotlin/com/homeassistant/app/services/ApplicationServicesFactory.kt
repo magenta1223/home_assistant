@@ -24,6 +24,7 @@ import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
+import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.port.input.identity.ConversationIdentity
 import com.homeassistant.application.usecase.identity.UserRegistryService
@@ -96,9 +97,13 @@ object ApplicationServicesFactory {
             memories = repositories.canonicalMemories,
             semanticSearcher = semanticMemoryIndexSearcher,
         )
-        val conversationClient = CodexConversationConfig.local()
+        val configuredConversationClient = CodexConversationConfig.local()
             ?.let(CodexConversationClientFactory::create)
-            ?.takeIf { it.isAvailable() }
+        val conversationClient = configuredConversationClient
+            ?.takeIf { it.isAvailable() && it.startServer() }
+        if (configuredConversationClient != null && conversationClient == null) {
+            configuredConversationClient.close()
+        }
         val memoryConversation = conversationClient?.let {
             val now = System.currentTimeMillis()
             repositories.memoryConversationSessions.failStaleProcessing(
@@ -111,6 +116,14 @@ object ApplicationServicesFactory {
                 conversationClient = it,
             )
         }
+        val conversationExpiryWorker = conversationClient?.let {
+            MemoryConversationExpiryWorker(
+                ExpireIdleMemoryConversations(
+                    sessions = repositories.memoryConversationSessions,
+                    conversationClient = it,
+                ),
+            )
+        } ?: ConversationExpiryWorker.NONE
         val memoryAnswerWorkflow = MemoryAnswerWorkflowService(
             users = users,
             pendingQuestions = repositories.pendingRegistrationQuestions,
@@ -132,6 +145,8 @@ object ApplicationServicesFactory {
             vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
+            conversationExpiryWorker = conversationExpiryWorker,
+            codexRuntime = conversationClient,
         )
     }
 }

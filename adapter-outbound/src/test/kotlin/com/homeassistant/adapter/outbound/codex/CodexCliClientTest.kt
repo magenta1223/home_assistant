@@ -9,7 +9,7 @@ import kotlin.test.assertTrue
 
 class CodexCliClientTest {
     @Test
-    fun `completion ignores operator configuration and uses low reasoning effort`() = runBlocking {
+    fun `memory generation uses sol with high reasoning effort`() = runBlocking {
         val executor = RecordingProcessExecutor()
         val client = CodexCliClient(
             executable = "codex-test",
@@ -27,7 +27,12 @@ class CodexCliClientTest {
         assertTrue(executor.command.contains("--ignore-rules"))
         assertTrue(
             executor.command.windowed(2).contains(
-                listOf("--config", "model_reasoning_effort=\"low\""),
+                listOf("--model", "gpt-5.6-sol"),
+            ),
+        )
+        assertTrue(
+            executor.command.windowed(2).contains(
+                listOf("--config", "model_reasoning_effort=\"high\""),
             ),
         )
         assertEquals(10 * 60 * 1_000L, executor.timeoutMillis)

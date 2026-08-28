@@ -18,6 +18,12 @@ data class MemoryConversationSession(
     val lastActiveAt: Long,
 )
 
+sealed interface MemoryConversationSessionLease {
+    data object None : MemoryConversationSessionLease
+    data class Active(val session: MemoryConversationSession) : MemoryConversationSessionLease
+    data class Expired(val session: MemoryConversationSession) : MemoryConversationSessionLease
+}
+
 data class MemoryConversationReceipt(
     val key: MemoryConversationRequestKey,
     val status: MemoryConversationRequestStatus,
@@ -43,13 +49,15 @@ interface MemoryConversationSessionStore {
         now: Long,
     ): MemoryConversationSession
 
-    fun active(
+    /** Claims and renews this participant's active session, or removes and returns an expired one. */
+    fun lease(
         participant: MemoryConversationParticipant,
         now: Long,
         idleTimeoutMillis: Long,
-    ): MemoryConversationSession?
+    ): MemoryConversationSessionLease
 
     fun clearActive(participant: MemoryConversationParticipant)
     fun touch(participant: MemoryConversationParticipant, sessionId: Int, now: Long)
+    fun expireIdle(beforeInclusive: Long): List<MemoryConversationSession>
     fun failStaleProcessing(before: Long, now: Long): Int
 }

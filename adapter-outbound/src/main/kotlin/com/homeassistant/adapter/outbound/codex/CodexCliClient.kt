@@ -6,13 +6,27 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.readText
+import kotlin.io.path.writeBytes
 import kotlin.io.path.writeText
 
 /** Completes a single structured Codex prompt. */
 internal fun interface CodexCompletionClient {
     /** Runs one completion request and returns the structured response text. */
     suspend fun complete(system: String, userMessage: String, outputSchema: String): String
+
+    suspend fun completeWithImages(
+        system: String,
+        userMessage: String,
+        outputSchema: String,
+        images: List<CodexImage>,
+    ): String = if (images.isEmpty()) {
+        complete(system, userMessage, outputSchema)
+    } else {
+        error("image completion is unavailable")
+    }
 }
+
+internal data class CodexImage(val fileName: String, val bytes: ByteArray)
 
 internal class CodexCliClient(
     private val executable: String = defaultCodexExecutable(),
@@ -23,13 +37,20 @@ internal class CodexCliClient(
         system: String,
         userMessage: String,
         outputSchema: String,
+    ): String = completeWithImages(system, userMessage, outputSchema, emptyList())
+
+    override suspend fun completeWithImages(
+        system: String,
+        userMessage: String,
+        outputSchema: String,
+        images: List<CodexImage>,
     ): String = withContext(Dispatchers.IO) {
         val workingDirectory = Files.createTempDirectory("homeassistant-codex-")
         try {
             val schemaFile = workingDirectory.resolve("output-schema.json")
             val outputFile = workingDirectory.resolve("output.json")
             schemaFile.writeText(outputSchema)
-            val command = listOf(
+            val command = mutableListOf(
                 executable,
                 "exec",
                 "--model", MEMORY_GENERATION_MODEL,
@@ -41,8 +62,17 @@ internal class CodexCliClient(
                 "--skip-git-repo-check",
                 "--output-schema", schemaFile.toString(),
                 "--output-last-message", outputFile.toString(),
-                "-",
             )
+            images.forEachIndexed { index, image ->
+                val extension = image.fileName.substringAfterLast('.', "png")
+                    .lowercase()
+                    .takeIf { it.matches(Regex("[a-z0-9]{1,5}")) }
+                    ?: "png"
+                val imageFile = workingDirectory.resolve("input-${index + 1}.$extension")
+                imageFile.writeBytes(image.bytes)
+                command += listOf("--image", imageFile.toString())
+            }
+            command += "-"
             val result = processExecutor.execute(
                 command,
                 workingDirectory,

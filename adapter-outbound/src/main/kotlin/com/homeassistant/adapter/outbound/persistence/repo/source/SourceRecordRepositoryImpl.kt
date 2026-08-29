@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceReferenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryVisibility
@@ -11,8 +12,11 @@ import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordRepository
 import com.homeassistant.domain.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceAccessConflictException
+import com.homeassistant.domain.source.SourceReference
+import com.homeassistant.domain.source.SourceReferenceDraft
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.statements.api.ExposedBlob
 import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class SourceRecordRepositoryImpl(private val db: Database) : SourceRecordRepository {
@@ -53,10 +57,15 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 }
                 existing = aliasMatches.singleOrNull()
                 existing?.let { legacy ->
+                    val referenceId = record.reference?.let(::saveReference)
                     SourceRecordTable.update({ SourceRecordTable.id eq legacy[SourceRecordTable.id] }) {
                         it[deduplicationKey] = record.deduplicationKey
                         it[content] = record.content
+                        if (referenceId != null) it[SourceRecordTable.referenceId] = referenceId
                     }
+                    existing = SourceRecordTable.selectAll()
+                        .where { SourceRecordTable.id eq legacy[SourceRecordTable.id] }
+                        .single()
                 }
             }
             if (existing != null) {
@@ -88,6 +97,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 return@forEach
             }
 
+            val referenceId = record.reference?.let(::saveReference)
             val id = SourceRecordTable.insert {
                 it[sourceType] = source.type
                 it[sourceName] = source.name
@@ -97,6 +107,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
                 it[visibility] = access.visibility.name
                 it[audienceExplicit] = true
+                it[SourceRecordTable.referenceId] = referenceId
             }[SourceRecordTable.id]
             access.allowedUserIds.forEach { allowedUserId ->
                 SourceRecordViewerTable.insert {
@@ -134,6 +145,12 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             content = content,
             analysisStatus = SourceRecordAnalysisStatus.PENDING,
             access = access,
+            reference = reference?.let { draft ->
+                val stored = SourceReferenceTable.selectAll()
+                    .where { SourceReferenceTable.sha256 eq draft.sha256 }
+                    .single()
+                stored.toSourceReference()
+            },
         )
 
     private fun ResultRow.toSourceRecord(): SourceRecord =
@@ -143,7 +160,36 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             content = this[SourceRecordTable.content],
             analysisStatus = SourceRecordAnalysisStatus.valueOf(this[SourceRecordTable.analysisStatus]),
             access = toAccess(),
+            reference = this[SourceRecordTable.referenceId]?.let { referenceId ->
+                SourceReferenceTable.selectAll()
+                    .where { SourceReferenceTable.id eq referenceId }
+                    .single()
+                    .toSourceReference()
+            },
         )
+
+    private fun saveReference(reference: SourceReferenceDraft): Int {
+        val existing = SourceReferenceTable.selectAll()
+            .where { SourceReferenceTable.sha256 eq reference.sha256 }
+            .singleOrNull()
+        if (existing != null) return existing[SourceReferenceTable.id]
+        return SourceReferenceTable.insert {
+            it[fileName] = reference.fileName
+            it[mediaType] = reference.mediaType
+            it[size] = reference.size
+            it[sha256] = reference.sha256
+            it[content] = ExposedBlob(reference.bytes())
+            it[createdAt] = System.currentTimeMillis()
+        }[SourceReferenceTable.id]
+    }
+
+    private fun ResultRow.toSourceReference(): SourceReference = SourceReference(
+        id = this[SourceReferenceTable.id],
+        fileName = this[SourceReferenceTable.fileName],
+        mediaType = this[SourceReferenceTable.mediaType],
+        size = this[SourceReferenceTable.size],
+        sha256 = this[SourceReferenceTable.sha256],
+    )
 
     private fun ResultRow.toAccess(): MemoryAccess {
         val recordId = this[SourceRecordTable.id]

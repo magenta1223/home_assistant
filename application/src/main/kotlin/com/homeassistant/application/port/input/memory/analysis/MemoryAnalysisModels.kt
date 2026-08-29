@@ -38,6 +38,11 @@ class InvalidMemoryAudienceException internal constructor(
     val userIds: Set<String>,
 ) : RuntimeException("memory audience contains unknown or unauthorized users")
 
+class InvalidKnowledgeReferenceException internal constructor(
+    message: String,
+    cause: Throwable? = null,
+) : RuntimeException(message, cause)
+
 class ConflictingSourceAudienceException internal constructor(
     val sourceName: String,
     val existingAccess: MemoryAccess,

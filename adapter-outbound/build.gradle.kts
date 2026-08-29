@@ -16,6 +16,7 @@ dependencies {
     implementation(libs.exposed.jdbc)
     implementation(libs.sqlite.jdbc)
     implementation(libs.logback.classic)
+    implementation(libs.pdfbox)
 
     testImplementation(libs.kotlin.test)
 }

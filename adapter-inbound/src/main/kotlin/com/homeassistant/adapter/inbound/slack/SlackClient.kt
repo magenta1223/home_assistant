@@ -26,6 +26,9 @@ interface SlackClient {
 
     /** Downloads one Slack-hosted UTF-8 text file without persisting it locally. */
     fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile
+
+    /** Downloads one Slack-hosted binary file without persisting it locally. */
+    fun readFile(fileId: String, maxBytes: Int): SlackFileContent
 }
 
 data class SlackMessageDelivery(val responseTs: String)
@@ -33,6 +36,12 @@ data class SlackMessageDelivery(val responseTs: String)
 data class SlackTextFile(
     val name: String,
     val text: String,
+)
+
+data class SlackFileContent(
+    val name: String,
+    val mediaType: String,
+    val bytes: ByteArray,
 )
 
 class SlackMessageDeliveryException(
@@ -98,6 +107,23 @@ internal class SlackApiClient(
     }
 
     override fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile {
+        val file = readFile(fileId, maxBytes)
+        if (!file.name.endsWith(".txt", ignoreCase = true)) {
+            throw SlackFileReadException("UNSUPPORTED_FILE_TYPE")
+        }
+        val text = runCatching {
+            Charsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT)
+                .decode(ByteBuffer.wrap(file.bytes))
+                .toString()
+                .removePrefix("\uFEFF")
+        }.getOrElse { throw SlackFileReadException("INVALID_UTF8") }
+        if (text.isBlank()) throw SlackFileReadException("EMPTY_FILE")
+        return SlackTextFile(file.name, text)
+    }
+
+    override fun readFile(fileId: String, maxBytes: Int): SlackFileContent {
         require(fileId.isNotBlank()) { "fileId is required" }
         require(maxBytes > 0) { "maxBytes must be positive" }
         val info = slack.methods(botToken).filesInfo { request -> request.file(fileId) }
@@ -105,9 +131,6 @@ internal class SlackApiClient(
         val file = info.file ?: throw SlackFileReadException("MISSING_FILE_INFO")
         val name = file.name?.takeIf(String::isNotBlank)
             ?: throw SlackFileReadException("MISSING_FILE_NAME")
-        if (!name.endsWith(".txt", ignoreCase = true)) {
-            throw SlackFileReadException("UNSUPPORTED_FILE_TYPE")
-        }
         if (file.size?.let { it > maxBytes } == true) {
             throw SlackFileReadException("FILE_TOO_LARGE")
         }
@@ -127,20 +150,25 @@ internal class SlackApiClient(
             body.byteStream().use { input -> input.readNBytes(maxBytes + 1) }
         }
         if (bytes.size > maxBytes) throw SlackFileReadException("FILE_TOO_LARGE")
-        val text = runCatching {
-            Charsets.UTF_8.newDecoder()
-                .onMalformedInput(CodingErrorAction.REPORT)
-                .onUnmappableCharacter(CodingErrorAction.REPORT)
-                .decode(ByteBuffer.wrap(bytes))
-                .toString()
-                .removePrefix("\uFEFF")
-        }.getOrElse { throw SlackFileReadException("INVALID_UTF8") }
-        if (text.isBlank()) throw SlackFileReadException("EMPTY_FILE")
-        return SlackTextFile(name, text)
+        if (bytes.isEmpty()) throw SlackFileReadException("EMPTY_FILE")
+        return SlackFileContent(
+            name = name,
+            mediaType = file.mimetype?.takeIf(String::isNotBlank) ?: inferMediaType(name),
+            bytes = bytes,
+        )
     }
 
     private fun isSlackHost(host: String?): Boolean =
         host?.lowercase()?.let { it == "slack.com" || it.endsWith(".slack.com") } == true
+
+    private fun inferMediaType(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
+        "txt" -> "text/plain"
+        "pdf" -> "application/pdf"
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "webp" -> "image/webp"
+        else -> "application/octet-stream"
+    }
 
 }
 

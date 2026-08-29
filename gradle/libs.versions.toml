@@ -13,6 +13,7 @@ dotenv = "6.4.1"
 slack = "1.49.0"
 tyrus = "1.20"
 javaxWebsocket = "1.1"
+pdfbox = "3.0.8"
 
 [libraries]
 # Ktor server
@@ -52,6 +53,7 @@ dotenv-kotlin = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "d
 slack-bolt-socket-mode = { module = "com.slack.api:bolt-socket-mode", version.ref = "slack" }
 javax-websocket-api = { module = "javax.websocket:javax.websocket-api", version.ref = "javaxWebsocket" }
 tyrus-standalone-client = { module = "org.glassfish.tyrus.bundles:tyrus-standalone-client", version.ref = "tyrus" }
+pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
 
 # Testing
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }

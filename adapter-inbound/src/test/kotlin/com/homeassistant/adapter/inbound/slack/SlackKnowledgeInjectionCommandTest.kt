@@ -90,7 +90,7 @@ class SlackKnowledgeInjectionCommandTest {
         val fileBlock = blocks.single { it["block_id"] == SlackKnowledgeInjectionCommand.FILE_BLOCK_ID }
         val fileElement = fileBlock["element"] as Map<String, Any>
         assertEquals("file_input", fileElement["type"])
-        assertEquals(listOf("txt"), fileElement["filetypes"])
+        assertEquals(listOf("txt", "pdf", "png", "jpg", "jpeg", "webp"), fileElement["filetypes"])
         assertEquals(1, fileElement["max_files"])
         assertEquals(
             listOf(
@@ -235,12 +235,16 @@ class SlackKnowledgeInjectionCommandTest {
     }
 
     @Test
-    fun `file upload is rejected for direct text source`() {
+    fun `direct text source can include a PDF reference`() {
         val requester = RegisteredUser(UserId("member-1"), "첫째")
         val workflow = RecordingKnowledgeInjectionWorkflow(
             KnowledgeInjectionPreparation.Ready(requester, listOf(requester)),
         )
-        val slack = RecordingSlackClient()
+        val slack = RecordingSlackClient(
+            binaryFiles = mapOf(
+                "file-1" to SlackFileContent("manual.pdf", "application/pdf", "%PDF-test".toByteArray()),
+            ),
+        )
         val command = SlackKnowledgeInjectionCommand("team-1", workflow, slack, Runnable::run)
         command.open(
             SlackKnowledgeCommandInvocation(
@@ -259,11 +263,10 @@ class SlackKnowledgeInjectionCommandTest {
             validValues("member-1", fileId = "file-1"),
         )
 
-        assertEquals(
-            "파일은 카카오톡 내보내기 형식에서만 사용할 수 있습니다.",
-            errors[SlackKnowledgeInjectionCommand.FILE_BLOCK_ID],
-        )
-        assertTrue(workflow.requests.isEmpty())
+        assertTrue(errors.isEmpty())
+        val source = workflow.requests.single().source
+        assertEquals("현관 비밀번호는 매달 바뀐다", source.records.single().content)
+        assertEquals("manual.pdf", source.reference?.fileName)
     }
 
     @Test
@@ -372,6 +375,7 @@ class SlackKnowledgeInjectionCommandTest {
 
     private class RecordingSlackClient(
         private val files: Map<String, SlackTextFile> = emptyMap(),
+        private val binaryFiles: Map<String, SlackFileContent> = emptyMap(),
     ) : SlackClient {
         val modals = mutableListOf<Pair<String, Map<String, Any>>>()
         val responses = mutableListOf<Pair<String, String>>()
@@ -395,6 +399,11 @@ class SlackKnowledgeInjectionCommandTest {
         override fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile {
             readFileIds += fileId
             return files.getValue(fileId)
+        }
+
+        override fun readFile(fileId: String, maxBytes: Int): SlackFileContent {
+            readFileIds += fileId
+            return binaryFiles.getValue(fileId)
         }
     }
     private companion object {

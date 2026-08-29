@@ -5,6 +5,7 @@ import com.homeassistant.adapter.inbound.text.PlainTextSourceParser
 import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
 import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
 import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
+import com.homeassistant.application.port.input.memory.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
@@ -13,6 +14,9 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.source.SourceDescriptor
+import com.homeassistant.domain.source.SourceDocumentDraft
+import com.homeassistant.domain.source.SourceReferenceDraft
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
@@ -23,6 +27,7 @@ import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
+import java.util.Base64
 
 internal fun Route.knowledgePageRoute() {
     get(AppConfig.ROUTE_KNOWLEDGE_PAGE) {
@@ -54,8 +59,8 @@ internal fun Route.knowledgeInjectionRoutes(
         val request = call.receive<KnowledgeImportRequest>()
         val sourceName = request.sourceName.trim()
         val text = request.text.trim()
-        if (sourceName.isEmpty() || text.isEmpty()) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "sourceName and text are required"))
+        if (sourceName.isEmpty() || (text.isEmpty() && request.reference == null)) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "sourceName and text or reference are required"))
             return@post
         }
 
@@ -72,15 +77,26 @@ internal fun Route.knowledgeInjectionRoutes(
         }
 
         val source = try {
+            val reference = request.reference?.toSourceReference()
             when (request.sourceType) {
-                KnowledgeSourceType.KAKAO -> KakaoExportParser.parse(sourceName, text)
-                KnowledgeSourceType.TEXT -> PlainTextSourceParser.parse(sourceName, text)
+                KnowledgeSourceType.KAKAO -> {
+                    require(reference == null) { "KAKAO does not accept PDF or image references" }
+                    KakaoExportParser.parse(sourceName, text)
+                }
+                KnowledgeSourceType.TEXT -> {
+                    val parsed = if (text.isEmpty()) {
+                        SourceDocumentDraft(SourceDescriptor("text", sourceName), emptyList())
+                    } else {
+                        PlainTextSourceParser.parse(sourceName, text)
+                    }
+                    parsed.copy(reference = reference)
+                }
             }
         } catch (error: IllegalArgumentException) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (error.message ?: "invalid source data")))
             return@post
         }
-        if (source.records.isEmpty()) {
+        if (source.records.isEmpty() && source.reference == null) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "no source records were found"))
             return@post
         }
@@ -111,6 +127,8 @@ internal fun Route.knowledgeInjectionRoutes(
                 HttpStatusCode.BadRequest,
                 mapOf("error" to error.message, "userIds" to error.userIds.sorted()),
             )
+        } catch (error: InvalidKnowledgeReferenceException) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to error.message))
         } catch (error: MemoryAnalysisUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: UserAccessDeniedException) {
@@ -125,8 +143,45 @@ internal data class KnowledgeImportRequest(
     val sourceName: String,
     val isPublic: Boolean,
     val allowedUserIds: Set<String> = emptySet(),
-    val text: String,
+    val text: String = "",
+    val reference: KnowledgeReferenceRequest? = null,
 )
+
+@Serializable
+internal data class KnowledgeReferenceRequest(
+    val fileName: String,
+    val mediaType: String,
+    val contentBase64: String,
+) {
+    fun toSourceReference(): SourceReferenceDraft {
+        require(contentBase64.length <= MAX_BASE64_LENGTH) { "reference must be 20MB or smaller" }
+        val content = try {
+            Base64.getDecoder().decode(contentBase64)
+        } catch (error: IllegalArgumentException) {
+            throw IllegalArgumentException("reference contentBase64 is invalid", error)
+        }
+        val declaredMediaType = mediaType.substringBefore(';').trim().lowercase()
+        val normalizedMediaType = declaredMediaType.takeIf { it in SUPPORTED_MEDIA_TYPES }
+            ?: inferMediaType(fileName)
+        require(normalizedMediaType in SUPPORTED_MEDIA_TYPES) {
+            "only PDF, PNG, JPEG, and WebP references are supported"
+        }
+        return SourceReferenceDraft(fileName.trim(), normalizedMediaType, content)
+    }
+
+    private fun inferMediaType(fileName: String): String = when (fileName.substringAfterLast('.', "").lowercase()) {
+        "pdf" -> "application/pdf"
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "webp" -> "image/webp"
+        else -> ""
+    }
+
+    private companion object {
+        const val MAX_BASE64_LENGTH = ((SourceReferenceDraft.MAX_BYTES + 2) / 3) * 4
+        val SUPPORTED_MEDIA_TYPES = setOf("application/pdf", "image/png", "image/jpeg", "image/webp")
+    }
+}
 
 @Serializable
 internal enum class KnowledgeSourceType { KAKAO, TEXT }

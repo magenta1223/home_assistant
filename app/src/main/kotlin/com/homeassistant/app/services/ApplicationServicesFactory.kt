@@ -20,6 +20,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexSearcherFactory
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
+import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
@@ -82,6 +83,7 @@ object ApplicationServicesFactory {
                 tree = repositories.memoryTree,
             ),
             memoryIndexing = memoryIndexing,
+            referenceInterpreter = SourceReferenceInterpreterFactory.create(),
         )
         val knowledgeInjectionWorkflow = KnowledgeInjectionWorkflowService(
             users = users,

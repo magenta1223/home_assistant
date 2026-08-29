@@ -8,6 +8,7 @@ import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceAccessConflictException
+import com.homeassistant.domain.source.SourceReferenceDraft
 import java.nio.file.Files
 import java.sql.DriverManager
 import kotlin.test.Test
@@ -16,6 +17,40 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class SourceRecordRepositoryTest {
+    @Test
+    fun `interpreted records share one persisted original reference`() {
+        val databasePath = Files.createTempFile("source-reference", ".db")
+        try {
+            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val reference = SourceReferenceDraft("guide.pdf", "application/pdf", "original-pdf".toByteArray())
+            val source = SourceDescriptor("text", "guide")
+
+            repository.saveAll(
+                source,
+                listOf(
+                    SourceRecordDraft("reference:${reference.sha256}:page-1", "page one", reference = reference),
+                    SourceRecordDraft("reference:${reference.sha256}:page-2", "page two", reference = reference),
+                ),
+            )
+
+            val records = repository.findBySource(source)
+            assertEquals(2, records.size)
+            assertEquals(1, records.mapNotNull { it.reference?.id }.distinct().size)
+            assertTrue(records.all { it.reference?.fileName == "guide.pdf" })
+            DriverManager.getConnection("jdbc:sqlite:$databasePath").use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT COUNT(*), length(content) FROM source_references").use { result ->
+                        assertTrue(result.next())
+                        assertEquals(1, result.getInt(1))
+                        assertEquals("original-pdf".toByteArray().size, result.getInt(2))
+                    }
+                }
+            }
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
     @Test
     fun `an existing source cannot be silently reopened with a different audience`() {
         val databasePath = Files.createTempFile("source-record-access", ".db")

@@ -6,6 +6,7 @@ import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertContentEquals
 
 class CodexCliClientTest {
     @Test
@@ -38,9 +39,28 @@ class CodexCliClientTest {
         assertEquals(10 * 60 * 1_000L, executor.timeoutMillis)
     }
 
+    @Test
+    fun `image completion attaches copied image files to Codex`() = runBlocking {
+        val executor = RecordingProcessExecutor()
+        val client = CodexCliClient(executable = "codex-test", processExecutor = executor)
+        val original = byteArrayOf(1, 2, 3)
+
+        client.completeWithImages(
+            system = "system prompt",
+            userMessage = "interpret image",
+            outputSchema = "{}",
+            images = listOf(CodexImage("photo.png", original)),
+        )
+
+        val imagePath = Path.of(executor.command[executor.command.indexOf("--image") + 1])
+        assertEquals("input-1.png", imagePath.fileName.toString())
+        assertContentEquals(original, executor.imageBytes)
+    }
+
     private class RecordingProcessExecutor : CodexProcessExecutor {
         lateinit var command: List<String>
         var timeoutMillis: Long = 0
+        var imageBytes: ByteArray? = null
 
         override fun execute(
             command: List<String>,
@@ -50,6 +70,9 @@ class CodexCliClientTest {
         ): CodexProcessResult {
             this.command = command
             this.timeoutMillis = timeoutMillis
+            command.indexOf("--image").takeIf { it >= 0 }?.let { imageIndex ->
+                imageBytes = java.nio.file.Files.readAllBytes(Path.of(command[imageIndex + 1]))
+            }
             val outputPath = Path.of(command[command.indexOf("--output-last-message") + 1])
             outputPath.writeText("{\"memories\":[]}")
             return CodexProcessResult(exitCode = 0, stderr = "")

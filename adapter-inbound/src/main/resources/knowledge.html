@@ -66,9 +66,9 @@
     </fieldset>
     <div class="field">
       <label for="text">데이터</label>
-      <input id="file" type="file" accept=".txt,text/plain">
-      <div class="hint">텍스트 파일을 선택하거나 아래에 직접 붙여 넣으세요.</div>
-      <textarea id="text" placeholder="지식 텍스트를 입력하거나 카카오톡 내보내기 내용을 붙여 넣으세요." required></textarea>
+      <input id="file" type="file" accept=".txt,text/plain,.pdf,application/pdf,image/*">
+      <div class="hint">텍스트 파일은 입력 내용으로 읽고, PDF·이미지는 원본과 해석을 evidence로 보존합니다. 직접 작성 내용과 PDF·이미지를 함께 넣을 수도 있습니다. 파일은 20MB 이하만 지원합니다.</div>
+      <textarea id="text" placeholder="지식 텍스트를 입력하거나 카카오톡 내보내기 내용을 붙여 넣으세요."></textarea>
     </div>
     <button id="submit" type="submit">분석하고 저장</button>
     <div id="status" role="status">준비됨</div>
@@ -79,14 +79,40 @@
   const users = document.getElementById('users');
   const status = document.getElementById('status');
   let loadTimer;
+  let reference = null;
 
   document.getElementById('file').addEventListener('change', async function (event) {
     const file = event.target.files[0];
+    reference = null;
     if (!file) return;
+    if (file.size > 20 * 1024 * 1024) {
+      status.textContent = 'PDF·이미지 파일은 20MB 이하여야 합니다.';
+      event.target.value = '';
+      return;
+    }
     const bytes = new Uint8Array(await file.arrayBuffer());
-    document.getElementById('text').value = decodeText(bytes);
+    const isText = file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt');
+    if (isText) {
+      document.getElementById('text').value = decodeText(bytes);
+    } else {
+      reference = {
+        fileName: file.name,
+        mediaType: file.type,
+        contentBase64: encodeBase64(bytes)
+      };
+      status.textContent = 'Reference 준비됨: ' + file.name;
+    }
     if (!document.getElementById('sourceName').value) document.getElementById('sourceName').value = file.name;
   });
+
+  function encodeBase64(bytes) {
+    let binary = '';
+    const chunkSize = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+      binary += String.fromCharCode.apply(null, bytes.subarray(offset, offset + chunkSize));
+    }
+    return btoa(binary);
+  }
 
   function decodeText(bytes) {
     if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes.slice(2));
@@ -149,6 +175,16 @@
       status.textContent = '열람할 사용자를 한 명 이상 선택하세요.';
       return;
     }
+    const sourceType = document.getElementById('sourceType').value;
+    const inputText = document.getElementById('text').value;
+    if (!inputText.trim() && !reference) {
+      status.textContent = '지식 텍스트 또는 PDF·이미지 reference를 입력하세요.';
+      return;
+    }
+    if (sourceType === 'KAKAO' && reference) {
+      status.textContent = '카카오톡 내보내기는 텍스트(.txt)만 사용할 수 있습니다.';
+      return;
+    }
     submit.disabled = true;
     status.textContent = '분석 중입니다…';
     try {
@@ -159,11 +195,12 @@
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          sourceType: document.getElementById('sourceType').value,
+          sourceType: sourceType,
           sourceName: document.getElementById('sourceName').value,
           isPublic: isPublic,
           allowedUserIds: isPublic ? [] : allowedUserIds,
-          text: document.getElementById('text').value
+          text: inputText,
+          reference: reference
         })
       });
       const body = await response.json();

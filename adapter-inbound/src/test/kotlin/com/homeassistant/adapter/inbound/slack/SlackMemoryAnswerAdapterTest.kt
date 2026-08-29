@@ -215,6 +215,8 @@ class SlackMemoryAnswerAdapterTest {
         override fun respond(responseUrl: String, text: String) = Unit
 
         override fun readTextFile(fileId: String, maxBytes: Int): SlackTextFile = error("unused")
+
+        override fun readFile(fileId: String, maxBytes: Int): SlackFileContent = error("unused")
     }
 
     private data class PostedMessage(

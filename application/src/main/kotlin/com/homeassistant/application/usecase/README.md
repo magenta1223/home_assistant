@@ -23,6 +23,7 @@ sequenceDiagram
     actor Caller
     participant Analysis as MemoryAnalysisService
     participant Access as UserAccessPolicy
+    participant Reference as SourceReferenceInterpreter
     participant Sources as SourceRecordRepository
     participant Extractor as MemoryExtractor
     participant Writer as MemoryProposalsPersister
@@ -32,6 +33,10 @@ sequenceDiagram
 
     Caller->>Analysis: execute(request)
     Analysis->>Access: 작성자와 audience 인가 확인
+    opt PDF 또는 이미지 reference
+        Analysis->>Reference: 페이지/이미지별 근거 해석
+        Reference-->>Analysis: 원본에 연결할 source record content
+    end
     Analysis->>Sources: source record 저장 및 분석 대상 결정
     Analysis->>Extractor: 분석 대상에서 proposal 추출
     Analysis->>Writer: proposal 저장 요청

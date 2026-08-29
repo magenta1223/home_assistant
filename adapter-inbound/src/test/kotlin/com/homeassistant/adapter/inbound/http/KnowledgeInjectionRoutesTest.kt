@@ -29,6 +29,7 @@ import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
+import kotlin.test.assertContentEquals
 
 class KnowledgeInjectionRoutesTest {
     @Test
@@ -120,6 +121,43 @@ class KnowledgeInjectionRoutesTest {
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
+    }
+
+    @Test
+    fun `PDF reference can be submitted with direct text and keeps original bytes`() = testApplication {
+        val analysis = RecordingMemoryAnalysis()
+        application {
+            install(ContentNegotiation) { json(JsonSerializer.json) }
+            configureRoutes(
+                memoryAnalysis = analysis,
+                httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
+            )
+        }
+        val original = "%PDF-reference".toByteArray()
+        val encoded = java.util.Base64.getEncoder().encodeToString(original)
+
+        val response = client.post(AppConfig.ROUTE_KNOWLEDGE_IMPORT_ANALYZE) {
+            bearerAuth(API_TOKEN)
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{
+                  "sourceType":"TEXT",
+                  "sourceName":"설명서",
+                  "isPublic":true,
+                  "text":"설치 시 주의사항",
+                  "reference":{
+                    "fileName":"manual.pdf",
+                    "mediaType":"application/pdf",
+                    "contentBase64":"$encoded"
+                  }
+                }""".trimIndent(),
+            )
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        val reference = analysis.requests.single().source.reference
+        assertEquals("manual.pdf", reference?.fileName)
+        assertContentEquals(original, reference?.bytes())
     }
 
     private class RecordingMemoryAnalysis : MemoryAnalysis {

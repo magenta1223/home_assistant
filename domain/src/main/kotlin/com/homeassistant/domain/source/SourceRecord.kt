@@ -8,4 +8,5 @@ data class SourceRecord(
     val content: String,
     val analysisStatus: SourceRecordAnalysisStatus,
     val access: MemoryAccess,
+    val reference: SourceReference? = null,
 )

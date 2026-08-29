@@ -5,4 +5,5 @@ data class SourceRecordDraft(
     val deduplicationKey: String,
     val content: String,
     val deduplicationAliases: Set<String> = emptySet(),
+    val reference: SourceReferenceDraft? = null,
 )

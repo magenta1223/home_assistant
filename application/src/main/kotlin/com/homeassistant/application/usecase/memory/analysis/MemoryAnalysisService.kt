@@ -6,16 +6,20 @@ import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRe
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
+import com.homeassistant.application.port.input.memory.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
 import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
+import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.InvalidSourceReferenceException
+import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceRecordRepository
 import kotlinx.coroutines.CancellationException
@@ -28,12 +32,13 @@ class MemoryAnalysisService(
     private val accessPolicy: UserAccessPolicy,
     private val memoryPlacement: MemoryPlacement = MemoryPlacement.NoOpMemoryPlacement,
     private val memoryIndexing: MemoryIndexingOutboxProcessor? = null,
+    private val referenceInterpreter: SourceReferenceInterpreter? = null,
 ) : MemoryAnalysis {
     override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult {
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         requireAuthorizedAudience(request.access.allowedUserIds)
-        val parsedSource = request.source
+        val parsedSource = interpretReference(request)
         val sourceRecordSave = try {
             requireAvailable {
                 sourceRecords.saveAll(parsedSource.source, parsedSource.records, request.access)
@@ -88,6 +93,42 @@ class MemoryAnalysisService(
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
     }
+
+    private suspend fun interpretReference(request: MemoryAnalysisRequest) = request.source.reference?.let { reference ->
+        val interpreter = referenceInterpreter
+            ?: throw MemoryAnalysisUnavailableException(IllegalStateException("reference interpreter is unavailable"))
+        val interpretations = try {
+            interpreter.interpret(reference)
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: InvalidSourceReferenceException) {
+            throw InvalidKnowledgeReferenceException(
+                error.message ?: "invalid reference",
+                error,
+            )
+        } catch (error: Exception) {
+            throw MemoryAnalysisUnavailableException(error)
+        }
+        if (interpretations.isEmpty()) {
+            throw InvalidKnowledgeReferenceException(
+                "reference did not contain interpretable content",
+            )
+        }
+        val referenceRecords = interpretations.map { interpretation ->
+            SourceRecordDraft(
+                deduplicationKey = "reference:${reference.sha256}:${interpretation.segmentKey}",
+                content = buildString {
+                    appendLine("[reference: ${reference.fileName}, ${interpretation.segmentKey}]")
+                    append(interpretation.content.trim())
+                },
+                reference = reference,
+            )
+        }
+        request.source.copy(
+            records = request.source.records + referenceRecords,
+            reference = null,
+        )
+    } ?: request.source
 
     private fun requireAuthorizedAudience(userIds: Set<String>) {
         val invalid = userIds.filterTo(linkedSetOf()) { raw ->

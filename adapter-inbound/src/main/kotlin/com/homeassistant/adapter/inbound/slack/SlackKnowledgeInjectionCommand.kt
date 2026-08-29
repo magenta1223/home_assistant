@@ -6,6 +6,7 @@ import com.homeassistant.application.port.input.identity.ConversationIdentity
 import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
 import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
 import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
+import com.homeassistant.application.port.input.memory.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.memory.analysis.KnowledgeInjectionPreparation
 import com.homeassistant.application.port.input.memory.analysis.KnowledgeInjectionRegistrationRequiredException
 import com.homeassistant.application.port.input.memory.analysis.KnowledgeInjectionRequest
@@ -19,6 +20,8 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocumentDraft
+import com.homeassistant.domain.source.SourceDescriptor
+import com.homeassistant.domain.source.SourceReferenceDraft
 import com.slack.api.bolt.App
 import com.slack.api.model.File
 import com.slack.api.model.view.ViewState
@@ -118,8 +121,9 @@ internal class SlackKnowledgeInjectionCommand(
         if (files.size == 1 && fileId == null) errors[FILE_BLOCK_ID] = "첨부한 파일 정보를 확인할 수 없습니다."
         when (sourceType) {
             SOURCE_TYPE_TEXT -> {
-                if (text.isEmpty()) errors[TEXT_BLOCK_ID] = "지식 데이터를 입력해주세요."
-                if (files.isNotEmpty()) errors[FILE_BLOCK_ID] = "파일은 카카오톡 내보내기 형식에서만 사용할 수 있습니다."
+                if (text.isEmpty() && files.isEmpty()) {
+                    errors[TEXT_BLOCK_ID] = "지식 데이터 또는 PDF·이미지 reference를 입력해주세요."
+                }
             }
             SOURCE_TYPE_KAKAO -> when {
                 text.isEmpty() && files.isEmpty() ->
@@ -162,20 +166,31 @@ internal class SlackKnowledgeInjectionCommand(
     private fun analyze(responseUrl: String, input: PendingKnowledgeInjection) {
         runCatching { slack.respond(responseUrl, "지식을 분석하고 있습니다…") }
         val message = try {
-            val text = input.text ?: slack.readTextFile(input.fileId.orEmpty(), MAX_KAKAO_FILE_BYTES).text
             val source = try {
-                parseSource(input.sourceType, input.sourceName, text)
+                when (input.sourceType) {
+                    SOURCE_TYPE_TEXT -> {
+                        val parsed = input.text?.let { text -> parseSource(input.sourceType, input.sourceName, text) }
+                            ?: SourceDocumentDraft(SourceDescriptor("text", input.sourceName), emptyList())
+                        parsed.copy(reference = input.fileId?.let(::readReference))
+                    }
+                    SOURCE_TYPE_KAKAO -> {
+                        val text = input.text
+                            ?: slack.readTextFile(input.fileId.orEmpty(), MAX_KAKAO_FILE_BYTES).text
+                        parseSource(input.sourceType, input.sourceName, text)
+                    }
+                    else -> error("unsupported source type")
+                }
             } catch (error: IllegalArgumentException) {
                 throw InvalidSourceDataException(error)
             }
-            if (source.records.isEmpty()) throw NoSourceRecordsException()
+            if (source.records.isEmpty() && source.reference == null) throw NoSourceRecordsException()
             val request = KnowledgeInjectionRequest(input.identity, source, input.access)
             val result = runBlocking { workflow.execute(request) }
             "완료: 소스 레코드 ${result.importedRecordCount}개, 메모리 ${result.memoryCount}개를 저장했습니다."
         } catch (error: SlackFileReadException) {
             when (error.category) {
-                "UNSUPPORTED_FILE_TYPE" -> "카카오톡 내보내기 .txt 파일만 사용할 수 있습니다."
-                "FILE_TOO_LARGE" -> "파일은 5MB 이하여야 합니다."
+                "UNSUPPORTED_FILE_TYPE" -> "카카오톡 .txt 또는 PDF·이미지 파일만 사용할 수 있습니다."
+                "FILE_TOO_LARGE" -> "카카오톡 텍스트는 5MB, PDF·이미지는 20MB 이하여야 합니다."
                 "INVALID_UTF8" -> "UTF-8로 저장된 카카오톡 내보내기 파일만 사용할 수 있습니다."
                 "EMPTY_FILE" -> "첨부한 파일이 비어 있습니다."
                 else -> "첨부한 파일을 읽지 못했습니다. 다시 시도해주세요."
@@ -197,6 +212,8 @@ internal class SlackKnowledgeInjectionCommand(
             conflictingAudienceMessage(error.existingAccess, viewers)
         } catch (_: InvalidMemoryAudienceException) {
             "열람 권한이 없는 사용자가 포함되어 있습니다."
+        } catch (error: InvalidKnowledgeReferenceException) {
+            "PDF·이미지를 해석할 수 없습니다: ${error.message}"
         } catch (_: UserAccessDeniedException) {
             "지식 주입 권한이 없습니다."
         } catch (_: KnowledgeInjectionUnavailableException) {
@@ -217,6 +234,23 @@ internal class SlackKnowledgeInjectionCommand(
             SOURCE_TYPE_KAKAO -> KakaoExportParser.parse(sourceName, text)
             else -> error("unsupported source type")
         }
+
+    private fun readReference(fileId: String): SourceReferenceDraft {
+        val file = slack.readFile(fileId, MAX_REFERENCE_FILE_BYTES)
+        val declaredMediaType = file.mediaType.substringBefore(';').trim().lowercase()
+        val mediaType = declaredMediaType.takeIf { it in REFERENCE_MEDIA_TYPES }
+            ?: when (file.name.substringAfterLast('.', "").lowercase()) {
+                "pdf" -> "application/pdf"
+                "png" -> "image/png"
+                "jpg", "jpeg" -> "image/jpeg"
+                "webp" -> "image/webp"
+                else -> declaredMediaType
+            }
+        if (mediaType !in REFERENCE_MEDIA_TYPES) {
+            throw SlackFileReadException("UNSUPPORTED_FILE_TYPE")
+        }
+        return SourceReferenceDraft(file.name, mediaType, file.bytes)
+    }
 
     private fun knowledgeModal(
         invocation: SlackKnowledgeCommandInvocation,
@@ -268,11 +302,11 @@ internal class SlackKnowledgeInjectionCommand(
                 ),
                 inputBlock(
                     FILE_BLOCK_ID,
-                    "카카오톡 내보내기 파일 (.txt, 선택)",
+                    "Reference 또는 카카오톡 파일 (선택)",
                     mapOf(
                         "type" to "file_input",
                         "action_id" to FILE_ACTION_ID,
-                        "filetypes" to listOf("txt"),
+                        "filetypes" to listOf("txt", "pdf", "png", "jpg", "jpeg", "webp"),
                         "max_files" to 1,
                     ),
                     optional = true,
@@ -380,8 +414,10 @@ internal class SlackKnowledgeInjectionCommand(
         private const val MAX_SOURCE_NAME_LENGTH = 100
         private const val MAX_DATA_LENGTH = 3_000
         private const val MAX_KAKAO_FILE_BYTES = 5 * 1024 * 1024
+        private const val MAX_REFERENCE_FILE_BYTES = SourceReferenceDraft.MAX_BYTES
         private val SOURCE_TYPES = setOf(SOURCE_TYPE_TEXT, SOURCE_TYPE_KAKAO)
         private val AUDIENCES = setOf(AUDIENCE_RESTRICTED, AUDIENCE_PUBLIC)
+        private val REFERENCE_MEDIA_TYPES = setOf("application/pdf", "image/png", "image/jpeg", "image/webp")
 
         internal fun conflictingAudienceMessage(
             existingAccess: MemoryAccess,

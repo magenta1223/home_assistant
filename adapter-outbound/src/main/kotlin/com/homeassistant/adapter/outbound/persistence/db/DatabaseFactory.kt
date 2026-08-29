@@ -13,6 +13,7 @@ internal object DatabaseFactory {
                 MemoryTable,
                 MemoryEvidenceTable,
                 MemoryViewerTable,
+                SourceReferenceTable,
                 SourceRecordTable,
                 SourceRecordViewerTable,
                 IndexingOutboxTable,

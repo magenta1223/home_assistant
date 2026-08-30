@@ -1,4 +1,4 @@
-package com.homeassistant.app.vector
+package com.homeassistant.app.setup
 
 import com.homeassistant.adapter.outbound.vector.qdrant.QdrantRuntimeSetup
 

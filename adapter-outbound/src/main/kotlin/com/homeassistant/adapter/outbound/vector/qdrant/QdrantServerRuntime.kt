@@ -36,7 +36,7 @@ object ManagedQdrantVectorStoreFactory {
     ): ManagedQdrantVectorStore {
         val endpoint = QdrantEndpoint.parse(baseUrl)
         val normalizedRoot = runtimeRoot.toAbsolutePath().normalize()
-        val executable = QdrantDistributionInstaller().executable(normalizedRoot)
+        val executable = PinnedQdrantDistribution.manifest.resolveEntryPoint(normalizedRoot)
         val storageDirectory = normalizedRoot.resolve("storage")
         val snapshotsDirectory = normalizedRoot.resolve("snapshots")
         return ManagedQdrantVectorStore(

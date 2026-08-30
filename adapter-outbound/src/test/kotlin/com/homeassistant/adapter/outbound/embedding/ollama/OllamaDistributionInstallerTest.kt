@@ -1,6 +1,8 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
-import java.net.URI
+import com.homeassistant.adapter.outbound.embedding.ollama.install.OllamaDistributionInstaller
+import com.homeassistant.adapter.outbound.runtime.distribution.DistributionManifest
+import com.homeassistant.adapter.outbound.runtime.distribution.downloader.AssetDownloader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -40,7 +42,7 @@ class OllamaDistributionInstallerTest {
             val archive = createArchive(workspace.resolve("ollama.zip"))
             val installer = OllamaDistributionInstaller(
                 manifest = manifest(archive, "0".repeat(64)),
-                downloader = OllamaAssetDownloader { source, target -> Files.copy(Path.of(source), target) },
+                downloader = AssetDownloader { source, target -> Files.copy(Path.of(source), target) },
                 isSupportedPlatform = { true },
             )
 
@@ -82,15 +84,17 @@ class OllamaDistributionInstallerTest {
         download: (Path, Path) -> Unit,
     ): OllamaDistributionInstaller = OllamaDistributionInstaller(
         manifest = manifest(archive, sha256(archive)),
-        downloader = OllamaAssetDownloader { source, target -> download(Path.of(source), target) },
+        downloader = AssetDownloader { source, target -> download(Path.of(source), target) },
         isSupportedPlatform = { true },
     )
 
-    private fun manifest(archive: Path, checksum: String) = OllamaDistributionManifest(
+    private fun manifest(archive: Path, checksum: String) = DistributionManifest(
+        productName = "ollama",
         version = "test-version",
         assetUri = archive.toUri(),
         assetSha256 = checksum,
         assetSizeBytes = Files.size(archive),
+        entryPoint = Path.of("ollama.exe"),
     )
 
     private fun createArchive(path: Path): Path {

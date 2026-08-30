@@ -1,6 +1,9 @@
-package com.homeassistant.adapter.outbound.embedding.ollama
+package com.homeassistant.adapter.outbound.embedding.ollama.install
 
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
+import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEndpoint
+import com.homeassistant.adapter.outbound.embedding.ollama.OllamaServerRuntime
+import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.configuration.AppConfig
 import kotlinx.serialization.Serializable
 import java.net.URI
@@ -60,7 +63,9 @@ object OllamaEmbeddingSetup {
         } else {
             setOf(model, "$model:latest")
         }
-        return JsonSerializer.json.decodeFromString<OllamaTagsResponse>(response.body())
+        return response
+            .body()
+            .decodeFromString<OllamaTagsResponse>()
             .models
             .any { it.name in expectedNames || it.model in expectedNames }
     }

@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.vector.qdrant
 
-import java.net.URI
+import com.homeassistant.adapter.outbound.runtime.distribution.DistributionManifest
+import com.homeassistant.adapter.outbound.runtime.distribution.downloader.AssetDownloader
 import java.nio.file.Files
 import java.nio.file.Path
 import java.security.MessageDigest
@@ -40,7 +41,7 @@ class QdrantDistributionInstallerTest {
             val archive = createArchive(workspace.resolve("qdrant.zip"))
             val installer = QdrantDistributionInstaller(
                 manifest = manifest(archive, "0".repeat(64)),
-                downloader = QdrantAssetDownloader { source, target -> Files.copy(Path.of(source), target) },
+                downloader = AssetDownloader { source, target -> Files.copy(Path.of(source), target) },
                 isSupportedPlatform = { true },
             )
 
@@ -82,15 +83,17 @@ class QdrantDistributionInstallerTest {
         download: (Path, Path) -> Unit,
     ): QdrantDistributionInstaller = QdrantDistributionInstaller(
         manifest = manifest(archive, sha256(archive)),
-        downloader = QdrantAssetDownloader { source, target -> download(Path.of(source), target) },
+        downloader = AssetDownloader { source, target -> download(Path.of(source), target) },
         isSupportedPlatform = { true },
     )
 
-    private fun manifest(archive: Path, checksum: String) = QdrantDistributionManifest(
+    private fun manifest(archive: Path, checksum: String) = DistributionManifest(
+        productName = "qdrant",
         version = "test-version",
         assetUri = archive.toUri(),
         assetSha256 = checksum,
         assetSizeBytes = Files.size(archive),
+        entryPoint = Path.of("qdrant.exe"),
     )
 
     private fun createArchive(path: Path): Path {

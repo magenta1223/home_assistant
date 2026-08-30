@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.outbound.vector.qdrant
+package com.homeassistant.adapter.outbound.embedding.ollama.install
 
 import com.homeassistant.adapter.outbound.runtime.distribution.DistributionInstaller
 import com.homeassistant.adapter.outbound.runtime.distribution.DistributionManifest
@@ -10,8 +10,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.zip.ZipInputStream
 
-internal class QdrantDistributionInstaller(
-    manifest: DistributionManifest = PinnedQdrantDistribution.manifest,
+internal class OllamaDistributionInstaller(
+    manifest: DistributionManifest = PinnedOllamaDistribution.manifest,
     downloader: AssetDownloader = HttpAssetDownloader(),
     isSupportedPlatform: () -> Boolean = WindowsX64Platform::isSupported,
 ) : DistributionInstaller(manifest, downloader, isSupportedPlatform) {
@@ -21,8 +21,11 @@ internal class QdrantDistributionInstaller(
     }
 
     override fun checkInstallation(installationRoot: Path) {
-        check(Files.isRegularFile(installationRoot.resolve("qdrant.exe"))) {
-            "Qdrant archive does not contain qdrant.exe"
+        check(Files.isRegularFile(installationRoot.resolve("ollama.exe"))) {
+            "Ollama archive does not contain ollama.exe"
+        }
+        check(Files.isDirectory(installationRoot.resolve("lib/ollama"))) {
+            "Ollama archive does not contain lib/ollama"
         }
     }
 
@@ -31,7 +34,7 @@ internal class QdrantDistributionInstaller(
             while (true) {
                 val entry = zip.nextEntry ?: break
                 val destination = target.resolve(entry.name).normalize()
-                check(destination.startsWith(target)) { "Unsafe path in Qdrant archive: ${entry.name}" }
+                check(destination.startsWith(target)) { "Unsafe path in Ollama archive: ${entry.name}" }
                 if (entry.isDirectory) {
                     Files.createDirectories(destination)
                 } else {

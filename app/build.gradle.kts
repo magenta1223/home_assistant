@@ -16,7 +16,7 @@ tasks.named<JavaExec>("run") {
 tasks.register<JavaExec>("setupEmbedding") {
     group = "application"
     description = "Installs the pinned Windows Ollama runtime and prepares the embedding model."
-    mainClass.set("com.homeassistant.app.embedding.OllamaSetupKt")
+    mainClass.set("com.homeassistant.app.setup.OllamaSetupKt")
     classpath = sourceSets["main"].runtimeClasspath
     workingDir = rootProject.projectDir
 }
@@ -24,7 +24,7 @@ tasks.register<JavaExec>("setupEmbedding") {
 tasks.register<JavaExec>("setupQdrant") {
     group = "application"
     description = "Installs the pinned Windows Qdrant runtime."
-    mainClass.set("com.homeassistant.app.vector.QdrantSetupKt")
+    mainClass.set("com.homeassistant.app.setup.QdrantSetupKt")
     classpath = sourceSets["main"].runtimeClasspath
     workingDir = rootProject.projectDir
 }

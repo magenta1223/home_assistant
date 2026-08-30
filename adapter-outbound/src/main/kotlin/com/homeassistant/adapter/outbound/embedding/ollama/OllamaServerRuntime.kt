@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
+import com.homeassistant.adapter.outbound.embedding.ollama.install.PinnedOllamaDistribution
 import com.homeassistant.configuration.AppConfig
 import org.slf4j.LoggerFactory
 import java.net.InetAddress
@@ -36,7 +37,7 @@ object ManagedOllamaEmbeddingFactory {
     ): ManagedOllamaEmbedding {
         val endpoint = OllamaEndpoint.parse(host)
         val normalizedRoot = runtimeRoot.toAbsolutePath().normalize()
-        val executable = OllamaDistributionInstaller().executable(normalizedRoot)
+        val executable = PinnedOllamaDistribution.manifest.resolveEntryPoint(normalizedRoot)
         val modelsDirectory = normalizedRoot.resolve("models")
         val embedder = OllamaEmbeddingFactory.create(endpoint.baseUrl, model)
         val runtime = OllamaServerRuntime(

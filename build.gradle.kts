@@ -41,6 +41,30 @@ tasks.register<Exec>("updateSlackManifest") {
     )
 }
 
+val testDeploymentScripts by tasks.registering(Exec::class) {
+    group = "verification"
+    description = "Runs Windows deployment script regression tests."
+    onlyIf { System.getProperty("os.name").startsWith("Windows", ignoreCase = true) }
+    workingDir(rootDir)
+    commandLine(
+        "powershell.exe",
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        rootProject.file("scripts/test-deploy-runtime-control.ps1").absolutePath,
+    )
+}
+
+tasks.register("test") {
+    group = "verification"
+    description = "Runs every project and deployment script test."
+    dependsOn(testDeploymentScripts)
+    dependsOn(subprojects.map { "${it.path}:test" })
+}
+
 subprojects {
     group = "com.homeassistant"
     version = "1.0.0"

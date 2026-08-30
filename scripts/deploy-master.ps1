@@ -11,6 +11,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 Set-StrictMode -Version Latest
+. (Join-Path $PSScriptRoot "deploy-runtime-control.ps1")
 
 if ([string]::IsNullOrWhiteSpace($RepositoryPath)) {
     $RepositoryPath = Join-Path $PSScriptRoot ".."
@@ -23,6 +24,7 @@ $deployedShaPath = Join-Path $deployDirectory "deployed-sha.txt"
 $gradle = Join-Path $repository "gradlew.bat"
 $lockHandle = $null
 $exitCode = 0
+$runtimeRecoveryRequired = $false
 
 New-Item -ItemType Directory -Path $deployDirectory -Force | Out-Null
 
@@ -105,35 +107,20 @@ function Stop-RuntimeTask {
     Start-Sleep -Seconds 2
     $listeners = @(Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue |
         Where-Object { $_.LocalPort -in $RuntimePorts })
-    $processIds = @($listeners |
-        Sort-Object { if ($_.LocalPort -eq 8080) { 0 } else { 1 } } |
-        Select-Object -ExpandProperty OwningProcess -Unique)
+    $processIds = @($listeners | Select-Object -ExpandProperty OwningProcess -Unique)
     $runtimeProcesses = @()
 
     foreach ($processId in $processIds) {
-        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction Stop
-        $evidence = "$($process.ExecutablePath) $($process.CommandLine)"
-        if ($evidence.IndexOf($repository, [StringComparison]::OrdinalIgnoreCase) -lt 0) {
-            throw "Refusing to stop PID $processId because it is not owned by repository '$repository'."
+        $process = Get-CimInstance Win32_Process -Filter "ProcessId = $processId" -ErrorAction SilentlyContinue
+        if ($null -ne $process) {
+            $runtimeProcesses += $process
         }
-        $runtimeProcesses += $process
     }
 
-    foreach ($process in $runtimeProcesses) {
-        if ($null -eq (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue)) {
-            continue
-        }
-        Write-DeployLog "Stopping project runtime process tree PID $($process.ProcessId)."
-        $output = & taskkill.exe /PID $process.ProcessId /T /F 2>&1
-        $commandExitCode = $LASTEXITCODE
-        foreach ($line in $output) {
-            Write-DeployLog $line.ToString()
-        }
-        if ($commandExitCode -ne 0 -and
-            $null -ne (Get-Process -Id $process.ProcessId -ErrorAction SilentlyContinue)) {
-            throw "Failed to stop project runtime PID $($process.ProcessId)."
-        }
-    }
+    Stop-ProjectRuntimeProcessTrees `
+        -Processes $runtimeProcesses `
+        -Repository $repository `
+        -WriteLog ${function:Write-DeployLog}
 
     $deadline = [DateTime]::UtcNow.AddSeconds(30)
     do {
@@ -222,19 +209,15 @@ try {
         Write-DeployLog "No new commit to deploy ($localSha); performing the scheduled daily restart."
     }
 
+    $runtimeRecoveryRequired = $true
     Stop-RuntimeTask
 
     if ($requiresDeployment) {
+        Push-Location -LiteralPath $repository
         try {
-            Push-Location -LiteralPath $repository
-            try {
-                $null = Invoke-LoggedCommand -FilePath $gradle -Arguments @("--no-daemon", ":app:installDist")
-            } finally {
-                Pop-Location
-            }
-        } catch {
-            Start-RuntimeTask
-            throw
+            $null = Invoke-LoggedCommand -FilePath $gradle -Arguments @("--no-daemon", ":app:installDist")
+        } finally {
+            Pop-Location
         }
     }
 
@@ -243,6 +226,7 @@ try {
     if (-not (Test-Health)) {
         throw "Scheduled task '$RuntimeTaskName' did not become healthy within $HealthTimeoutSeconds seconds."
     }
+    $runtimeRecoveryRequired = $false
 
     if ($requiresDeployment) {
         $temporaryShaPath = "$deployedShaPath.tmp"
@@ -254,8 +238,21 @@ try {
     }
 } catch {
     $exitCode = 1
-    Write-DeployLog "Deployment failed: $($_.Exception.Message)"
-    Write-Error $_
+    $deploymentFailure = $_
+    if ($runtimeRecoveryRequired) {
+        try {
+            Restore-RuntimeAfterFailure `
+                -RuntimeTaskName $RuntimeTaskName `
+                -GetTaskState { (Get-RuntimeTask).State.ToString() } `
+                -StartTask ${function:Start-RuntimeTask} `
+                -TestHealth ${function:Test-Health} `
+                -WriteLog ${function:Write-DeployLog}
+        } catch {
+            Write-DeployLog "Runtime recovery failed: $($_.Exception.Message)"
+        }
+    }
+    Write-DeployLog "Deployment failed: $($deploymentFailure.Exception.Message)"
+    Write-Error $deploymentFailure
 } finally {
     if ($null -ne $lockHandle) {
         $lockHandle.Dispose()

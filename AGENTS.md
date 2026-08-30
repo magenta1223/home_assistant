@@ -37,6 +37,12 @@ This file provides guidance to Codex (Codex.ai/code) when working with code in t
 
 Copy `.env` to the project root (already present; gitignored). Key variables:
 
+### Production server target
+
+- The production Windows server is the Tailscale SSH host alias `homeserver`; verify that the remote hostname is `HOMESERVER` before making operational changes.
+- Perform production start, stop, restart, deployment, database reset, runtime inspection, and health checks through `ssh homeserver`.
+- The local `C:\homeServers` workspace is not the production server. Do not start the Slack application or managed runtimes locally for a production operation unless the user explicitly requests a local run.
+
 Topic analysis and Slack memory answers use the locally installed and authenticated Codex CLI
 resolved from `PATH` (`codex.cmd` on Windows). Run `codex login` as the server user before startup.
 Hosted LLM providers and provider-selection environment variables are not supported.
@@ -76,6 +82,40 @@ The project is now a **home second brain**, not a general chat assistant. The pr
 4. Search and retrieve canonical memories with their source evidence and optional topic context.
 5. Register application users from their first Slack DM using a name-entry modal.
 6. Answer memory-backed questions through registered Slack DMs using short-lived Codex threads.
+
+### Product principle
+
+This project is a **low-maintenance family memory, notification, and review system**, not household
+project-management software. Information should accumulate naturally, require as little manual
+maintenance as possible, and allow the system to proactively surface what the family needs to know
+or do.
+
+- **Memory** stores facts, rules, assets, events, and decision history. A decision needs only enough
+  history to recall what was decided and why; do not turn it into a ticket workflow.
+- **Task** is intentionally minimal: assign it to a family member and track whether it is complete.
+  Do not add dependencies, scheduling plans, or project-management machinery without an explicit need.
+- **Notification** delivers time-, condition-, or task-triggered information to the appropriate family
+  member.
+- **Review** periodically synthesizes memories, tasks, and notification history and proactively surfaces
+  notable changes, unfinished work, recurring problems, and upcoming concerns.
+
+Do not create a dedicated structured feature when memory-backed retrieval and answering already solve
+the problem. Introduce a separate service when the behavior requires durable state changes, proactive
+delivery, or coordination between family members.
+
+### Learning purpose
+
+This repository has two equally valid purposes: operating a useful home second brain and providing a
+hands-on environment for learning service implementation, deployment, and operations. Do not optimize
+the roadmap only for delivery speed when the user intentionally chooses a task for study.
+
+- Prefer incremental changes whose behavior can be measured and understood end to end.
+- Make design reasoning, runtime boundaries, failure behavior, verification, and operational recovery
+  visible enough for the user to learn from them.
+- Keep production safety, data integrity, and the project's simplicity principles intact; learning is
+  not a reason to add speculative architecture.
+- Treat work explicitly marked as a user-owned learning task as reserved for the user. Do not implement
+  it unless the user asks for help or requests implementation.
 
 Slack supports member registration, memory-backed answers, and explicit knowledge injection through
 the `/knowledge` slash-command modal. An unknown member's first DM receives a registration button; its
@@ -168,6 +208,13 @@ HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_AP
 
 `ApplicationServices.kt` is the composition root for repositories, use cases, Codex extraction, embeddings, vector search, Slack, and HTTP adapters.
 
+## User Direction
+
+- Treat an explicit, in-scope user instruction as authorization to perform that exact action. Execute it instead of replacing it with a plan, postponement, backup, quarantine, or adjacent alternative.
+- Do not argue with the user based on tool preference, general caution, or a different engineering preference.
+- Pause only when a higher-priority policy, missing permission, or concrete tool limitation makes the requested action impossible, or when an unresolved ambiguity would materially change the result. State the specific constraint briefly and ask only for the decision that is actually required.
+- When an exact action is impossible, do not silently substitute a different outcome. Explain the constraint and obtain approval before taking a materially different action.
+
 ## Coding Principles
 
 Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
@@ -196,7 +243,7 @@ Follow standard and modern software engineering principles before inventing loca
 Before implementing:
 - State your assumptions explicitly. If uncertain, ask.
 - If multiple interpretations exist, present them - don't pick silently.
-- If a simpler approach exists, say so. Push back when warranted.
+- If a simpler approach materially affects the requested outcome, mention it without debating an explicit user choice.
 - If something is unclear, stop. Name what's confusing. Ask.
 
 ## 3. Simplicity First

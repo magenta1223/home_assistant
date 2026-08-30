@@ -45,9 +45,33 @@ powershell.exe -NoLogo -NoProfile -ExecutionPolicy Bypass `
 - 현재 branch가 `master`가 아니거나 worktree가 dirty하면 중단한다.
 - local `master`가 `origin/master`로 fast-forward될 수 없으면 중단한다.
 - 전체 테스트가 실패하면 실행 중인 런타임 작업을 재시작하거나 배포본을 변경하지 않는다.
-- 새 배포본 생성이 실패하면 런타임 작업을 다시 시작하려고 시도한다.
-- 작업 스케줄러가 남긴 자식 프로세스는 실행 파일 또는 명령줄이 저장소 경로에 속하는지 확인한
-  뒤에만 프로세스 트리 단위로 종료한다.
+- 런타임 종료를 시작한 뒤 배포본 생성, 작업 시작 또는 health 확인이 실패하면 현재 설치된
+  배포본으로 런타임 작업을 복구하고 `/health`를 다시 확인한다. 원래 실패와 복구 실패는 별도로
+  기록한다.
+- 작업 스케줄러가 남긴 프로세스는 실행 파일 또는 명령줄이 저장소 경로에 속하는지 확인한 뒤에만
+  parent 우선으로 process tree를 종료한다. parent 종료로 child PID가 먼저 사라지거나 확인 직후
+  PID가 종료되는 경쟁은 정상 종료로 처리한다.
+- 종료 성공 여부는 개별 `taskkill` exit code만으로 판단하지 않고 포트 `8080`, `6333`, `11435`가
+  모두 닫혔는지 최종 확인한다.
 - `/health`가 성공한 경우에만 성공 SHA를 기록한다. 실패한 SHA는 다음 주기에 다시 시도한다.
 - Git checkout을 되돌리는 자동 rollback은 수행하지 않는다. health 실패 시 로그를 확인하고 수동으로
   이전 정상 커밋을 복구한다.
+
+## 배포 스크립트 회귀 테스트
+
+`gradlew test`는 Kotlin 테스트와 함께 `scripts/test-deploy-runtime-control.ps1`을 실행한다. 이
+테스트는 parent/child 중복 listener, 종료 경쟁, 소유권 거부, 실제 종료 실패, 배포 실패 후 runtime
+복구와 recovery health 실패를 검증한다. PowerShell 테스트만 실행하려면 다음 명령을 사용한다.
+
+```powershell
+.\gradlew.bat testDeploymentScripts
+```
+
+자동 복구까지 실패하면 관리자 PowerShell에서 예약 작업과 세 포트를 확인하고 다음 순서로
+복구한다.
+
+1. `gradlew.bat --no-daemon :app:installDist`
+2. `Start-ScheduledTask -TaskName HomeSecondBrain -TaskPath \`
+3. `Invoke-RestMethod http://127.0.0.1:8080/health`
+
+성공 SHA는 `/health`가 `ok`인 것을 확인한 뒤에만 `runtime/deploy/deployed-sha.txt`에 기록한다.

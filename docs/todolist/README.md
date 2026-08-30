@@ -9,6 +9,8 @@
 3. 구현 후 실제 변경 내용과 검증 결과를 추가한다.
 4. 완료된 문서는 파일명을 유지한 채 `done/`으로 이동한다.
 5. 취소된 작업도 취소 사유를 기록한 뒤 `done/`으로 이동한다.
+6. 사용자 학습 과제로 표시된 작업은 활성 구현 우선순위와 분리하고, 사용자의 명시적인 요청 없이
+   대신 구현하지 않는다.
 
 ## 운영 리스크와 기반 작업
 
@@ -22,44 +24,46 @@
 
 | 문서 | 목적 |
 |---|---|
-| [qdrant-windows-app-control-reliability.md](p0/qdrant-windows-app-control-reliability.md) | Windows App Control의 unsigned Qdrant 재평가 차단으로 인한 서버 기동 불능을 복구하고 재발 방지 |
+| [deploy-runtime-shutdown-reliability.md](p0/deploy-runtime-shutdown-reliability.md) | 로컬 구현·회귀 테스트 완료; 새 경로의 원격 배포·재기동 검증 대기 |
 
 ### P1
 
-| 문서 | 목적 |
-|---|---|
-| [explicit-memory-placement-model.md](p1/explicit-memory-placement-model.md) | topic, tag, container tree 중 명시적인 장기 배치 모델 결정 |
+현재 등록된 작업 없음.
 
 ### P2
 
 | 문서 | 목적 |
 |---|---|
 | [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application에서 serialization·logging 구현 결합을 제거하고 외부 전달 경계를 명시적인 port로 강화 |
-| [memory-query-performance.md](p2/memory-query-performance.md) | 전체 조회와 N+1 query 제거 |
+| [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
 
-## 운영 채널 기능 계획
+## 제품 기능 계획
 
-`feature/`는 사용자가 접하는 운영 채널과 기능 확장을 위한 계획이다. 리스크 작업과 독립적으로
-우선순위를 매기되, 해당 기능이 P0/P1 리스크를 유발하면 먼저 리스크 작업을 추가한다.
+`feature/`는 사용자가 접하는 기능과 필요한 전달 채널 확장을 위한 계획이다. 리스크 작업과
+독립적으로 우선순위를 매기되, 해당 기능이 P0/P1 리스크를 유발하면 먼저 리스크 작업을 추가한다.
 
-- **Feature P0**: 채널과 기능을 분리하는 공통 기반 및 첫 기능의 안전한 도입
-- **Feature P1**: 첫 기능을 운영 가능한 Slack 흐름으로 완성
-- **Feature P2**: 후속 채널·기능 플러그인과 운영 경험 확장
+- **Feature P0**: 현재 가정에서 바로 사용할 다음 핵심 기능
+- **Feature P1**: P0 기능과 Memory를 종합해 능동적인 운영 경험을 완성하는 기능
+- **Feature P2**: 외부 제품화 결정 후 필요한 고객·과금·규모 확장
 
 ### Feature P0
 
 | 문서 | 목적 |
 |---|---|
-| [api-intelligence-and-billing-model.md](feature/p0/api-intelligence-and-billing-model.md) | 외부 고객 제품의 공식 모델 API 지능 계약과 BYOK·관리형 과금 모델 결정 |
+| [minimal-family-task-service.md](feature/p0/minimal-family-task-service.md) | 담당자와 완료 여부만 관리하는 최소 가족 Task 서비스 |
+| [family-notification-service.md](feature/p0/family-notification-service.md) | Memory 알림 후보 발견, 사용자 승인과 확정 알림의 durable Slack 전달을 분리 |
 
 ### Feature P1
 
-현재 등록된 작업 없음.
+| 문서 | 목적 |
+|---|---|
+| [periodic-household-review.md](feature/p1/periodic-household-review.md) | Memory·Task·알림 이력을 정기적으로 종합해 필요한 내용을 먼저 브리핑 |
 
 ### Feature P2
 
 | 문서 | 목적 |
 |---|---|
+| [api-intelligence-and-billing-model.md](feature/p2/api-intelligence-and-billing-model.md) | 외부 제품화 시 공식 모델 API 지능 계약과 BYOK·관리형 과금 모델 결정 |
 | [multi-family-group-expansion.md](feature/p2/multi-family-group-expansion.md) | 약 1,000개 가족 그룹을 위한 로컬 우선·중앙 조율·비동기 작업 운영 구조 결정 |
 
 ## 완료된 작업
@@ -88,3 +92,5 @@
 | [slack-operational-channel-architecture.md](done/slack-operational-channel-architecture.md) | 범용 운영 채널 계획은 취소하고 작은 slash-command registry 경계만 도입 |
 | [slack-knowledge-injection.md](done/slack-knowledge-injection.md) | `/knowledge` modal을 기존 `MemoryAnalysis` 흐름에 연결 |
 | [operational-feature-plugin-expansion.md](done/operational-feature-plugin-expansion.md) | manifest·명령 registry까지만 도입하고 범용 plugin 일반화는 보류 |
+| [explicit-memory-placement-model.md](done/explicit-memory-placement-model.md) | 실제 필요가 확인되지 않은 Topic·Tag·Container 재설계를 제품 원칙에 따라 취소 |
+| [qdrant-windows-app-control-reliability.md](done/qdrant-windows-app-control-reliability.md) | 초기화와 production 원격 기동의 실사용 확인으로 운영 P0 종료; 오류 4551 원인은 잔여 위험으로 기록 |

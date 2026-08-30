@@ -1,8 +1,23 @@
 # 명시적인 memory 배치 모델 결정
 
-- 상태: TODO
+- 상태: 취소
 - 우선순위: P1
-- 선행 작업: P0 memory read와 placement retry 복구
+- 완료일: 2026-08-29
+- 선행 작업: P0 memory read와 placement retry 복구 완료
+
+## 취소 결과
+
+현재 semantic search와 제한적인 tree context 확장이 사용자의 memory-backed 질문에 필요한 검색을
+제공하고 있으며, 별도 Topic·Tag·Container lifecycle이 필요한 실제 사용자 문제가 확인되지 않았다.
+제품 원칙상 memory-backed retrieval로 해결되는 문제를 별도의 구조화 기능과 관리 대상으로 만들지
+않는다.
+
+따라서 Topic 생성·병합 정책, 관계 schema migration, taxonomy 평가를 지금 구현하는 계획은 취소한다.
+기존 placement 관계는 내부 검색 보조 정보로 유지한다. 향후 실제 검색 품질, 무결성 또는 성능
+계측에서 문제가 확인되면 그 증거와 최소 변경 범위로 새 작업을 작성한다. 전체 조회와
+`childrenIds` 관련 성능 가능성은 기존 `memory-query-performance.md`에서 계속 추적한다.
+
+이번 결정에 따른 코드 및 데이터 migration은 없다.
 
 ## 문제
 

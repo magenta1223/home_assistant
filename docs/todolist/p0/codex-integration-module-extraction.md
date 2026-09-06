@@ -107,7 +107,7 @@ integration-codex -X-> application/domain
 
 ### 3. structured completion integration 이동
 
-1. `CodexCompletionClient`, `CodexCliClient`, `CodexImage`, process executor와 결과 type을 새 모듈로
+1. `CompletionClient`, `CodexCliClient`, `CodexImage`, process executor와 결과 type을 새 모듈로
    이동한다.
 2. `MEMORY_GENERATION_MODEL`처럼 특정 기능 이름을 가진 기본값은 저수준 client에서 제거하거나
    Codex 요청 configuration으로 전달한다.
@@ -119,7 +119,7 @@ integration-codex -X-> application/domain
 1. process transport, request ID 관리, protocol message와 Codex thread/turn event 처리를 application
    모델과 분리할 수 있는 경계까지 새 모듈로 이동한다.
 2. Codex protocol 결과를 `ConversationTurnResult`로 바꾸는 구현은 `adapter-outbound`에 둔다.
-3. `CodexConversationClient : ConversationTurnClient`처럼 두 경계를 합친 interface는 기능 adapter와
+3. `ConversationClient : ConversationTurnClient`처럼 두 경계를 합친 interface는 기능 adapter와
    integration client로 나눈다.
 4. availability, start/close/restart lifecycle은 소유자가 하나만 되도록 정한다.
 5. thread ID 검증 중 Codex protocol 규칙은 integration에, application session 정책은 adapter 또는

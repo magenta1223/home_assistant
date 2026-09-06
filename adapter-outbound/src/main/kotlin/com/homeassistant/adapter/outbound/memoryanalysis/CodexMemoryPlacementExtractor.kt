@@ -4,7 +4,7 @@ import com.homeassistant.application.port.output.memory.placement.MemoryPlacemen
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementExtractor
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementInput
 import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
-import com.homeassistant.codex.completion.CodexCompletionClient
+import com.homeassistant.codex.completion.CompletionClient
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.common.json.JsonSerializer.parseToJsonElement
@@ -23,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
 
 /** Makes one structured Codex call for the complete placement batch. */
 internal class CodexMemoryPlacementExtractor(
-    private val client: CodexCompletionClient,
+    private val client: CompletionClient,
 ) : MemoryPlacementExtractor {
     override suspend fun analyze(input: MemoryPlacementInput): MemoryPlacementResponse {
         if (input.memories.isEmpty()) return MemoryPlacementResponse(emptyList())

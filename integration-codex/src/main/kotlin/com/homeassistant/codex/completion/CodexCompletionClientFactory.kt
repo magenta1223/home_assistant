@@ -1,7 +1,7 @@
 package com.homeassistant.codex.completion
 
 object CodexCompletionClientFactory {
-    fun create(): CodexCompletionClient {
+    fun create(): CompletionClient {
         return CodexCliClient()
     }
 }

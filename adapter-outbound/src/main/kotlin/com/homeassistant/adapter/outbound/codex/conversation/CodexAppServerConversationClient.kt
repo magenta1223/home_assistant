@@ -27,12 +27,12 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal class CodexAppServerConversationClient(
     private val config: CodexConversationConfig,
-    private val transport: CodexAppServerTransport = ProcessCodexAppServerTransport(
+    private val transport: AppServerTransport = ProcessCodexAppServerTransport(
         command = appServerCommand(config),
         workDir = config.workDir,
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
-) : CodexConversationClient {
+) : ConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
     private val requestIds = AtomicLong(1)
     private val pending = ConcurrentHashMap<Long, CompletableFuture<JsonObject>>()

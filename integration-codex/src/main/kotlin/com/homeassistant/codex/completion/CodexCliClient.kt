@@ -15,7 +15,7 @@ internal class CodexCliClient(
     private val executable: String = CodexExecutableFactory.get(),
     private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
     private val processExecutor: ProcessExecutor = SystemProcessExecutor,
-) : CodexCompletionClient {
+) : CompletionClient {
     override suspend fun complete(
         system: String,
         userMessage: String,

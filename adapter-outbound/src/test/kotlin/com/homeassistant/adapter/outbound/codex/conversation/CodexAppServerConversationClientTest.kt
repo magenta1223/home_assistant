@@ -108,7 +108,7 @@ class CodexAppServerConversationClientTest {
 
     private class FakeAppServerTransport(
         private val answerPayload: String = "{\"answer\":\"structured answer\"}",
-    ) : CodexAppServerTransport {
+    ) : AppServerTransport {
         override var isAlive: Boolean = false
             private set
         var startCount = 0

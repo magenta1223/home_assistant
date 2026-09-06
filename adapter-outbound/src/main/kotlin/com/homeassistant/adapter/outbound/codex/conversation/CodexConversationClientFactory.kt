@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.codex.conversation
 
 object CodexConversationClientFactory {
-    fun create(config: CodexConversationConfig): CodexConversationClient =
+    fun create(config: CodexConversationConfig): ConversationClient =
         CodexAppServerConversationClient(config)
 }

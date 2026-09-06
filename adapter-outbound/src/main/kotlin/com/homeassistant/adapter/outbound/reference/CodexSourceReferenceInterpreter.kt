@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.reference
 
 import com.homeassistant.application.port.output.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
-import com.homeassistant.codex.completion.CodexCompletionClient
+import com.homeassistant.codex.completion.CompletionClient
 import com.homeassistant.codex.completion.CodexCompletionClientFactory
 import com.homeassistant.codex.completion.CodexImage
 import com.homeassistant.common.json.JsonSerializer
@@ -19,7 +19,7 @@ import javax.imageio.ImageIO
 
 /** Uses Codex vision to produce faithful, segment-level evidence text from PDFs and images. */
 internal class CodexSourceReferenceInterpreter(
-    private val client: CodexCompletionClient,
+    private val client: CompletionClient,
 ) : SourceReferenceInterpreter {
     override suspend fun interpret(reference: SourceReferenceDraft): List<SourceReferenceInterpretation> {
         val mediaType = reference.mediaType.substringBefore(';').trim().lowercase()

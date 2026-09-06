@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
-import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
+import com.homeassistant.codex.completion.CompletionClient
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -204,7 +204,7 @@ class CodexMemoryExtractorTest {
 
     private class RecordingClient(
         private val responses: MutableList<String>,
-    ) : CodexCompletionClient {
+    ) : CompletionClient {
         val calls = mutableListOf<Call>()
 
         override suspend fun complete(system: String, userMessage: String, outputSchema: String): String {
@@ -220,7 +220,7 @@ class CodexMemoryExtractorTest {
 
     private class FunctionalClient(
         private val block: suspend (String, String, String) -> String,
-    ) : CodexCompletionClient {
+    ) : CompletionClient {
         val calls = mutableListOf<Call>()
 
         override suspend fun complete(system: String, userMessage: String, outputSchema: String): String {

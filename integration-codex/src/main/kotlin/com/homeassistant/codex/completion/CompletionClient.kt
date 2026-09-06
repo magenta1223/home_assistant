@@ -1,7 +1,7 @@
 package com.homeassistant.codex.completion
 
 /** Completes a single structured Codex prompt. */
-fun interface CodexCompletionClient {
+fun interface CompletionClient {
     /** Runs one completion request and returns the structured response text. */
     suspend fun complete(system: String, userMessage: String, outputSchema: String): String
 

@@ -10,7 +10,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
 /** Runs Codex conversation turns and validates that the local CLI is available. */
-interface CodexConversationClient : ConversationTurnClient, AutoCloseable {
+interface ConversationClient : ConversationTurnClient, AutoCloseable {
     /** Verifies that the configured Codex executable can be launched. */
     fun isAvailable(): Boolean
 
@@ -21,7 +21,7 @@ interface CodexConversationClient : ConversationTurnClient, AutoCloseable {
 internal class ProcessCodexConversationClient(
     private val config: CodexConversationConfig,
     private val eventParser: CodexJsonlEventParser = CodexJsonlEventParser(),
-) : CodexConversationClient {
+) : ConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun isAvailable(): Boolean {

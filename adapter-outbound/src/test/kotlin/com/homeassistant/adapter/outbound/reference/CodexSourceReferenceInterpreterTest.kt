@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.reference
 
-import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.adapter.outbound.codex.CodexImage
+import com.homeassistant.codex.completion.CompletionClient
+import com.homeassistant.codex.completion.CodexImage
 import com.homeassistant.domain.source.SourceReferenceDraft
 import kotlinx.coroutines.runBlocking
 import org.apache.pdfbox.pdmodel.PDDocument
@@ -55,7 +55,7 @@ class CodexSourceReferenceInterpreterTest {
         }
     }
 
-    private class RecordingImageClient : CodexCompletionClient {
+    private class RecordingImageClient : CompletionClient {
         val imageCounts = mutableListOf<Int>()
         val images = mutableListOf<List<CodexImage>>()
 

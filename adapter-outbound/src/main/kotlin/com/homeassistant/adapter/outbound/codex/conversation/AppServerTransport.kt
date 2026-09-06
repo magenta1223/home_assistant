@@ -9,7 +9,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-internal interface CodexAppServerTransport : AutoCloseable {
+internal interface AppServerTransport : AutoCloseable {
     val isAlive: Boolean
     fun start(onMessage: (String) -> Unit, onClosed: () -> Unit): Boolean
     fun send(message: String)
@@ -19,7 +19,7 @@ internal interface CodexAppServerTransport : AutoCloseable {
 internal class ProcessCodexAppServerTransport(
     private val command: List<String>,
     private val workDir: Path,
-) : CodexAppServerTransport {
+) : AppServerTransport {
     private val log = LoggerFactory.getLogger(javaClass)
     private val readers: ExecutorService = Executors.newCachedThreadPool { task ->
         Thread(task, "codex-app-server-io").apply { isDaemon = true }

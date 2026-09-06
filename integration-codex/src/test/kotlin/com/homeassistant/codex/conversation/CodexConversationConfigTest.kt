@@ -1,4 +1,6 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
+
+import java.time.Duration
 
 import java.nio.file.Files
 import kotlin.test.Test
@@ -13,7 +15,7 @@ class CodexConversationConfigTest {
         val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
 
         val config = CodexConversationConfig.local(
-            readEnv = { null },
+            timeout = Duration.ofSeconds(600),
             executable = "local-codex",
             temporaryDirectory = temporaryDirectory,
         )
@@ -31,7 +33,7 @@ class CodexConversationConfigTest {
         val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
 
         val config = CodexConversationConfig.local(
-            readEnv = { name -> if (name == "CODEX_TIMEOUT_SECONDS") "42" else null },
+            timeout = Duration.ofSeconds(42),
             executable = "local-codex",
             temporaryDirectory = temporaryDirectory,
         )
@@ -44,7 +46,7 @@ class CodexConversationConfigTest {
         val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
 
         val config = CodexConversationConfig.local(
-            readEnv = { "0" },
+            timeout = Duration.ZERO,
             executable = "local-codex",
             temporaryDirectory = temporaryDirectory,
         )

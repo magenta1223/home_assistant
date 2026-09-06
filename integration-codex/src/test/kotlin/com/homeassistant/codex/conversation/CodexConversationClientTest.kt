@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
 import java.nio.file.Files
 import java.time.Duration
@@ -11,15 +11,13 @@ class CodexConversationClientTest {
     fun `availability probe allows a six second cold start`() {
         val temporaryDirectory = Files.createTempDirectory("slow-codex-version-")
         val executable = createSlowCodexExecutable(temporaryDirectory)
-        val client = CodexConversationClientFactory.create(
-            CodexConversationConfig(
-                executable = executable,
-                workDir = temporaryDirectory,
-                timeout = Duration.ofMinutes(10),
-            ),
+        val client = ConversationClientFactory.create(
+            executable = executable,
+            temporaryDirectory = temporaryDirectory,
+            timeout = Duration.ofMinutes(10),
         )
 
-        assertTrue(client.isAvailable())
+        assertTrue(requireNotNull(client).isAvailable())
     }
 
     private fun createSlowCodexExecutable(directory: java.nio.file.Path): String {

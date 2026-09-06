@@ -1,13 +1,10 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
-import com.homeassistant.codex.completion.CodexExecutableFactory
-import com.homeassistant.configuration.AppConfig
-import com.homeassistant.configuration.Env
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
 
-data class CodexConversationConfig(
+internal data class CodexConversationConfig(
     val executable: String,
     val workDir: Path,
     val timeout: Duration,
@@ -19,14 +16,13 @@ data class CodexConversationConfig(
         const val DEFAULT_REASONING_EFFORT = "medium"
 
         fun local(
-            readEnv: (String) -> String? = { Env[it] },
-            executable: String = CodexExecutableFactory.get(),
+            timeout: Duration,
+            executable: String,
             temporaryDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
+            model: String = DEFAULT_MODEL,
+            reasoningEffort: String = DEFAULT_REASONING_EFFORT,
         ): CodexConversationConfig? {
-            val timeoutSeconds = readEnv(AppConfig.ENV_VAR_CODEX_TIMEOUT_SECONDS)
-                ?.toLongOrNull()
-                ?: AppConfig.DEFAULT_CODEX_TIMEOUT_SECONDS
-            if (timeoutSeconds <= 0) return null
+            if (timeout.isZero || timeout.isNegative) return null
             val normalizedWorkDir = temporaryDirectory.toAbsolutePath()
                 .normalize()
                 .resolve("homeassistant-codex-conversation")
@@ -35,7 +31,9 @@ data class CodexConversationConfig(
             return CodexConversationConfig(
                 executable = executable,
                 workDir = normalizedWorkDir,
-                timeout = Duration.ofSeconds(timeoutSeconds),
+                timeout = timeout,
+                model = model,
+                reasoningEffort = reasoningEffort,
             )
         }
     }

@@ -136,10 +136,13 @@ common/            - adapter-independent shared utilities such as JSON serializa
 configuration/     - runtime environment and server configuration
 adapter-inbound/   - HTTP, Slack, and source-format inbound adapters
 adapter-outbound/  - Codex, persistence, embedding, and vector outbound adapters
+integration-codex/ - application/domain-independent Codex CLI completion and conversation integration
 app/               - composition root and Ktor server startup
 ```
 
 The dependency direction is `app -> adapter-inbound/adapter-outbound -> application -> domain`.
+`adapter-outbound` may depend on `integration-codex`; `integration-codex` must not depend on
+application or domain modules. The app reaches Codex through the outbound adapter boundary.
 Both adapter modules may depend on `common` and `configuration`; inbound and outbound must not
 depend on each other.
 Within `application`, separate inbound contracts, outbound requirements, and orchestration into
@@ -174,12 +177,20 @@ failures into that contract. Output ports and adapters must not construct applic
 
 ### adapter-outbound
 
-- `codex/` - Codex CLI transport and conversation-turn implementations.
+- `memoryconversation/` - maps the Codex integration conversation result to the application
+  conversation output port.
 - `topicanalysis/` - Codex-backed topic extraction implementations.
 - `embedding/ollama/` - pinned Windows Ollama installation, managed server lifecycle, and local text embedding.
 - `persistence/` - SQLite/Exposed repositories for registered users, pending registration questions, source records, topics, canonical memories, indexing outbox, and memory conversation sessions.
 - `vector/qdrant/` - pinned Windows Qdrant installation, managed server lifecycle, and vector storage.
 - `vector/memory/` - canonical-memory semantic index implementation.
+
+### integration-codex
+
+- `completion/` - structured Codex completion and image input.
+- `conversation/` - Codex conversation lifecycle, app-server protocol, transport, parsing, and
+  process execution. Its public API is limited to the conversation interface and factory.
+- `subprocess/` - low-level process execution shared by Codex integrations.
 
 ### common and configuration
 

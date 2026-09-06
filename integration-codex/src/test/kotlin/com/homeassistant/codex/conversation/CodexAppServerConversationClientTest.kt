@@ -1,7 +1,5 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
-import com.homeassistant.common.json.JsonSerializer
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
@@ -12,7 +10,6 @@ import java.nio.file.Files
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -26,12 +23,8 @@ class CodexAppServerConversationClientTest {
             var firstThread = ""
             var secondThread = ""
 
-            assertIs<ConversationTurnResult.Success>(
-                client.start("first prompt") { firstThread = it },
-            )
-            assertIs<ConversationTurnResult.Success>(
-                client.start("second prompt") { secondThread = it },
-            )
+            assertTrue(client.start("first prompt") { firstThread = it }.isSuccess)
+            assertTrue(client.start("second prompt") { secondThread = it }.isSuccess)
 
             assertEquals(1, transport.startCount)
             assertNotEquals(firstThread, secondThread)
@@ -52,9 +45,9 @@ class CodexAppServerConversationClientTest {
             var threadId = ""
             client.start("first") { threadId = it }
 
-            val result = assertIs<ConversationTurnResult.Success>(client.resume(threadId, "follow up"))
+            val result = client.resume(threadId, "follow up")
 
-            assertEquals("structured answer", result.answer)
+            assertEquals("structured answer", result.getOrThrow())
             assertEquals(0, transport.methods.count { it == "thread/resume" })
         } finally {
             client.close()
@@ -87,9 +80,9 @@ class CodexAppServerConversationClientTest {
         try {
             assertTrue(client.startServer())
 
-            val result = assertIs<ConversationTurnResult.Failure>(client.start("prompt") {})
+            val result = client.start("prompt") {}
 
-            assertEquals("INVALID_STRUCTURED_ANSWER", result.category)
+            assertEquals("INVALID_STRUCTURED_ANSWER", result.exceptionOrNull()?.message)
         } finally {
             client.close()
         }
@@ -128,7 +121,7 @@ class CodexAppServerConversationClientTest {
         }
 
         override fun send(message: String) {
-            val request = JsonSerializer.json.parseToJsonElement(message) as JsonObject
+            val request = CODEX_JSON.parseToJsonElement(message) as JsonObject
             val method = request["method"]?.jsonPrimitive?.content ?: return
             methods += method
             val id = request["id"] ?: return

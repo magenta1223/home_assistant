@@ -41,7 +41,7 @@ integration-codex/
 adapter-outbound/
   memoryanalysis/codex/   # MemoryExtractor, MemoryPlacementExtractor 구현
   reference/codex/        # SourceReferenceInterpreter 구현
-  memoryconversation/codex/ # ConversationTurnClient 구현
+  memoryconversation/     # integration 결과를 ConversationTurnClient로 변환하는 adapter
 ```
 
 의존 방향은 다음으로 고정한다.
@@ -164,5 +164,9 @@ integration-codex -X-> application/domain
 
 ## 구현 결과
 
-아직 구현하지 않았다. 이 문서는 사용자가 직접 수행할 학습 과제이며, 사용자의 별도 요청 전에는
-구현하지 않는다.
+- structured completion와 conversation의 Codex CLI/app-server 구현을 `integration-codex`로 이동했다.
+- conversation public API는 `ConversationClient`와 `ConversationClientFactory`로 제한했다.
+- transport, configuration, parser, protocol state와 구체 client는 `internal`로 숨겼다.
+- `adapter-outbound`에는 integration의 `Result<String>`을 application의 `ConversationTurnResult`로
+  변환하는 adapter만 남겼다.
+- conversation 소스는 top-level interface/object/class를 파일당 하나만 갖도록 분리했다.

@@ -4,9 +4,8 @@ import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtractorFactory
-import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationClientFactory
-import com.homeassistant.adapter.outbound.codex.conversation.CodexConversationConfig
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
+import com.homeassistant.adapter.outbound.memoryconversation.ConversationTurnClientFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
@@ -31,6 +30,7 @@ import com.homeassistant.application.port.input.identity.ConversationIdentity
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerWorkflowService
 import org.slf4j.LoggerFactory
+import java.time.Duration
 
 
 object ApplicationServicesFactory {
@@ -99,8 +99,12 @@ object ApplicationServicesFactory {
             memories = repositories.canonicalMemories,
             semanticSearcher = semanticMemoryIndexSearcher,
         )
-        val configuredConversationClient = CodexConversationConfig.local()
-            ?.let(CodexConversationClientFactory::create)
+        val codexTimeoutSeconds = Env[AppConfig.ENV_VAR_CODEX_TIMEOUT_SECONDS]
+            ?.toLongOrNull()
+            ?: AppConfig.DEFAULT_CODEX_TIMEOUT_SECONDS
+        val configuredConversationClient = ConversationTurnClientFactory.create(
+            timeout = Duration.ofSeconds(codexTimeoutSeconds),
+        )
         val conversationClient = configuredConversationClient
             ?.takeIf { it.isAvailable() && it.startServer() }
         if (configuredConversationClient != null && conversationClient == null) {

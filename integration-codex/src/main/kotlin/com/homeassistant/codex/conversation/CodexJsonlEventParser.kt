@@ -1,19 +1,8 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
-import com.homeassistant.common.json.JsonSerializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicReference
-
-internal data class CodexEventState(
-    val answer: AtomicReference<String> = AtomicReference(),
-    val failure: AtomicReference<String> = AtomicReference(),
-    val turnCompleted: AtomicBoolean = AtomicBoolean(false),
-    val threadStarted: AtomicBoolean = AtomicBoolean(false),
-)
-
 internal class CodexJsonlEventParser {
     fun parse(
         line: String,
@@ -22,7 +11,7 @@ internal class CodexJsonlEventParser {
     ) {
         if (state.failure.get() != null) return
         val event = runCatching {
-            JsonSerializer.json.parseToJsonElement(line).jsonObject
+            CODEX_JSON.parseToJsonElement(line).jsonObject
         }.getOrElse {
             state.failure.compareAndSet(null, "INVALID_JSONL")
             return

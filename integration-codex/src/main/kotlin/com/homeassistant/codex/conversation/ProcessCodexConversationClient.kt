@@ -1,22 +1,11 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnClient
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
-
-/** Runs Codex conversation turns and validates that the local CLI is available. */
-interface ConversationClient : ConversationTurnClient, AutoCloseable {
-    /** Verifies that the configured Codex executable can be launched. */
-    fun isAvailable(): Boolean
-
-    /** Starts and initializes the long-lived Codex runtime. */
-    fun startServer(): Boolean
-}
 
 internal class ProcessCodexConversationClient(
     private val config: CodexConversationConfig,
@@ -43,7 +32,7 @@ internal class ProcessCodexConversationClient(
     override fun start(
         prompt: String,
         onThreadStarted: (String) -> Unit,
-    ): ConversationTurnResult =
+    ): Result<String> =
         execute(
             operation = "start",
             args = listOf(
@@ -70,9 +59,9 @@ internal class ProcessCodexConversationClient(
             onThreadStarted = onThreadStarted,
         )
 
-    override fun resume(threadId: String, prompt: String): ConversationTurnResult {
+    override fun resume(threadId: String, prompt: String): Result<String> {
         if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
-            return ConversationTurnResult.Failure("INVALID_THREAD_ID")
+            return Result.failure(CodexConversationException("INVALID_THREAD_ID"))
         }
         return execute(
             operation = "resume",
@@ -106,8 +95,8 @@ internal class ProcessCodexConversationClient(
         args: List<String>,
         prompt: String,
         onThreadStarted: (String) -> Unit,
-    ): ConversationTurnResult {
-        if (prompt.isBlank()) return ConversationTurnResult.Failure("EMPTY_PROMPT")
+    ): Result<String> {
+        if (prompt.isBlank()) return Result.failure(CodexConversationException("EMPTY_PROMPT"))
         val executionStartedAt = System.nanoTime()
         val process = runCatching {
             ProcessBuilder(listOf(config.executable) + args)
@@ -121,7 +110,7 @@ internal class ProcessCodexConversationClient(
                 it.javaClass.simpleName,
                 elapsedMillis(executionStartedAt),
             )
-            return ConversationTurnResult.Failure("START_FAILED")
+            return Result.failure(CodexConversationException("START_FAILED"))
         }
         log.info(
             "Latency stage=codex-process-start operation={} result=success model={} reasoningEffort={} elapsedMs={}",
@@ -167,7 +156,7 @@ internal class ProcessCodexConversationClient(
         }.onFailure {
             destroyProcessTree(process)
             readers.shutdownNow()
-            return ConversationTurnResult.Failure("STDIN_FAILED")
+            return Result.failure(CodexConversationException("STDIN_FAILED"))
         }
 
         if (!process.waitFor(config.timeout.toMillis(), TimeUnit.MILLISECONDS)) {
@@ -179,7 +168,7 @@ internal class ProcessCodexConversationClient(
                 config.model,
                 elapsedMillis(executionStartedAt),
             )
-            return ConversationTurnResult.Failure("TIMEOUT")
+            return Result.failure(CodexConversationException("TIMEOUT"))
         }
         readers.shutdown()
         readers.awaitTermination(READER_JOIN_SECONDS, TimeUnit.SECONDS)
@@ -194,12 +183,16 @@ internal class ProcessCodexConversationClient(
         )
 
         if (stderr.isNotEmpty()) log.debug("Codex stderr category=PROCESS_OUTPUT")
-        state.failure.get()?.let { return ConversationTurnResult.Failure(it) }
-        if (process.exitValue() != 0) return ConversationTurnResult.Failure("EXIT_${process.exitValue()}")
-        if (!state.turnCompleted.get()) return ConversationTurnResult.Failure("INCOMPLETE_TURN")
+        state.failure.get()?.let { return Result.failure(CodexConversationException(it)) }
+        if (process.exitValue() != 0) {
+            return Result.failure(CodexConversationException("EXIT_${process.exitValue()}"))
+        }
+        if (!state.turnCompleted.get()) {
+            return Result.failure(CodexConversationException("INCOMPLETE_TURN"))
+        }
         val finalAnswer = state.answer.get()?.takeIf { it.isNotBlank() }
-            ?: return ConversationTurnResult.Failure("MISSING_AGENT_MESSAGE")
-        return ConversationTurnResult.Success(finalAnswer)
+            ?: return Result.failure(CodexConversationException("MISSING_AGENT_MESSAGE"))
+        return Result.success(finalAnswer)
     }
 
     private fun destroyProcessTree(process: Process) {

@@ -1,7 +1,5 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
-import com.homeassistant.common.json.JsonSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -94,19 +92,19 @@ internal class CodexAppServerConversationClient(
     override fun start(
         prompt: String,
         onThreadStarted: (String) -> Unit,
-    ): ConversationTurnResult = execute("start") { deadline ->
+    ): Result<String> = execute("start") { deadline ->
         val response = request("thread/start", threadStartParams(), deadline.remaining())
         val threadId = response.resultObject()
             ?.objectValue("thread")
             ?.string("id")
             ?.takeIf(CODEX_THREAD_ID_PATTERN::matches)
-            ?: throw CodexAppServerException("INVALID_THREAD_ID")
+            ?: throw CodexConversationException("INVALID_THREAD_ID")
         loadedThreads += threadId
         try {
             onThreadStarted(threadId)
         } catch (_: Exception) {
             end(threadId)
-            throw CodexAppServerException("THREAD_PERSIST_FAILED")
+            throw CodexConversationException("THREAD_PERSIST_FAILED")
         }
         log.info(
             "Latency stage=codex-thread-ready operation=start model={} elapsedMs={}",
@@ -116,9 +114,9 @@ internal class CodexAppServerConversationClient(
         runTurn(threadId, prompt, deadline)
     }
 
-    override fun resume(threadId: String, prompt: String): ConversationTurnResult = execute("resume") { deadline ->
+    override fun resume(threadId: String, prompt: String): Result<String> = execute("resume") { deadline ->
         if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
-            throw CodexAppServerException("INVALID_THREAD_ID")
+            throw CodexConversationException("INVALID_THREAD_ID")
         }
         if (threadId !in loadedThreads) {
             request("thread/resume", threadResumeParams(threadId), deadline.remaining())
@@ -154,18 +152,18 @@ internal class CodexAppServerConversationClient(
     private fun execute(
         operation: String,
         block: (Deadline) -> String,
-    ): ConversationTurnResult {
-        if (!startServer()) return ConversationTurnResult.Failure("APP_SERVER_UNAVAILABLE")
+    ): Result<String> {
+        if (!startServer()) return Result.failure(CodexConversationException("APP_SERVER_UNAVAILABLE"))
         val startedAt = System.nanoTime()
         val result = try {
-            if (closed.get()) throw CodexAppServerException("APP_SERVER_CLOSED")
+            if (closed.get()) throw CodexConversationException("APP_SERVER_CLOSED")
             block(Deadline(config.timeout))
-        } catch (error: CodexAppServerException) {
-            return ConversationTurnResult.Failure(error.category)
+        } catch (error: CodexConversationException) {
+            return Result.failure(error)
         } catch (_: TimeoutException) {
-            return ConversationTurnResult.Failure("TIMEOUT")
+            return Result.failure(CodexConversationException("TIMEOUT"))
         } catch (_: Exception) {
-            return ConversationTurnResult.Failure("APP_SERVER_FAILURE")
+            return Result.failure(CodexConversationException("APP_SERVER_FAILURE"))
         }
         log.info(
             "Latency stage=codex-turn operation={} result=completed model={} elapsedMs={}",
@@ -173,14 +171,14 @@ internal class CodexAppServerConversationClient(
             config.model,
             elapsedMillis(startedAt),
         )
-        return ConversationTurnResult.Success(result)
+        return Result.success(result)
     }
 
     private fun runTurn(threadId: String, prompt: String, deadline: Deadline): String {
-        if (prompt.isBlank()) throw CodexAppServerException("EMPTY_PROMPT")
+        if (prompt.isBlank()) throw CodexConversationException("EMPTY_PROMPT")
         val state = TurnState()
         if (activeTurns.putIfAbsent(threadId, state) != null) {
-            throw CodexAppServerException("THREAD_BUSY")
+            throw CodexConversationException("THREAD_BUSY")
         }
         try {
             val response = request("turn/start", turnStartParams(threadId, prompt), deadline.remaining())
@@ -188,14 +186,14 @@ internal class CodexAppServerConversationClient(
                 response.resultObject()
                     ?.objectValue("turn")
                     ?.string("id")
-                    ?: throw CodexAppServerException("MISSING_TURN_ID"),
+                    ?: throw CodexConversationException("MISSING_TURN_ID"),
             )
             val completion = await(state.completed, deadline.remaining())
             if (completion.status != "completed") {
-                throw CodexAppServerException("TURN_${completion.status.uppercase()}")
+                throw CodexConversationException("TURN_${completion.status.uppercase()}")
             }
             return parseStructuredAnswer(completion.answer)
-                ?: throw CodexAppServerException("INVALID_STRUCTURED_ANSWER")
+                ?: throw CodexConversationException("INVALID_STRUCTURED_ANSWER")
         } catch (error: TimeoutException) {
             interrupt(threadId, state.turnId.get())
             throw error
@@ -230,7 +228,7 @@ internal class CodexAppServerConversationClient(
                 put("params", params)
             }.toString())
             val response = await(future, timeout)
-            if (response["error"] != null) throw CodexAppServerException("RPC_ERROR")
+            if (response["error"] != null) throw CodexConversationException("RPC_ERROR")
             return response
         } catch (error: Exception) {
             pending.remove(id, future)
@@ -246,7 +244,7 @@ internal class CodexAppServerConversationClient(
     }
 
     private fun handleMessage(line: String) {
-        val message = runCatching { JsonSerializer.json.parseToJsonElement(line) as? JsonObject }
+        val message = runCatching { CODEX_JSON.parseToJsonElement(line) as? JsonObject }
             .getOrNull() ?: return
         val method = message.string("method")
         val id = message["id"]?.jsonPrimitive?.longOrNull
@@ -316,7 +314,7 @@ internal class CodexAppServerConversationClient(
     }
 
     private fun failPending(category: String) {
-        val failure = CodexAppServerException(category)
+        val failure = CodexConversationException(category)
         pending.values.forEach { it.completeExceptionally(failure) }
         pending.clear()
         activeTurns.values.forEach { it.completed.completeExceptionally(failure) }
@@ -417,8 +415,6 @@ internal fun parseStructuredAnswer(raw: String?): String? {
 }
 
 private val STRUCTURED_ANSWER_JSON = Json.Default
-
-private class CodexAppServerException(val category: String) : RuntimeException(category)
 
 private fun <T> await(future: CompletableFuture<T>, timeout: Duration): T = try {
     future.get(timeout.toNanos(), TimeUnit.NANOSECONDS)

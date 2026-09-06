@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.outbound.codex.conversation
+package com.homeassistant.codex.conversation
 
 import org.slf4j.LoggerFactory
 import java.io.BufferedWriter
@@ -8,13 +8,6 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
-
-internal interface AppServerTransport : AutoCloseable {
-    val isAlive: Boolean
-    fun start(onMessage: (String) -> Unit, onClosed: () -> Unit): Boolean
-    fun send(message: String)
-    fun stop()
-}
 
 internal class ProcessCodexAppServerTransport(
     private val command: List<String>,

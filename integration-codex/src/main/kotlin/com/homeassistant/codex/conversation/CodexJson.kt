@@ -4,6 +4,8 @@ import kotlinx.serialization.json.Json
 
 internal object CodexJson {
     val parser: Json = Json {
+        encodeDefaults = true
+        explicitNulls = false
         ignoreUnknownKeys = true
         isLenient = true
     }

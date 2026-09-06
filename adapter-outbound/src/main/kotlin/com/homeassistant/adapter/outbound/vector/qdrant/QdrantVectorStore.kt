@@ -1,11 +1,15 @@
 package com.homeassistant.adapter.outbound.vector.qdrant
 
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.adapter.outbound.vector.VectorPoint
 import com.homeassistant.adapter.outbound.vector.VectorSearchFilter
 import com.homeassistant.adapter.outbound.vector.VectorSearchResult
 import com.homeassistant.adapter.outbound.vector.VectorStore
-import kotlinx.serialization.json.*
+import com.homeassistant.common.json.JsonSerializer.decodeFromString
+import com.homeassistant.common.json.JsonSerializer.encodeToString
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonPrimitive
 
 internal class QdrantVectorStore(
     private val collection: String,
@@ -42,12 +46,9 @@ internal class QdrantVectorStore(
         if (collectionReady) return
         synchronized(this) {
             if (collectionReady) return
-            val body = buildJsonObject {
-                put("vectors", buildJsonObject {
-                    put("size", vectorSize)
-                    put("distance", "Cosine")
-                })
-            }.toString()
+            val body = QdrantCreateCollectionRequest(
+                vectors = QdrantVectorParams(vectorSize, QdrantDistance.COSINE),
+            ).encodeToString()
             if (!transport.exists("/collections/$collection")) {
                 transport.request("PUT", "/collections/$collection", body)
             }
@@ -60,7 +61,7 @@ internal class QdrantVectorStore(
      *
      * @property result Search hits returned by Qdrant.
      */
-    @kotlinx.serialization.Serializable
+    @Serializable
     private data class QdrantSearchResponse(val result: List<QdrantHit> = emptyList())
 
     /**
@@ -70,8 +71,12 @@ internal class QdrantVectorStore(
      * @property score Similarity score returned by Qdrant.
      * @property payload String metadata returned with the hit.
      */
-    @kotlinx.serialization.Serializable
-    private data class QdrantHit(val id: Int, val score: Double, val payload: JsonObject = buildJsonObject {})
+    @Serializable
+    private data class QdrantHit(
+        val id: Int,
+        val score: Double,
+        val payload: Map<String, JsonPrimitive> = emptyMap(),
+    )
 }
 
 object QdrantVectorStoreFactory {
@@ -83,51 +88,97 @@ object QdrantVectorStoreFactory {
 }
 
 internal fun qdrantUpsertBody(point: VectorPoint): String =
-    buildJsonObject {
-        put("points", buildJsonArray {
-            add(buildJsonObject {
-                put("id", point.id)
-                put("vector", JsonArray(point.vector.map(::JsonPrimitive)))
-                put("payload", buildJsonObject {
-                    point.payload.forEach { (key, value) -> put(key, value) }
-                    point.numericPayload.forEach { (key, value) -> put(key, value) }
-                })
-            })
-        })
-    }.toString()
+    QdrantUpsertRequest(
+        points = listOf(
+            QdrantPoint(
+                id = point.id,
+                vector = point.vector,
+                payload = point.payload.mapValues { (_, value) -> JsonPrimitive(value) } +
+                    point.numericPayload.mapValues { (_, value) -> JsonPrimitive(value) },
+            ),
+        ),
+    ).encodeToString()
 
 internal fun qdrantSearchBody(
     vector: List<Float>,
     filter: VectorSearchFilter,
     limit: Int,
 ): String =
-    buildJsonObject {
-        put("vector", JsonArray(vector.map(::JsonPrimitive)))
-        put("limit", limit)
-        put("with_payload", true)
-        val conditions = filter.must.map { (key, value) ->
-            buildJsonObject {
-                put("key", key)
-                put("match", buildJsonObject { put("value", value) })
-            }
-        } + filter.ranges.map { (key, range) ->
-            buildJsonObject {
-                put("key", key)
-                put("range", buildJsonObject {
-                    range.gte?.let { put("gte", it) }
-                    range.lte?.let { put("lte", it) }
-                })
-            }
-        } + if (filter.ids.isNotEmpty()) {
-            listOf(
-                buildJsonObject {
-                    put("has_id", JsonArray(filter.ids.sorted().map(::JsonPrimitive)))
-                },
+    QdrantSearchRequest(
+        vector = vector,
+        limit = limit,
+        filter = (
+            filter.must.map { (key, value) -> QdrantCondition.match(key, value) } +
+                filter.ranges.map { (key, range) -> QdrantCondition.range(key, range.gte, range.lte) } +
+                if (filter.ids.isNotEmpty()) listOf(QdrantCondition.hasIds(filter.ids.sorted())) else emptyList()
             )
-        } else {
-            emptyList()
-        }
-        if (conditions.isNotEmpty()) {
-            put("filter", buildJsonObject { put("must", JsonArray(conditions)) })
-        }
-    }.toString()
+            .takeIf(List<QdrantCondition>::isNotEmpty)
+            ?.let(::QdrantFilter),
+    ).encodeToString()
+
+@Serializable
+private data class QdrantCreateCollectionRequest(val vectors: QdrantVectorParams)
+
+@Serializable
+private data class QdrantVectorParams(
+    val size: Int,
+    val distance: QdrantDistance,
+)
+
+@Serializable
+private enum class QdrantDistance {
+    @SerialName("Cosine") COSINE,
+}
+
+@Serializable
+private data class QdrantUpsertRequest(val points: List<QdrantPoint>)
+
+@Serializable
+private data class QdrantPoint(
+    val id: Int,
+    val vector: List<Float>,
+    val payload: Map<String, JsonPrimitive>,
+)
+
+@Serializable
+private data class QdrantSearchRequest(
+    val vector: List<Float>,
+    val limit: Int,
+    @SerialName("with_payload") val withPayload: Boolean = true,
+    val filter: QdrantFilter? = null,
+)
+
+@Serializable
+private data class QdrantFilter(val must: List<QdrantCondition>)
+
+@Serializable
+private class QdrantCondition private constructor(
+    val key: String? = null,
+    val match: QdrantMatch? = null,
+    val range: QdrantRange? = null,
+    @SerialName("has_id") val hasId: List<Int>? = null,
+) {
+    init {
+        require(listOfNotNull(match, range, hasId).size == 1) { "Qdrant condition must have exactly one operator" }
+        require((key == null) == (hasId != null)) { "Only has_id conditions omit the key" }
+    }
+
+    companion object {
+        fun match(key: String, value: String): QdrantCondition =
+            QdrantCondition(key = key, match = QdrantMatch(value))
+
+        fun range(key: String, gte: Long?, lte: Long?): QdrantCondition =
+            QdrantCondition(key = key, range = QdrantRange(gte, lte))
+
+        fun hasIds(ids: List<Int>): QdrantCondition = QdrantCondition(hasId = ids)
+    }
+}
+
+@Serializable
+private data class QdrantMatch(val value: String)
+
+@Serializable
+private data class QdrantRange(
+    val gte: Long? = null,
+    val lte: Long? = null,
+)

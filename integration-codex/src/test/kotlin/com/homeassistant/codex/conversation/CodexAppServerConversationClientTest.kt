@@ -1,6 +1,7 @@
 package com.homeassistant.codex.conversation
 
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
@@ -11,6 +12,7 @@ import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class CodexAppServerConversationClientTest {
@@ -33,7 +35,11 @@ class CodexAppServerConversationClientTest {
             assertTrue(client.execute(secondThread, "second prompt").isSuccess)
 
             assertEquals(2, transport.methods.count { it == "turn/start" })
-            assertTrue(transport.turnParams.all { it["outputSchema"] is JsonObject })
+            transport.turnParams.forEach { params ->
+                val schema = params["outputSchema"] as JsonObject
+                assertEquals("object", schema["type"]?.jsonPrimitive?.content)
+                assertEquals("false", schema["additionalProperties"]?.jsonPrimitive?.content)
+            }
         } finally {
             client.close()
         }
@@ -92,6 +98,47 @@ class CodexAppServerConversationClientTest {
         }
     }
 
+    @Test
+    fun `rejects a malformed recognized notification instead of waiting for timeout`() {
+        val transport = FakeAppServerTransport(omitCompletedAt = true)
+        val client = client(transport)
+        try {
+            assertTrue(client.startServer())
+            val threadId = client.create().getOrThrow()
+
+            val result = client.execute(threadId, "prompt")
+
+            assertEquals("INVALID_APP_SERVER_MESSAGE", result.exceptionOrNull()?.message)
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun `responds to a server request with a string id`() {
+        val transport = FakeAppServerTransport()
+        val client = client(transport)
+        try {
+            assertTrue(client.startServer())
+
+            transport.sendServerRequest("server-request-1")
+
+            val response = CODEX_JSON.parseToJsonElement(transport.sentMessages.last()) as JsonObject
+            assertEquals("server-request-1", response["id"]?.jsonPrimitive?.content)
+            assertEquals(
+                -32601,
+                response["error"]?.let { it as JsonObject }?.get("code")?.jsonPrimitive?.content?.toInt(),
+            )
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
+    fun `structured answer rejects extra fields`() {
+        assertNull(parseStructuredAnswer("""{"answer":"valid","extra":true}"""))
+    }
+
     private fun client(transport: FakeAppServerTransport): CodexAppServerConversationClient =
         CodexAppServerConversationClient(
             config = CodexConversationConfig(
@@ -105,6 +152,7 @@ class CodexAppServerConversationClientTest {
 
     private class FakeAppServerTransport(
         private val answerPayload: String = "{\"answer\":\"structured answer\"}",
+        private val omitCompletedAt: Boolean = false,
     ) : AppServerTransport {
         override var isAlive: Boolean = false
             private set
@@ -112,6 +160,7 @@ class CodexAppServerConversationClientTest {
         val methods = mutableListOf<String>()
         val turnParams = mutableListOf<JsonObject>()
         val unsubscribedThreads = mutableListOf<String>()
+        val sentMessages = mutableListOf<String>()
         private var onMessage: (String) -> Unit = {}
         private var onClosed: () -> Unit = {}
         private var nextThread = 1
@@ -125,6 +174,7 @@ class CodexAppServerConversationClientTest {
         }
 
         override fun send(message: String) {
+            sentMessages += message
             val request = CODEX_JSON.parseToJsonElement(message) as JsonObject
             val method = request["method"]?.jsonPrimitive?.content ?: return
             methods += method
@@ -151,6 +201,7 @@ class CodexAppServerConversationClientTest {
                     notify("item/completed", buildJsonObject {
                         put("threadId", threadId)
                         put("turnId", turnId)
+                        if (!omitCompletedAt) put("completedAtMs", 1L)
                         put("item", buildJsonObject {
                             put("id", "item-${turnParams.size}")
                             put("type", "agentMessage")
@@ -163,6 +214,7 @@ class CodexAppServerConversationClientTest {
                             put("id", turnId)
                             put("status", "completed")
                             put("items", buildJsonArray {})
+                            put("error", JsonNull)
                         })
                     })
                 }
@@ -172,6 +224,16 @@ class CodexAppServerConversationClientTest {
                 }
                 "turn/interrupt" -> respond(id, buildJsonObject {})
             }
+        }
+
+        fun sendServerRequest(id: String) {
+            onMessage(
+                buildJsonObject {
+                    put("id", id)
+                    put("method", "unsupported/test")
+                    put("params", buildJsonObject {})
+                }.toString(),
+            )
         }
 
         override fun stop() {

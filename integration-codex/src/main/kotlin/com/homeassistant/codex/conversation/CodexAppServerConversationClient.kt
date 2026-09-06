@@ -1,15 +1,11 @@
 package com.homeassistant.codex.conversation
 
+import kotlinx.schema.generator.json.JsonSchemaConfig
+import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonArray
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
-import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.time.Duration
@@ -33,7 +29,7 @@ internal class CodexAppServerConversationClient(
 ) : ConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
     private val requestIds = AtomicLong(1)
-    private val pending = ConcurrentHashMap<Long, CompletableFuture<JsonObject>>()
+    private val pending = ConcurrentHashMap<Long, PendingResponse>()
     private val activeTurns = ConcurrentHashMap<String, TurnState>()
     private val loadedThreads = ConcurrentHashMap.newKeySet<String>()
     private val ready = AtomicBoolean(false)
@@ -56,17 +52,17 @@ internal class CodexAppServerConversationClient(
         }
         return try {
             request(
-                method = "initialize",
-                params = buildJsonObject {
-                    put("clientInfo", buildJsonObject {
-                        put("name", "home_second_brain")
-                        put("title", "Home Second Brain")
-                        put("version", "1")
-                    })
-                },
+                method = AppServerProtocol.initialize,
+                params = InitializeParams(
+                    ClientInfo(
+                        name = "home_second_brain",
+                        title = "Home Second Brain",
+                        version = "1",
+                    ),
+                ),
                 timeout = START_TIMEOUT,
             )
-            notify("initialized", buildJsonObject {})
+            notify(AppServerProtocol.initialized, EmptyParams)
             loadedThreads.clear()
             ready.set(true)
             log.info(
@@ -90,11 +86,8 @@ internal class CodexAppServerConversationClient(
     }
 
     override fun create(): Result<String> = executeOperation("create") { deadline ->
-        val response = request("thread/start", threadStartParams(), deadline.remaining())
-        val threadId = response.resultObject()
-            ?.objectValue("thread")
-            ?.string("id")
-            ?.takeIf(CODEX_THREAD_ID_PATTERN::matches)
+        val response = request(AppServerProtocol.threadStart, threadStartParams(), deadline.remaining())
+        val threadId = response.thread.id.takeIf(CODEX_THREAD_ID_PATTERN::matches)
             ?: throw CodexConversationException("INVALID_THREAD_ID")
         loadedThreads += threadId
         log.info(
@@ -110,7 +103,7 @@ internal class CodexAppServerConversationClient(
             throw CodexConversationException("INVALID_THREAD_ID")
         }
         if (threadId !in loadedThreads) {
-            request("thread/resume", threadResumeParams(threadId), deadline.remaining())
+            request(AppServerProtocol.threadResume, threadResumeParams(threadId), deadline.remaining())
             loadedThreads += threadId
         }
         runTurn(threadId, prompt, deadline)
@@ -122,8 +115,8 @@ internal class CodexAppServerConversationClient(
         if (!ready.get() || !transport.isAlive) return
         runCatching {
             request(
-                "thread/unsubscribe",
-                buildJsonObject { put("threadId", threadId) },
+                AppServerProtocol.threadUnsubscribe,
+                ThreadUnsubscribeParams(threadId),
                 RELEASE_TIMEOUT,
             )
         }.onFailure {
@@ -172,13 +165,8 @@ internal class CodexAppServerConversationClient(
             throw CodexConversationException("THREAD_BUSY")
         }
         try {
-            val response = request("turn/start", turnStartParams(threadId, prompt), deadline.remaining())
-            state.turnId.set(
-                response.resultObject()
-                    ?.objectValue("turn")
-                    ?.string("id")
-                    ?: throw CodexConversationException("MISSING_TURN_ID"),
-            )
+            val response = request(AppServerProtocol.turnStart, turnStartParams(threadId, prompt), deadline.remaining())
+            state.turnId.set(response.turn.id)
             val completion = await(state.completed, deadline.remaining())
             if (completion.status != "completed") {
                 throw CodexConversationException("TURN_${completion.status.uppercase()}")
@@ -197,95 +185,126 @@ internal class CodexAppServerConversationClient(
         if (turnId == null || !ready.get()) return
         runCatching {
             request(
-                "turn/interrupt",
-                buildJsonObject {
-                    put("threadId", threadId)
-                    put("turnId", turnId)
-                },
+                AppServerProtocol.turnInterrupt,
+                TurnInterruptParams(threadId, turnId),
                 RELEASE_TIMEOUT,
             )
         }
     }
 
-    private fun request(method: String, params: JsonObject, timeout: Duration): JsonObject {
-        if (timeout.isZero || timeout.isNegative) throw TimeoutException(method)
+    private fun <P, R> request(
+        method: AppServerRequestMethod<P, R>,
+        params: P,
+        timeout: Duration,
+    ): R {
+        if (timeout.isZero || timeout.isNegative) throw TimeoutException(method.wireName)
         val id = requestIds.getAndIncrement()
-        val future = CompletableFuture<JsonObject>()
-        pending[id] = future
+        val future = CompletableFuture<R>()
+        val pendingResponse = TypedPendingResponse(future, method.resultSerializer)
+        pending[id] = pendingResponse
         try {
-            transport.send(buildJsonObject {
-                put("id", id)
-                put("method", method)
-                put("params", params)
-            }.toString())
-            val response = await(future, timeout)
-            if (response["error"] != null) throw CodexConversationException("RPC_ERROR")
-            return response
+            val message = JsonRpcRequest(id, method.wireName, params)
+            transport.send(CODEX_JSON.encodeToString(JsonRpcRequest.serializer(method.paramsSerializer), message))
+            return await(future, timeout)
         } catch (error: Exception) {
-            pending.remove(id, future)
+            pending.remove(id, pendingResponse)
             throw error
         }
     }
 
-    private fun notify(method: String, params: JsonObject) {
-        transport.send(buildJsonObject {
-            put("method", method)
-            put("params", params)
-        }.toString())
+    private fun <P> notify(method: AppServerNotificationMethod<P>, params: P) {
+        val message = JsonRpcNotification(method.wireName, params)
+        transport.send(CODEX_JSON.encodeToString(JsonRpcNotification.serializer(method.paramsSerializer), message))
     }
 
     private fun handleMessage(line: String) {
-        val message = runCatching { CODEX_JSON.parseToJsonElement(line) as? JsonObject }
-            .getOrNull() ?: return
-        val method = message.string("method")
-        val id = message["id"]?.jsonPrimitive?.longOrNull
+        val message = try {
+            CODEX_JSON.decodeFromString(IncomingAppServerMessage.serializer(), line)
+        } catch (error: Exception) {
+            log.warn("Ignored malformed Codex app-server message category={}", error.javaClass.simpleName)
+            failPending("INVALID_APP_SERVER_MESSAGE")
+            return
+        }
+        val method = message.method
+        val id = message.id
         if (method == null && id != null) {
-            pending.remove(id)?.complete(message)
+            when (id) {
+                is RequestId.Number -> pending.remove(id.value)?.complete(message)
+                is RequestId.Text -> log.warn("Ignored Codex response with unexpected string request id")
+            }
             return
         }
         if (method != null && id != null) {
-            respondUnsupported(message["id"] ?: JsonPrimitive(id))
+            respondUnsupported(id)
             return
         }
-        val params = message.objectValue("params") ?: return
         when (method) {
-            "item/completed" -> recordAgentMessage(params)
-            "turn/completed" -> completeTurn(params)
-            "thread/closed" -> params.string("threadId")?.let(loadedThreads::remove)
+            AppServerProtocol.itemCompleted.wireName -> decodeNotification(
+                AppServerProtocol.itemCompleted,
+                message.params,
+                ::recordAgentMessage,
+            )
+            AppServerProtocol.turnCompleted.wireName -> decodeNotification(
+                AppServerProtocol.turnCompleted,
+                message.params,
+                ::completeTurn,
+            )
+            AppServerProtocol.threadClosed.wireName -> decodeNotification(
+                AppServerProtocol.threadClosed,
+                message.params,
+            ) { loadedThreads.remove(it.threadId) }
+            null -> log.warn("Ignored malformed Codex app-server message without method or response id")
         }
     }
 
-    private fun recordAgentMessage(params: JsonObject) {
-        val state = params.string("threadId")?.let(activeTurns::get) ?: return
-        val item = params.objectValue("item") ?: return
-        if (item.string("type") == "agentMessage") {
-            item.string("text")?.let(state.answer::set)
+    private fun <P> decodeNotification(
+        method: AppServerNotificationMethod<P>,
+        params: JsonElement?,
+        handle: (P) -> Unit,
+    ) {
+        val decoded = try {
+            requireNotNull(params) { "Missing notification params" }
+            CODEX_JSON.decodeFromJsonElement(method.paramsSerializer, params)
+        } catch (error: Exception) {
+            log.warn(
+                "Rejected malformed Codex app-server notification method={} category={}",
+                method.wireName,
+                error.javaClass.simpleName,
+            )
+            failActiveTurns("INVALID_APP_SERVER_MESSAGE")
+            return
+        }
+        handle(decoded)
+    }
+
+    private fun recordAgentMessage(params: ItemCompletedParams) {
+        val state = activeTurns[params.threadId] ?: return
+        if (params.item.type == "agentMessage") {
+            params.item.text?.let(state.answer::set)
         }
     }
 
-    private fun completeTurn(params: JsonObject) {
-        val state = params.string("threadId")?.let(activeTurns::get) ?: return
-        val turn = params.objectValue("turn") ?: return
-        val items = turn["items"] as? kotlinx.serialization.json.JsonArray
-        items.orEmpty()
-            .mapNotNull { it as? JsonObject }
-            .filter { it.string("type") == "agentMessage" }
-            .mapNotNull { it.string("text") }
+    private fun completeTurn(params: TurnCompletedParams) {
+        val state = activeTurns[params.threadId] ?: return
+        params.turn.items
+            .filter { it.type == "agentMessage" }
+            .mapNotNull(AppServerThreadItem::text)
             .lastOrNull()
             ?.let(state.answer::set)
-        val status = turn.string("status") ?: "failed"
-        state.completed.complete(TurnCompletion(status, state.answer.get()))
+        state.completed.complete(TurnCompletion(params.turn.status, state.answer.get()))
     }
 
-    private fun respondUnsupported(id: JsonElement) {
+    private fun respondUnsupported(id: RequestId) {
         runCatching {
-            transport.send(buildJsonObject {
-                put("id", id)
-                put("error", buildJsonObject {
-                    put("code", -32601)
-                    put("message", "Unsupported server request")
-                })
-            }.toString())
+            transport.send(
+                CODEX_JSON.encodeToString(
+                    JsonRpcErrorResponse.serializer(),
+                    JsonRpcErrorResponse(
+                        id = id,
+                        error = JsonRpcError(-32601, "Unsupported server request"),
+                    ),
+                ),
+            )
         }
     }
 
@@ -306,54 +325,47 @@ internal class CodexAppServerConversationClient(
 
     private fun failPending(category: String) {
         val failure = CodexConversationException(category)
-        pending.values.forEach { it.completeExceptionally(failure) }
+        pending.values.forEach { it.fail(failure) }
         pending.clear()
-        activeTurns.values.forEach { it.completed.completeExceptionally(failure) }
+        failActiveTurns(category)
         activeTurns.clear()
     }
 
-    private fun threadStartParams(): JsonObject = buildJsonObject {
-        put("model", config.model)
-        put("cwd", config.workDir.toString())
-        put("approvalPolicy", "never")
-        put("sandbox", "read-only")
-        put("serviceName", "home_second_brain")
-        put("config", turnConfig())
+    private fun failActiveTurns(category: String) {
+        val failure = CodexConversationException(category)
+        activeTurns.values.forEach { it.completed.completeExceptionally(failure) }
     }
 
-    private fun threadResumeParams(threadId: String): JsonObject = buildJsonObject {
-        put("threadId", threadId)
-        put("model", config.model)
-        put("cwd", config.workDir.toString())
-        put("approvalPolicy", "never")
-        put("sandbox", "read-only")
-        put("config", turnConfig())
-    }
+    private fun threadStartParams(): ThreadStartParams = ThreadStartParams(
+        model = config.model,
+        cwd = config.workDir.toString(),
+        approvalPolicy = ApprovalPolicy.NEVER,
+        sandbox = SandboxMode.READ_ONLY,
+        serviceName = "home_second_brain",
+        config = turnConfig(),
+    )
 
-    private fun turnStartParams(threadId: String, prompt: String): JsonObject = buildJsonObject {
-        put("threadId", threadId)
-        put("input", buildJsonArray {
-            add(buildJsonObject {
-                put("type", "text")
-                put("text", prompt)
-            })
-        })
-        put("cwd", config.workDir.toString())
-        put("approvalPolicy", "never")
-        put("sandboxPolicy", buildJsonObject { put("type", "readOnly") })
-        put("model", config.model)
-        put("effort", config.reasoningEffort)
-        put("outputSchema", ANSWER_SCHEMA)
-    }
+    private fun threadResumeParams(threadId: String): ThreadResumeParams = ThreadResumeParams(
+        threadId = threadId,
+        model = config.model,
+        cwd = config.workDir.toString(),
+        approvalPolicy = ApprovalPolicy.NEVER,
+        sandbox = SandboxMode.READ_ONLY,
+        config = turnConfig(),
+    )
 
-    private fun turnConfig(): JsonObject = buildJsonObject {
-        put("web_search", "disabled")
-        put("model_reasoning_effort", config.reasoningEffort)
-    }
+    private fun turnStartParams(threadId: String, prompt: String): TurnStartParams = TurnStartParams(
+        threadId = threadId,
+        input = listOf(TextUserInput(text = prompt)),
+        cwd = config.workDir.toString(),
+        approvalPolicy = ApprovalPolicy.NEVER,
+        sandboxPolicy = ReadOnlySandboxPolicy(),
+        model = config.model,
+        effort = config.reasoningEffort,
+        outputSchema = StructuredAnswerContract.schema,
+    )
 
-    private fun JsonObject.resultObject(): JsonObject? = objectValue("result")
-    private fun JsonObject.objectValue(key: String): JsonObject? = this[key] as? JsonObject
-    private fun JsonObject.string(key: String): String? = this[key]?.jsonPrimitive?.contentOrNull
+    private fun turnConfig(): ThreadConfig = ThreadConfig(modelReasoningEffort = config.reasoningEffort)
 
     private fun elapsedMillis(startedAt: Long): Long =
         Duration.ofNanos(System.nanoTime() - startedAt).toMillis()
@@ -384,28 +396,57 @@ internal class CodexAppServerConversationClient(
         val RELEASE_TIMEOUT: Duration = Duration.ofSeconds(5)
         const val RESTART_DELAY_SECONDS = 1L
         const val RETRY_DELAY_SECONDS = 5L
-        val ANSWER_SCHEMA: JsonObject = buildJsonObject {
-            put("type", "object")
-            put("properties", buildJsonObject {
-                put("answer", buildJsonObject { put("type", "string") })
-            })
-            put("required", buildJsonArray { add(JsonPrimitive("answer")) })
-            put("additionalProperties", false)
-        }
     }
 }
 
 internal fun parseStructuredAnswer(raw: String?): String? {
     val result = raw?.let {
-        runCatching { STRUCTURED_ANSWER_JSON.parseToJsonElement(it) as? JsonObject }.getOrNull()
+        runCatching { STRUCTURED_ANSWER_JSON.decodeFromString(StructuredAnswer.serializer(), it) }.getOrNull()
     } ?: return null
-    if (result.keys != setOf("answer")) return null
-    val answer = result["answer"] as? JsonPrimitive ?: return null
-    if (!answer.isString) return null
-    return answer.content.trim().takeIf(String::isNotEmpty)
+    return result.answer.trim().takeIf(String::isNotEmpty)
 }
 
 private val STRUCTURED_ANSWER_JSON = Json.Default
+
+@OptIn(ExperimentalSerializationApi::class)
+private object StructuredAnswerContract {
+    val schema: JsonElement = SerializationClassJsonSchemaGenerator(
+        json = CODEX_JSON,
+        jsonSchemaConfig = JsonSchemaConfig.Strict,
+    )
+        .generateSchemaString(StructuredAnswer.serializer().descriptor)
+        .let(CODEX_JSON::parseToJsonElement)
+}
+
+private interface PendingResponse {
+    fun complete(message: IncomingAppServerMessage)
+    fun fail(error: Throwable)
+}
+
+private class TypedPendingResponse<R>(
+    private val future: CompletableFuture<R>,
+    private val resultSerializer: KSerializer<R>,
+) : PendingResponse {
+    override fun complete(message: IncomingAppServerMessage) {
+        val error = message.error
+        if (error != null) {
+            future.completeExceptionally(CodexConversationException("RPC_ERROR"))
+            return
+        }
+        val result = message.result
+        if (result == null) {
+            future.completeExceptionally(CodexConversationException("MISSING_RPC_RESULT"))
+            return
+        }
+        runCatching { CODEX_JSON.decodeFromJsonElement(resultSerializer, result) }
+            .onSuccess(future::complete)
+            .onFailure { future.completeExceptionally(CodexConversationException("INVALID_RPC_RESULT")) }
+    }
+
+    override fun fail(error: Throwable) {
+        future.completeExceptionally(error)
+    }
+}
 
 private val CODEX_THREAD_ID_PATTERN =
     Regex("""[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}""")

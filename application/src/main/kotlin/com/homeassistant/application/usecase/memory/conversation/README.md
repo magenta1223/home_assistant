@@ -12,7 +12,8 @@ sequenceDiagram
     participant Sessions as MemoryConversationSessionStore
     participant Context as MemoryConversationContextSource
     participant Prompt as MemoryConversationPromptBuilder
-    participant Client as ConversationTurnClient
+    participant Lifecycle as ConversationThreadLifecycle
+    participant Executor as ConversationTurnExecutor
 
     Workflow->>Conversation: answer(request)
     Conversation->>Sessions: claimRequest(requestKey)
@@ -24,7 +25,7 @@ sequenceDiagram
         Conversation->>Sessions: lease(participant, idle=10분)
         alt idle lease 만료
             Sessions-->>Conversation: Expired(threadId)
-            Conversation->>Client: end(threadId)
+            Conversation->>Lifecycle: end(threadId)
         end
         Conversation->>Context: context(userId, question)
         alt direct memory match 없음
@@ -33,17 +34,16 @@ sequenceDiagram
         else context 존재
             Conversation->>Prompt: build(reference, question)
             alt 활성 session 없음
-                Conversation->>Client: start(prompt)
-                Client-->>Conversation: threadId callback
+                Conversation->>Lifecycle: create()
+                Lifecycle-->>Conversation: threadId
                 Conversation->>Sessions: createAndActivate + attachSession
-            else 활성 session 존재
-                Conversation->>Client: resume(threadId, prompt)
             end
+            Conversation->>Executor: execute(threadId, prompt)
             alt turn 성공
                 Conversation->>Sessions: touch + markAnswerReady
                 Conversation-->>Workflow: AnswerReady
             else turn 실패
-                Conversation->>Client: end(threadId)
+                Conversation->>Lifecycle: end(threadId)
                 Conversation->>Sessions: markFailed + clearActive
                 Conversation-->>Workflow: Failed
             end
@@ -58,14 +58,14 @@ sequenceDiagram
     participant Worker as MemoryConversationExpiryWorker
     participant Expiry as ExpireIdleMemoryConversations
     participant Sessions as MemoryConversationSessionStore
-    participant Client as ConversationTurnClient
+    participant Lifecycle as ConversationThreadLifecycle
 
     loop 짧은 주기
         Worker->>Expiry: execute()
         Expiry->>Sessions: expireIdle(now - 10분)
         Sessions-->>Expiry: 만료되어 비활성화된 sessions
         loop 각 session
-            Expiry->>Client: end(threadId)
+            Expiry->>Lifecycle: end(threadId)
         end
     end
 ```
@@ -90,4 +90,8 @@ sequenceDiagram
 - answer를 만들었지만 채널 전송 전인 `ANSWER_READY`는 동일 이벤트 재처리 시 기존 answer를 반환한다.
 - memory match가 없으면 Codex를 호출하지 않고 고정된 no-match 답변을 반환한다.
 - prompt의 memory reference는 신뢰하지 않는 데이터로 감싸며 그 안의 지시를 실행하지 않는다.
-- Codex adapter는 매 turn에 `{"answer": string}` output schema를 적용하고 검증된 answer만 반환한다.
+- memory conversation use case는 session 상태에 따라 thread 생성·재사용·종료 시점을 결정한다.
+- `ConversationThreadLifecycle`은 thread 생성과 종료를 수행하고, `ConversationTurnExecutor`는 주어진
+  thread에서 turn을 실행한다.
+- Codex adapter는 필요할 때 thread를 다시 로드하며 매 turn에 `{"answer": string}` output schema를
+  적용하고 검증된 answer만 반환한다.

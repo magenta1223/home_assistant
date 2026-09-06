@@ -15,20 +15,23 @@ import kotlin.test.assertTrue
 
 class CodexAppServerConversationClientTest {
     @Test
-    fun `reuses one app server and keeps each started thread distinct`() {
+    fun `creates distinct threads without starting turns`() {
         val transport = FakeAppServerTransport()
         val client = client(transport)
         try {
             assertTrue(client.startServer())
-            var firstThread = ""
-            var secondThread = ""
 
-            assertTrue(client.start("first prompt") { firstThread = it }.isSuccess)
-            assertTrue(client.start("second prompt") { secondThread = it }.isSuccess)
+            val firstThread = client.create().getOrThrow()
+            val secondThread = client.create().getOrThrow()
 
             assertEquals(1, transport.startCount)
             assertNotEquals(firstThread, secondThread)
             assertEquals(2, transport.methods.count { it == "thread/start" })
+            assertEquals(0, transport.methods.count { it == "turn/start" })
+
+            assertTrue(client.execute(firstThread, "first prompt").isSuccess)
+            assertTrue(client.execute(secondThread, "second prompt").isSuccess)
+
             assertEquals(2, transport.methods.count { it == "turn/start" })
             assertTrue(transport.turnParams.all { it["outputSchema"] is JsonObject })
         } finally {
@@ -42,10 +45,10 @@ class CodexAppServerConversationClientTest {
         val client = client(transport)
         try {
             assertTrue(client.startServer())
-            var threadId = ""
-            client.start("first") { threadId = it }
+            val threadId = client.create().getOrThrow()
+            client.execute(threadId, "first")
 
-            val result = client.resume(threadId, "follow up")
+            val result = client.execute(threadId, "follow up")
 
             assertEquals("structured answer", result.getOrThrow())
             assertEquals(0, transport.methods.count { it == "thread/resume" })
@@ -55,16 +58,16 @@ class CodexAppServerConversationClientTest {
     }
 
     @Test
-    fun `unsubscribes an ended thread and reloads only if explicitly resumed`() {
+    fun `unsubscribes an ended thread and reloads it on the next execution`() {
         val transport = FakeAppServerTransport()
         val client = client(transport)
         try {
             assertTrue(client.startServer())
-            var threadId = ""
-            client.start("first") { threadId = it }
+            val threadId = client.create().getOrThrow()
+            client.execute(threadId, "first")
 
             client.end(threadId)
-            client.resume(threadId, "explicit resume")
+            client.execute(threadId, "follow up")
 
             assertEquals(listOf(threadId), transport.unsubscribedThreads)
             assertEquals(1, transport.methods.count { it == "thread/resume" })
@@ -80,7 +83,8 @@ class CodexAppServerConversationClientTest {
         try {
             assertTrue(client.startServer())
 
-            val result = client.start("prompt") {}
+            val threadId = client.create().getOrThrow()
+            val result = client.execute(threadId, "prompt")
 
             assertEquals("INVALID_STRUCTURED_ANSWER", result.exceptionOrNull()?.message)
         } finally {

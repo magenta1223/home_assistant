@@ -10,10 +10,10 @@ import java.util.concurrent.TimeUnit
 internal class ProcessCodexConversationClient(
     private val config: CodexConversationConfig,
     private val eventParser: CodexJsonlEventParser = CodexJsonlEventParser(),
-) : ConversationClient {
+) : AutoCloseable {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun isAvailable(): Boolean {
+    fun isAvailable(): Boolean {
         val process = runCatching {
             ProcessBuilder(config.executable, "--version")
                 .directory(config.workDir.toFile())
@@ -29,7 +29,7 @@ internal class ProcessCodexConversationClient(
         return process.exitValue() == 0 && version != null
     }
 
-    override fun start(
+    fun start(
         prompt: String,
         onThreadStarted: (String) -> Unit,
     ): Result<String> =
@@ -59,7 +59,7 @@ internal class ProcessCodexConversationClient(
             onThreadStarted = onThreadStarted,
         )
 
-    override fun resume(threadId: String, prompt: String): Result<String> {
+    fun resume(threadId: String, prompt: String): Result<String> {
         if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
             return Result.failure(CodexConversationException("INVALID_THREAD_ID"))
         }
@@ -200,9 +200,9 @@ internal class ProcessCodexConversationClient(
         process.destroyForcibly()
     }
 
-    override fun startServer(): Boolean = true
+    fun startServer(): Boolean = true
 
-    override fun end(threadId: String) = Unit
+    fun end(threadId: String) = Unit
 
     override fun close() = Unit
 

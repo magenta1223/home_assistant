@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.memory.conversation
 
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationParticipant
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnClient
+import com.homeassistant.application.port.output.memory.conversation.ConversationThreadLifecycle
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationReceipt
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
@@ -27,7 +27,7 @@ class ExpireIdleMemoryConversationsTest {
         val client = EndingClient()
         val useCase = ExpireIdleMemoryConversations(
             sessions = store,
-            conversationClient = client,
+            threadLifecycle = client,
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
         )
 
@@ -36,10 +36,9 @@ class ExpireIdleMemoryConversationsTest {
         assertEquals(listOf("thread-c"), store.remaining.map { it.conversationThreadId })
     }
 
-    private class EndingClient : ConversationTurnClient {
+    private class EndingClient : ConversationThreadLifecycle {
         val ended = mutableListOf<String>()
-        override fun start(prompt: String, onThreadStarted: (String) -> Unit) = error("unused")
-        override fun resume(threadId: String, prompt: String) = error("unused")
+        override fun create(): String = error("unused")
         override fun end(threadId: String) {
             ended += threadId
         }

@@ -66,7 +66,8 @@ sequenceDiagram
     participant Pending as PendingRegistrationQuestionStore
     participant Conversation as MemoryConversation
     participant Search as MemorySearch
-    participant Codex as ConversationTurnClient
+    participant Lifecycle as ConversationThreadLifecycle
+    participant Executor as ConversationTurnExecutor
 
     User->>Inbound: DM
     Inbound->>Workflow: receive(MemoryAnswerRequest)
@@ -85,8 +86,12 @@ sequenceDiagram
         Workflow->>Conversation: answer(request + userId)
     end
     Conversation->>Search: 허용된 memory context 조회
-    Conversation->>Codex: 사용자 전용 새 thread 시작 또는 활성 thread 재개
-    Codex-->>Conversation: answer
+    opt 활성 session 없음
+        Conversation->>Lifecycle: create()
+        Lifecycle-->>Conversation: threadId
+    end
+    Conversation->>Executor: execute(threadId, prompt)
+    Executor-->>Conversation: answer
     Conversation-->>Workflow: AnswerReady
     Workflow-->>Inbound: AnswerReady
     Inbound-->>User: Slack message
@@ -94,8 +99,9 @@ sequenceDiagram
 ```
 
 활성 conversation은 scope, participant, application user ID로 격리된다. 10분 동안 사용되지 않은
-session은 background expiry 흐름이 비활성화하고 Codex thread 구독을 해제한다. Codex adapter는 각
-turn의 구조화된 `answer` 응답만 application에 반환한다.
+session은 background expiry 흐름이 비활성화하고 Codex thread 구독을 해제한다. Memory conversation
+use case가 thread 생성·재사용·종료 시점을 결정하며, Codex adapter는 각 turn의 구조화된 `answer`
+응답만 application에 반환한다.
 
 Slack은 application result를 UI로 표현할 뿐이며 사용자 registry, pending question, authorization,
 idempotency와 session expiry를 소유하지 않는다.

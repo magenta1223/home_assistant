@@ -89,10 +89,7 @@ internal class CodexAppServerConversationClient(
         }
     }
 
-    override fun start(
-        prompt: String,
-        onThreadStarted: (String) -> Unit,
-    ): Result<String> = execute("start") { deadline ->
+    override fun create(): Result<String> = executeOperation("create") { deadline ->
         val response = request("thread/start", threadStartParams(), deadline.remaining())
         val threadId = response.resultObject()
             ?.objectValue("thread")
@@ -100,21 +97,15 @@ internal class CodexAppServerConversationClient(
             ?.takeIf(CODEX_THREAD_ID_PATTERN::matches)
             ?: throw CodexConversationException("INVALID_THREAD_ID")
         loadedThreads += threadId
-        try {
-            onThreadStarted(threadId)
-        } catch (_: Exception) {
-            end(threadId)
-            throw CodexConversationException("THREAD_PERSIST_FAILED")
-        }
         log.info(
-            "Latency stage=codex-thread-ready operation=start model={} elapsedMs={}",
+            "Latency stage=codex-thread-ready operation=create model={} elapsedMs={}",
             config.model,
             deadline.elapsedMillis(),
         )
-        runTurn(threadId, prompt, deadline)
+        threadId
     }
 
-    override fun resume(threadId: String, prompt: String): Result<String> = execute("resume") { deadline ->
+    override fun execute(threadId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
         if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
             throw CodexConversationException("INVALID_THREAD_ID")
         }
@@ -149,7 +140,7 @@ internal class CodexAppServerConversationClient(
         loadedThreads.clear()
     }
 
-    private fun execute(
+    private fun executeOperation(
         operation: String,
         block: (Deadline) -> String,
     ): Result<String> {

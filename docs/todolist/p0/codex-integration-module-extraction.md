@@ -11,7 +11,8 @@
 
 - `CodexCliClient`, process executor, app-server transport와 JSONL parser처럼 Codex CLI protocol과
   process lifecycle만 다루는 저수준 integration
-- `ConversationTurnClient` 같은 application output port를 구현하는 outbound adapter
+- `ConversationThreadLifecycle`, `ConversationTurnExecutor` 같은 application output port를 구현하는
+  outbound adapter
 - memory analysis, memory placement와 source reference 해석 adapter가 공유하는 structured completion
   client
 
@@ -41,7 +42,7 @@ integration-codex/
 adapter-outbound/
   memoryanalysis/codex/   # MemoryExtractor, MemoryPlacementExtractor 구현
   reference/codex/        # SourceReferenceInterpreter 구현
-  memoryconversation/     # integration 결과를 ConversationTurnClient로 변환하는 adapter
+  memoryconversation/     # integration 결과를 thread lifecycle과 turn executor port로 변환하는 adapter
 ```
 
 의존 방향은 다음으로 고정한다.
@@ -55,7 +56,7 @@ integration-codex -X-> application/domain
 
 `integration-codex`의 API는 Codex라는 외부 시스템의 기능과 protocol을 표현한다.
 `adapter-outbound`가 이를 application의 `MemoryExtractor`, `SourceReferenceInterpreter`,
-`ConversationTurnClient` 계약으로 변환한다.
+`ConversationThreadLifecycle`, `ConversationTurnExecutor` 계약으로 변환한다.
 
 ## 범위
 
@@ -73,7 +74,7 @@ integration-codex -X-> application/domain
 
 - `MemoryExtractor`, `MemoryPlacementExtractor` 구현과 prompt/output mapping
 - `SourceReferenceInterpreter` 구현과 PDF/image 전처리
-- `ConversationTurnClient` 구현과 `ConversationTurnResult` mapping
+- `ConversationThreadLifecycle`, `ConversationTurnExecutor` 구현과 `ConversationTurnResult` mapping
 - application/domain 모델을 사용하는 factory와 조립 코드
 - 기능별 오류를 application output port 의미로 변환하는 경계
 
@@ -119,8 +120,8 @@ integration-codex -X-> application/domain
 1. process transport, request ID 관리, protocol message와 Codex thread/turn event 처리를 application
    모델과 분리할 수 있는 경계까지 새 모듈로 이동한다.
 2. Codex protocol 결과를 `ConversationTurnResult`로 바꾸는 구현은 `adapter-outbound`에 둔다.
-3. `ConversationClient : ConversationTurnClient`처럼 두 경계를 합친 interface는 기능 adapter와
-   integration client로 나눈다.
+3. integration의 `ConversationClient`와 application의 conversation output port는 기능 adapter를
+   사이에 두고 분리한다.
 4. availability, start/close/restart lifecycle은 소유자가 하나만 되도록 정한다.
 5. thread ID 검증 중 Codex protocol 규칙은 integration에, application session 정책은 adapter 또는
    application에 남긴다.
@@ -167,6 +168,6 @@ integration-codex -X-> application/domain
 - structured completion와 conversation의 Codex CLI/app-server 구현을 `integration-codex`로 이동했다.
 - conversation public API는 `ConversationClient`와 `ConversationClientFactory`로 제한했다.
 - transport, configuration, parser, protocol state와 구체 client는 `internal`로 숨겼다.
-- `adapter-outbound`에는 integration의 `Result<String>`을 application의 `ConversationTurnResult`로
-  변환하는 adapter만 남겼다.
+- `adapter-outbound`에는 integration의 thread 생성과 turn 결과를 application의
+  `ConversationThreadLifecycle`, `ConversationTurnExecutor` 의미로 변환하는 adapter만 남겼다.
 - conversation 소스는 top-level interface/object/class를 파일당 하나만 갖도록 분리했다.

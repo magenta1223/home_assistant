@@ -24,11 +24,17 @@
 
 | 문서 | 목적 |
 |---|---|
+| [codex-integration-module-extraction.md](p0/codex-integration-module-extraction.md) | 사용자 학습 과제: Codex 저수준 통신을 독립 integration 모듈로 분리하고 outbound에는 기능별 port 구현만 유지 |
+| [onnx-embedding-runtime-migration.md](p0/onnx-embedding-runtime-migration.md) | Ollama 자식 서버를 JVM 내부 ONNX Runtime 임베딩으로 교체하고 기존 vector를 안전하게 전체 재색인 |
 | [deploy-runtime-shutdown-reliability.md](p0/deploy-runtime-shutdown-reliability.md) | 로컬 구현·회귀 테스트 완료; 새 경로의 원격 배포·재기동 검증 대기 |
 
 ### P1
 
-현재 등록된 작업 없음.
+| 문서 | 목적 |
+|---|---|
+| [slack-integration-module-extraction.md](p1/slack-integration-module-extraction.md) | Slack SDK·Socket Mode·Web API integration과 기능별 application input adapter를 분리 |
+| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | ONNX·Qdrant 기술 integration을 분리하고 outbound에는 semantic-memory port mapping만 유지 |
+| [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | 여러 managed runtime이 공유하는 검증·설치 lifecycle을 독립 기반 모듈로 분리 |
 
 ### P2
 

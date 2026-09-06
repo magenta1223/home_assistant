@@ -4,5 +4,5 @@ import com.homeassistant.application.port.output.memory.placement.MemoryPlacemen
 import com.homeassistant.codex.completion.CodexCompletionClientFactory
 
 object MemoryPlacementExtractorFactory {
-    fun create(): MemoryPlacementExtractor = CodexMemoryPlacementExtractor(CodexCompletionClientFactory.create())
+    fun create(): MemoryPlacementExtractor = MemoryPlacementExtractor(CodexCompletionClientFactory.create())
 }

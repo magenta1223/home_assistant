@@ -19,7 +19,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 
-class CodexMemoryExtractorTest {
+class MemoryExtractorTest {
     @Test
     fun `visibility is not delegated to the model`() {
         val root = Json.parseToJsonElement(MemoryAnalysisOutputContract.schema).jsonObject
@@ -40,7 +40,7 @@ class CodexMemoryExtractorTest {
                 response(text = "first fact", evidenceIds = listOf("r1")),
             ),
         )
-        val memories = CodexMemoryExtractor(client, chunkSize = 1).analyze(document(recordCount = 2))
+        val memories = MemoryExtractor(client, chunkSize = 1).analyze(document(recordCount = 2))
 
         assertEquals("first fact", memories.single().content)
         assertFalse(client.calls.last().userMessage.contains("visibility"))
@@ -59,7 +59,7 @@ class CodexMemoryExtractorTest {
             ),
         )
 
-        val memories = CodexMemoryExtractor(client).analyze(document(recordCount = 1))
+        val memories = MemoryExtractor(client).analyze(document(recordCount = 1))
 
         assertEquals(1, memories.size)
     }
@@ -75,7 +75,7 @@ class CodexMemoryExtractorTest {
             ),
         )
 
-        assertFailsWith<IllegalArgumentException> { CodexMemoryExtractor(client).analyze(input) }
+        assertFailsWith<IllegalArgumentException> { MemoryExtractor(client).analyze(input) }
         assertContains(client.calls.single().userMessage, "[CONTEXT_ONLY]\nc99 | earlier message")
         assertContains(client.calls.single().userMessage, "[NEW_RECORDS]\nr1 | content-1")
         assertContains(client.calls.single().system, "c1, c2 같은 record는 해석에만 사용")
@@ -85,7 +85,7 @@ class CodexMemoryExtractorTest {
     fun `large documents use bounded chunks with overlap`() = runBlocking {
         val client = FunctionalClient { _, _, _ -> """{"memories":[]}""" }
 
-        CodexMemoryExtractor(
+        MemoryExtractor(
             client = client,
             chunkSize = 400,
             chunkOverlap = 20,
@@ -109,7 +109,7 @@ class CodexMemoryExtractorTest {
     fun `chunking does not create a final overlap-only request`() = runBlocking {
         val client = FunctionalClient { _, _, _ -> """{"memories":[]}""" }
 
-        CodexMemoryExtractor(
+        MemoryExtractor(
             client = client,
             chunkSize = 400,
             chunkOverlap = 20,
@@ -133,7 +133,7 @@ class CodexMemoryExtractorTest {
             }
         }
 
-        CodexMemoryExtractor(
+        MemoryExtractor(
             client = client,
             chunkSize = 1,
             chunkOverlap = 0,
@@ -151,7 +151,7 @@ class CodexMemoryExtractorTest {
             response(text = "fact-$evidenceId", evidenceIds = listOf(evidenceId))
         }
 
-        val memories = CodexMemoryExtractor(
+        val memories = MemoryExtractor(
             client = client,
             chunkSize = 1,
             chunkOverlap = 0,
@@ -171,7 +171,7 @@ class CodexMemoryExtractorTest {
             )
         }
 
-        val memories = CodexMemoryExtractor(
+        val memories = MemoryExtractor(
             client = client,
             chunkSize = 2,
             chunkOverlap = 1,

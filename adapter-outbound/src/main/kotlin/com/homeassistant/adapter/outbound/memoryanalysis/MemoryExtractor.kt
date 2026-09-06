@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 /** Runs Codex memory analysis for normalized source documents. */
-internal class CodexMemoryExtractor(
+internal class MemoryExtractor(
     private val client: CompletionClient,
     private val chunkSize: Int = CHUNK_SIZE,
     private val chunkOverlap: Int = minOf(CHUNK_OVERLAP, chunkSize - 1),

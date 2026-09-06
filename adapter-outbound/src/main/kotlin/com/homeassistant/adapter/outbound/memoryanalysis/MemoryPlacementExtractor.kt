@@ -22,7 +22,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /** Makes one structured Codex call for the complete placement batch. */
-internal class CodexMemoryPlacementExtractor(
+internal class MemoryPlacementExtractor(
     private val client: CompletionClient,
 ) : MemoryPlacementExtractor {
     override suspend fun analyze(input: MemoryPlacementInput): MemoryPlacementResponse {

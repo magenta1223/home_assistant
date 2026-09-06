@@ -9,7 +9,7 @@
 
 현재 `adapter-outbound`의 `codex/`에는 서로 다른 수준의 코드가 섞여 있다.
 
-- `CodexCliClient`, process executor, app-server transport와 JSONL parser처럼 Codex CLI protocol과
+- `CodexCliClient`, process executor, app-server transport와 protocol message 처리처럼 Codex CLI protocol과
   process lifecycle만 다루는 저수준 integration
 - `ConversationThreadLifecycle`, `ConversationTurnExecutor` 같은 application output port를 구현하는
   outbound adapter
@@ -67,7 +67,7 @@ integration-codex -X-> application/domain
 - structured completion 요청과 output schema/result 파일 처리
 - Codex image 입력 전송 모델
 - app-server process transport와 요청/응답 protocol
-- JSONL event parsing 중 application 의미를 모르는 부분
+- app-server protocol message parsing 중 application 의미를 모르는 부분
 - Codex 고유 model/reasoning/CLI option 값 객체
 
 ### `adapter-outbound`에 유지
@@ -167,7 +167,7 @@ integration-codex -X-> application/domain
 
 - structured completion와 conversation의 Codex CLI/app-server 구현을 `integration-codex`로 이동했다.
 - conversation public API는 `ConversationClient`와 `ConversationClientFactory`로 제한했다.
-- transport, configuration, parser, protocol state와 구체 client는 `internal`로 숨겼다.
+- transport, configuration, protocol message 처리와 구체 client는 `internal`로 숨겼다.
 - `adapter-outbound`에는 integration의 thread 생성과 turn 결과를 application의
   `ConversationThreadLifecycle`, `ConversationTurnExecutor` 의미로 변환하는 adapter만 남겼다.
 - conversation 소스는 top-level interface/object/class를 파일당 하나만 갖도록 분리했다.

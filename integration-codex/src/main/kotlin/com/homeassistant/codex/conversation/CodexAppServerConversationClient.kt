@@ -407,6 +407,9 @@ internal fun parseStructuredAnswer(raw: String?): String? {
 
 private val STRUCTURED_ANSWER_JSON = Json.Default
 
+private val CODEX_THREAD_ID_PATTERN =
+    Regex("""[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}""")
+
 private fun <T> await(future: CompletableFuture<T>, timeout: Duration): T = try {
     future.get(timeout.toNanos(), TimeUnit.NANOSECONDS)
 } catch (error: ExecutionException) {

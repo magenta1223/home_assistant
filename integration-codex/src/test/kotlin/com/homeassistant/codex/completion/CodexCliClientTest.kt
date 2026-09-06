@@ -1,12 +1,15 @@
-package com.homeassistant.adapter.outbound.codex
+package com.homeassistant.codex.completion
 
-import java.nio.file.Path
+import com.homeassistant.codex.subprocess.ProcessExecutor
+import com.homeassistant.codex.subprocess.ProcessResult
 import kotlinx.coroutines.runBlocking
+import java.nio.file.Files
+import java.nio.file.Path
 import kotlin.io.path.writeText
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.test.assertContentEquals
 
 class CodexCliClientTest {
     @Test
@@ -57,7 +60,7 @@ class CodexCliClientTest {
         assertContentEquals(original, executor.imageBytes)
     }
 
-    private class RecordingProcessExecutor : CodexProcessExecutor {
+    private class RecordingProcessExecutor : ProcessExecutor {
         lateinit var command: List<String>
         var timeoutMillis: Long = 0
         var imageBytes: ByteArray? = null
@@ -67,15 +70,15 @@ class CodexCliClientTest {
             workingDirectory: Path,
             timeoutMillis: Long,
             stdin: String,
-        ): CodexProcessResult {
+        ): ProcessResult {
             this.command = command
             this.timeoutMillis = timeoutMillis
             command.indexOf("--image").takeIf { it >= 0 }?.let { imageIndex ->
-                imageBytes = java.nio.file.Files.readAllBytes(Path.of(command[imageIndex + 1]))
+                imageBytes = Files.readAllBytes(Path.of(command[imageIndex + 1]))
             }
             val outputPath = Path.of(command[command.indexOf("--output-last-message") + 1])
             outputPath.writeText("{\"memories\":[]}")
-            return CodexProcessResult(exitCode = 0, stderr = "")
+            return ProcessResult(exitCode = 0, stderr = "")
         }
     }
 }

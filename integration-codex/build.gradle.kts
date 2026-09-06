@@ -1,22 +1,11 @@
 plugins {
-    kotlin("jvm") version "2.2.21"
-}
-
-group = "com.homeassistant.integrationcodex"
-version = "unspecified"
-
-repositories {
-    mavenCentral()
+    alias(libs.plugins.kotlin.jvm)
 }
 
 dependencies {
-    testImplementation(kotlin("test"))
-}
-
-kotlin {
-    jvmToolchain(23)
-}
-
-tasks.test {
-    useJUnitPlatform()
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kotlinx.schema.generator.json)
+    testImplementation(libs.kotlinx.coroutines.core)
+    testImplementation(libs.kotlin.test)
 }

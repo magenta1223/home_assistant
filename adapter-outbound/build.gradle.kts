@@ -9,6 +9,8 @@ dependencies {
 
     implementation(project(":common"))
     implementation(project(":configuration"))
+    implementation(project(":integration-codex"))
+
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.schema.generator.json)

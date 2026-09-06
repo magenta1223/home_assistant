@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
-import com.homeassistant.adapter.outbound.codex.CodexCliClient
+import com.homeassistant.codex.completion.CodexCompletionClientFactory
 
 object MemoryExtractorFactory {
-    fun create(): MemoryExtractor = CodexMemoryExtractor(CodexCliClient())
+    fun create(): MemoryExtractor = CodexMemoryExtractor(CodexCompletionClientFactory.create())
 }

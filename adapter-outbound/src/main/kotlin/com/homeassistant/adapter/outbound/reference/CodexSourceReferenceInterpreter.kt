@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.outbound.reference
 
-import com.homeassistant.adapter.outbound.codex.CodexCompletionClient
-import com.homeassistant.adapter.outbound.codex.CodexImage
-import com.homeassistant.adapter.outbound.codex.CodexCliClient
 import com.homeassistant.application.port.output.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
+import com.homeassistant.codex.completion.CodexCompletionClient
+import com.homeassistant.codex.completion.CodexCompletionClientFactory
+import com.homeassistant.codex.completion.CodexImage
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -210,5 +210,5 @@ private data class ReferenceInterpretationItem(
 )
 
 object SourceReferenceInterpreterFactory {
-    fun create(): SourceReferenceInterpreter = CodexSourceReferenceInterpreter(CodexCliClient())
+    fun create(): SourceReferenceInterpreter = CodexSourceReferenceInterpreter(CodexCompletionClientFactory.create())
 }

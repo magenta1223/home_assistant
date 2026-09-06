@@ -1,6 +1,6 @@
 # Slack integration 모듈 분리
 
-- 상태: 계획
+- 상태: TODO
 - 우선순위: P1
 - 선행 작업: 없음
 - 관련 작업: [core-technology-boundary-hardening.md](../p2/core-technology-boundary-hardening.md)
@@ -84,6 +84,7 @@ injection adapter가 함께 사용하는 외부 시스템 client다. Slack은 ev
 - 새로운 Slack 기능 또는 scope 추가
 - P2의 application notification port 결정을 이 작업에서 선행 구현
 
-## 구현 결과
+## 현재 상태 (2026-09-06)
 
-아직 구현하지 않았다.
+미구현이다. `integration-slack` 모듈은 없고 Slack SDK, Web API와 Socket Mode lifecycle은 계속
+`adapter-inbound/slack`에 있다. 현재 기능은 정상 동작하므로 P1 구조 개선 작업으로 유지한다.

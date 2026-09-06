@@ -1,6 +1,6 @@
 # Semantic index integration 모듈 분리
 
-- 상태: 계획
+- 상태: TODO
 - 우선순위: P1
 - 선행 작업: [onnx-embedding-runtime-migration.md](../p0/onnx-embedding-runtime-migration.md)
 
@@ -78,6 +78,8 @@ adapter-outbound/
 - Qdrant 교체
 - semantic search 계약과 ranking 변경
 
-## 구현 결과
+## 현재 상태 (2026-09-06)
 
-아직 구현하지 않았다.
+미구현이다. `integration-onnx`, `integration-qdrant` 모듈은 없으며 `TextEmbedder`, `VectorStore`,
+Ollama와 Qdrant runtime 구현은 계속 `adapter-outbound`에 있다. 선행 작업인 ONNX embedding 전환이
+완료될 때까지 P1로 유지한다.

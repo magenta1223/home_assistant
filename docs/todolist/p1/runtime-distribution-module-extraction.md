@@ -1,6 +1,6 @@
 # Runtime distribution 모듈 분리
 
-- 상태: 계획
+- 상태: TODO
 - 우선순위: P1
 - 선행 작업: [onnx-embedding-runtime-migration.md](../p0/onnx-embedding-runtime-migration.md)
 
@@ -60,6 +60,8 @@ distribution의 manifest, HTTP download, SHA-256 검증, staging, publish와 Win
 - production startup에서 자동 다운로드 허용
 - Qdrant/ONNX version 자체의 변경
 
-## 구현 결과
+## 현재 상태 (2026-09-06)
 
-아직 구현하지 않았다.
+미구현이다. `runtime-distribution` Gradle 모듈은 없고 manifest, download, checksum과 publish 구현은
+계속 `adapter-outbound/runtime/distribution`에 있다. ONNX 전환 이후 실제 두 consumer의 공통 요구가
+확정될 때까지 P1로 유지한다.

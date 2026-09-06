@@ -72,3 +72,9 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
 - DB schema 또는 memory domain 모델의 기능 변경
 - 새로운 logging/observability 제품 도입
 - MQTT 등 현재 존재하지 않는 외부 채널 추가
+
+## 현재 상태 (2026-09-06)
+
+미구현이다. Domain과 Application 모델에 `kotlinx.serialization` annotation이 남아 있고,
+Application 모듈은 여전히 `logback-classic`을 직접 의존한다. 현재 기능 오류는 아니므로 P2를
+유지한다.

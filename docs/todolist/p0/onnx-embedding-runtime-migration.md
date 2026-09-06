@@ -1,6 +1,6 @@
 # ONNX Runtime 기반 임베딩 전환
 
-- 상태: 계획
+- 상태: TODO
 - 우선순위: P0
 - 선행 작업: [managed-embedding-server.md](../done/managed-embedding-server.md)
 
@@ -237,6 +237,8 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 - [Hugging Face ONNX Runtime optimization](https://huggingface.co/docs/optimum-onnx/en/onnxruntime/usage_guides/optimization)
 - [intfloat/multilingual-e5-base](https://huggingface.co/intfloat/multilingual-e5-base)
 
-## 구현 결과
+## 현재 상태 (2026-09-06)
 
-아직 구현하지 않았다.
+미구현이다. 현재 composition은 `ManagedOllamaEmbeddingFactory`를 사용하고 application startup이
+프로젝트 관리형 Ollama server lifecycle을 소유한다. ONNX Runtime dependency와 model bundle은
+아직 도입되지 않았다.

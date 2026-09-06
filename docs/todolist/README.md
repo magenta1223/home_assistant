@@ -2,6 +2,8 @@
 
 이 디렉터리는 구현 전 계획과 구현 후 release note를 함께 관리한다.
 
+- 최근 전체 점검: 2026-09-06
+
 ## 운영 규칙
 
 1. 구현 전에 작업별 Markdown 문서를 작성한다.
@@ -11,6 +13,14 @@
 5. 취소된 작업도 취소 사유를 기록한 뒤 `done/`으로 이동한다.
 6. 사용자 학습 과제로 표시된 작업은 활성 구현 우선순위와 분리하고, 사용자의 명시적인 요청 없이
    대신 구현하지 않는다.
+7. 활성 문서의 상태는 `TODO`, `VERIFY`, `HOLD`로 기록한다. 완료·취소 문서는 `done/`으로 이동한다.
+
+## 현재 상태
+
+- 활성 기반 작업: P0 2개, P1 3개, P2 2개
+- 활성 기능 계획: Feature P0 2개, Feature P1 1개, Feature P2 2개
+- 검증 대기: 자동 배포 런타임 종료 신뢰성 1개
+- 사용자 학습 과제 보류: Memory DB 조회 최적화 1개
 
 ## 운영 리스크와 기반 작업
 
@@ -24,9 +34,8 @@
 
 | 문서 | 목적 |
 |---|---|
-| [codex-integration-module-extraction.md](p0/codex-integration-module-extraction.md) | 사용자 학습 과제: Codex 저수준 통신을 독립 integration 모듈로 분리하고 outbound에는 기능별 port 구현만 유지 |
 | [onnx-embedding-runtime-migration.md](p0/onnx-embedding-runtime-migration.md) | Ollama 자식 서버를 JVM 내부 ONNX Runtime 임베딩으로 교체하고 기존 vector를 안전하게 전체 재색인 |
-| [deploy-runtime-shutdown-reliability.md](p0/deploy-runtime-shutdown-reliability.md) | 로컬 구현·회귀 테스트 완료; 새 경로의 원격 배포·재기동 검증 대기 |
+| [deploy-runtime-shutdown-reliability.md](p0/deploy-runtime-shutdown-reliability.md) | VERIFY: 로컬 구현·회귀 테스트 완료; 새 경로의 원격 배포·재기동 검증 대기 |
 
 ### P1
 
@@ -79,6 +88,8 @@
 
 | 문서 | 결과 |
 |---|---|
+| [conversation-thread-lifecycle-separation.md](done/conversation-thread-lifecycle-separation.md) | Memory conversation이 thread 생성·재사용·종료 시점을 명시적으로 관리하고 turn 실행을 별도 port로 분리 |
+| [codex-integration-module-extraction.md](done/codex-integration-module-extraction.md) | Codex 저수준 통신을 독립 integration 모듈로 분리하고 outbound에는 기능별 port 변환만 유지 |
 | [atomic-memory-analysis-persistence.md](done/atomic-memory-analysis-persistence.md) | 분석 batch 원자 저장, 안정적 idempotency key, durable indexing outbox와 전체 reindex 복구 |
 | [explicit-knowledge-audience.md](done/explicit-knowledge-audience.md) | 명시적 PUBLIC/열람자 ACL, 로컬 지식 주입 페이지, Slack 쓰기 경로 제거 |
 | [managed-embedding-server.md](done/managed-embedding-server.md) | Windows standalone Ollama 설치·모델 준비·managed server lifecycle 구현 |

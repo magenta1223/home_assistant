@@ -1,8 +1,9 @@
 # Codex integration 모듈 분리
 
-- 상태: 계획
+- 상태: DONE
 - 우선순위: P0
-- 작업 소유자: 사용자 학습 과제 — 사용자의 명시적 요청 없이 대신 구현하지 않음
+- 완료일: 2026-09-06
+- 작업 소유자: 사용자 학습 과제로 시작해 사용자의 명시적 요청으로 구현 완료
 - 선행 작업: 없음
 
 ## 문제
@@ -171,3 +172,10 @@ integration-codex -X-> application/domain
 - `adapter-outbound`에는 integration의 thread 생성과 turn 결과를 application의
   `ConversationThreadLifecycle`, `ConversationTurnExecutor` 의미로 변환하는 adapter만 남겼다.
 - conversation 소스는 top-level interface/object/class를 파일당 하나만 갖도록 분리했다.
+
+## 검증 결과
+
+- `integration-codex`가 application, domain, adapter 모듈에 의존하지 않는 구성을 확인했다.
+- structured completion, image 입력, timeout, app-server lifecycle과 conversation adapter 테스트를
+  각 소유 모듈에서 통과시켰다.
+- `./gradlew test` 전체 테스트가 통과했다.

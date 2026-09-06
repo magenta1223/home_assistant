@@ -1,7 +1,8 @@
 # Conversation thread lifecycle과 turn 실행 분리
 
-- 상태: 구현 완료
+- 상태: DONE
 - 우선순위: P0
+- 완료일: 2026-09-06
 - 범위: memory conversation의 application port와 use case orchestration
 
 ## 문제
@@ -239,3 +240,20 @@ sealed interface ConversationTurnResult {
 - persistence schema와 transaction 경계
 - structured answer 검증
 - Slack 계약
+
+## 구현 결과
+
+- application output port를 `ConversationThreadLifecycle`과 `ConversationTurnExecutor`로 분리했다.
+- memory conversation use case가 `create → session 기록 → execute` 순서를 명시적으로 조정한다.
+- application 수준의 `start`, `resume`과 thread ID callback을 제거했다.
+- Codex conversation integration은 `execute`할 thread가 로드되지 않았을 때만 내부적으로 다시 로드한다.
+- `ConversationTurnResult.Failure`에서 사용하지 않던 문자열 category를 제거했다.
+- 구형 process 기반 conversation client와 전용 JSONL parser 및 상태 모델을 제거했다.
+- persistence schema와 transaction 경계는 변경하지 않았다.
+
+## 검증 결과
+
+- 신규 thread 생성, session 기록, turn 실행 순서를 application 테스트로 고정했다.
+- 생성 실패, session 연결 실패, 신규·기존 thread의 turn 실패와 idle 만료 정리를 검증했다.
+- Codex integration에서 thread 생성과 turn 실행의 분리 및 lazy resume을 검증했다.
+- `./gradlew test` 전체 테스트가 통과했다.

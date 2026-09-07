@@ -38,6 +38,16 @@ data class SlackConfig(
     }
 }
 
+/**
+ * Creates the frozen legacy Slack access channel.
+ *
+ * Do not add Slack features or restructure this integration. Only existing-behavior, security,
+ * data-loss, and eventual removal changes are allowed.
+ */
+@Deprecated(
+    message = "Slack is a frozen legacy channel; do not add features or structural refactors",
+    level = DeprecationLevel.WARNING,
+)
 object SlackRuntimeFactory {
     fun create(
         config: SlackConfig,

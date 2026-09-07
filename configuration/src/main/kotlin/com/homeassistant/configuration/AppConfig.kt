@@ -27,4 +27,5 @@ object AppConfig {
     const val ROUTE_KNOWLEDGE_PAGE = "/knowledge"
     const val ROUTE_KNOWLEDGE_USERS = "/api/knowledge/users"
     const val ROUTE_KNOWLEDGE_IMPORT_ANALYZE = "/api/knowledge/import/analyze"
+    const val ROUTE_MEMORY_CONVERSATION = "/api/memory/conversation"
 }

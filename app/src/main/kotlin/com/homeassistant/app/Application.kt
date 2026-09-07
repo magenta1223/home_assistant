@@ -52,15 +52,16 @@ fun Application.module() {
     val services = ApplicationServicesFactory.create(dbPath, httpApiKeys.values)
     try {
         services.start()
+        configureRoutes(
+            services.memoryAnalysis,
+            httpApiKeys,
+            services.users,
+            services.memoryConversation,
+            readiness = { services.isReady },
+        )
     } catch (failure: Exception) {
         services.close()
         throw failure
     }
     monitor.subscribe(ApplicationStopped) { services.close() }
-    configureRoutes(
-        services.memoryAnalysis,
-        httpApiKeys,
-        services.users,
-        readiness = { services.isReady },
-    )
 }

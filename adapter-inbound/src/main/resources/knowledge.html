@@ -147,7 +147,7 @@
     const body = await response.json();
     users.innerHTML = '';
     if (body.users.length === 0) {
-      users.innerHTML = '<span class="hint">Slack에서 등록을 완료한 사용자가 없습니다.</span>';
+      users.innerHTML = '<span class="hint">등록을 완료한 사용자가 없습니다.</span>';
       return;
     }
     body.users.forEach(function (member) {

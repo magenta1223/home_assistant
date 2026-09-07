@@ -54,7 +54,7 @@ Hosted LLM providers and provider-selection environment variables are not suppor
 | `QDRANT_COLLECTION` | `canonical_memories` | Must use 768-dimensional vectors for the default e5-base embedding model |
 | `SLACK_TEAM_ID` | - | Required Slack workspace ID |
 | `SLACK_MEMBER_SCOPES_JSON` | - | Deprecated one-time migration input; existing mappings reserve their old `userId` until the member completes Slack registration, then the variable may be removed |
-| `HTTP_MEMBER_API_KEYS_JSON` | - | Optional JSON array of `{userId, token}` records for HTTP Bearer authentication; tokens must be high-entropy and never committed |
+| `HTTP_MEMBER_API_KEYS_JSON` | - | Optional JSON array of `{userId, token}` records for HTTP Bearer authentication; each `userId` must be a fully registered application user and tokens must be high-entropy and never committed |
 | `CODEX_TIMEOUT_SECONDS` | `600` | Optional positive timeout for each local Codex conversation turn |
 
 Server port and DB path are configured in `AppConfig` and Ktor application config.
@@ -81,7 +81,25 @@ The project is now a **home second brain**, not a general chat assistant. The pr
 3. Analyze source records and immediately save the resulting topics and memories as canonical records.
 4. Search and retrieve canonical memories with their source evidence and optional topic context.
 5. Register application users from their first Slack DM using a name-entry modal.
-6. Answer memory-backed questions through registered Slack DMs using short-lived Codex threads.
+6. Answer memory-backed questions through registered Slack DMs or authenticated HTTP using short-lived Codex threads.
+
+### Channel direction
+
+Slack is a deprecated legacy adapter, and existing knowledge injection and memory conversation use
+cases are exposed through authenticated, user-based HTTP. The implementation record and remaining
+operational verification are in `docs/todolist/feature/p0/slack-freeze-and-http-access.md`.
+
+- Do not add Slack features, scopes, commands, UI, or structural refactors. Slack changes are limited
+  to deprecation markers, security/data-loss fixes, preserving current behavior, and eventual removal.
+- The earlier ban on HTTP memory-answer routes is superseded only for the narrow authenticated
+  `/api/memory/conversation` endpoint. Do not restore a general `/api/chat` surface or removed
+  intent/preview pipelines.
+- Preserve application `UserId` values, Memory ACLs, evidence, request deduplication, and the ten-minute
+  conversation idle lease.
+- Tailscale and HTTPS exposure are external deployment concerns, not application design requirements
+  for this work.
+- Web page conversation UI, PWA, Web Push, Notification Service, Task, and Review implementation are
+  outside this preparation task.
 
 ### Product principle
 
@@ -125,7 +143,7 @@ must be enabled for registration and knowledge modals; Socket Mode carries those
 
 Slack DM conversation state is intentionally narrow: a member's Codex thread may continue only while its ten-minute idle lease is active. Once the lease expires, the old thread is ended from the application's perspective and must never be resumed, listed, or manually reactivated; the next DM starts a new thread.
 
-Do not reintroduce `/api/chat`, HTTP memory-answer routes, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Slack maps signed events and interactions to a technology-neutral conversation identity and only relays registration, answer, and knowledge-injection requests. The application layer resolves that identity through the persisted user registry and owns registration state, pending-question resumption, authorization, memory analysis and retrieval, idempotency, and session expiry.
+Do not reintroduce `/api/chat`, intent-analysis pipelines, chat-response DTOs, or a separate topic-analysis preview/review stage. Outside the approved user-based HTTP access plan, do not add other HTTP memory-answer routes. During the current Slack phase, Slack maps signed events and interactions to a technology-neutral conversation identity and only relays registration, answer, and knowledge-injection requests. The application layer resolves that identity through the persisted user registry and owns registration state, pending-question resumption, authorization, memory analysis and retrieval, idempotency, and session expiry.
 
 ## Module Architecture
 
@@ -170,7 +188,7 @@ failures into that contract. Output ports and adapters must not construct applic
 
 ### adapter-inbound
 
-- `http/` - Ktor routes and HTTP request/response DTO mapping.
+- `http/` - Ktor routes, Bearer-user authentication, knowledge injection, and memory-conversation request/response mapping.
 - `kakao/` - Kakao export parsing at the source-format boundary.
 - `slack/` - Slack Socket Mode, slash-command registry, registration/knowledge modals, DM event mapping, transport queueing, and application-result delivery. It does not own user, memory-answer, or knowledge-analysis business state.
 - `text/` - direct-text source parsing at the inbound boundary.
@@ -212,8 +230,9 @@ Ktor + Netty server bound to `127.0.0.1`. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
 - `GET /knowledge` -> local knowledge injection page.
-- `GET /api/knowledge/users` -> returns registered Slack members with selectable application user IDs and display names.
+- `GET /api/knowledge/users` -> returns registered application users with selectable user IDs and display names.
 - `POST /api/knowledge/import/analyze` -> imports text or Kakao data with an explicit audience and immediately saves canonical memories.
+- `POST /api/memory/conversation` -> answers one authenticated user's idempotent memory-backed question.
 
 HTTP write/read routes require a user-specific Bearer token from `HTTP_MEMBER_API_KEYS_JSON`; the caller must not send `userId` in the request body. `/health` and the data-free `/knowledge` shell remain unauthenticated.
 

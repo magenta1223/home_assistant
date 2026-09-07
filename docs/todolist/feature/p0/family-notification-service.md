@@ -1,9 +1,13 @@
 # 가족 Notification 서비스
 
-- 상태: TODO
+- 상태: HOLD
 - 우선순위: Feature P0
 - 선행 작업: 없음
 - 후속 producer: 최소 가족 Task 서비스, 정기 가정 운영 Review
+
+> 2026-09-07 우선순위 변경: Notification Service는 현재 HTTP 접근 준비 범위에 포함하지 않는다.
+> Slack은 동결되므로 아래 Slack delivery와 approval UI도 추가 개발하지 않는다. 알림 구현을 다시
+> 시작할 때 전달 채널을 별도로 결정하고 계획을 갱신한다.
 
 ## 문제
 

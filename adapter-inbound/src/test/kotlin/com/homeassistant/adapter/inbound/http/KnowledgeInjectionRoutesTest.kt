@@ -28,6 +28,7 @@ import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.testing.testApplication
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlin.test.assertContentEquals
 
@@ -64,6 +65,7 @@ class KnowledgeInjectionRoutesTest {
                 memoryAnalysis = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = FixedUserRegistry(
+                    RegisteredUser(UserId("operator"), "운영자"),
                     RegisteredUser(UserId("member-1"), "첫째"),
                     RegisteredUser(UserId("member-2"), "둘째"),
                 ),
@@ -103,6 +105,7 @@ class KnowledgeInjectionRoutesTest {
             configureRoutes(
                 memoryAnalysis = RecordingMemoryAnalysis(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
+                users = operatorRegistry(),
             )
         }
 
@@ -131,6 +134,7 @@ class KnowledgeInjectionRoutesTest {
             configureRoutes(
                 memoryAnalysis = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
+                users = operatorRegistry(),
             )
         }
         val original = "%PDF-reference".toByteArray()
@@ -158,6 +162,23 @@ class KnowledgeInjectionRoutesTest {
         val reference = analysis.requests.single().source.reference
         assertEquals("manual.pdf", reference?.fileName)
         assertContentEquals(original, reference?.bytes())
+    }
+
+    @Test
+    fun `configured HTTP user must be a registered application user`() {
+        assertFailsWith<IllegalArgumentException> {
+            testApplication {
+                application {
+                    install(ContentNegotiation) { json(JsonSerializer.json) }
+                    configureRoutes(
+                        memoryAnalysis = RecordingMemoryAnalysis(),
+                        httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("unknown")),
+                        users = operatorRegistry(),
+                    )
+                }
+                client.get(AppConfig.ROUTE_HEALTH)
+            }
+        }
     }
 
     private class RecordingMemoryAnalysis : MemoryAnalysis {
@@ -196,6 +217,9 @@ class KnowledgeInjectionRoutesTest {
 
         override fun list(): List<RegisteredUser> = users.toList()
     }
+
+    private fun operatorRegistry(): UserRegistry =
+        FixedUserRegistry(RegisteredUser(UserId("operator"), "운영자"))
 
     private companion object {
         const val API_TOKEN = "test-token"

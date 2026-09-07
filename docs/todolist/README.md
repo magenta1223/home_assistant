@@ -2,7 +2,7 @@
 
 이 디렉터리는 구현 전 계획과 구현 후 release note를 함께 관리한다.
 
-- 최근 전체 점검: 2026-09-06
+- 최근 전체 점검: 2026-09-07
 
 ## 운영 규칙
 
@@ -17,9 +17,10 @@
 
 ## 현재 상태
 
-- 활성 기반 작업: P0 2개, P1 3개, P2 2개
+- 활성 기반 작업: P0 2개, P1 2개, P2 2개
 - 활성 기능 계획: Feature P0 2개, Feature P1 1개, Feature P2 2개
-- 검증 대기: 자동 배포 런타임 종료 신뢰성 1개
+- 방향 변경 보류: Slack integration 분리 1개, Notification Service 1개
+- 검증 대기: 자동 배포 런타임 종료 신뢰성 1개, HTTP 사용자 token mapping 1개
 - 사용자 학습 과제 보류: Memory DB 조회 최적화 1개
 
 ## 운영 리스크와 기반 작업
@@ -41,7 +42,7 @@
 
 | 문서 | 목적 |
 |---|---|
-| [slack-integration-module-extraction.md](p1/slack-integration-module-extraction.md) | Slack SDK·Socket Mode·Web API integration과 기능별 application input adapter를 분리 |
+| [slack-integration-module-extraction.md](p1/slack-integration-module-extraction.md) | HOLD: Slack 동결 결정으로 구현하지 않고 HTTP 접근 준비 후 취소 이력으로 이동 |
 | [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | ONNX·Qdrant 기술 integration을 분리하고 outbound에는 semantic-memory port mapping만 유지 |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | 여러 managed runtime이 공유하는 검증·설치 lifecycle을 독립 기반 모듈로 분리 |
 
@@ -65,8 +66,9 @@
 
 | 문서 | 목적 |
 |---|---|
+| [slack-freeze-and-http-access.md](feature/p0/slack-freeze-and-http-access.md) | VERIFY: 구현·전체 build 완료; 실제 등록 사용자의 token mapping과 HTTP smoke test 대기 |
 | [minimal-family-task-service.md](feature/p0/minimal-family-task-service.md) | 담당자와 완료 여부만 관리하는 최소 가족 Task 서비스 |
-| [family-notification-service.md](feature/p0/family-notification-service.md) | Memory 알림 후보 발견, 사용자 승인과 확정 알림의 durable Slack 전달을 분리 |
+| [family-notification-service.md](feature/p0/family-notification-service.md) | HOLD: 현재 범위에서 제외하고 재개 시 delivery 채널을 다시 결정 |
 
 ### Feature P1
 

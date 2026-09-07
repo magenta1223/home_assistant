@@ -147,6 +147,7 @@ object ApplicationServicesFactory {
         }
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
+            memoryConversation = memoryConversation,
             slackRuntime = slackRuntime,
             users = users,
             vectorRuntime = managedVectorStore.runtime,

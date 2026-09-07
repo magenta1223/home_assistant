@@ -1,9 +1,13 @@
 # Slack integration 모듈 분리
 
-- 상태: TODO
+- 상태: HOLD
 - 우선순위: P1
 - 선행 작업: 없음
 - 관련 작업: [core-technology-boundary-hardening.md](../p2/core-technology-boundary-hardening.md)
+
+> 2026-09-07 방향 변경: Slack은 새 refactor 없이 deprecated legacy adapter로 동결한 뒤 제거한다.
+> 이 계획은 구현하지 않으며, 사용자 기반 HTTP 접근이 준비되면 취소 이력으로 이동한다. 동결과 HTTP
+> 준비 순서는 [slack-freeze-and-http-access.md](../feature/p0/slack-freeze-and-http-access.md)를 따른다.
 
 ## 문제
 

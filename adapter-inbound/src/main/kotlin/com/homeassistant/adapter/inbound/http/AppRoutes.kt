@@ -20,6 +20,7 @@ fun Application.configureRoutes(
     routing {
         healthRoutes(readiness)
         knowledgePageRoute()
+        memoryConversationPageRoute()
         authenticate(HTTP_AUTHENTICATION_NAME) {
             knowledgeInjectionRoutes(memoryAnalysis, users)
             memoryConversationRoutes(memoryConversation)

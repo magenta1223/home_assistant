@@ -6,16 +6,28 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationResult
 import com.homeassistant.configuration.AppConfig
+import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
+import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.util.UUID
+
+internal fun Route.memoryConversationPageRoute() {
+    get(AppConfig.ROUTE_MEMORY_CONVERSATION_PAGE) {
+        val html = requireNotNull(javaClass.getResource("/conversation.html")) {
+            "conversation.html is missing"
+        }.readText()
+        call.respondText(html, ContentType.Text.Html)
+    }
+}
 
 internal fun Route.memoryConversationRoutes(
     memoryConversation: MemoryConversation?,

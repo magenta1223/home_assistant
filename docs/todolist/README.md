@@ -20,7 +20,7 @@
 - 활성 기반 작업: P0 2개, P1 2개, P2 2개
 - 활성 기능 계획: Feature P0 2개, Feature P1 1개, Feature P2 2개
 - 방향 변경 보류: Slack integration 분리 1개, Notification Service 1개
-- 검증 대기: 자동 배포 런타임 종료 신뢰성 1개, HTTP 사용자 token mapping 1개
+- 검증 대기: 자동 배포 런타임 종료 신뢰성 1개
 - 사용자 학습 과제 보류: Memory DB 조회 최적화 1개
 
 ## 운영 리스크와 기반 작업
@@ -66,7 +66,7 @@
 
 | 문서 | 목적 |
 |---|---|
-| [slack-freeze-and-http-access.md](feature/p0/slack-freeze-and-http-access.md) | VERIFY: 구현·전체 build 완료; 실제 등록 사용자의 token mapping과 HTTP smoke test 대기 |
+| [slack-freeze-and-http-access.md](feature/p0/slack-freeze-and-http-access.md) | DONE: HTTP 사용자 접근과 후속 `/conversation` UI 운영 배포·HTTPS 검증 완료 |
 | [minimal-family-task-service.md](feature/p0/minimal-family-task-service.md) | 담당자와 완료 여부만 관리하는 최소 가족 Task 서비스 |
 | [family-notification-service.md](feature/p0/family-notification-service.md) | HOLD: 현재 범위에서 제외하고 재개 시 delivery 채널을 다시 결정 |
 

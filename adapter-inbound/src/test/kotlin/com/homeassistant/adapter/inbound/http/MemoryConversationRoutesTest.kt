@@ -14,6 +14,7 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import io.ktor.client.request.bearerAuth
+import io.ktor.client.request.get
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -29,6 +30,22 @@ import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class MemoryConversationRoutesTest {
+    @Test
+    fun `conversation page is hosted without authentication or embedded credentials`() = testApplication {
+        application {
+            configureTestRoutes(RecordingMemoryConversation(MemoryConversationResult.AnswerReady("unused")))
+        }
+
+        val response = client.get(AppConfig.ROUTE_MEMORY_CONVERSATION_PAGE)
+        val html = response.bodyAsText()
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertTrue(html.contains("Memory Conversation"))
+        assertTrue(html.contains(AppConfig.ROUTE_MEMORY_CONVERSATION))
+        assertTrue(!html.contains("localStorage"))
+        assertTrue(!html.contains("sessionStorage"))
+    }
+
     @Test
     fun `authenticated user owns the HTTP conversation identity`() = testApplication {
         val conversation = RecordingMemoryConversation(MemoryConversationResult.AnswerReady("기억 기반 답변"))

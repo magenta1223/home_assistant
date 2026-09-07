@@ -1,6 +1,6 @@
 # Slack 개발 동결과 사용자 기반 HTTP 접근
 
-- 상태: VERIFY
+- 상태: DONE
 - 우선순위: Feature P0
 - 결정일: 2026-09-07
 - 선행 작업: 없음
@@ -179,5 +179,15 @@ client는 `UserId`, participant, scope나 Codex thread ID를 전달할 수 없�
 - application, domain과 adapter-outbound 계약은 변경하지 않았다.
 - `./gradlew test`와 `./gradlew build`가 통과했다.
 
-남은 검증은 배포 환경의 `HTTP_MEMBER_API_KEYS_JSON`을 실제 등록 `UserId`에 연결하고 HTTP 요청을
-smoke test하는 것이다. token 값과 사용자 mapping은 저장소에 commit하지 않는다.
+배포 환경의 `HTTP_MEMBER_API_KEYS_JSON`을 실제 등록 `UserId`에 연결하고 HTTP 요청을 smoke test했다.
+token 값과 사용자 mapping은 저장소에 commit하지 않는다.
+
+## 후속 UI 진행 (2026-09-07)
+
+- `HTTP_MEMBER_API_KEYS_JSON`을 production의 실제 두 등록 사용자에 연결했다.
+- production HTTPS에서 두 token의 knowledge API 인증, 무인증 차단과 conversation route를 smoke test했다.
+- 원래 제외 범위였던 웹 UI는 후속 사용자 요청으로 `/conversation` 페이지에 별도 구현했다.
+- UI는 token을 브라우저 저장소에 보존하지 않고, client UUID와 질문만 기존
+  `/api/memory/conversation`에 전송한다.
+- `/knowledge`와 `/conversation` 사이에 이동 링크를 추가했다.
+- route test와 전체 `test`, `build`, production 배포와 Tailnet HTTPS smoke test가 통과했다.

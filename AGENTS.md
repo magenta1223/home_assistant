@@ -98,8 +98,7 @@ operational verification are in `docs/todolist/feature/p0/slack-freeze-and-http-
   conversation idle lease.
 - Tailscale and HTTPS exposure are external deployment concerns, not application design requirements
   for this work.
-- Web page conversation UI, PWA, Web Push, Notification Service, Task, and Review implementation are
-  outside this preparation task.
+- PWA, Web Push, Notification Service, Task, and Review implementation remain outside this HTTP access work.
 
 ### Product principle
 
@@ -230,6 +229,7 @@ Ktor + Netty server bound to `127.0.0.1`. Current routes:
 
 - `GET /health` -> `{"status":"ok"}`
 - `GET /knowledge` -> local knowledge injection page.
+- `GET /conversation` -> token-authenticated memory conversation page shell.
 - `GET /api/knowledge/users` -> returns registered application users with selectable user IDs and display names.
 - `POST /api/knowledge/import/analyze` -> imports text or Kakao data with an explicit audience and immediately saves canonical memories.
 - `POST /api/memory/conversation` -> answers one authenticated user's idempotent memory-backed question.

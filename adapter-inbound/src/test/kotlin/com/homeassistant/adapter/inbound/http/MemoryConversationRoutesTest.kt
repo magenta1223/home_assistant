@@ -15,10 +15,12 @@ import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
+import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import io.ktor.serialization.kotlinx.json.json
@@ -42,8 +44,45 @@ class MemoryConversationRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(html.contains("Memory Conversation"))
         assertTrue(html.contains(AppConfig.ROUTE_MEMORY_CONVERSATION))
+        assertTrue(html.contains(HTTP_SESSION_ROUTE))
         assertTrue(!html.contains("localStorage"))
         assertTrue(!html.contains("sessionStorage"))
+    }
+
+    @Test
+    fun `bearer token is remembered in a secure cookie and reused`() = testApplication {
+        val conversation = RecordingMemoryConversation(MemoryConversationResult.AnswerReady("기억 기반 답변"))
+        application {
+            configureTestRoutes(conversation)
+        }
+
+        assertEquals(
+            HttpStatusCode.Unauthorized,
+            client.post(HTTP_SESSION_ROUTE) { bearerAuth("invalid-token") }.status,
+        )
+
+        val login = client.post(HTTP_SESSION_ROUTE) { bearerAuth(API_TOKEN) }
+        val setCookie = login.headers.getAll(HttpHeaders.SetCookie).orEmpty().single()
+        val cookie = setCookie.substringBefore(';')
+
+        assertEquals(HttpStatusCode.NoContent, login.status)
+        assertTrue(setCookie.contains("Max-Age=7776000"))
+        assertTrue(setCookie.contains("Path=/"))
+        assertTrue(setCookie.contains("Secure"))
+        assertTrue(setCookie.contains("HttpOnly"))
+        assertTrue(setCookie.contains("SameSite=Strict"))
+        val refresh = client.get(HTTP_SESSION_ROUTE) { header(HttpHeaders.Cookie, cookie) }
+        assertEquals(HttpStatusCode.NoContent, refresh.status)
+        assertTrue(refresh.headers[HttpHeaders.SetCookie].orEmpty().contains("Max-Age=7776000"))
+        assertEquals(
+            HttpStatusCode.OK,
+            client.post(AppConfig.ROUTE_MEMORY_CONVERSATION) {
+                header(HttpHeaders.Cookie, cookie)
+                contentType(ContentType.Application.Json)
+                setBody("""{"requestId":"$REQUEST_ID","question":"질문"}""")
+            }.status,
+        )
+        assertEquals(UserId("member-1"), conversation.requests.single().participant.userId)
     }
 
     @Test

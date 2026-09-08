@@ -22,6 +22,7 @@ fun Application.configureRoutes(
         knowledgePageRoute()
         memoryConversationPageRoute()
         authenticate(HTTP_AUTHENTICATION_NAME) {
+            httpSessionRoutes()
             knowledgeInjectionRoutes(memoryAnalysis, users)
             memoryConversationRoutes(memoryConversation)
         }

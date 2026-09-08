@@ -54,6 +54,7 @@
       border-bottom: 1px solid #e1e5e1;
       background: rgba(250,251,249,.8);
     }
+    .auth[hidden] { display: none; }
     .auth > div, .composer > div { min-width: 0; }
     label { display: block; margin-bottom: 7px; color: #43524c; font-size: 13px; font-weight: 800; }
     input, textarea, button { font: inherit; }
@@ -70,7 +71,9 @@
     .hint { margin-top: 6px; color: #738079; font-size: 12px; }
     #connection {
       align-self: center;
+      width: max-content;
       min-width: 72px;
+      margin: 14px 20px 0;
       padding: 7px 10px;
       border-radius: 999px;
       background: #e8eee9;
@@ -150,14 +153,15 @@
     <p>내가 볼 수 있는 기억을 바탕으로 second brain에 질문합니다.</p>
   </header>
   <section class="panel" aria-label="메모리 대화">
-    <div class="auth">
+    <div id="auth" class="auth" hidden>
       <div>
         <label for="token">API 토큰</label>
         <input id="token" type="password" autocomplete="current-password" placeholder="발급받은 토큰 입력">
-        <div class="hint">토큰은 이 페이지에서 저장하지 않으며 현재 탭에서만 사용합니다.</div>
+        <div class="hint">이 기기에 한 번 인증하면 이후에는 자동으로 연결됩니다.</div>
       </div>
-      <div id="connection" data-state="idle" role="status">토큰 필요</div>
+      <button id="remember" type="button">인증</button>
     </div>
+    <div id="connection" data-state="idle" role="status">인증 확인 중</div>
     <div id="messages" role="log" aria-live="polite" aria-relevant="additions">
       <div class="message assistant">
         <div class="speaker">Second Brain</div>
@@ -180,9 +184,17 @@
   const send = document.getElementById('send');
   const messages = document.getElementById('messages');
   const connection = document.getElementById('connection');
+  const auth = document.getElementById('auth');
+  const remember = document.getElementById('remember');
+  let authenticated = false;
 
-  token.addEventListener('input', function () {
-    setConnection(token.value.trim() ? 'ready' : 'idle', token.value.trim() ? '전송 준비' : '토큰 필요');
+  remember.addEventListener('click', rememberToken);
+
+  token.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      rememberToken();
+    }
   });
 
   question.addEventListener('keydown', function (event) {
@@ -194,10 +206,10 @@
 
   document.getElementById('conversation-form').addEventListener('submit', async function (event) {
     event.preventDefault();
-    const apiToken = token.value.trim();
     const text = question.value.trim();
-    if (!apiToken) {
+    if (!authenticated) {
       setConnection('error', '토큰 필요');
+      auth.hidden = false;
       token.focus();
       return;
     }
@@ -216,7 +228,6 @@
       const response = await fetch('/api/memory/conversation', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer ' + apiToken,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({ requestId: createRequestId(), question: text })
@@ -230,6 +241,10 @@
       pending.className = 'message assistant error';
       pending.querySelector('.bubble').textContent = errorMessage(error);
       setConnection('error', error instanceof ConversationError && error.status === 401 ? '인증 실패' : '전송 실패');
+      if (error instanceof ConversationError && error.status === 401) {
+        authenticated = false;
+        auth.hidden = false;
+      }
     } finally {
       setBusy(false);
       messages.scrollTop = messages.scrollHeight;
@@ -263,6 +278,46 @@
     connection.textContent = text;
   }
 
+  async function rememberToken() {
+    const apiToken = token.value.trim();
+    if (!apiToken) {
+      setConnection('error', '토큰 필요');
+      token.focus();
+      return;
+    }
+    remember.disabled = true;
+    try {
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + apiToken }
+      });
+      if (!response.ok) throw new ConversationError(response.status);
+      authenticated = true;
+      token.value = '';
+      auth.hidden = true;
+      setConnection('ready', '연결됨');
+      question.focus();
+    } catch (error) {
+      setConnection('error', error instanceof ConversationError && error.status === 401 ? '인증 실패' : '연결 실패');
+    } finally {
+      remember.disabled = false;
+    }
+  }
+
+  async function restoreAuthentication() {
+    try {
+      const response = await fetch('/api/auth/session');
+      if (!response.ok) throw new Error();
+      authenticated = true;
+      setConnection('ready', '연결됨');
+      question.focus();
+    } catch (_) {
+      auth.hidden = false;
+      setConnection('idle', '토큰 필요');
+      token.focus();
+    }
+  }
+
   function createRequestId() {
     if (typeof crypto.randomUUID === 'function') return crypto.randomUUID();
     const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -293,6 +348,8 @@
     if (error.status === 400) return '질문 형식이 올바르지 않습니다.';
     return error.message || '답변을 가져오지 못했습니다.';
   }
+
+  restoreAuthentication();
 </script>
 </body>
 </html>

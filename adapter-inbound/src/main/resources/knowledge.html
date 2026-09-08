@@ -16,6 +16,8 @@
     h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 42px); letter-spacing: -0.04em; }
     header p { margin: 0; color: #607069; }
     form { background: rgba(255,255,255,.88); border: 1px solid #d9ded8; border-radius: 22px; padding: 24px; box-shadow: 0 22px 55px rgba(36,53,46,.09); }
+    .auth[hidden] { display: none; }
+    .auth button { margin-top: 12px; }
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     label, legend { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: #43524c; }
     input, select, textarea, button { width: 100%; font: inherit; }
@@ -45,10 +47,11 @@
     <p>소스와 열람자를 명시하고, second brain에 근거가 남는 메모리를 추가합니다.</p>
   </header>
   <form id="knowledge-form">
-    <div class="field">
+    <div id="auth" class="field auth" hidden>
       <label for="token">API 토큰</label>
-      <input id="token" type="password" autocomplete="current-password" required>
-      <div class="hint">토큰은 이 브라우저 탭 안에서만 사용하며 저장하지 않습니다.</div>
+      <input id="token" type="password" autocomplete="current-password">
+      <div class="hint">이 기기에 한 번 인증하면 이후에는 자동으로 연결됩니다.</div>
+      <button id="remember" type="button">이 기기 인증</button>
     </div>
     <div class="grid">
       <div class="field">
@@ -83,9 +86,10 @@
 </main>
 <script>
   const token = document.getElementById('token');
+  const auth = document.getElementById('auth');
+  const remember = document.getElementById('remember');
   const users = document.getElementById('users');
   const status = document.getElementById('status');
-  let loadTimer;
   let reference = null;
 
   document.getElementById('file').addEventListener('change', async function (event) {
@@ -131,9 +135,13 @@
     }
   }
 
-  token.addEventListener('input', function () {
-    clearTimeout(loadTimer);
-    loadTimer = setTimeout(loadUsers, 350);
+  remember.addEventListener('click', rememberToken);
+
+  token.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      rememberToken();
+    }
   });
 
   document.querySelectorAll('input[name="audience"]').forEach(function (radio) {
@@ -143,11 +151,9 @@
   });
 
   async function loadUsers() {
-    if (!token.value) return;
-    const response = await fetch('/api/knowledge/users', {
-      headers: { Authorization: 'Bearer ' + token.value }
-    });
+    const response = await fetch('/api/knowledge/users');
     if (!response.ok) {
+      auth.hidden = false;
       users.innerHTML = '<span class="hint">유효한 API 토큰을 입력하세요.</span>';
       return;
     }
@@ -198,7 +204,6 @@
       const response = await fetch('/api/knowledge/import/analyze', {
         method: 'POST',
         headers: {
-          Authorization: 'Bearer ' + token.value,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
@@ -210,8 +215,11 @@
           reference: reference
         })
       });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error || '저장하지 못했습니다.');
+      const body = await response.json().catch(function () { return {}; });
+      if (!response.ok) {
+        if (response.status === 401) auth.hidden = false;
+        throw new Error(body.error || '저장하지 못했습니다.');
+      }
       status.textContent = '완료: 소스 레코드 ' + body.importedRecordCount + '개, 메모리 ' + body.memoryCount + '개를 저장했습니다.';
     } catch (error) {
       status.textContent = '실패: ' + error.message;
@@ -219,6 +227,46 @@
       submit.disabled = false;
     }
   });
+
+  async function rememberToken() {
+    const apiToken = token.value.trim();
+    if (!apiToken) {
+      status.textContent = 'API 토큰을 입력하세요.';
+      token.focus();
+      return;
+    }
+    remember.disabled = true;
+    try {
+      const response = await fetch('/api/auth/session', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + apiToken }
+      });
+      if (!response.ok) throw new Error('유효한 API 토큰을 입력하세요.');
+      token.value = '';
+      auth.hidden = true;
+      status.textContent = '인증되었습니다.';
+      await loadUsers();
+    } catch (error) {
+      status.textContent = '인증 실패: ' + error.message;
+    } finally {
+      remember.disabled = false;
+    }
+  }
+
+  async function restoreAuthentication() {
+    try {
+      const response = await fetch('/api/auth/session');
+      if (!response.ok) throw new Error();
+      status.textContent = '준비됨';
+      await loadUsers();
+    } catch (_) {
+      auth.hidden = false;
+      status.textContent = 'API 토큰을 한 번 입력해 이 기기를 인증하세요.';
+      token.focus();
+    }
+  }
+
+  restoreAuthentication();
 </script>
 </body>
 </html>

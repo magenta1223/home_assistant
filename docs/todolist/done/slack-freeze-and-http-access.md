@@ -3,8 +3,9 @@
 - 상태: DONE
 - 우선순위: Feature P0
 - 결정일: 2026-09-07
+- 완료일: 2026-09-07
 - 선행 작업: 없음
-- 후속 작업: HTTP API를 사용하는 웹페이지
+- 후속 작업: 없음
 
 ## 범위
 
@@ -191,3 +192,14 @@ token 값과 사용자 mapping은 저장소에 commit하지 않는다.
   `/api/memory/conversation`에 전송한다.
 - `/knowledge`와 `/conversation` 사이에 이동 링크를 추가했다.
 - route test와 전체 `test`, `build`, production 배포와 Tailnet HTTPS smoke test가 통과했다.
+
+## 사용자에게 보이는 변화
+
+- 등록 사용자는 Slack 없이 `/knowledge`에서 지식을 입력하고 `/conversation`에서 자신의 ACL로
+  Memory를 조회할 수 있다.
+- 인증 token은 브라우저 저장소에 남지 않으며 사용자별 conversation과 10분 idle lease가 유지된다.
+
+## 남은 제약
+
+- HTTP 접근은 현재 API key 방식이며 사용자 등록 UI는 없다.
+- Slack은 호환성 유지만 하는 frozen legacy adapter로 남아 있고 새 기능은 추가하지 않는다.

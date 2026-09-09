@@ -1,8 +1,8 @@
 # Runtime distribution 모듈 분리
 
-- 상태: TODO
+- 상태: HOLD — ONNX 전환 재개 시 두 번째 실제 consumer 기준으로 재평가
 - 우선순위: P1
-- 선행 작업: [onnx-embedding-runtime-migration.md](../p0/onnx-embedding-runtime-migration.md)
+- 선행 작업: [onnx-embedding-runtime-migration.md](../p2/onnx-embedding-runtime-migration.md)
 
 ## 문제
 
@@ -33,7 +33,7 @@ distribution의 manifest, HTTP download, SHA-256 검증, staging, publish와 Win
 
 ## 구현 순서
 
-1. ONNX P0에서 확정한 model bundle 설치 요구사항과 기존 Qdrant 요구사항을 비교한다.
+1. ONNX 전환에서 확정한 model bundle 설치 요구사항과 기존 Qdrant 요구사항을 비교한다.
 2. 공통인 manifest/download/checksum/staging/publish 계약과 product-specific extract/validation hook을
    구분한다.
 3. `runtime-distribution` Gradle 모듈을 만들고 현재 공통 type과 테스트를 이동한다.
@@ -64,4 +64,4 @@ distribution의 manifest, HTTP download, SHA-256 검증, staging, publish와 Win
 
 미구현이다. `runtime-distribution` Gradle 모듈은 없고 manifest, download, checksum과 publish 구현은
 계속 `adapter-outbound/runtime/distribution`에 있다. ONNX 전환 이후 실제 두 consumer의 공통 요구가
-확정될 때까지 P1로 유지한다.
+확정될 때까지 새 모듈을 만들지 않고 `HOLD`로 둔다.

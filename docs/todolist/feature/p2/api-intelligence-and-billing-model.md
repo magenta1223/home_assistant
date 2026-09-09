@@ -1,6 +1,6 @@
 # 공식 모델 API 지능 제공과 과금 모델
 
-- 상태: TODO
+- 상태: HOLD — 외부 제품화 결정 대기
 - 우선순위: Feature P2
 - 선행 작업: 가정 내 Task·Notification·Review 운영 결과와 외부 제품화 결정
 

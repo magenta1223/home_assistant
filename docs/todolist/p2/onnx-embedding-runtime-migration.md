@@ -1,8 +1,12 @@
 # ONNX Runtime 기반 임베딩 전환
 
-- 상태: TODO
-- 우선순위: P0
+- 상태: HOLD — 실제 운영 장애 또는 측정된 비용이 생길 때 재평가
+- 우선순위: P2
 - 선행 작업: [managed-embedding-server.md](../done/managed-embedding-server.md)
+
+> 2026-09-08 우선순위 변경: 현재 managed Ollama 경로는 production에서 정상 동작하고 자동 배포의
+> 종료·복구도 검증됐다. ONNX 전환은 즉시 사용을 막는 P0가 아니라 큰 모델·tokenizer·재색인
+> 마이그레이션이다. 실제 장애, 지연 또는 운영 비용 기준선이 확인되기 전에는 구현하지 않는다.
 
 ## 문제
 
@@ -237,8 +241,9 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 - [Hugging Face ONNX Runtime optimization](https://huggingface.co/docs/optimum-onnx/en/onnxruntime/usage_guides/optimization)
 - [intfloat/multilingual-e5-base](https://huggingface.co/intfloat/multilingual-e5-base)
 
-## 현재 상태 (2026-09-06)
+## 현재 상태 (2026-09-08)
 
 미구현이다. 현재 composition은 `ManagedOllamaEmbeddingFactory`를 사용하고 application startup이
 프로젝트 관리형 Ollama server lifecycle을 소유한다. ONNX Runtime dependency와 model bundle은
-아직 도입되지 않았다.
+아직 도입되지 않았다. production health와 배포 자동화는 정상이며 현재 경로를 교체해야 할 측정된
+문제가 없으므로 `HOLD`로 둔다.

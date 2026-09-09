@@ -1,13 +1,14 @@
 # Slack integration 모듈 분리
 
-- 상태: HOLD
+- 상태: CANCELED
 - 우선순위: P1
 - 선행 작업: 없음
 - 관련 작업: [core-technology-boundary-hardening.md](../p2/core-technology-boundary-hardening.md)
+- 취소일: 2026-09-08
 
 > 2026-09-07 방향 변경: Slack은 새 refactor 없이 deprecated legacy adapter로 동결한 뒤 제거한다.
-> 이 계획은 구현하지 않으며, 사용자 기반 HTTP 접근이 준비되면 취소 이력으로 이동한다. 동결과 HTTP
-> 준비 순서는 [slack-freeze-and-http-access.md](../feature/p0/slack-freeze-and-http-access.md)를 따른다.
+> 사용자 기반 HTTP 접근과 웹 UI가 운영 배포되어 2026-09-08 이 계획을 취소했다. 완료된 전환은
+> [slack-freeze-and-http-access.md](slack-freeze-and-http-access.md)에 기록한다.
 
 ## 문제
 
@@ -92,3 +93,12 @@ injection adapter가 함께 사용하는 외부 시스템 client다. Slack은 ev
 
 미구현이다. `integration-slack` 모듈은 없고 Slack SDK, Web API와 Socket Mode lifecycle은 계속
 `adapter-inbound/slack`에 있다. 현재 기능은 정상 동작하므로 P1 구조 개선 작업으로 유지한다.
+
+## 취소 결과 (2026-09-08)
+
+- Slack은 `adapter-inbound/slack`의 frozen legacy adapter로 유지하고 보안·데이터 손실 결함만 고친다.
+- 인증된 HTTP knowledge 및 conversation 접근과 웹 UI가 production에서 검증됐다.
+- 제거할 adapter를 새 integration 모듈로 옮기는 작업은 사용자 가치 없이 제거 비용만 늘리므로
+  구현하지 않는다.
+- 남은 제약은 기존 Slack 호환성과 향후 제거 작업이다. 새 Slack 기능이나 구조 refactor는 재개하지
+  않는다.

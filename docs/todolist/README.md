@@ -2,7 +2,7 @@
 
 이 디렉터리는 구현 전 계획과 구현 후 release note를 함께 관리한다.
 
-- 최근 전체 점검: 2026-09-07
+- 최근 전체 점검: 2026-09-08
 
 ## 운영 규칙
 
@@ -17,11 +17,12 @@
 
 ## 현재 상태
 
-- 활성 기반 작업: P0 2개, P1 2개, P2 2개
-- 활성 기능 계획: Feature P0 2개, Feature P1 1개, Feature P2 2개
-- 방향 변경 보류: Slack integration 분리 1개, Notification Service 1개
-- 검증 대기: 자동 배포 런타임 종료 신뢰성 1개
+- 다음 구현 후보: 최소 가족 Task 서비스 1개
+- 활성 기반 작업: Core 기술 경계 강화 P2 1개
+- 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
+- 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
 - 사용자 학습 과제 보류: Memory DB 조회 최적화 1개
+- 이번 점검에서 종료: 자동 배포 종료 신뢰성 DONE, Slack HTTP 전환 DONE, Slack integration 분리 CANCELED
 
 ## 운영 리스크와 기반 작업
 
@@ -33,25 +34,22 @@
 
 ### P0
 
-| 문서 | 목적 |
-|---|---|
-| [onnx-embedding-runtime-migration.md](p0/onnx-embedding-runtime-migration.md) | Ollama 자식 서버를 JVM 내부 ONNX Runtime 임베딩으로 교체하고 기존 vector를 안전하게 전체 재색인 |
-| [deploy-runtime-shutdown-reliability.md](p0/deploy-runtime-shutdown-reliability.md) | VERIFY: 로컬 구현·회귀 테스트 완료; 새 경로의 원격 배포·재기동 검증 대기 |
+현재 활성 P0 기반 작업은 없다.
 
 ### P1
 
 | 문서 | 목적 |
 |---|---|
-| [slack-integration-module-extraction.md](p1/slack-integration-module-extraction.md) | HOLD: Slack 동결 결정으로 구현하지 않고 HTTP 접근 준비 후 취소 이력으로 이동 |
-| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | ONNX·Qdrant 기술 integration을 분리하고 outbound에는 semantic-memory port mapping만 유지 |
-| [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | 여러 managed runtime이 공유하는 검증·설치 lifecycle을 독립 기반 모듈로 분리 |
+| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | HOLD: ONNX 전환 재개 시 integration 경계를 함께 재평가 |
+| [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 
 ### P2
 
 | 문서 | 목적 |
 |---|---|
-| [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application에서 serialization·logging 구현 결합을 제거하고 외부 전달 경계를 명시적인 port로 강화 |
+| [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application의 serialization 결합과 library 모듈의 concrete logging binding을 정리 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
+| [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
 
 ## 제품 기능 계획
 
@@ -66,22 +64,21 @@
 
 | 문서 | 목적 |
 |---|---|
-| [slack-freeze-and-http-access.md](feature/p0/slack-freeze-and-http-access.md) | DONE: HTTP 사용자 접근과 후속 `/conversation` UI 운영 배포·HTTPS 검증 완료 |
-| [minimal-family-task-service.md](feature/p0/minimal-family-task-service.md) | 담당자와 완료 여부만 관리하는 최소 가족 Task 서비스 |
-| [family-notification-service.md](feature/p0/family-notification-service.md) | HOLD: 현재 범위에서 제외하고 재개 시 delivery 채널을 다시 결정 |
+| [minimal-family-task-service.md](feature/p0/minimal-family-task-service.md) | 기존 HTTP 인증과 작은 웹 화면으로 담당자·완료 여부만 관리하는 최소 가족 Task 서비스 |
 
 ### Feature P1
 
 | 문서 | 목적 |
 |---|---|
-| [periodic-household-review.md](feature/p1/periodic-household-review.md) | Memory·Task·알림 이력을 정기적으로 종합해 필요한 내용을 먼저 브리핑 |
+| [family-notification-service.md](feature/p1/family-notification-service.md) | HOLD: 실제 Task 운영 사례와 proactive delivery 채널 결정 후 최소 알림부터 구현 |
+| [periodic-household-review.md](feature/p1/periodic-household-review.md) | HOLD: Task·Notification 운영 결과가 생긴 뒤 정기 브리핑을 재평가 |
 
 ### Feature P2
 
 | 문서 | 목적 |
 |---|---|
-| [api-intelligence-and-billing-model.md](feature/p2/api-intelligence-and-billing-model.md) | 외부 제품화 시 공식 모델 API 지능 계약과 BYOK·관리형 과금 모델 결정 |
-| [multi-family-group-expansion.md](feature/p2/multi-family-group-expansion.md) | 약 1,000개 가족 그룹을 위한 로컬 우선·중앙 조율·비동기 작업 운영 구조 결정 |
+| [api-intelligence-and-billing-model.md](feature/p2/api-intelligence-and-billing-model.md) | HOLD: 외부 제품화 시 공식 모델 API 지능 계약과 BYOK·관리형 과금 모델 결정 |
+| [multi-family-group-expansion.md](feature/p2/multi-family-group-expansion.md) | HOLD: 외부 제품화 후 약 1,000개 가족 그룹의 로컬 우선 운영 구조 결정 |
 
 ## 완료된 작업
 
@@ -90,6 +87,9 @@
 
 | 문서 | 결과 |
 |---|---|
+| [deploy-runtime-shutdown-reliability.md](done/deploy-runtime-shutdown-reliability.md) | 종료 경쟁과 실패 복구 경로가 자동 배포에서 실행되어 production 재기동·health·성공 SHA 기록 검증 완료 |
+| [slack-freeze-and-http-access.md](done/slack-freeze-and-http-access.md) | Slack을 동결하고 인증된 HTTP knowledge·conversation과 웹 UI를 production에 배포 |
+| [slack-integration-module-extraction.md](done/slack-integration-module-extraction.md) | 제거 예정인 frozen Slack의 integration 모듈 분리를 사용자 가치 없는 작업으로 취소 |
 | [conversation-thread-lifecycle-separation.md](done/conversation-thread-lifecycle-separation.md) | Memory conversation이 thread 생성·재사용·종료 시점을 명시적으로 관리하고 turn 실행을 별도 port로 분리 |
 | [codex-integration-module-extraction.md](done/codex-integration-module-extraction.md) | Codex 저수준 통신을 독립 integration 모듈로 분리하고 outbound에는 기능별 port 변환만 유지 |
 | [atomic-memory-analysis-persistence.md](done/atomic-memory-analysis-persistence.md) | 분석 batch 원자 저장, 안정적 idempotency key, durable indexing outbox와 전체 reindex 복구 |

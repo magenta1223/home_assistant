@@ -1,8 +1,9 @@
 # 정기 가정 운영 Review
 
-- 상태: TODO
+- 상태: HOLD — Task 운영 결과와 Notification delivery 채널 결정 대기
 - 우선순위: Feature P1
-- 선행 작업: 최소 가족 Task 서비스, 가족 Notification 서비스
+- 선행 작업: [최소 가족 Task 서비스](../p0/minimal-family-task-service.md),
+  [가족 Notification 서비스](family-notification-service.md)
 
 ## 문제
 
@@ -50,3 +51,8 @@ Review를 또 하나의 관리 문서나 회의 절차로 만들어서는 안 �
 - 자동 Task 생성 또는 자동 의사결정
 - 장기 통계·예측 모델
 - 사용자별 복잡한 schedule 편집 UI
+
+## 현재 상태 (2026-09-08)
+
+선행 작업인 Task와 Notification이 아직 구현되지 않았다. 먼저 Task의 실제 사용 패턴과 proactive
+delivery 필요를 확인하며 그 전에는 scheduler, Review prompt 또는 실행 상태를 만들지 않는다.

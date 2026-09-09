@@ -17,6 +17,22 @@ import kotlin.test.assertTrue
 
 class CodexAppServerConversationClientTest {
     @Test
+    fun `sends initialized as a notification without an id`() {
+        val transport = FakeAppServerTransport()
+        val client = client(transport)
+        try {
+            assertTrue(client.startServer())
+
+            val initialized = transport.sentMessages
+                .map { CODEX_JSON.parseToJsonElement(it) as JsonObject }
+                .single { it["method"]?.jsonPrimitive?.content == AppServerProtocol.Initialized.method }
+            assertNull(initialized["id"])
+        } finally {
+            client.close()
+        }
+    }
+
+    @Test
     fun `creates distinct threads without starting turns`() {
         val transport = FakeAppServerTransport()
         val client = client(transport)

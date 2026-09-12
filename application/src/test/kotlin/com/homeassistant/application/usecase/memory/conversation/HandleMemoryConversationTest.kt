@@ -4,9 +4,9 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequest
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationResult
-import com.homeassistant.application.port.output.memory.conversation.ConversationThreadLifecycle
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnExecutor
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
+import com.homeassistant.application.port.output.memory.conversation.ConversationGateway
+import com.homeassistant.application.port.output.memory.conversation.ConversationId
+import com.homeassistant.application.port.output.memory.conversation.ConversationReply
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationReceipt
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationRequestStatus
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
@@ -26,7 +26,7 @@ class HandleMemoryConversationTest {
     fun `builds and stores an answer before the inbound adapter marks it delivered`() {
         val events = mutableListOf<String>()
         val store = RecordingSessionStore(events = events)
-        val client = RecordingConversationClient(events = events)
+        val client = RecordingConversationGateway(events = events)
         val seenUsers = mutableListOf<UserId>()
         val handler = handler(store, client) { userId, _ ->
             seenUsers += userId
@@ -38,7 +38,7 @@ class HandleMemoryConversationTest {
         assertEquals(MemoryConversationResult.AnswerReady("grounded answer"), result)
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved memory"))
-        assertEquals(listOf("create", "createAndActivate", "attachSession", "execute"), events)
+        assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
         assertEquals(MemoryConversationRequestStatus.ANSWER_READY, store.receipt(KEY)?.status)
 
         handler.markDelivered(KEY, "delivery-1")
@@ -53,7 +53,7 @@ class HandleMemoryConversationTest {
             claimRequest(KEY, NOW)
             markAnswerReady(KEY, "stored answer", NOW)
         }
-        val client = RecordingConversationClient()
+        val client = RecordingConversationGateway()
         val handler = handler(store, client) { _, _ -> error("context must not be rebuilt") }
 
         val result = handler.answer(REQUEST)
@@ -65,7 +65,7 @@ class HandleMemoryConversationTest {
     @Test
     fun `returns no-match answer without starting a model conversation`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationClient()
+        val client = RecordingConversationGateway()
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("", hasMatches = false)
         }
@@ -82,9 +82,9 @@ class HandleMemoryConversationTest {
     @Test
     fun `executes on the participant active session within its idle lease`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(PARTICIPANT, "existing-thread", NOW - 1)
+            createAndActivate(PARTICIPANT, ConversationId("existing-thread"), NOW - 1)
         }
-        val client = RecordingConversationClient()
+        val client = RecordingConversationGateway()
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -100,11 +100,11 @@ class HandleMemoryConversationTest {
         val store = RecordingSessionStore().apply {
             createAndActivate(
                 PARTICIPANT,
-                "expired-thread",
+                ConversationId("expired-thread"),
                 NOW - HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS,
             )
         }
-        val client = RecordingConversationClient()
+        val client = RecordingConversationGateway()
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -119,7 +119,7 @@ class HandleMemoryConversationTest {
     @Test
     fun `keeps different participants on different conversation threads`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationClient()
+        val client = RecordingConversationGateway()
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -161,7 +161,7 @@ class HandleMemoryConversationTest {
     @Test
     fun `ends a newly created thread when its turn fails`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationClient(turnResult = ConversationTurnResult.Failure)
+        val client = RecordingConversationGateway(turnResult = ConversationReply.Failure)
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -177,9 +177,9 @@ class HandleMemoryConversationTest {
     @Test
     fun `ends an active thread when its turn fails`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(PARTICIPANT, "existing-thread", NOW - 1)
+            createAndActivate(PARTICIPANT, ConversationId("existing-thread"), NOW - 1)
         }
-        val client = RecordingConversationClient(turnResult = ConversationTurnResult.Failure)
+        val client = RecordingConversationGateway(turnResult = ConversationReply.Failure)
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -196,7 +196,7 @@ class HandleMemoryConversationTest {
     @Test
     fun `does not execute a turn when thread creation fails`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationClient(createFailure = IllegalStateException("create failed"))
+        val client = RecordingConversationGateway(createFailure = IllegalStateException("create failed"))
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -210,7 +210,7 @@ class HandleMemoryConversationTest {
     @Test
     fun `ends a created thread when session attachment fails`() {
         val store = RecordingSessionStore(failAttachSession = true)
-        val client = RecordingConversationClient()
+        val client = RecordingConversationGateway()
         val handler = handler(store, client) { _, _ ->
             MemoryConversationContext("saved memory", hasMatches = true)
         }
@@ -226,21 +226,20 @@ class HandleMemoryConversationTest {
 
     private fun handler(
         store: RecordingSessionStore,
-        client: RecordingConversationClient,
+        client: RecordingConversationGateway,
         context: (UserId, String) -> MemoryConversationContext,
     ) = HandleMemoryConversation(
         sessions = store,
         contextProvider = MemoryConversationContextSource(context),
-        threadLifecycle = client,
-        turnExecutor = client,
+        conversationGateway = client,
         clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     )
 
-    private class RecordingConversationClient(
-        private val turnResult: ConversationTurnResult = ConversationTurnResult.Success("grounded answer"),
+    private class RecordingConversationGateway(
+        private val turnResult: ConversationReply = ConversationReply.Success("grounded answer"),
         private val createFailure: Exception? = null,
         private val events: MutableList<String>? = null,
-    ) : ConversationThreadLifecycle, ConversationTurnExecutor {
+    ) : ConversationGateway {
         var executedPrompt: String? = null
         var executedThreadId: String? = null
         val createdThreadIds = mutableListOf<String>()
@@ -248,23 +247,27 @@ class HandleMemoryConversationTest {
         val endedThreadIds = mutableListOf<String>()
         private var nextThreadId = 1
 
-        override fun create(): String {
-            createFailure?.let { throw it }
-            events?.add("create")
-            return "new-thread-${nextThreadId++}".also(createdThreadIds::add)
+        override fun begin(): Result<ConversationId> {
+            createFailure?.let { return Result.failure(it) }
+            events?.add("begin")
+            return Result.success(
+                ConversationId("new-thread-${nextThreadId++}").also { createdThreadIds += it.value },
+            )
         }
 
-        override fun execute(threadId: String, prompt: String): ConversationTurnResult {
-            events?.add("execute")
+        override fun continueConversation(conversationId: ConversationId, prompt: String): ConversationReply {
+            events?.add("continue")
             executedPrompt = prompt
-            executedThreadId = threadId
-            executedThreadIds += threadId
+            executedThreadId = conversationId.value
+            executedThreadIds += conversationId.value
             return turnResult
         }
 
-        override fun end(threadId: String) {
-            endedThreadIds += threadId
+        override fun end(conversationId: ConversationId) {
+            endedThreadIds += conversationId.value
         }
+
+        override fun close() = Unit
     }
 
     private class RecordingSessionStore(
@@ -313,12 +316,12 @@ class HandleMemoryConversationTest {
 
         override fun createAndActivate(
             participant: MemoryConversationParticipant,
-            conversationThreadId: String,
+            conversationId: ConversationId,
             now: Long,
         ): MemoryConversationSession = MemoryConversationSession(
             id = nextSessionId++,
             participant = participant,
-            conversationThreadId = conversationThreadId,
+            conversationId = conversationId,
             createdAt = now,
             lastActiveAt = now,
         ).also {

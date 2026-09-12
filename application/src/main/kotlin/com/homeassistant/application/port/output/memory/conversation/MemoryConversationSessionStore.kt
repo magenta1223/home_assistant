@@ -13,7 +13,7 @@ enum class MemoryConversationRequestStatus {
 data class MemoryConversationSession(
     val id: Int,
     val participant: MemoryConversationParticipant,
-    val conversationThreadId: String,
+    val conversationId: ConversationId,
     val createdAt: Long,
     val lastActiveAt: Long,
 )
@@ -45,7 +45,7 @@ interface MemoryConversationSessionStore {
 
     fun createAndActivate(
         participant: MemoryConversationParticipant,
-        conversationThreadId: String,
+        conversationId: ConversationId,
         now: Long,
     ): MemoryConversationSession
 

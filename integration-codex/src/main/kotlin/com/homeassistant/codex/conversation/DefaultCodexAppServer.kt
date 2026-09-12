@@ -25,14 +25,14 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
-internal class CodexAppServerConversationClient(
+internal class DefaultCodexAppServer(
     private val config: CodexConversationConfig,
     private val transport: AppServerTransport = ProcessCodexAppServerTransport(
         command = appServerCommand(config),
         workDir = config.workDir,
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
-) : ConversationClient {
+) : CodexAppServer {
     private val log = LoggerFactory.getLogger(javaClass)
     private val requestIds = AtomicLong(1)
     private val pending = ConcurrentHashMap<Long, CompletableFuture<IncomingAppServerMessage>>()
@@ -46,9 +46,9 @@ internal class CodexAppServerConversationClient(
         Thread(task, "codex-app-server-restart").apply { isDaemon = true }
     }
 
-    override fun isAvailable(): Boolean = availabilityProbe()
+    internal fun prepare(): Boolean = availabilityProbe() && startServer()
 
-    override fun startServer(): Boolean = synchronized(lifecycleLock) {
+    private fun startServer(): Boolean = synchronized(lifecycleLock) {
         if (closed.get()) return false
         if (ready.get() && transport.isAlive) return true
         val startedAt = System.nanoTime()
@@ -90,7 +90,7 @@ internal class CodexAppServerConversationClient(
         }
     }
 
-    override fun create(): Result<String> = executeOperation("create") { deadline ->
+    override fun createThread(): Result<CodexThreadId> = executeOperation("create") { deadline ->
         val response = request(threadStartMessage(), deadline.remaining())
             .decode<ThreadResult>()
         val threadId = response.thread.id.takeIf(CODEX_THREAD_ID_PATTERN::matches)
@@ -101,28 +101,30 @@ internal class CodexAppServerConversationClient(
             config.model,
             deadline.elapsedMillis(),
         )
-        threadId
+        CodexThreadId(threadId)
     }
 
-    override fun execute(threadId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
-        if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) {
+    override fun executeTurn(threadId: CodexThreadId, prompt: String): Result<String> = executeOperation("execute") { deadline ->
+        val threadIdValue = threadId.value
+        if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) {
             throw CodexConversationException("INVALID_THREAD_ID")
         }
-        if (threadId !in loadedThreads) {
-            request(threadResumeMessage(threadId), deadline.remaining())
+        if (threadIdValue !in loadedThreads) {
+            request(threadResumeMessage(threadIdValue), deadline.remaining())
                 .decode<ThreadResult>()
-            loadedThreads += threadId
+            loadedThreads += threadIdValue
         }
-        runTurn(threadId, prompt, deadline)
+        runTurn(threadIdValue, prompt, deadline)
     }
 
-    override fun end(threadId: String) {
-        if (!CODEX_THREAD_ID_PATTERN.matches(threadId)) return
-        loadedThreads.remove(threadId)
+    override fun releaseThread(threadId: CodexThreadId) {
+        val threadIdValue = threadId.value
+        if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
+        loadedThreads.remove(threadIdValue)
         if (!ready.get() || !transport.isAlive) return
         runCatching {
             request(
-                AppServerProtocol.ThreadUnsubscribe(threadId),
+                AppServerProtocol.ThreadUnsubscribe(threadIdValue),
                 RELEASE_TIMEOUT,
             ).decode<JsonObject>()
         }.onFailure {
@@ -139,10 +141,10 @@ internal class CodexAppServerConversationClient(
         loadedThreads.clear()
     }
 
-    private fun executeOperation(
+    private fun <T> executeOperation(
         operation: String,
-        block: (Deadline) -> String,
-    ): Result<String> {
+        block: (Deadline) -> T,
+    ): Result<T> {
         if (!startServer()) return Result.failure(CodexConversationException("APP_SERVER_UNAVAILABLE"))
         val startedAt = System.nanoTime()
         val result = try {
@@ -447,7 +449,7 @@ private fun appServerCommand(config: CodexConversationConfig): List<String> = li
     "model_reasoning_effort=\"${config.reasoningEffort}\"",
 )
 
-private fun probeCodexVersion(config: CodexConversationConfig): Boolean {
+internal fun probeCodexVersion(config: CodexConversationConfig): Boolean {
     val process = runCatching {
         ProcessBuilder(config.executable, "--version")
             .directory(config.workDir.toFile())

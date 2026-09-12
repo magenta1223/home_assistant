@@ -5,7 +5,7 @@ import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryPlacementExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.adapter.outbound.memoryconversation.ConversationAdapterFactory
+import com.homeassistant.adapter.outbound.memoryconversation.ConversationGatewayFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
@@ -102,15 +102,10 @@ object ApplicationServicesFactory {
         val codexTimeoutSeconds = Env[AppConfig.ENV_VAR_CODEX_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_CODEX_TIMEOUT_SECONDS
-        val configuredConversationAdapter = ConversationAdapterFactory.create(
+        val conversationGateway = ConversationGatewayFactory.create(
             timeout = Duration.ofSeconds(codexTimeoutSeconds),
         )
-        val conversationAdapter = configuredConversationAdapter
-            ?.takeIf { it.isAvailable() && it.startServer() }
-        if (configuredConversationAdapter != null && conversationAdapter == null) {
-            configuredConversationAdapter.close()
-        }
-        val memoryConversation = conversationAdapter?.let {
+        val memoryConversation = conversationGateway?.let {
             val now = System.currentTimeMillis()
             repositories.memoryConversationSessions.failStaleProcessing(
                 before = now - HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS,
@@ -119,15 +114,14 @@ object ApplicationServicesFactory {
             HandleMemoryConversation(
                 sessions = repositories.memoryConversationSessions,
                 contextProvider = MemoryConversationContextProvider(answerContext),
-                threadLifecycle = it,
-                turnExecutor = it,
+                conversationGateway = it,
             )
         }
-        val conversationExpiryWorker = conversationAdapter?.let {
+        val conversationExpiryWorker = conversationGateway?.let {
             MemoryConversationExpiryWorker(
                 ExpireIdleMemoryConversations(
                     sessions = repositories.memoryConversationSessions,
-                    threadLifecycle = it,
+                    conversationGateway = it,
                 ),
             )
         } ?: ConversationExpiryWorker.NONE
@@ -154,7 +148,7 @@ object ApplicationServicesFactory {
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
             conversationExpiryWorker = conversationExpiryWorker,
-            codexRuntime = conversationAdapter,
+            conversationGateway = conversationGateway,
         )
     }
 }

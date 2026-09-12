@@ -6,18 +6,18 @@ import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertTrue
 
-class CodexConversationClientTest {
+class CodexAvailabilityProbeTest {
     @Test
     fun `availability probe allows a six second cold start`() {
         val temporaryDirectory = Files.createTempDirectory("slow-codex-version-")
         val executable = createSlowCodexExecutable(temporaryDirectory)
-        val client = ConversationClientFactory.create(
+        val config = CodexConversationConfig.local(
             executable = executable,
             temporaryDirectory = temporaryDirectory,
             timeout = Duration.ofMinutes(10),
         )
 
-        assertTrue(requireNotNull(client).isAvailable())
+        assertTrue(probeCodexVersion(requireNotNull(config)))
     }
 
     private fun createSlowCodexExecutable(directory: java.nio.file.Path): String {

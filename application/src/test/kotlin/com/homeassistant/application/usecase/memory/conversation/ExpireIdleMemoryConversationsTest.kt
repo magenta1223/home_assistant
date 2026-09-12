@@ -2,7 +2,9 @@ package com.homeassistant.application.usecase.memory.conversation
 
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationParticipant
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
-import com.homeassistant.application.port.output.memory.conversation.ConversationThreadLifecycle
+import com.homeassistant.application.port.output.memory.conversation.ConversationGateway
+import com.homeassistant.application.port.output.memory.conversation.ConversationId
+import com.homeassistant.application.port.output.memory.conversation.ConversationReply
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationReceipt
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
@@ -27,21 +29,23 @@ class ExpireIdleMemoryConversationsTest {
         val client = EndingClient()
         val useCase = ExpireIdleMemoryConversations(
             sessions = store,
-            threadLifecycle = client,
+            conversationGateway = client,
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
         )
 
         assertEquals(2, useCase.execute())
         assertEquals(listOf("thread-a", "thread-b"), client.ended)
-        assertEquals(listOf("thread-c"), store.remaining.map { it.conversationThreadId })
+        assertEquals(listOf("thread-c"), store.remaining.map { it.conversationId.value })
     }
 
-    private class EndingClient : ConversationThreadLifecycle {
+    private class EndingClient : ConversationGateway {
         val ended = mutableListOf<String>()
-        override fun create(): String = error("unused")
-        override fun end(threadId: String) {
-            ended += threadId
+        override fun begin(): Result<ConversationId> = error("unused")
+        override fun continueConversation(conversationId: ConversationId, prompt: String): ConversationReply = error("unused")
+        override fun end(conversationId: ConversationId) {
+            ended += conversationId.value
         }
+        override fun close() = Unit
     }
 
     private class ExpiringStore(sessions: List<MemoryConversationSession>) : MemoryConversationSessionStore {
@@ -61,7 +65,7 @@ class ExpireIdleMemoryConversationsTest {
         override fun markFailed(key: MemoryConversationRequestKey, now: Long) = error("unused")
         override fun createAndActivate(
             participant: MemoryConversationParticipant,
-            conversationThreadId: String,
+            conversationId: ConversationId,
             now: Long,
         ): MemoryConversationSession = error("unused")
         override fun lease(
@@ -81,7 +85,7 @@ class ExpireIdleMemoryConversationsTest {
         fun session(id: Int, threadId: String, lastActiveAt: Long) = MemoryConversationSession(
             id = id,
             participant = MemoryConversationParticipant("scope", "participant-$id", UserId("user-$id")),
-            conversationThreadId = threadId,
+            conversationId = ConversationId(threadId),
             createdAt = 0,
             lastActiveAt = lastActiveAt,
         )

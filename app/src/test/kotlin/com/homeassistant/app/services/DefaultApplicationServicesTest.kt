@@ -36,7 +36,7 @@ class DefaultApplicationServicesTest {
             embeddingRuntime = embedding,
             indexingWorker = indexing,
             conversationExpiryWorker = expiry,
-            codexRuntime = codex,
+            conversationGateway = codex,
         )
 
         assertFalse(services.isReady)
@@ -86,7 +86,7 @@ class DefaultApplicationServicesTest {
             embeddingRuntime = embedding,
             indexingWorker = indexing,
             conversationExpiryWorker = expiry,
-            codexRuntime = codex,
+            conversationGateway = codex,
         )
         services.start()
 

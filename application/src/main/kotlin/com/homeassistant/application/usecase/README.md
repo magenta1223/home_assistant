@@ -11,7 +11,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `identity` | conversation identity를 application user로 해석하고 등록·인가한다. | [identity](identity/README.md) |
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
 | `memory/answer` | 사용자 등록과 memory-backed answer의 채널 독립 workflow를 조정한다. | [answer](memory/answer/README.md) |
-| `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 Codex turn을 관리한다. | [conversation](memory/conversation/README.md) |
+| `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |
 | `memory/placement` | 새 memory를 기존 memory tree에 배치한다. | [placement](memory/placement/README.md) |
 | `memory/search` | 사용자에게 보이는 memory만 semantic search한다. | [search](memory/search/README.md) |
 | `memory/write` | proposal을 원자적으로 저장하고 indexing outbox를 처리한다. | [write](memory/write/README.md) |
@@ -66,8 +66,7 @@ sequenceDiagram
     participant Pending as PendingRegistrationQuestionStore
     participant Conversation as MemoryConversation
     participant Search as MemorySearch
-    participant Lifecycle as ConversationThreadLifecycle
-    participant Executor as ConversationTurnExecutor
+    participant Gateway as ConversationGateway
 
     User->>Inbound: DM
     Inbound->>Workflow: receive(MemoryAnswerRequest)
@@ -87,11 +86,11 @@ sequenceDiagram
     end
     Conversation->>Search: 허용된 memory context 조회
     opt 활성 session 없음
-        Conversation->>Lifecycle: create()
-        Lifecycle-->>Conversation: threadId
+        Conversation->>Gateway: begin()
+        Gateway-->>Conversation: conversationId
     end
-    Conversation->>Executor: execute(threadId, prompt)
-    Executor-->>Conversation: answer
+    Conversation->>Gateway: continueConversation(conversationId, prompt)
+    Gateway-->>Conversation: answer
     Conversation-->>Workflow: AnswerReady
     Workflow-->>Inbound: AnswerReady
     Inbound-->>User: Slack message
@@ -99,9 +98,9 @@ sequenceDiagram
 ```
 
 활성 conversation은 scope, participant, application user ID로 격리된다. 10분 동안 사용되지 않은
-session은 background expiry 흐름이 비활성화하고 Codex thread 구독을 해제한다. Memory conversation
-use case가 thread 생성·재사용·종료 시점을 결정하며, Codex adapter는 각 turn의 구조화된 `answer`
-응답만 application에 반환한다.
+session은 background expiry 흐름이 비활성화하고 provider conversation을 종료한다. Memory conversation
+use case가 conversation 생성·재사용·종료 시점을 결정하며, gateway는 provider 응답을 application의
+`ConversationReply`로 변환한다.
 
 Slack은 application result를 UI로 표현할 뿐이며 사용자 registry, pending question, authorization,
 idempotency와 session expiry를 소유하지 않는다.

@@ -15,40 +15,36 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class CodexAppServerConversationClientTest {
+class DefaultCodexAppServerTest {
     @Test
     fun `sends initialized as a notification without an id`() {
         val transport = FakeAppServerTransport()
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-
             val initialized = transport.sentMessages
                 .map { CODEX_JSON.parseToJsonElement(it) as JsonObject }
                 .single { it["method"]?.jsonPrimitive?.content == AppServerProtocol.Initialized.method }
             assertNull(initialized["id"])
         } finally {
-            client.close()
+            server.close()
         }
     }
 
     @Test
     fun `creates distinct threads without starting turns`() {
         val transport = FakeAppServerTransport()
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-
-            val firstThread = client.create().getOrThrow()
-            val secondThread = client.create().getOrThrow()
+            val firstThread = server.createThread().getOrThrow()
+            val secondThread = server.createThread().getOrThrow()
 
             assertEquals(1, transport.startCount)
             assertNotEquals(firstThread, secondThread)
             assertEquals(2, transport.methods.count { it == "thread/start" })
             assertEquals(0, transport.methods.count { it == "turn/start" })
 
-            assertTrue(client.execute(firstThread, "first prompt").isSuccess)
-            assertTrue(client.execute(secondThread, "second prompt").isSuccess)
+            assertTrue(server.executeTurn(firstThread, "first prompt").isSuccess)
+            assertTrue(server.executeTurn(secondThread, "second prompt").isSuccess)
 
             assertEquals(2, transport.methods.count { it == "turn/start" })
             transport.turnParams.forEach { params ->
@@ -57,86 +53,79 @@ class CodexAppServerConversationClientTest {
                 assertEquals("false", schema["additionalProperties"]?.jsonPrimitive?.content)
             }
         } finally {
-            client.close()
+            server.close()
         }
     }
 
     @Test
     fun `continues a loaded thread without reloading it`() {
         val transport = FakeAppServerTransport()
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-            val threadId = client.create().getOrThrow()
-            client.execute(threadId, "first")
+            val threadId = server.createThread().getOrThrow()
+            server.executeTurn(threadId, "first")
 
-            val result = client.execute(threadId, "follow up")
+            val result = server.executeTurn(threadId, "follow up")
 
             assertEquals("structured answer", result.getOrThrow())
             assertEquals(0, transport.methods.count { it == "thread/resume" })
         } finally {
-            client.close()
+            server.close()
         }
     }
 
     @Test
     fun `unsubscribes an ended thread and reloads it on the next execution`() {
         val transport = FakeAppServerTransport()
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-            val threadId = client.create().getOrThrow()
-            client.execute(threadId, "first")
+            val threadId = server.createThread().getOrThrow()
+            server.executeTurn(threadId, "first")
 
-            client.end(threadId)
-            client.execute(threadId, "follow up")
+            server.releaseThread(threadId)
+            server.executeTurn(threadId, "follow up")
 
-            assertEquals(listOf(threadId), transport.unsubscribedThreads)
+            assertEquals(listOf(threadId.value), transport.unsubscribedThreads)
             assertEquals(1, transport.methods.count { it == "thread/resume" })
         } finally {
-            client.close()
+            server.close()
         }
     }
 
     @Test
     fun `rejects an answer that does not match the required structure`() {
         val transport = FakeAppServerTransport(answerPayload = "plain text")
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-
-            val threadId = client.create().getOrThrow()
-            val result = client.execute(threadId, "prompt")
+            val threadId = server.createThread().getOrThrow()
+            val result = server.executeTurn(threadId, "prompt")
 
             assertEquals("INVALID_STRUCTURED_ANSWER", result.exceptionOrNull()?.message)
         } finally {
-            client.close()
+            server.close()
         }
     }
 
     @Test
     fun `rejects a malformed recognized notification instead of waiting for timeout`() {
         val transport = FakeAppServerTransport(omitCompletedAt = true)
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-            val threadId = client.create().getOrThrow()
+            val threadId = server.createThread().getOrThrow()
 
-            val result = client.execute(threadId, "prompt")
+            val result = server.executeTurn(threadId, "prompt")
 
             assertEquals("INVALID_APP_SERVER_MESSAGE", result.exceptionOrNull()?.message)
         } finally {
-            client.close()
+            server.close()
         }
     }
 
     @Test
     fun `responds to a server request with a string id`() {
         val transport = FakeAppServerTransport()
-        val client = client(transport)
+        val server = server(transport)
         try {
-            assertTrue(client.startServer())
-
             transport.sendServerRequest("server-request-1")
 
             val response = CODEX_JSON.parseToJsonElement(transport.sentMessages.last()) as JsonObject
@@ -146,7 +135,7 @@ class CodexAppServerConversationClientTest {
                 response["error"]?.let { it as JsonObject }?.get("code")?.jsonPrimitive?.content?.toInt(),
             )
         } finally {
-            client.close()
+            server.close()
         }
     }
 
@@ -155,15 +144,17 @@ class CodexAppServerConversationClientTest {
         assertNull(parseStructuredAnswer("""{"answer":"valid","extra":true}"""))
     }
 
-    private fun client(transport: FakeAppServerTransport): CodexAppServerConversationClient =
-        CodexAppServerConversationClient(
-            config = CodexConversationConfig(
+    private fun server(transport: FakeAppServerTransport): CodexAppServer =
+        requireNotNull(
+            CodexAppServerFactory.create(
+                config = CodexConversationConfig(
                 executable = "unused",
                 workDir = Files.createTempDirectory("codex-app-server-test-"),
                 timeout = Duration.ofSeconds(5),
+                ),
+                transport = transport,
+                availabilityProbe = { true },
             ),
-            transport = transport,
-            availabilityProbe = { true },
         )
 
     private class FakeAppServerTransport(

@@ -4,9 +4,9 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequest
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationResult
-import com.homeassistant.application.port.output.memory.conversation.ConversationThreadLifecycle
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnExecutor
-import com.homeassistant.application.port.output.memory.conversation.ConversationTurnResult
+import com.homeassistant.application.port.output.memory.conversation.ConversationGateway
+import com.homeassistant.application.port.output.memory.conversation.ConversationId
+import com.homeassistant.application.port.output.memory.conversation.ConversationReply
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationRequestStatus
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
@@ -18,8 +18,7 @@ import java.time.Duration
 class HandleMemoryConversation(
     private val sessions: MemoryConversationSessionStore,
     private val contextProvider: MemoryConversationContextSource,
-    private val threadLifecycle: ConversationThreadLifecycle,
-    private val turnExecutor: ConversationTurnExecutor,
+    private val conversationGateway: ConversationGateway,
     private val clock: Clock = Clock.systemUTC(),
     private val promptBuilder: MemoryConversationPromptBuilder = MemoryConversationPromptBuilder(),
 ) : MemoryConversation {
@@ -32,7 +31,7 @@ class HandleMemoryConversation(
         val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
             is MemoryConversationSessionLease.Active -> lease.session
             is MemoryConversationSessionLease.Expired -> {
-                threadLifecycle.end(lease.session.conversationThreadId)
+                conversationGateway.end(lease.session.conversationId)
                 null
             }
             MemoryConversationSessionLease.None -> null
@@ -60,22 +59,22 @@ class HandleMemoryConversation(
         val prompt = promptBuilder.build(context.reference, request.question)
         val session = active ?: createSession(request) ?: return MemoryConversationResult.Failed
         val turnStartedAt = System.nanoTime()
-        val result = turnExecutor.execute(session.conversationThreadId, prompt)
+        val result = conversationGateway.continueConversation(session.conversationId, prompt)
         log.info(
             "Latency stage=memory-conversation-turn elapsedMs={} sessionMode={} result={}",
             elapsedMillis(turnStartedAt),
             if (active == null) "start" else "resume",
-            if (result is ConversationTurnResult.Success) "success" else "failure",
+            if (result is ConversationReply.Success) "success" else "failure",
         )
 
         return when (result) {
-            ConversationTurnResult.Failure -> {
-                threadLifecycle.end(session.conversationThreadId)
+            ConversationReply.Failure -> {
+                conversationGateway.end(session.conversationId)
                 sessions.markFailed(request.key, now())
                 sessions.clearActive(request.participant)
                 MemoryConversationResult.Failed
             }
-            is ConversationTurnResult.Success -> {
+            is ConversationReply.Success -> {
                 sessions.touch(request.participant, session.id, now())
                 answerReady(request.key, result.answer)
             }
@@ -107,16 +106,16 @@ class HandleMemoryConversation(
     }
 
     private fun createSession(request: MemoryConversationRequest): MemoryConversationSession? {
-        var threadId: String? = null
+        var conversationId: ConversationId? = null
         return try {
-            threadId = threadLifecycle.create()
-            sessions.createAndActivate(request.participant, threadId, now()).also { session ->
+            conversationId = conversationGateway.begin().getOrThrow()
+            sessions.createAndActivate(request.participant, conversationId, now()).also { session ->
                 sessions.attachSession(request.key, session.id, now())
             }
         } catch (error: Exception) {
             log.warn("Memory conversation session start failed category={}", error.javaClass.simpleName)
-            threadId?.let {
-                threadLifecycle.end(it)
+            conversationId?.let {
+                conversationGateway.end(it)
                 sessions.clearActive(request.participant)
             }
             sessions.markFailed(request.key, now())

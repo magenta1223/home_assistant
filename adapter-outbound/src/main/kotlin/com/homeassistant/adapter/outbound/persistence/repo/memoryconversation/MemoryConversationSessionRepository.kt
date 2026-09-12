@@ -7,6 +7,7 @@ import com.homeassistant.application.port.output.memory.conversation.MemoryConve
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSession
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
+import com.homeassistant.application.port.output.memory.conversation.ConversationId
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexActiveSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexSessionTable
@@ -82,15 +83,14 @@ internal class MemoryConversationSessionRepository(
 
     override fun createAndActivate(
         participant: MemoryConversationParticipant,
-        conversationThreadId: String,
+        conversationId: ConversationId,
         now: Long,
     ): MemoryConversationSession = transaction(db) {
-        require(conversationThreadId.isNotBlank()) { "conversationThreadId is required" }
         val id = SlackCodexSessionTable.insert {
             it[teamId] = participant.scopeId
             it[slackUserId] = participant.participantId
             it[userId] = participant.userId.value
-            it[SlackCodexSessionTable.codexThreadId] = conversationThreadId
+            it[SlackCodexSessionTable.codexThreadId] = conversationId.value
             it[createdAt] = now
             it[lastActiveAt] = now
         }[SlackCodexSessionTable.id]
@@ -224,7 +224,7 @@ internal class MemoryConversationSessionRepository(
                 participantId = this[SlackCodexSessionTable.slackUserId],
                 userId = UserId(this[SlackCodexSessionTable.userId]),
             ),
-            conversationThreadId = this[SlackCodexSessionTable.codexThreadId],
+            conversationId = ConversationId(this[SlackCodexSessionTable.codexThreadId]),
             createdAt = this[SlackCodexSessionTable.createdAt],
             lastActiveAt = this[SlackCodexSessionTable.lastActiveAt],
         )

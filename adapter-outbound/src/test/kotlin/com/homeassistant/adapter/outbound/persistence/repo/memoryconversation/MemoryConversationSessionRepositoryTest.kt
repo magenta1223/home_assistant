@@ -5,6 +5,7 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversationRequestKey
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationRequestStatus
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionLease
+import com.homeassistant.application.port.output.memory.conversation.ConversationId
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import kotlin.test.Test
@@ -22,7 +23,7 @@ class MemoryConversationSessionRepositoryTest {
 
             assertNotNull(store.claimRequest(KEY, 100))
             assertNull(store.claimRequest(KEY, 101))
-            val session = store.createAndActivate(PARTICIPANT, "thread-1", 102)
+            val session = store.createAndActivate(PARTICIPANT, ConversationId("thread-1"), 102)
             store.attachSession(KEY, session.id, 103)
             store.markAnswerReady(KEY, "answer", 104)
 
@@ -32,7 +33,7 @@ class MemoryConversationSessionRepositoryTest {
             val lease = assertIs<MemoryConversationSessionLease.Active>(
                 store.lease(PARTICIPANT, 105, 600_000),
             )
-            assertEquals("thread-1", lease.session.conversationThreadId)
+            assertEquals(ConversationId("thread-1"), lease.session.conversationId)
 
             store.markCompleted(KEY, "delivery-1", 106)
 
@@ -49,11 +50,11 @@ class MemoryConversationSessionRepositoryTest {
         val databasePath = Files.createTempFile("memory-conversation-expiry", ".db")
         try {
             val store = RepositoryFactory.create(databasePath.toString()).memoryConversationSessions
-            store.createAndActivate(PARTICIPANT, "expired-thread", 100)
+            store.createAndActivate(PARTICIPANT, ConversationId("expired-thread"), 100)
 
             val expired = store.expireIdle(100)
 
-            assertEquals(listOf("expired-thread"), expired.map { it.conversationThreadId })
+            assertEquals(listOf(ConversationId("expired-thread")), expired.map { it.conversationId })
             assertIs<MemoryConversationSessionLease.None>(store.lease(PARTICIPANT, 101, 600_000))
         } finally {
             Files.deleteIfExists(databasePath)
@@ -65,7 +66,7 @@ class MemoryConversationSessionRepositoryTest {
         val databasePath = Files.createTempFile("memory-conversation-owner", ".db")
         try {
             val store = RepositoryFactory.create(databasePath.toString()).memoryConversationSessions
-            store.createAndActivate(PARTICIPANT, "private-thread", 100)
+            store.createAndActivate(PARTICIPANT, ConversationId("private-thread"), 100)
             val impostor = PARTICIPANT.copy(userId = UserId("different-user"))
 
             assertIs<MemoryConversationSessionLease.None>(store.lease(impostor, 101, 600_000))

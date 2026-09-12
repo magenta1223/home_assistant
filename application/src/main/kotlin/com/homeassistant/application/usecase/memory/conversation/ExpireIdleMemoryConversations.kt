@@ -1,14 +1,14 @@
 package com.homeassistant.application.usecase.memory.conversation
 
-import com.homeassistant.application.port.output.memory.conversation.ConversationThreadLifecycle
+import com.homeassistant.application.port.output.memory.conversation.ConversationGateway
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
 
-/** Expires idle user sessions and releases their live Codex threads. */
+/** Expires idle user sessions and releases their provider conversations. */
 class ExpireIdleMemoryConversations(
     private val sessions: MemoryConversationSessionStore,
-    private val threadLifecycle: ConversationThreadLifecycle,
+    private val conversationGateway: ConversationGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -18,10 +18,10 @@ class ExpireIdleMemoryConversations(
             beforeInclusive = clock.millis() - HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS,
         )
         expired.forEach { session ->
-            runCatching { threadLifecycle.end(session.conversationThreadId) }
+            runCatching { conversationGateway.end(session.conversationId) }
                 .onFailure {
                     log.warn(
-                        "Failed to release expired Codex thread category={}",
+                        "Failed to release expired conversation category={}",
                         it.javaClass.simpleName,
                     )
                 }

@@ -146,6 +146,7 @@
 <main>
   <nav aria-label="주요 기능">
     <a href="/conversation" aria-current="page">대화</a>
+    <a href="/memories">Memory</a>
     <a href="/knowledge">지식 주입</a>
   </nav>
   <header>
@@ -178,6 +179,7 @@
     </form>
   </section>
 </main>
+<script src="/assets/http-auth-session.js"></script>
 <script>
   const token = document.getElementById('token');
   const question = document.getElementById('question');
@@ -287,10 +289,7 @@
     }
     remember.disabled = true;
     try {
-      const response = await fetch('/api/auth/session', {
-        method: 'POST',
-        headers: { Authorization: 'Bearer ' + apiToken }
-      });
+      const response = await window.HomeSecondBrainAuth.establish(apiToken);
       if (!response.ok) throw new ConversationError(response.status);
       authenticated = true;
       token.value = '';
@@ -306,7 +305,7 @@
 
   async function restoreAuthentication() {
     try {
-      const response = await fetch('/api/auth/session');
+      const response = await window.HomeSecondBrainAuth.restore();
       if (!response.ok) throw new Error();
       authenticated = true;
       setConnection('ready', '연결됨');

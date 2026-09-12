@@ -3,6 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.memory.tree.VisibleMemoryTree
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
@@ -13,6 +14,7 @@ fun Application.configureRoutes(
     httpApiKeys: Map<String, UserId> = emptyMap(),
     users: UserRegistry = UserRegistry.NONE,
     memoryConversation: MemoryConversation? = null,
+    visibleMemoryTree: VisibleMemoryTree? = null,
     readiness: () -> Boolean = { true },
 ) {
     validateHttpUsers(httpApiKeys.values, users)
@@ -21,10 +23,12 @@ fun Application.configureRoutes(
         healthRoutes(readiness)
         knowledgePageRoute()
         memoryConversationPageRoute()
+        memoryTreePageRoutes()
         authenticate(HTTP_AUTHENTICATION_NAME) {
             httpSessionRoutes()
             knowledgeInjectionRoutes(memoryAnalysis, users)
             memoryConversationRoutes(memoryConversation)
+            memoryTreeRoutes(visibleMemoryTree)
         }
     }
 }

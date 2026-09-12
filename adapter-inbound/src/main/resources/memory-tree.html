@@ -1,0 +1,296 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Home Second Brain · Memory</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, Pretendard, system-ui, sans-serif;
+      background: #f4f1ea;
+      color: #1d2a26;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea;
+    }
+    main { width: min(920px, calc(100% - 32px)); margin: 36px auto; padding-bottom: 48px; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+    nav a {
+      color: #1e5b46;
+      background: rgba(255,255,255,.72);
+      border: 1px solid #d9ded8;
+      border-radius: 999px;
+      padding: 8px 13px;
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    nav a[aria-current="page"] { color: white; background: #1e5b46; border-color: #1e5b46; }
+    header { display: flex; justify-content: space-between; gap: 20px; align-items: end; margin-bottom: 22px; }
+    h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 42px); letter-spacing: -.04em; }
+    header p { margin: 0; color: #607069; }
+    button, input { font: inherit; }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 11px 16px;
+      background: #1e5b46;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .panel {
+      background: rgba(255,255,255,.88);
+      border: 1px solid #d9ded8;
+      border-radius: 22px;
+      box-shadow: 0 22px 55px rgba(36,53,46,.09);
+      overflow: hidden;
+    }
+    .auth {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 12px;
+      align-items: end;
+      padding: 18px 20px;
+      border-bottom: 1px solid #e1e5e1;
+    }
+    .auth[hidden] { display: none; }
+    label { display: block; margin-bottom: 7px; color: #43524c; font-size: 13px; font-weight: 800; }
+    input {
+      width: 100%;
+      border: 1px solid #cbd3cd;
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: #fff;
+      color: #1d2a26;
+      outline: none;
+    }
+    input:focus { border-color: #3f8068; box-shadow: 0 0 0 3px rgba(63,128,104,.13); }
+    .hint { margin-top: 6px; color: #738079; font-size: 12px; }
+    .status { padding: 15px 20px; color: #52635b; border-bottom: 1px solid #e1e5e1; }
+    .status[data-state="error"] { color: #8a332b; background: #fff6f4; }
+    .status[data-state="ready"] { color: #1e654a; }
+    #tree { padding: 20px; }
+    .tree-list { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; }
+    .tree-list .tree-list {
+      margin: 10px 0 0 20px;
+      padding-left: 16px;
+      border-left: 2px solid #d9e3dc;
+    }
+    .node {
+      border: 1px solid #dce2dd;
+      border-radius: 15px;
+      background: #fff;
+      overflow: hidden;
+    }
+    summary { cursor: pointer; list-style-position: outside; margin-left: 18px; }
+    summary::marker { color: #3f8068; }
+    .node-heading { padding: 13px 14px; }
+    summary .node-heading { display: inline-flex; width: calc(100% - 30px); vertical-align: middle; }
+    .node-heading { align-items: center; justify-content: space-between; gap: 12px; }
+    .subject { min-width: 0; font-weight: 850; overflow-wrap: anywhere; }
+    .memory-id { flex: none; color: #75817b; font-size: 12px; font-variant-numeric: tabular-nums; }
+    .node-detail { padding: 0 14px 14px; }
+    details > .node-detail { padding-left: 38px; }
+    .content { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.58; color: #33443d; }
+    .meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; color: #68766f; font-size: 12px; }
+    .meta span { padding: 4px 8px; border-radius: 999px; background: #eef2ef; }
+    .empty { margin: 0; padding: 42px 20px; color: #68766f; text-align: center; }
+    @media (max-width: 620px) {
+      main { width: min(100% - 20px, 920px); margin: 18px auto; }
+      header { align-items: start; flex-direction: column; }
+      .auth { grid-template-columns: 1fr; padding: 16px; }
+      #tree { padding: 14px; }
+      .tree-list .tree-list { margin-left: 10px; padding-left: 10px; }
+      details > .node-detail { padding-left: 14px; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <nav aria-label="주요 기능">
+    <a href="/conversation">대화</a>
+    <a href="/memories" aria-current="page">Memory</a>
+    <a href="/knowledge">지식 주입</a>
+  </nav>
+  <header>
+    <div>
+      <h1>Memory Tree</h1>
+      <p>내게 공개된 기억과 연결 구조를 확인합니다.</p>
+    </div>
+    <button id="refresh" type="button" disabled>새로고침</button>
+  </header>
+  <section class="panel" aria-label="내 Memory Tree">
+    <div id="auth" class="auth" hidden>
+      <div>
+        <label for="token">API 토큰</label>
+        <input id="token" type="password" autocomplete="current-password" placeholder="발급받은 토큰 입력">
+        <div class="hint">토큰은 브라우저 저장소에 보관하지 않습니다.</div>
+      </div>
+      <button id="remember" type="button">이 기기 인증</button>
+    </div>
+    <div id="status" class="status" data-state="loading" role="status">인증 확인 중</div>
+    <div id="tree" aria-live="polite"></div>
+  </section>
+</main>
+<script src="/assets/http-auth-session.js"></script>
+<script>
+  const auth = document.getElementById('auth');
+  const token = document.getElementById('token');
+  const remember = document.getElementById('remember');
+  const refresh = document.getElementById('refresh');
+  const status = document.getElementById('status');
+  const tree = document.getElementById('tree');
+
+  remember.addEventListener('click', rememberToken);
+  refresh.addEventListener('click', loadTree);
+  token.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      rememberToken();
+    }
+  });
+
+  async function rememberToken() {
+    const apiToken = token.value.trim();
+    if (!apiToken) {
+      setStatus('error', 'API 토큰을 입력하세요.');
+      token.focus();
+      return;
+    }
+    remember.disabled = true;
+    try {
+      const response = await window.HomeSecondBrainAuth.establish(apiToken);
+      if (!response.ok) throw new Error('유효한 API 토큰을 입력하세요.');
+      token.value = '';
+      auth.hidden = true;
+      refresh.disabled = false;
+      await loadTree();
+    } catch (error) {
+      setStatus('error', '인증 실패: ' + error.message);
+    } finally {
+      remember.disabled = false;
+    }
+  }
+
+  async function restoreAuthentication() {
+    try {
+      const response = await window.HomeSecondBrainAuth.restore();
+      if (!response.ok) throw new Error();
+      refresh.disabled = false;
+      await loadTree();
+    } catch (_) {
+      requireAuthentication();
+    }
+  }
+
+  async function loadTree() {
+    refresh.disabled = true;
+    setStatus('loading', 'Memory를 불러오는 중입니다…');
+    try {
+      const response = await fetch('/api/memory/tree');
+      if (response.status === 401) {
+        requireAuthentication();
+        return;
+      }
+      const body = await response.json().catch(function () { return {}; });
+      if (!response.ok) throw new Error(body.error || 'Memory Tree를 불러오지 못했습니다.');
+      renderTree(body.roots || []);
+      setStatus('ready', '보이는 Memory ' + body.totalCount + '개');
+    } catch (error) {
+      tree.replaceChildren();
+      setStatus('error', error.message);
+    } finally {
+      if (auth.hidden) refresh.disabled = false;
+    }
+  }
+
+  function requireAuthentication() {
+    tree.replaceChildren();
+    auth.hidden = false;
+    refresh.disabled = true;
+    setStatus('error', 'API 토큰을 한 번 입력해 이 기기를 인증하세요.');
+    token.focus();
+  }
+
+  function setStatus(state, message) {
+    status.dataset.state = state;
+    status.textContent = message;
+  }
+
+  function renderTree(roots) {
+    tree.replaceChildren();
+    if (roots.length === 0) {
+      const empty = document.createElement('p');
+      empty.className = 'empty';
+      empty.textContent = '현재 볼 수 있는 Memory가 없습니다.';
+      tree.appendChild(empty);
+      return;
+    }
+    tree.appendChild(createNodeList(roots, 0));
+  }
+
+  function createNodeList(nodes, depth) {
+    const list = document.createElement('ul');
+    list.className = 'tree-list';
+    nodes.forEach(function (node) {
+      const item = document.createElement('li');
+      item.className = 'node';
+      if (node.children.length > 0) {
+        const details = document.createElement('details');
+        details.open = depth === 0;
+        const summary = document.createElement('summary');
+        summary.appendChild(createHeading(node));
+        details.append(summary, createDetail(node), createNodeList(node.children, depth + 1));
+        item.appendChild(details);
+      } else {
+        item.append(createHeading(node), createDetail(node));
+      }
+      list.appendChild(item);
+    });
+    return list;
+  }
+
+  function createHeading(node) {
+    const heading = document.createElement('div');
+    heading.className = 'node-heading';
+    const subject = document.createElement('span');
+    subject.className = 'subject';
+    subject.textContent = node.subject;
+    const id = document.createElement('span');
+    id.className = 'memory-id';
+    id.textContent = '#' + node.memoryId;
+    heading.append(subject, id);
+    return heading;
+  }
+
+  function createDetail(node) {
+    const detail = document.createElement('div');
+    detail.className = 'node-detail';
+    const content = document.createElement('p');
+    content.className = 'content';
+    content.textContent = node.content;
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    [node.memoryType, node.certainty, formatDate(node.createdAt)].forEach(function (value) {
+      const item = document.createElement('span');
+      item.textContent = value;
+      meta.appendChild(item);
+    });
+    detail.append(content, meta);
+    return detail;
+  }
+
+  function formatDate(createdAt) {
+    return new Intl.DateTimeFormat('ko-KR', { dateStyle: 'medium' }).format(new Date(createdAt));
+  }
+
+  restoreAuthentication();
+</script>
+</body>
+</html>

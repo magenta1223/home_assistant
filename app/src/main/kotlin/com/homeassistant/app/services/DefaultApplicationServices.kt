@@ -6,9 +6,11 @@ import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.memory.tree.VisibleMemoryTree
 
 internal class DefaultApplicationServices(
     override val memoryAnalysis: MemoryAnalysis,
+    override val visibleMemoryTree: VisibleMemoryTree,
     override val memoryConversation: MemoryConversation? = null,
     override val slackRuntime: SlackRuntime?,
     override val users: UserRegistry = UserRegistry.NONE,

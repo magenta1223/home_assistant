@@ -53,10 +53,11 @@ fun Application.module() {
     try {
         services.start()
         configureRoutes(
-            services.memoryAnalysis,
-            httpApiKeys,
-            services.users,
-            services.memoryConversation,
+            memoryAnalysis = services.memoryAnalysis,
+            httpApiKeys = httpApiKeys,
+            users = services.users,
+            memoryConversation = services.memoryConversation,
+            visibleMemoryTree = services.visibleMemoryTree,
             readiness = { services.isReady },
         )
     } catch (failure: Exception) {

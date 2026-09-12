@@ -44,7 +44,8 @@ class MemoryConversationRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(html.contains("Memory Conversation"))
         assertTrue(html.contains(AppConfig.ROUTE_MEMORY_CONVERSATION))
-        assertTrue(html.contains(HTTP_SESSION_ROUTE))
+        assertTrue(html.contains(HTTP_AUTH_SESSION_SCRIPT_ROUTE))
+        assertTrue(html.contains(AppConfig.ROUTE_MEMORY_TREE_PAGE))
         assertTrue(!html.contains("localStorage"))
         assertTrue(!html.contains("sessionStorage"))
     }

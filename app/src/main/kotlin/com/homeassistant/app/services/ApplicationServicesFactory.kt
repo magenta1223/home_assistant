@@ -26,6 +26,7 @@ import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxPr
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
+import com.homeassistant.application.usecase.memory.tree.ViewVisibleMemoryTree
 import com.homeassistant.application.port.input.identity.ConversationIdentity
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerWorkflowService
@@ -94,6 +95,10 @@ object ApplicationServicesFactory {
             accessPolicy = accessPolicy,
             searcher = semanticMemoryIndexSearcher,
         )
+        val visibleMemoryTree = ViewVisibleMemoryTree(
+            memories = repositories.canonicalMemories,
+            accessPolicy = accessPolicy,
+        )
         val answerContext = MemoryAnswerContextProvider(
             memorySearcher = memorySearcherImpl,
             memories = repositories.canonicalMemories,
@@ -141,6 +146,7 @@ object ApplicationServicesFactory {
         }
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
+            visibleMemoryTree = visibleMemoryTree,
             memoryConversation = memoryConversation,
             slackRuntime = slackRuntime,
             users = users,

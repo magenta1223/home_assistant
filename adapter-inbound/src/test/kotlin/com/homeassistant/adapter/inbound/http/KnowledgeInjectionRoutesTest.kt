@@ -55,7 +55,8 @@ class KnowledgeInjectionRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.bodyAsText().contains("지식 주입"))
         assertTrue(response.bodyAsText().contains(AppConfig.ROUTE_MEMORY_CONVERSATION_PAGE))
-        assertTrue(response.bodyAsText().contains(HTTP_SESSION_ROUTE))
+        assertTrue(response.bodyAsText().contains(HTTP_AUTH_SESSION_SCRIPT_ROUTE))
+        assertTrue(response.bodyAsText().contains(AppConfig.ROUTE_MEMORY_TREE_PAGE))
         assertTrue(!response.bodyAsText().contains("localStorage"))
         assertTrue(!response.bodyAsText().contains("sessionStorage"))
     }

@@ -4,6 +4,7 @@ import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.memory.tree.VisibleMemoryTree
 
 /** Provides the application's top-level use cases and managed runtimes. */
 interface ApplicationServices : AutoCloseable {
@@ -12,6 +13,9 @@ interface ApplicationServices : AutoCloseable {
 
     /** Provides memory-backed conversations when the local Codex runtime is available. */
     val memoryConversation: MemoryConversation?
+
+    /** Provides the read-only canonical-memory tree visible to one user. */
+    val visibleMemoryTree: VisibleMemoryTree
 
     /** Provides the optional Slack runtime when Slack is configured. */
     val slackRuntime: SlackRuntime?

@@ -87,6 +87,7 @@
 
 | 문서 | 결과 |
 |---|---|
+| [visible-memory-tree-page.md](done/visible-memory-tree-page.md) | 인증 사용자별 ACL을 지키는 Memory Tree API와 읽기 전용 웹 화면 추가 |
 | [deploy-runtime-shutdown-reliability.md](done/deploy-runtime-shutdown-reliability.md) | 종료 경쟁과 실패 복구 경로가 자동 배포에서 실행되어 production 재기동·health·성공 SHA 기록 검증 완료 |
 | [slack-freeze-and-http-access.md](done/slack-freeze-and-http-access.md) | Slack을 동결하고 인증된 HTTP knowledge·conversation과 웹 UI를 production에 배포 |
 | [slack-integration-module-extraction.md](done/slack-integration-module-extraction.md) | 제거 예정인 frozen Slack의 integration 모듈 분리를 사용자 가치 없는 작업으로 취소 |

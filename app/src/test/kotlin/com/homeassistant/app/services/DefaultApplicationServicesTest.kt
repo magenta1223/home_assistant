@@ -5,6 +5,7 @@ import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntim
 import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.memory.tree.VisibleMemoryTree
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -31,6 +32,7 @@ class DefaultApplicationServicesTest {
         }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
+            visibleMemoryTree = unusedVisibleMemoryTree(),
             slackRuntime = slack,
             vectorRuntime = vector,
             embeddingRuntime = embedding,
@@ -81,6 +83,7 @@ class DefaultApplicationServicesTest {
         }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
+            visibleMemoryTree = unusedVisibleMemoryTree(),
             slackRuntime = slack,
             vectorRuntime = vector,
             embeddingRuntime = embedding,
@@ -114,6 +117,8 @@ class DefaultApplicationServicesTest {
     private fun unusedMemoryAnalysis() = object : MemoryAnalysis {
         override suspend fun execute(request: MemoryAnalysisRequest) = error("unused")
     }
+
+    private fun unusedVisibleMemoryTree() = VisibleMemoryTree { error("unused") }
 
     private class RecordingEmbeddingRuntime(
         private val events: MutableList<String>,

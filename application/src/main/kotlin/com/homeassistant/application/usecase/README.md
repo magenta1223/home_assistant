@@ -14,6 +14,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |
 | `memory/placement` | 새 memory를 기존 memory tree에 배치한다. | [placement](memory/placement/README.md) |
 | `memory/search` | 사용자에게 보이는 memory만 semantic search한다. | [search](memory/search/README.md) |
+| `memory/tree` | 사용자에게 보이는 memory를 읽기 전용 tree로 투영한다. | [tree](memory/tree/README.md) |
 | `memory/write` | proposal을 원자적으로 저장하고 indexing outbox를 처리한다. | [write](memory/write/README.md) |
 
 ## 전체 memory 쓰기 흐름

@@ -1,6 +1,6 @@
-package com.homeassistant.codex.conversation
+package com.homeassistant.codex.rpcclient
 
-internal interface AppServerTransport : AutoCloseable {
+internal interface CodexRpcClient : AutoCloseable {
     val isAlive: Boolean
     fun start(onMessage: (String) -> Unit, onClosed: () -> Unit): Boolean
     fun send(message: String)

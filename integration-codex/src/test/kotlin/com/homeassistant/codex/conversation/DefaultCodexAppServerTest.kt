@@ -1,5 +1,6 @@
 package com.homeassistant.codex.conversation
 
+import com.homeassistant.codex.rpcclient.CodexRpcClient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -18,10 +19,10 @@ import kotlin.test.assertTrue
 class DefaultCodexAppServerTest {
     @Test
     fun `sends initialized as a notification without an id`() {
-        val transport = FakeAppServerTransport()
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient()
+        val server = server(rpcClient)
         try {
-            val initialized = transport.sentMessages
+            val initialized = rpcClient.sentMessages
                 .map { CODEX_JSON.parseToJsonElement(it) as JsonObject }
                 .single { it["method"]?.jsonPrimitive?.content == AppServerProtocol.Initialized.method }
             assertNull(initialized["id"])
@@ -32,22 +33,22 @@ class DefaultCodexAppServerTest {
 
     @Test
     fun `creates distinct threads without starting turns`() {
-        val transport = FakeAppServerTransport()
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient()
+        val server = server(rpcClient)
         try {
             val firstThread = server.createThread().getOrThrow()
             val secondThread = server.createThread().getOrThrow()
 
-            assertEquals(1, transport.startCount)
+            assertEquals(1, rpcClient.startCount)
             assertNotEquals(firstThread, secondThread)
-            assertEquals(2, transport.methods.count { it == "thread/start" })
-            assertEquals(0, transport.methods.count { it == "turn/start" })
+            assertEquals(2, rpcClient.methods.count { it == "thread/start" })
+            assertEquals(0, rpcClient.methods.count { it == "turn/start" })
 
             assertTrue(server.executeTurn(firstThread, "first prompt").isSuccess)
             assertTrue(server.executeTurn(secondThread, "second prompt").isSuccess)
 
-            assertEquals(2, transport.methods.count { it == "turn/start" })
-            transport.turnParams.forEach { params ->
+            assertEquals(2, rpcClient.methods.count { it == "turn/start" })
+            rpcClient.turnParams.forEach { params ->
                 val schema = params["outputSchema"] as JsonObject
                 assertEquals("object", schema["type"]?.jsonPrimitive?.content)
                 assertEquals("false", schema["additionalProperties"]?.jsonPrimitive?.content)
@@ -59,8 +60,8 @@ class DefaultCodexAppServerTest {
 
     @Test
     fun `continues a loaded thread without reloading it`() {
-        val transport = FakeAppServerTransport()
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient()
+        val server = server(rpcClient)
         try {
             val threadId = server.createThread().getOrThrow()
             server.executeTurn(threadId, "first")
@@ -68,7 +69,7 @@ class DefaultCodexAppServerTest {
             val result = server.executeTurn(threadId, "follow up")
 
             assertEquals("structured answer", result.getOrThrow())
-            assertEquals(0, transport.methods.count { it == "thread/resume" })
+            assertEquals(0, rpcClient.methods.count { it == "thread/resume" })
         } finally {
             server.close()
         }
@@ -76,8 +77,8 @@ class DefaultCodexAppServerTest {
 
     @Test
     fun `unsubscribes an ended thread and reloads it on the next execution`() {
-        val transport = FakeAppServerTransport()
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient()
+        val server = server(rpcClient)
         try {
             val threadId = server.createThread().getOrThrow()
             server.executeTurn(threadId, "first")
@@ -85,8 +86,8 @@ class DefaultCodexAppServerTest {
             server.releaseThread(threadId)
             server.executeTurn(threadId, "follow up")
 
-            assertEquals(listOf(threadId.value), transport.unsubscribedThreads)
-            assertEquals(1, transport.methods.count { it == "thread/resume" })
+            assertEquals(listOf(threadId.value), rpcClient.unsubscribedThreads)
+            assertEquals(1, rpcClient.methods.count { it == "thread/resume" })
         } finally {
             server.close()
         }
@@ -94,8 +95,8 @@ class DefaultCodexAppServerTest {
 
     @Test
     fun `rejects an answer that does not match the required structure`() {
-        val transport = FakeAppServerTransport(answerPayload = "plain text")
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient(answerPayload = "plain text")
+        val server = server(rpcClient)
         try {
             val threadId = server.createThread().getOrThrow()
             val result = server.executeTurn(threadId, "prompt")
@@ -108,8 +109,8 @@ class DefaultCodexAppServerTest {
 
     @Test
     fun `rejects a malformed recognized notification instead of waiting for timeout`() {
-        val transport = FakeAppServerTransport(omitCompletedAt = true)
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient(omitCompletedAt = true)
+        val server = server(rpcClient)
         try {
             val threadId = server.createThread().getOrThrow()
 
@@ -123,12 +124,12 @@ class DefaultCodexAppServerTest {
 
     @Test
     fun `responds to a server request with a string id`() {
-        val transport = FakeAppServerTransport()
-        val server = server(transport)
+        val rpcClient = FakeCodexRpcClient()
+        val server = server(rpcClient)
         try {
-            transport.sendServerRequest("server-request-1")
+            rpcClient.sendServerRequest("server-request-1")
 
-            val response = CODEX_JSON.parseToJsonElement(transport.sentMessages.last()) as JsonObject
+            val response = CODEX_JSON.parseToJsonElement(rpcClient.sentMessages.last()) as JsonObject
             assertEquals("server-request-1", response["id"]?.jsonPrimitive?.content)
             assertEquals(
                 -32601,
@@ -144,7 +145,7 @@ class DefaultCodexAppServerTest {
         assertNull(parseStructuredAnswer("""{"answer":"valid","extra":true}"""))
     }
 
-    private fun server(transport: FakeAppServerTransport): CodexAppServer =
+    private fun server(rpcClient: FakeCodexRpcClient): CodexAppServer =
         requireNotNull(
             CodexAppServerFactory.create(
                 config = CodexConversationConfig(
@@ -152,15 +153,15 @@ class DefaultCodexAppServerTest {
                 workDir = Files.createTempDirectory("codex-app-server-test-"),
                 timeout = Duration.ofSeconds(5),
                 ),
-                transport = transport,
+                rpcClient = rpcClient,
                 availabilityProbe = { true },
             ),
         )
 
-    private class FakeAppServerTransport(
+    private class FakeCodexRpcClient(
         private val answerPayload: String = "{\"answer\":\"structured answer\"}",
         private val omitCompletedAt: Boolean = false,
-    ) : AppServerTransport {
+    ) : CodexRpcClient {
         override var isAlive: Boolean = false
             private set
         var startCount = 0

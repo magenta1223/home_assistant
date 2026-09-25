@@ -1,5 +1,7 @@
 package com.homeassistant.codex.conversation
 
+import com.homeassistant.codex.rpcclient.CodexRpcClient
+import com.homeassistant.codex.rpcclient.CodexRpcClientFactory
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -27,7 +29,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal class DefaultCodexAppServer(
     private val config: CodexConversationConfig,
-    private val transport: AppServerTransport = ProcessCodexAppServerTransport(
+    private val rpcClient: CodexRpcClient = CodexRpcClientFactory.create(
         command = appServerCommand(config),
         workDir = config.workDir,
     ),
@@ -50,9 +52,9 @@ internal class DefaultCodexAppServer(
 
     private fun startServer(): Boolean = synchronized(lifecycleLock) {
         if (closed.get()) return false
-        if (ready.get() && transport.isAlive) return true
+        if (ready.get() && rpcClient.isAlive) return true
         val startedAt = System.nanoTime()
-        if (!transport.start(::handleMessage, ::handleTransportClosed)) {
+        if (!rpcClient.start(::handleMessage, ::handleRpcClientClosed)) {
             log.warn("Latency stage=codex-app-server-start result=failure elapsedMs={}", elapsedMillis(startedAt))
             return false
         }
@@ -79,7 +81,7 @@ internal class DefaultCodexAppServer(
             true
         } catch (error: Exception) {
             ready.set(false)
-            transport.stop()
+            rpcClient.stop()
             failPending("APP_SERVER_START_FAILED")
             log.warn(
                 "Latency stage=codex-app-server-start result=failure category={} elapsedMs={}",
@@ -121,7 +123,7 @@ internal class DefaultCodexAppServer(
         val threadIdValue = threadId.value
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
         loadedThreads.remove(threadIdValue)
-        if (!ready.get() || !transport.isAlive) return
+        if (!ready.get() || !rpcClient.isAlive) return
         runCatching {
             request(
                 AppServerProtocol.ThreadUnsubscribe(threadIdValue),
@@ -137,7 +139,7 @@ internal class DefaultCodexAppServer(
         ready.set(false)
         restarter.shutdownNow()
         failPending("APP_SERVER_CLOSED")
-        transport.close()
+        rpcClient.close()
         loadedThreads.clear()
     }
 
@@ -209,7 +211,7 @@ internal class DefaultCodexAppServer(
         val future = CompletableFuture<IncomingAppServerMessage>()
         pending[id] = future
         try {
-            transport.send(buildJsonObject {
+            rpcClient.send(buildJsonObject {
                 put("id", id)
                 put("method", message.method)
                 put("params", CODEX_JSON.encodeToJsonElement(message))
@@ -224,7 +226,7 @@ internal class DefaultCodexAppServer(
     }
 
     private inline fun <reified P : AppServerProtocol> notify(message: P) {
-        transport.send(buildJsonObject {
+        rpcClient.send(buildJsonObject {
             put("method", message.method)
             put("params", CODEX_JSON.encodeToJsonElement(message))
         }.toString())
@@ -307,7 +309,7 @@ internal class DefaultCodexAppServer(
 
     private fun respondUnsupported(id: JsonPrimitive) {
         runCatching {
-            transport.send(buildJsonObject {
+            rpcClient.send(buildJsonObject {
                 put("id", id)
                 put("error", buildJsonObject {
                     put("code", -32601)
@@ -317,7 +319,7 @@ internal class DefaultCodexAppServer(
         }
     }
 
-    private fun handleTransportClosed() {
+    private fun handleRpcClientClosed() {
         ready.set(false)
         loadedThreads.clear()
         failPending("APP_SERVER_EXITED")

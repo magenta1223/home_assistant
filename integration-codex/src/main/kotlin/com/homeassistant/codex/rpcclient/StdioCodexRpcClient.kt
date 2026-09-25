@@ -1,4 +1,4 @@
-package com.homeassistant.codex.conversation
+package com.homeassistant.codex.rpcclient
 
 import org.slf4j.LoggerFactory
 import java.io.BufferedWriter
@@ -9,10 +9,10 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
-internal class ProcessCodexAppServerTransport(
+internal class StdioCodexRpcClient(
     private val command: List<String>,
     private val workDir: Path,
-) : AppServerTransport {
+) : CodexRpcClient {
     private val log = LoggerFactory.getLogger(javaClass)
     private val readers: ExecutorService = Executors.newCachedThreadPool { task ->
         Thread(task, "codex-app-server-io").apply { isDaemon = true }

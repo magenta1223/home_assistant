@@ -1,5 +1,6 @@
 package com.homeassistant.codex.conversation
 
+import com.homeassistant.codex.rpcclient.CodexRpcClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -15,33 +16,33 @@ import kotlin.test.assertTrue
 class CodexAppServerFactoryTest {
     @Test
     fun `returns one initialized app server`() {
-        val transport = InitializingTransport()
+        val rpcClient = InitializingRpcClient()
 
         val server = CodexAppServerFactory.create(
             config = config(),
-            transport = transport,
+            rpcClient = rpcClient,
             availabilityProbe = { true },
         )
 
         assertNotNull(server)
-        assertEquals(1, transport.startCount)
-        assertEquals(listOf("initialize", "initialized"), transport.methods)
+        assertEquals(1, rpcClient.startCount)
+        assertEquals(listOf("initialize", "initialized"), rpcClient.methods)
         server.close()
     }
 
     @Test
     fun `closes resources when preparation fails`() {
-        val transport = InitializingTransport()
+        val rpcClient = InitializingRpcClient()
 
         val server = CodexAppServerFactory.create(
             config = config(),
-            transport = transport,
+            rpcClient = rpcClient,
             availabilityProbe = { false },
         )
 
         assertNull(server)
-        assertTrue(transport.closed)
-        assertEquals(0, transport.startCount)
+        assertTrue(rpcClient.closed)
+        assertEquals(0, rpcClient.startCount)
     }
 
     private fun config(): CodexConversationConfig = CodexConversationConfig(
@@ -50,7 +51,7 @@ class CodexAppServerFactoryTest {
         timeout = Duration.ofSeconds(5),
     )
 
-    private class InitializingTransport : AppServerTransport {
+    private class InitializingRpcClient : CodexRpcClient {
         override var isAlive: Boolean = false
             private set
         var startCount = 0

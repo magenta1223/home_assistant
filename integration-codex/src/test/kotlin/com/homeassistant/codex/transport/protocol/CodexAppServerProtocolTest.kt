@@ -1,4 +1,4 @@
-package com.homeassistant.codex.conversation
+package com.homeassistant.codex.transport.protocol
 
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
@@ -31,5 +31,4 @@ class CodexAppServerProtocolTest {
             Json.parseToJsonElement(actual),
         )
     }
-
 }

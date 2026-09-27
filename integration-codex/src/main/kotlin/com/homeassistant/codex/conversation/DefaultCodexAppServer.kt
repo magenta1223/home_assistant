@@ -2,6 +2,15 @@ package com.homeassistant.codex.conversation
 
 import com.homeassistant.codex.rpcclient.CodexRpcClient
 import com.homeassistant.codex.rpcclient.CodexRpcClientFactory
+import com.homeassistant.codex.transport.protocol.AppServerProtocol
+import com.homeassistant.codex.transport.protocol.AppServerThreadItem
+import com.homeassistant.codex.transport.protocol.ClientInfo
+import com.homeassistant.codex.transport.protocol.CODEX_JSON
+import com.homeassistant.codex.transport.protocol.IncomingAppServerMessage
+import com.homeassistant.codex.transport.protocol.TextUserInput
+import com.homeassistant.codex.transport.protocol.ThreadConfig
+import com.homeassistant.codex.transport.protocol.ThreadResult
+import com.homeassistant.codex.transport.protocol.TurnStartResult
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi

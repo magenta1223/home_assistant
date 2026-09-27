@@ -28,4 +28,13 @@ The repository is also a hands-on environment for learning implementation, deplo
 - Update the nearest use-case `README.md` when ports, orchestration order, or failure behavior changes.
 - Treat production operations carefully: `C:\homeServers` is not production. Use `ssh homeserver`, verify the remote hostname is `HOMESERVER`, and do not start production services or managed runtimes locally unless explicitly asked.
 
+## 코드 가독성
+
+- 하나의 메서드에서는 하나의 추상화 수준만 다룬다. 상위 메서드는 세부 구현이 아니라 의도와 전체 흐름을 보여줘야 한다.
+- 코드를 별도 메서드로 분리할 때는 실제로 이해하기 쉬워지는 경우에만 한다. 서로 다른 수준의 로직을 뒤섞거나 불필요하게 잘게 나누지 않는다.
+- 흐름을 제어하기 위해 단순 Boolean, null, 변경 가능한 임시 변수를 사용하기보다 의미가 명확한 상태와 결과 타입을 사용한다.
+- 무엇을 할지 결정하는 로직과 실제 작업을 수행하는 로직을 분리한다.
+- 관련 없는 세부 구현을 따라가지 않아도 정상 흐름을 이해할 수 있게 한다. 예외적인 흐름은 명확한 이름을 붙여 격리한다.
+- 리팩터링할 때 명시적으로 요청받지 않은 외부 동작은 변경하지 않는다.
+
 Detailed feature status and operational procedures belong in `docs/` and package-level `README.md` files, not here.

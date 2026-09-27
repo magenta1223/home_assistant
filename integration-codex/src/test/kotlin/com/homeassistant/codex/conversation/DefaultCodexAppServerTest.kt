@@ -1,6 +1,8 @@
 package com.homeassistant.codex.conversation
 
 import com.homeassistant.codex.rpcclient.CodexRpcClient
+import com.homeassistant.codex.transport.protocol.AppServerProtocol
+import com.homeassistant.codex.transport.protocol.CODEX_JSON
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject

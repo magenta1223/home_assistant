@@ -1,4 +1,4 @@
-package com.homeassistant.codex.conversation
+package com.homeassistant.codex.transport.protocol
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -176,6 +176,3 @@ internal data class AppServerThreadItem(
     val type: String,
     val text: String? = null,
 )
-
-@Serializable
-internal data class StructuredAnswer(val answer: String)

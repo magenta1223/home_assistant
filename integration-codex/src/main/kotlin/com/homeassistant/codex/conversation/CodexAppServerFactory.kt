@@ -1,7 +1,7 @@
 package com.homeassistant.codex.conversation
 
 import com.homeassistant.codex.completion.CodexExecutableFactory
-import com.homeassistant.codex.rpcclient.CodexRpcClient
+import com.homeassistant.codex.transport.CodexAppServerTransport
 import java.nio.file.Path
 import java.time.Duration
 
@@ -30,10 +30,10 @@ object CodexAppServerFactory {
 
     internal fun create(
         config: CodexConversationConfig,
-        rpcClient: CodexRpcClient,
+        transport: CodexAppServerTransport,
         availabilityProbe: () -> Boolean,
     ): CodexAppServer? {
-        val server = DefaultCodexAppServer(config, rpcClient, availabilityProbe)
+        val server = DefaultCodexAppServer(config, transport, availabilityProbe)
         return server.takeIf { runCatching(it::prepare).getOrDefault(false) }
             ?: run {
                 server.close()

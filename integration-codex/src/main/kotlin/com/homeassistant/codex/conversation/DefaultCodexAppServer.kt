@@ -1,28 +1,18 @@
 package com.homeassistant.codex.conversation
 
-import com.homeassistant.codex.rpcclient.CodexRpcClient
-import com.homeassistant.codex.rpcclient.CodexRpcClientFactory
+import com.homeassistant.codex.transport.CodexAppServerTransport
+import com.homeassistant.codex.transport.CodexAppServerTransportFactory
 import com.homeassistant.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.codex.transport.protocol.AppServerThreadItem
 import com.homeassistant.codex.transport.protocol.ClientInfo
 import com.homeassistant.codex.transport.protocol.CODEX_JSON
-import com.homeassistant.codex.transport.protocol.IncomingAppServerMessage
 import com.homeassistant.codex.transport.protocol.TextUserInput
 import com.homeassistant.codex.transport.protocol.ThreadConfig
-import com.homeassistant.codex.transport.protocol.ThreadResult
-import com.homeassistant.codex.transport.protocol.TurnStartResult
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.decodeFromJsonElement
-import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.longOrNull
-import kotlinx.serialization.json.put
 import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.time.Duration
@@ -33,20 +23,17 @@ import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 internal class DefaultCodexAppServer(
     private val config: CodexConversationConfig,
-    private val rpcClient: CodexRpcClient = CodexRpcClientFactory.create(
+    private val transport: CodexAppServerTransport = CodexAppServerTransportFactory.create(
         command = appServerCommand(config),
         workDir = config.workDir,
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
-) : CodexAppServer {
+) : CodexAppServer, CodexAppServerTransport.Listener {
     private val log = LoggerFactory.getLogger(javaClass)
-    private val requestIds = AtomicLong(1)
-    private val pending = ConcurrentHashMap<Long, CompletableFuture<IncomingAppServerMessage>>()
     private val activeTurns = ConcurrentHashMap<String, TurnState>()
     private val loadedThreads = ConcurrentHashMap.newKeySet<String>()
     private val ready = AtomicBoolean(false)
@@ -61,24 +48,25 @@ internal class DefaultCodexAppServer(
 
     private fun startServer(): Boolean = synchronized(lifecycleLock) {
         if (closed.get()) return false
-        if (ready.get() && rpcClient.isAlive) return true
         val startedAt = System.nanoTime()
-        if (!rpcClient.start(::handleMessage, ::handleRpcClientClosed)) {
+        if (!transport.start(this)) {
             log.warn("Latency stage=codex-app-server-start result=failure elapsedMs={}", elapsedMillis(startedAt))
             return false
         }
+        if (ready.get()) return true
         return try {
-            request(
-                message = AppServerProtocol.Initialize(
-                    ClientInfo(
-                        name = "home_second_brain",
-                        title = "Home Second Brain",
-                        version = "1",
+            await(
+                transport.initialize(
+                    AppServerProtocol.Initialize(
+                        ClientInfo(
+                            name = "home_second_brain",
+                            title = "Home Second Brain",
+                            version = "1",
+                        ),
                     ),
                 ),
-                timeout = START_TIMEOUT,
-            ).decode<JsonObject>()
-            notify(AppServerProtocol.Initialized)
+                START_TIMEOUT,
+            )
             loadedThreads.clear()
             ready.set(true)
             log.info(
@@ -90,8 +78,8 @@ internal class DefaultCodexAppServer(
             true
         } catch (error: Exception) {
             ready.set(false)
-            rpcClient.stop()
-            failPending("APP_SERVER_START_FAILED")
+            transport.stop()
+            failActiveTurns("APP_SERVER_START_FAILED")
             log.warn(
                 "Latency stage=codex-app-server-start result=failure category={} elapsedMs={}",
                 error.javaClass.simpleName,
@@ -102,8 +90,7 @@ internal class DefaultCodexAppServer(
     }
 
     override fun createThread(): Result<CodexThreadId> = executeOperation("create") { deadline ->
-        val response = request(threadStartMessage(), deadline.remaining())
-            .decode<ThreadResult>()
+        val response = await(transport.startThread(threadStartMessage()), deadline.remaining())
         val threadId = response.thread.id.takeIf(CODEX_THREAD_ID_PATTERN::matches)
             ?: throw CodexConversationException("INVALID_THREAD_ID")
         loadedThreads += threadId
@@ -121,8 +108,7 @@ internal class DefaultCodexAppServer(
             throw CodexConversationException("INVALID_THREAD_ID")
         }
         if (threadIdValue !in loadedThreads) {
-            request(threadResumeMessage(threadIdValue), deadline.remaining())
-                .decode<ThreadResult>()
+            await(transport.resumeThread(threadResumeMessage(threadIdValue)), deadline.remaining())
             loadedThreads += threadIdValue
         }
         runTurn(threadIdValue, prompt, deadline)
@@ -132,12 +118,14 @@ internal class DefaultCodexAppServer(
         val threadIdValue = threadId.value
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
         loadedThreads.remove(threadIdValue)
-        if (!ready.get() || !rpcClient.isAlive) return
+        if (!ready.get()) return
         runCatching {
-            request(
-                AppServerProtocol.ThreadUnsubscribe(threadIdValue),
+            await(
+                transport.unsubscribeThread(
+                    AppServerProtocol.ThreadUnsubscribe(threadIdValue),
+                ),
                 RELEASE_TIMEOUT,
-            ).decode<JsonObject>()
+            )
         }.onFailure {
             log.warn("Failed to unsubscribe Codex thread category={}", it.javaClass.simpleName)
         }
@@ -147,8 +135,9 @@ internal class DefaultCodexAppServer(
         if (!closed.compareAndSet(false, true)) return
         ready.set(false)
         restarter.shutdownNow()
-        failPending("APP_SERVER_CLOSED")
-        rpcClient.close()
+        failActiveTurns("APP_SERVER_CLOSED")
+        activeTurns.clear()
+        transport.close()
         loadedThreads.clear()
     }
 
@@ -184,8 +173,7 @@ internal class DefaultCodexAppServer(
             throw CodexConversationException("THREAD_BUSY")
         }
         try {
-            val response = request(turnStartMessage(threadId, prompt), deadline.remaining())
-                .decode<TurnStartResult>()
+            val response = await(transport.startTurn(turnStartMessage(threadId, prompt)), deadline.remaining())
             state.turnId.set(response.turn.id)
             val completion = await(state.completed, deadline.remaining())
             if (completion.status != "completed") {
@@ -204,99 +192,27 @@ internal class DefaultCodexAppServer(
     private fun interrupt(threadId: String, turnId: String?) {
         if (turnId == null || !ready.get()) return
         runCatching {
-            request(
-                AppServerProtocol.TurnInterrupt(threadId, turnId),
+            await(
+                transport.interruptTurn(AppServerProtocol.TurnInterrupt(threadId, turnId)),
                 RELEASE_TIMEOUT,
-            ).decode<JsonObject>()
-        }
-    }
-
-    private inline fun <reified P : AppServerProtocol> request(
-        message: P,
-        timeout: Duration,
-    ): JsonElement {
-        if (timeout.isZero || timeout.isNegative) throw TimeoutException(message.method)
-        val id = requestIds.getAndIncrement()
-        val future = CompletableFuture<IncomingAppServerMessage>()
-        pending[id] = future
-        try {
-            rpcClient.send(buildJsonObject {
-                put("id", id)
-                put("method", message.method)
-                put("params", CODEX_JSON.encodeToJsonElement(message))
-            }.toString())
-            val response = await(future, timeout)
-            if (response.error != null) throw CodexConversationException("RPC_ERROR")
-            return response.result ?: throw CodexConversationException("MISSING_RPC_RESULT")
-        } catch (error: Exception) {
-            pending.remove(id, future)
-            throw error
-        }
-    }
-
-    private inline fun <reified P : AppServerProtocol> notify(message: P) {
-        rpcClient.send(buildJsonObject {
-            put("method", message.method)
-            put("params", CODEX_JSON.encodeToJsonElement(message))
-        }.toString())
-    }
-
-    private fun handleMessage(line: String) {
-        val message = try {
-            CODEX_JSON.decodeFromString(IncomingAppServerMessage.serializer(), line)
-        } catch (error: Exception) {
-            log.warn("Ignored malformed Codex app-server message category={}", error.javaClass.simpleName)
-            failPending("INVALID_APP_SERVER_MESSAGE")
-            return
-        }
-        val method = message.method
-        val id = message.id
-        if (method == null && id != null) {
-            id.longOrNull?.let { pending.remove(it)?.complete(message) }
-                ?: log.warn("Ignored Codex response with unexpected request id")
-            return
-        }
-        if (method != null && id != null) {
-            respondUnsupported(id)
-            return
-        }
-        when (method) {
-            AppServerProtocol.ItemCompleted.METHOD -> decodeNotification(
-                AppServerProtocol.ItemCompleted.METHOD,
-                message.params,
-                ::recordAgentMessage,
             )
-            AppServerProtocol.TurnCompleted.METHOD -> decodeNotification(
-                AppServerProtocol.TurnCompleted.METHOD,
-                message.params,
-                ::completeTurn,
-            )
-            AppServerProtocol.ThreadClosed.METHOD -> decodeNotification<AppServerProtocol.ThreadClosed>(
-                AppServerProtocol.ThreadClosed.METHOD,
-                message.params,
-            ) { loadedThreads.remove(it.threadId) }
-            null -> log.warn("Ignored malformed Codex app-server message without method or response id")
         }
     }
 
-    private inline fun <reified P> decodeNotification(
-        method: String,
-        params: JsonElement?,
-        handle: (P) -> Unit,
-    ) {
-        val decoded = try {
-            requireNotNull(params) { "Missing notification params" }
-            CODEX_JSON.decodeFromJsonElement<P>(params)
-        } catch (error: Exception) {
-            log.warn(
-                "Rejected malformed Codex app-server notification method={} category={}",
-                method,
-                error.javaClass.simpleName,
-            )
-            failActiveTurns("INVALID_APP_SERVER_MESSAGE")
-            return
-        }
-        handle(decoded)
+    override fun onItemCompleted(event: AppServerProtocol.ItemCompleted) {
+        recordAgentMessage(event)
+    }
+
+    override fun onTurnCompleted(event: AppServerProtocol.TurnCompleted) {
+        completeTurn(event)
+    }
+
+    override fun onThreadClosed(event: AppServerProtocol.ThreadClosed) {
+        loadedThreads.remove(event.threadId)
+    }
+
+    override fun onProtocolError() {
+        failActiveTurns("INVALID_APP_SERVER_MESSAGE")
     }
 
     private fun recordAgentMessage(params: AppServerProtocol.ItemCompleted) {
@@ -316,22 +232,11 @@ internal class DefaultCodexAppServer(
         state.completed.complete(TurnCompletion(params.turn.status, state.answer.get()))
     }
 
-    private fun respondUnsupported(id: JsonPrimitive) {
-        runCatching {
-            rpcClient.send(buildJsonObject {
-                put("id", id)
-                put("error", buildJsonObject {
-                    put("code", -32601)
-                    put("message", "Unsupported server request")
-                })
-            }.toString())
-        }
-    }
-
-    private fun handleRpcClientClosed() {
+    override fun onAppServerExited() {
         ready.set(false)
         loadedThreads.clear()
-        failPending("APP_SERVER_EXITED")
+        failActiveTurns("APP_SERVER_EXITED")
+        activeTurns.clear()
         if (!closed.get()) scheduleRestart(RESTART_DELAY_SECONDS)
     }
 
@@ -341,14 +246,6 @@ internal class DefaultCodexAppServer(
             restartScheduled.set(false)
             if (!closed.get() && !startServer()) scheduleRestart(RETRY_DELAY_SECONDS)
         }, delaySeconds, TimeUnit.SECONDS)
-    }
-
-    private fun failPending(category: String) {
-        val failure = CodexConversationException(category)
-        pending.values.forEach { it.completeExceptionally(failure) }
-        pending.clear()
-        failActiveTurns(category)
-        activeTurns.clear()
     }
 
     private fun failActiveTurns(category: String) {
@@ -431,15 +328,14 @@ private object StructuredAnswerContract {
         .let(CODEX_JSON::parseToJsonElement)
 }
 
-private inline fun <reified T> JsonElement.decode(): T =
-    runCatching { CODEX_JSON.decodeFromJsonElement<T>(this) }
-        .getOrElse { throw CodexConversationException("INVALID_RPC_RESULT") }
-
 private val CODEX_THREAD_ID_PATTERN =
     Regex("""[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}""")
 
 private fun <T> await(future: CompletableFuture<T>, timeout: Duration): T = try {
     future.get(timeout.toNanos(), TimeUnit.NANOSECONDS)
+} catch (error: TimeoutException) {
+    future.cancel(false)
+    throw error
 } catch (error: ExecutionException) {
     throw error.cause ?: error
 }

@@ -10,13 +10,20 @@ Codex app-server wire messages, response DTOs, and JSON configuration live in `t
 package consumes those typed messages but does not own the wire protocol.
 
 ```text
-CodexAppServerTransport
-└─ DefaultCodexAppServerTransport   typed Codex protocol
-   └─ StdioProcessTransport         OS process lifecycle and line transport
+DefaultCodexAppServer               conversation policy, deadlines, restart, thread/turn state
+└─ CodexAppServerTransport
+   └─ DefaultCodexAppServerTransport   typed Codex protocol
+      └─ StdioProcessTransport         OS process lifecycle and line transport
 ```
 
 App-server callers receive typed futures and events; they do not send or parse JSON lines. `ProcessTransport` knows
 nothing about Codex threads, turns, JSON-RPC, or protocol messages.
+
+`DefaultCodexAppServer` calls `start` before trusting its ready flag, then performs the typed initialization handshake
+only for a newly started process. Process exit and protocol events return through `CodexAppServerTransport.Listener`.
+
+Request timeouts belong to the caller. Cancelling a returned future removes its request from the transport's pending
+response tracking, so an abandoned request is not retained when the app-server never responds.
 
 ## Process lifecycle
 

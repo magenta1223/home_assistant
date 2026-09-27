@@ -114,6 +114,7 @@ internal class DefaultCodexAppServerTransport(
         val id = requestIds.getAndIncrement()
         val result = CompletableFuture<JsonElement>()
         pending[id] = result
+        result.whenComplete { _, _ -> pending.remove(id, result) }
         runCatching {
             process.send(buildJsonObject {
                 put("id", id)

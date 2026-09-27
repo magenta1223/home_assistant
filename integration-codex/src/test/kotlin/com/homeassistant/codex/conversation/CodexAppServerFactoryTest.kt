@@ -1,13 +1,12 @@
 package com.homeassistant.codex.conversation
 
-import com.homeassistant.codex.rpcclient.CodexRpcClient
-import com.homeassistant.codex.transport.protocol.CODEX_JSON
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
+import com.homeassistant.codex.transport.CodexAppServerTransport
+import com.homeassistant.codex.transport.protocol.AppServerProtocol
+import com.homeassistant.codex.transport.protocol.ThreadResult
+import com.homeassistant.codex.transport.protocol.TurnStartResult
 import java.nio.file.Files
 import java.time.Duration
+import java.util.concurrent.CompletableFuture
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
@@ -17,33 +16,33 @@ import kotlin.test.assertTrue
 class CodexAppServerFactoryTest {
     @Test
     fun `returns one initialized app server`() {
-        val rpcClient = InitializingRpcClient()
+        val transport = InitializingTransport()
 
         val server = CodexAppServerFactory.create(
             config = config(),
-            rpcClient = rpcClient,
+            transport = transport,
             availabilityProbe = { true },
         )
 
         assertNotNull(server)
-        assertEquals(1, rpcClient.startCount)
-        assertEquals(listOf("initialize", "initialized"), rpcClient.methods)
+        assertEquals(1, transport.startCount)
+        assertEquals(1, transport.initializeCount)
         server.close()
     }
 
     @Test
     fun `closes resources when preparation fails`() {
-        val rpcClient = InitializingRpcClient()
+        val transport = InitializingTransport()
 
         val server = CodexAppServerFactory.create(
             config = config(),
-            rpcClient = rpcClient,
+            transport = transport,
             availabilityProbe = { false },
         )
 
         assertNull(server)
-        assertTrue(rpcClient.closed)
-        assertEquals(0, rpcClient.startCount)
+        assertTrue(transport.closed)
+        assertEquals(0, transport.startCount)
     }
 
     private fun config(): CodexConversationConfig = CodexConversationConfig(
@@ -52,38 +51,40 @@ class CodexAppServerFactoryTest {
         timeout = Duration.ofSeconds(5),
     )
 
-    private class InitializingRpcClient : CodexRpcClient {
-        override var isAlive: Boolean = false
-            private set
+    private class InitializingTransport : CodexAppServerTransport {
         var startCount = 0
+        var initializeCount = 0
         var closed = false
-        val methods = mutableListOf<String>()
-        private var onMessage: (String) -> Unit = {}
 
-        override fun start(onMessage: (String) -> Unit, onClosed: () -> Unit): Boolean {
+        override fun start(listener: CodexAppServerTransport.Listener): Boolean {
             startCount++
-            isAlive = true
-            this.onMessage = onMessage
             return true
         }
 
-        override fun send(message: String) {
-            val request = CODEX_JSON.parseToJsonElement(message) as JsonObject
-            methods += request["method"]?.jsonPrimitive?.content ?: return
-            val id = request["id"] ?: return
-            onMessage(buildJsonObject {
-                put("id", id)
-                put("result", buildJsonObject {})
-            }.toString())
+        override fun initialize(request: AppServerProtocol.Initialize): CompletableFuture<Unit> {
+            initializeCount++
+            return CompletableFuture.completedFuture(Unit)
         }
 
-        override fun stop() {
-            isAlive = false
-        }
+        override fun startThread(request: AppServerProtocol.ThreadStart): CompletableFuture<ThreadResult> =
+            error("unused")
+
+        override fun resumeThread(request: AppServerProtocol.ThreadResume): CompletableFuture<ThreadResult> =
+            error("unused")
+
+        override fun startTurn(request: AppServerProtocol.TurnStart): CompletableFuture<TurnStartResult> =
+            error("unused")
+
+        override fun interruptTurn(request: AppServerProtocol.TurnInterrupt): CompletableFuture<Unit> =
+            error("unused")
+
+        override fun unsubscribeThread(request: AppServerProtocol.ThreadUnsubscribe): CompletableFuture<Unit> =
+            error("unused")
+
+        override fun stop() = Unit
 
         override fun close() {
             closed = true
-            isAlive = false
         }
     }
 }

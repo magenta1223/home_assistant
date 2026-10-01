@@ -10,9 +10,7 @@ import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser
-import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -193,9 +191,6 @@ class KnowledgeInjectionRoutesTest {
             requests += request
             val proposal = MemoryProposal(
                 content = "memory",
-                subject = "subject",
-                memoryType = MemoryType.REFERENCE,
-                certainty = MemoryCertainty.OBSERVED,
                 evidenceIds = listOf(1),
             )
             return MemoryAnalysisResult(

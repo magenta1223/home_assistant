@@ -16,9 +16,7 @@ import com.homeassistant.domain.identity.UserAccessPolicies
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryAccess
-import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -318,9 +316,6 @@ class MemoryAnalysisRetryTest {
 
     private fun proposal(document: SourceDocument): MemoryProposal = MemoryProposal(
         content = "memory-${document.records.single().deduplicationKey}",
-        subject = "subject",
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
         evidenceIds = document.records.map { it.id },
     )
 
@@ -352,9 +347,6 @@ class MemoryAnalysisRetryTest {
                     id = memories.size + 1,
                     createdByUserId = createdBy.value,
                     content = proposal.content,
-                    subject = proposal.subject,
-                    memoryType = proposal.memoryType,
-                    certainty = proposal.certainty,
                     visibility = MemoryVisibility.PUBLIC,
                     evidenceRefs = proposal.evidenceIds,
                     createdAt = (memories.size + 1) * 1_000L,

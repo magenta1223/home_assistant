@@ -21,14 +21,26 @@ import kotlin.test.assertFalse
 
 class MemoryExtractorTest {
     @Test
-    fun `visibility is not delegated to the model`() {
+    fun `extraction contract only requires content and evidence`() {
         val root = Json.parseToJsonElement(MemoryAnalysisOutputContract.schema).jsonObject
         val memorySchema = root["properties"]!!.jsonObject["memories"]!!
             .jsonObject["items"]!!.jsonObject
         val required = memorySchema["required"]!!.jsonArray.map { it.jsonPrimitive.content }
 
-        assertFalse("visibility" in required)
+        assertEquals(setOf("text", "evidenceRecordIds"), required.toSet())
+        assertEquals(setOf("text", "evidenceRecordIds"), memorySchema["properties"]!!.jsonObject.keys)
         assertContains(MemoryAnalysisPrompt.system(), "열람 권한은 사용자가 입력 단계에서 지정")
+    }
+
+    @Test
+    fun `self contained content preserves attribution conditions and uncertainty`() = runBlocking {
+        val content = "연구자는 9월 측정값이 센서 오류일 가능성이 있으며 재측정 전에는 확정할 수 없다고 말했다."
+        val client = RecordingClient(mutableListOf(response(text = content)))
+
+        val memory = MemoryExtractor(client).analyze(document(recordCount = 1)).single()
+
+        assertEquals(content, memory.content)
+        assertEquals(listOf(1), memory.evidenceIds)
     }
 
     @Test
@@ -199,7 +211,7 @@ class MemoryExtractorTest {
         evidenceIds: List<String> = listOf("r1"),
     ): String {
         val evidenceJson = evidenceIds.joinToString(",") { "\"$it\"" }
-        return """{"text":"$text","subject":"subject","memoryType":"REFERENCE","certainty":"OBSERVED","evidenceRecordIds":[$evidenceJson]}"""
+        return """{"text":"$text","evidenceRecordIds":[$evidenceJson]}"""
     }
 
     private class RecordingClient(

@@ -7,9 +7,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRe
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -63,7 +61,7 @@ class CanonicalMemoryBatchRepositoryTest {
     }
 
     @Test
-    fun `retry reuses exact memories while same content with different meaning or evidence is preserved`() =
+    fun `retry reuses exact memories while different content or evidence is preserved`() =
         withDatabase("batch-idempotency") { db ->
             val sourceRecords = SourceRecordRepositoryImpl(db)
             val records = sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).recordsToAnalyze
@@ -77,8 +75,8 @@ class CanonicalMemoryBatchRepositoryTest {
                 listOf(
                     item("different-evidence", proposal("same", records[1].id)),
                     item(
-                        "different-type",
-                        proposal("same", records[0].id).copy(memoryType = MemoryType.EVENT),
+                        "different-content",
+                        proposal("another fact", records[0].id),
                     ),
                 ),
                 records.map { it.id },
@@ -211,9 +209,6 @@ class CanonicalMemoryBatchRepositoryTest {
 
     private fun proposal(content: String, evidenceId: Int) = MemoryProposal(
         content = content,
-        subject = "subject",
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
         evidenceIds = listOf(evidenceId),
     )
 

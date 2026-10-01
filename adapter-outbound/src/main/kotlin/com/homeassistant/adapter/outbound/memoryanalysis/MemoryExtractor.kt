@@ -79,13 +79,9 @@ internal class MemoryExtractor(
         return response.memories.map { memory ->
             val evidence = parseEvidence(document, memory.evidenceRecordIds)
             require(memory.text.isNotBlank()) { "Memory text must not be blank" }
-            require(memory.subject.isNotBlank()) { "Memory subject must not be blank" }
             require(evidence.isNotEmpty()) { "Memory must include at least one evidence record" }
             MemoryProposal(
                 content = memory.text.trim(),
-                subject = memory.subject.trim(),
-                memoryType = memory.memoryType,
-                certainty = memory.certainty,
                 evidenceIds = evidence.map { it.id },
             )
         }
@@ -128,9 +124,6 @@ internal class MemoryExtractor(
         memories = memories.map { memory ->
             MemoryLlmResponse(
                 text = memory.content,
-                subject = memory.subject,
-                memoryType = memory.memoryType,
-                certainty = memory.certainty,
                 evidenceRecordIds = memory.evidenceIds.map { evidenceId ->
                     document.records.first { it.id == evidenceId }.promptId
                 },

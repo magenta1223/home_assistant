@@ -27,7 +27,7 @@ class MemoryProposalsPersister(
 }
 
 /**
- * Includes every proposed meaning field and the evidence set. Source access is immutable and is
+ * Includes the creator, content and evidence set. Source access is immutable and is
  * resolved from evidence by the atomic writer. Length-prefixing avoids
  * delimiter ambiguity; sorting evidence makes extractor ordering irrelevant across retries.
  */
@@ -36,9 +36,6 @@ internal fun MemoryProposal.idempotencyKey(createdBy: UserId): String {
     sequenceOf(
         createdBy.value,
         content.trim(),
-        subject.trim(),
-        memoryType.name,
-        certainty.name,
         evidenceIds.distinct().sorted().joinToString(","),
     ).forEach { field ->
         val bytes = field.toByteArray(StandardCharsets.UTF_8)

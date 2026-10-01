@@ -3,8 +3,6 @@ package com.homeassistant.adapter.outbound.memoryanalysis
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.common.json.JsonSerializer.parseToJsonElement
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import kotlinx.schema.Schema
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.SerialDescription
@@ -27,14 +25,8 @@ internal data class MemoryAnalysisLlmResponse(
 @Schema
 @Serializable
 internal data class MemoryLlmResponse(
-    @property:SerialDescription("One atomic memory statement supported by the cited evidence. Do not combine unrelated facts.")
+    @property:SerialDescription("Self-contained content supported by the cited evidence. Preserve the subject, attribution, time, conditions and uncertainty in the text. Do not combine unrelated information.")
     val text: String,
-    @property:SerialDescription("Person, place, object, organization, or other entity the memory is about.")
-    val subject: String,
-    @property:SerialDescription("Allowed MemoryType enum value for this single memory.")
-    val memoryType: MemoryType,
-    @property:SerialDescription("How directly the source evidence supports this memory.")
-    val certainty: MemoryCertainty,
     @property:SerialDescription("Source record ids supporting this memory, using ids such as r1 or r2 from the input.")
     val evidenceRecordIds: List<String>,
 )

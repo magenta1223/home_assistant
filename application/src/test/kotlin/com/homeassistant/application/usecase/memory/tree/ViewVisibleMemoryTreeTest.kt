@@ -7,8 +7,6 @@ import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -34,7 +32,7 @@ class ViewVisibleMemoryTreeTest {
         assertEquals(4, result.totalCount)
         assertEquals(listOf(1, 3), result.roots.map { it.memoryId })
         assertEquals(listOf(2, 4), result.roots.first().children.map { it.memoryId })
-        assertEquals("subject-2", result.roots.first().children.first().subject)
+        assertEquals("content-2", result.roots.first().children.first().content)
     }
 
     @Test
@@ -106,9 +104,6 @@ class ViewVisibleMemoryTreeTest {
         childrenIds = childrenIds,
         createdByUserId = userId.value,
         content = "content-$id",
-        subject = "subject-$id",
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
         visibility = MemoryVisibility.PUBLIC,
         evidenceRefs = listOf(id),
         createdAt = id.toLong(),

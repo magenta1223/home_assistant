@@ -35,5 +35,7 @@ sequenceDiagram
 
 - semantic index가 반환한 ID라도 `MemoryReader`가 사용자에게 노출하지 않으면 결과에서 제외한다.
 - Qdrant 검색 scope에는 visible memory ID만 전달한다.
+- 검색 벡터는 memory content로 생성한다. 사전 분류나 별도 subject를 검색 조건으로 사용하지 않는다.
+- 벡터 payload의 `kind`, `memoryId`로 memory를 식별하고 내용·근거·저장 시각은 canonical DB에서 읽는다.
 - adapter 또는 index 구현 실패는 input port의 `MemorySearchUnavailableException`으로 변환한다.
 - query는 application에서 trim한 값을 검색과 결과에 사용한다.

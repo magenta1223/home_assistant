@@ -12,8 +12,6 @@ import com.homeassistant.application.port.output.memory.placement.MemoryTreeStor
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -51,9 +49,9 @@ class MemoryPlacementServiceTest {
         assertEquals(listOf(2 to 100), tree.parentChildIds)
         assertEquals(1, tree.calls)
         assertEquals(
-            "- [1] subject-1 | memory-1\n" +
-                "  - [2] subject-2 | memory-2\n" +
-                "    - [3] subject-3 | memory-3",
+            "- [1] memory-1\n" +
+                "  - [2] memory-2\n" +
+                "    - [3] memory-3",
             extractor.input.visibleMemoryTree,
         )
         assertFalse(extractor.input.visibleMemoryTree.contains("[4]"))
@@ -243,9 +241,6 @@ class MemoryPlacementServiceTest {
         childrenIds = childrenIds,
         createdByUserId = userId.value,
         content = "memory-$id",
-        subject = "subject-$id",
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
         visibility = visibility,
         evidenceRefs = listOf(id),
         createdAt = id * 1_000L,

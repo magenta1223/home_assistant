@@ -8,8 +8,6 @@ import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutb
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingTask
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -123,9 +121,6 @@ internal class MemoryIndexingOutboxRepository(
                 .getOrDefault(emptyList()),
             createdByUserId = this[MemoryTable.createdByUserId],
             content = this[MemoryTable.content],
-            subject = this[MemoryTable.subject],
-            memoryType = MemoryType.valueOf(this[MemoryTable.memoryType]),
-            certainty = MemoryCertainty.valueOf(this[MemoryTable.certainty]),
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
             allowedUserIds = MemoryViewerTable.select(MemoryViewerTable.userId)
                 .where { MemoryViewerTable.memoryId eq memoryId }

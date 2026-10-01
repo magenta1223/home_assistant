@@ -16,9 +16,7 @@ import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryAccess
-import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.*
@@ -75,13 +73,9 @@ internal class MemoryRepository(
                     it[childrenIds] = emptyList<Int>().encodeToString()
                     it[createdByUserId] = createdBy.value
                     it[content] = proposal.content
-                    it[subject] = proposal.subject
-                    it[memoryType] = proposal.memoryType.name
-                    it[certainty] = proposal.certainty.name
                     it[visibility] = access.visibility.name
                     it[idempotencyKey] = item.idempotencyKey
                     it[createdAt] = now
-                    it[updatedAt] = now
                 }[MemoryTable.id]
                 proposal.evidenceIds.distinct().forEach { sourceRecordId ->
                     MemoryEvidenceTable.insert {
@@ -176,7 +170,6 @@ internal class MemoryRepository(
             if (children != parent.childrenIds) {
                 MemoryTable.update({ MemoryTable.id eq parentId }) {
                     it[childrenIds] = children.encodeToString()
-                    it[updatedAt] = System.currentTimeMillis()
                 }
             }
         }
@@ -194,9 +187,6 @@ internal class MemoryRepository(
             childrenIds = children,
             createdByUserId = this[MemoryTable.createdByUserId],
             content = this[MemoryTable.content],
-            subject = this[MemoryTable.subject],
-            memoryType = MemoryType.valueOf(this[MemoryTable.memoryType]),
-            certainty = MemoryCertainty.valueOf(this[MemoryTable.certainty]),
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
             allowedUserIds = MemoryViewerTable.select(MemoryViewerTable.userId)
                 .where { MemoryViewerTable.memoryId eq memoryId }
@@ -217,9 +207,6 @@ internal class MemoryRepository(
             childrenIds = emptyList(),
             createdByUserId = userId.value,
             content = content,
-            subject = subject,
-            memoryType = memoryType,
-            certainty = certainty,
             visibility = access.visibility,
             allowedUserIds = access.allowedUserIds,
             evidenceRefs = evidenceIds,

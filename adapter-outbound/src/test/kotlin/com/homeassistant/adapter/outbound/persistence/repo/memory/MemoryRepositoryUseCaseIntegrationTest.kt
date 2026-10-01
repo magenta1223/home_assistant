@@ -18,9 +18,7 @@ import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryAccess
-import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import java.nio.file.Files
@@ -119,9 +117,6 @@ class MemoryRepositoryUseCaseIntegrationTest {
         ).recordsToAnalyze.single()
         val proposal = MemoryProposal(
                 content = content,
-                subject = content,
-                memoryType = MemoryType.REFERENCE,
-                certainty = MemoryCertainty.OBSERVED,
                 evidenceIds = listOf(evidence.id),
             )
         return canonicalMemoryBatchWriter.commit(

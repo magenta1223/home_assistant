@@ -32,5 +32,6 @@ sequenceDiagram
 - cycle과 다중 parent가 있는 legacy data도 각 memory를 최대 한 번만 표시한다.
 - root에서 도달할 수 없는 component는 별도 root로 표시하며 저장 데이터를 수정하지 않는다.
 
-응답은 화면에 필요한 subject, content, type, certainty, 생성 시각과 자식만 포함한다. 작성자,
+응답은 화면에 필요한 memory ID, content, 생성 시각과 자식만 포함한다. 작성자,
 allowed user 목록과 evidence reference는 이 조회 계약으로 노출하지 않는다.
+화면은 content를 한 번 표시하고 별도 subject 제목이나 type·certainty 배지를 만들지 않는다.

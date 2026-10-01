@@ -9,8 +9,6 @@ import com.homeassistant.application.port.output.memory.search.SemanticMemoryInd
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import kotlin.test.Test
 import kotlin.test.assertContains
@@ -69,9 +67,6 @@ class MemoryConversationContextProviderTest {
         childrenIds = childrenIds,
         createdByUserId = USER_ID.value,
         content = "memory-$id",
-        subject = "subject-$id",
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
         visibility = MemoryVisibility.PUBLIC,
         evidenceRefs = listOf(id),
         createdAt = id * 1_000L,

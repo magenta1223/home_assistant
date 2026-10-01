@@ -10,8 +10,6 @@ import com.homeassistant.application.port.output.memory.search.SemanticMemoryInd
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -198,9 +196,6 @@ class MemoryAnswerContextProviderTest {
         childrenIds = childrenIds,
         createdByUserId = createdByUserId,
         content = "memory-$id",
-        subject = "subject-$id",
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
         visibility = visibility,
         allowedUserIds = allowedUserIds,
         evidenceRefs = listOf(id),

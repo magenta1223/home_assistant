@@ -14,8 +14,6 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
@@ -70,7 +68,10 @@ class MemoryTreeRoutesTest {
         assertTrue(compactBody.contains("\"totalCount\":2"))
         assertTrue(compactBody.contains("\"memoryId\":1"))
         assertTrue(compactBody.contains("\"memoryId\":2"))
-        assertTrue(compactBody.contains("\"memoryType\":\"REFERENCE\""))
+        assertTrue(compactBody.contains("\"content\":\"content-1\""))
+        assertTrue(!body.contains("subject"))
+        assertTrue(!body.contains("memoryType"))
+        assertTrue(!body.contains("certainty"))
         assertTrue(!body.contains("allowedUserIds"))
         assertTrue(!body.contains("evidenceRefs"))
         assertTrue(!body.contains("createdByUserId"))
@@ -149,10 +150,7 @@ class MemoryTreeRoutesTest {
             children: List<VisibleMemoryTreeNode> = emptyList(),
         ) = VisibleMemoryTreeNode(
             memoryId = id,
-            subject = "subject-$id",
             content = "content-$id",
-            memoryType = MemoryType.REFERENCE,
-            certainty = MemoryCertainty.OBSERVED,
             createdAt = id.toLong(),
             children = children,
         )

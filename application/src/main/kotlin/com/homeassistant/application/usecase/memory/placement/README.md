@@ -2,6 +2,8 @@
 
 `MemoryPlacementService`는 새로 저장된 memory batch를 기존 visible memory tree에 연결한다.
 Extractor의 응답은 신뢰하지 않고 application에서 완전성, 참조 범위와 cycle을 검증한다.
+모델에는 새 memory와 기존 tree의 ID·content를 전달하며 별도 subject나 분류 필드는 사용하지 않는다.
+`childrenIds` 기반 관계는 Topic 그래프 구현 전까지 유지한다.
 
 ## Memory 배치
 

@@ -3,6 +3,12 @@
 `MemoryAnalysisService`는 입력 source record를 저장하고, 새 분석 대상에서 memory proposal을 추출해
 canonical memory로 즉시 확정한다. 별도의 preview/review 단계는 없다.
 
+추출 계약은 독립적인 `content`와 `evidenceIds`만 갖는다. 모델 응답의 `text`와
+`evidenceRecordIds`를 이 계약으로 변환하며, 고정된 정보 종류·대상 필드·확실성 enum을 요구하지
+않는다. 대상, 발화자, 시점, 조건과 불확실성은 본문에 보존한다. 분야별 분류로 수집 범위를
+제한하지 않으며, 원문에 없는 사실을 추가하거나 발언·추정을 확정된 사실로 바꾸지 않는다.
+권한은 추출 모델이 판단하지 않고 근거 source의 immutable access에서 결정한다.
+
 `KnowledgeInjectionWorkflowService`는 외부 채널의 인증된 conversation identity를 application user로
 해석하고, 등록된 사용자에게만 같은 `MemoryAnalysis` 흐름을 제공한다.
 

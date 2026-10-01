@@ -4,10 +4,10 @@ import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
 /**
- * An approved, independently searchable canonical memory.
+ * Evidence-backed, independently searchable content with immutable access.
  *
- * A memory with children is a short description of a knowledge area; a memory
- * without children is an atomic fact. Both are represented by this same type.
+ * Attribution, time, conditions and uncertainty belong in the content, without
+ * predefined categories. Child links remain until Topic relations replace placement.
  */
 @Serializable
 data class Memory(
@@ -15,9 +15,6 @@ data class Memory(
     val childrenIds: List<Int> = emptyList(),
     val createdByUserId: String,
     val content: String,
-    val subject: String,
-    val memoryType: MemoryType,
-    val certainty: MemoryCertainty,
     val visibility: MemoryVisibility,
     val allowedUserIds: Set<String> = emptySet(),
     val evidenceRefs: List<Int>,
@@ -28,7 +25,6 @@ data class Memory(
         require(childrenIds.distinct().size == childrenIds.size) { "memory children must be unique" }
         require(id !in childrenIds) { "memory cannot contain itself as a child" }
         require(content.isNotBlank()) { "memory content is required" }
-        require(subject.isNotBlank()) { "memory subject is required" }
         require(createdByUserId.isNotBlank()) { "createdByUserId is required" }
         MemoryAccess(visibility, allowedUserIds)
         require(evidenceRefs.isNotEmpty()) { "memory evidence is required" }

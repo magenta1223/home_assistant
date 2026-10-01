@@ -50,7 +50,6 @@ internal class MemoryPlacementExtractor(
         appendLine("이번 batch에서 새로 저장된 memory 목록:")
         input.memories.forEach { memory ->
             appendLine("memoryId=${memory.id}")
-            appendLine("subject=${memory.subject}")
             appendLine("content=${memory.content}")
             appendLine()
         }

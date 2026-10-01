@@ -3,8 +3,6 @@ package com.homeassistant.application.usecase.memory.write
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingTask
 import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import java.time.Clock
 import java.time.Instant
@@ -69,9 +67,6 @@ class MemoryIndexingOutboxProcessorTest {
             id = 10,
             createdByUserId = "member-1",
             content = "content",
-            subject = "subject",
-            memoryType = MemoryType.REFERENCE,
-            certainty = MemoryCertainty.OBSERVED,
             visibility = MemoryVisibility.PUBLIC,
             evidenceRefs = listOf(1),
             createdAt = 1,

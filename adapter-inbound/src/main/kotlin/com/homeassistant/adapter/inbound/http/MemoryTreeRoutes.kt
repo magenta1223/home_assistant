@@ -68,10 +68,7 @@ private fun VisibleMemoryTreeResult.toHttpResponse() = HttpMemoryTreeResponse(
 
 private fun VisibleMemoryTreeNode.toHttpResponse(): HttpMemoryTreeNode = HttpMemoryTreeNode(
     memoryId = memoryId,
-    subject = subject,
     content = content,
-    memoryType = memoryType.name,
-    certainty = certainty.name,
     createdAt = createdAt,
     children = children.map(VisibleMemoryTreeNode::toHttpResponse),
 )
@@ -85,10 +82,7 @@ private data class HttpMemoryTreeResponse(
 @Serializable
 private data class HttpMemoryTreeNode(
     val memoryId: Int,
-    val subject: String,
     val content: String,
-    val memoryType: String,
-    val certainty: String,
     val createdAt: Long,
     val children: List<HttpMemoryTreeNode>,
 )

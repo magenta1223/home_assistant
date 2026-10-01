@@ -8,9 +8,6 @@ import kotlinx.serialization.Serializable
 data class MemoryProposal(
     @SerialName("text")
     val content: String,
-    val subject: String,
-    val memoryType: MemoryType,
-    val certainty: MemoryCertainty,
     @SerialName("evidenceRefs")
     val evidenceIds: List<Int>,
 )

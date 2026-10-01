@@ -1,8 +1,5 @@
 package com.homeassistant.application.port.input.memory.tree
 
-import com.homeassistant.domain.memory.MemoryCertainty
-import com.homeassistant.domain.memory.MemoryType
-
 fun interface VisibleMemoryTree {
     fun get(request: VisibleMemoryTreeRequest): VisibleMemoryTreeResult
 }
@@ -18,10 +15,7 @@ data class VisibleMemoryTreeResult(
 
 data class VisibleMemoryTreeNode(
     val memoryId: Int,
-    val subject: String,
     val content: String,
-    val memoryType: MemoryType,
-    val certainty: MemoryCertainty,
     val createdAt: Long,
     val children: List<VisibleMemoryTreeNode>,
 )

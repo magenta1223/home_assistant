@@ -78,10 +78,7 @@ internal object VisibleMemoryTreeProjector {
 
     private fun Memory.toTreeNode(children: List<VisibleMemoryTreeNode>) = VisibleMemoryTreeNode(
         memoryId = id,
-        subject = subject,
         content = content,
-        memoryType = memoryType,
-        certainty = certainty,
         createdAt = createdAt,
         children = children,
     )

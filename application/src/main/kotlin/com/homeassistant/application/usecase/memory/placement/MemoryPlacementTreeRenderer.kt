@@ -34,9 +34,8 @@ object MemoryPlacementTreeRenderer {
             val memory = memoriesById[memoryId] ?: return
             renderedIds += memoryId
             val indentation = "  ".repeat(depth)
-            val subject = memory.subject.replace(WHITESPACE, " ").trim()
             val content = memory.content.replace(WHITESPACE, " ").trim()
-            lines += "$indentation- [${memory.id}] $subject | $content"
+            lines += "$indentation- [${memory.id}] $content"
             if (depth >= maxDepth) return
             memory.childrenIds.forEach { childId -> renderMemory(childId, depth + 1) }
         }

@@ -93,11 +93,10 @@
     .node-heading { padding: 13px 14px; }
     summary .node-heading { display: inline-flex; width: calc(100% - 30px); vertical-align: middle; }
     .node-heading { align-items: center; justify-content: space-between; gap: 12px; }
-    .subject { min-width: 0; font-weight: 850; overflow-wrap: anywhere; }
     .memory-id { flex: none; color: #75817b; font-size: 12px; font-variant-numeric: tabular-nums; }
     .node-detail { padding: 0 14px 14px; }
     details > .node-detail { padding-left: 38px; }
-    .content { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.58; color: #33443d; }
+    .content { min-width: 0; margin: 0; font-weight: 850; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.58; color: #33443d; }
     .meta { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; color: #68766f; font-size: 12px; }
     .meta span { padding: 4px 8px; border-radius: 999px; background: #eef2ef; }
     .empty { margin: 0; padding: 42px 20px; color: #68766f; text-align: center; }
@@ -259,30 +258,25 @@
   function createHeading(node) {
     const heading = document.createElement('div');
     heading.className = 'node-heading';
-    const subject = document.createElement('span');
-    subject.className = 'subject';
-    subject.textContent = node.subject;
+    const content = document.createElement('span');
+    content.className = 'content';
+    content.textContent = node.content;
     const id = document.createElement('span');
     id.className = 'memory-id';
     id.textContent = '#' + node.memoryId;
-    heading.append(subject, id);
+    heading.append(content, id);
     return heading;
   }
 
   function createDetail(node) {
     const detail = document.createElement('div');
     detail.className = 'node-detail';
-    const content = document.createElement('p');
-    content.className = 'content';
-    content.textContent = node.content;
     const meta = document.createElement('div');
     meta.className = 'meta';
-    [node.memoryType, node.certainty, formatDate(node.createdAt)].forEach(function (value) {
-      const item = document.createElement('span');
-      item.textContent = value;
-      meta.appendChild(item);
-    });
-    detail.append(content, meta);
+    const savedAt = document.createElement('span');
+    savedAt.textContent = formatDate(node.createdAt);
+    meta.appendChild(savedAt);
+    detail.appendChild(meta);
     return detail;
   }
 

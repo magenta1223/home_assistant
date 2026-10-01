@@ -7,10 +7,8 @@ import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRe
 import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryCertainty
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryType
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -270,11 +268,8 @@ class MemoryRepositoryTest {
         }
     }
 
-    private fun memoryProposal(evidenceId: Int, subject: String) = MemoryProposal(
-        content = subject,
-        subject = subject,
-        memoryType = MemoryType.REFERENCE,
-        certainty = MemoryCertainty.OBSERVED,
+    private fun memoryProposal(evidenceId: Int, content: String) = MemoryProposal(
+        content = content,
         evidenceIds = listOf(evidenceId),
     )
 

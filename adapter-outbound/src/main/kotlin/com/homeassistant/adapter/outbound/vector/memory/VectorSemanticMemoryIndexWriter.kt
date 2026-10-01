@@ -16,21 +16,10 @@ internal class VectorSemanticMemoryIndexWriter(
             vectorStore.upsert(
                 VectorPoint(
                     id = memoryVectorPointId(memory.id),
-                    vector = textEmbedder.embed(
-                        "passage: " + listOfNotNull(
-                            memory.subject,
-                            memory.content,
-                        ).joinToString("\n"),
-                    ),
+                    vector = textEmbedder.embed("passage: ${memory.content}"),
                     payload = buildMap {
                         put("kind", MEMORY_KIND)
                         put("memoryId", memory.id.toString())
-                        put("childrenIds", memory.childrenIds.joinToString(","))
-                        put("createdByUserId", memory.createdByUserId)
-                        put("visibility", memory.visibility.name)
-                        put("allowedUserIds", memory.allowedUserIds.sorted().joinToString(","))
-                        put("memoryType", memory.memoryType.name)
-                        put("subject", memory.subject)
                     },
                 ),
             )

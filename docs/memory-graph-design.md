@@ -12,8 +12,9 @@ ID를 가리키는 화면 표현이다. 저장된 base parent나 사용자별 ba
 
 이 문서의 결정은 다음과 같다.
 
-1. `Memory`는 원자적 사실이며 자식을 갖지 않는다. 내용, 근거, 확실성, 시간 정보와 기존
-   `UserId` 기반 ACL은 Topic 배치와 독립적으로 보존한다.
+1. `Memory`는 근거가 있는 독립적인 내용이며 자식을 갖지 않는다. 내용, 근거, 저장 시각과 기존
+   `UserId` 기반 ACL은 Topic 배치와 독립적으로 보존한다. 대상·발화자·시점·조건·불확실성은
+   본문에 표현하며 사전 분류 enum이나 별도 subject·certainty 필드로 제한하지 않는다.
 2. `Topic`은 고정된 범위 설명인 summary와 수정 이력을 가진 본문을 갖고, 직접 자식으로
    하나 이상의 `Memory` 또는 `Topic`을 가진다. 자식은 여러 부모를 가질 수 있다. Topic의
    전체 사실 집합은 직접 포함한 Memory와 모든 하위 Topic의 Memory를 합친 결과다. 같은
@@ -28,6 +29,22 @@ ID를 가리키는 화면 표현이다. 저장된 base parent나 사용자별 ba
 
 이 설계는 기존의 [구조 탐색](research/memory-consolidation-and-topic-hierarchy.md)을
 구체화한다. 구현이나 운영 데이터 변경은 이 문서의 범위가 아니다.
+
+### 1.1 Memory 필드 단순화와 구현 경계
+
+Memory의 정보 종류는 열린 범위로 둔다. `memoryType`과 그 상위 groupCode, `certainty`,
+`subject`는 제거하고 본문에 대상과 의미를 충분히 표현한다. 발언이나 추정은 그 성격을 본문에
+남기며, 카테고리를 없앤다는 이유로 확정된 사실로 바꾸지 않는다. 이 결정은 Topic과 Memory의
+구조적 역할 구분이나 PUBLIC/RESTRICTED 접근 제어를 없애는 것이 아니다.
+
+현재 구현은 ID, content, 근거, ACL, 등록자, 저장 시각과 중복 방지 키를 유지한다. Memory DB의
+사용되지 않는 updatedAt과 벡터 payload의 중복 메타데이터도 제거한다. 임베딩에는 content만
+사용한다. 이 필드 단순화는 아래 Topic/DAG 구현과 별개이며, 현재 사용 중인 childrenIds는
+Topic 관계 테이블로 전환할 때까지 유지한다.
+
+필드 단순화는 미배포 상태를 전제로 하며 기존 DB·벡터 데이터의 자동 변환이나 초기화를 수행하지
+않는다. [저장 use case](../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/README.md)에
+새 저장 계약과 기존 개발 데이터의 처리 경계를 기록한다.
 
 ## 2. 그래프의 의미
 

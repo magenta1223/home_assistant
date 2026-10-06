@@ -19,6 +19,7 @@ The repository is also a hands-on environment for learning implementation, deplo
 
 - Follow explicit, in-scope user instructions. Do not substitute a plan or adjacent outcome. Ask only when ambiguity would materially change the result or a real constraint blocks the requested action.
 - Keep changes simple and necessary: apply KISS, YAGNI, DRY, clear domain modeling, and clean architecture without speculative abstractions.
+- For memory organization design, follow `docs/topic-adoption-criteria.md` and the current Memory + Topic design in `docs/topic-structure-proposal.md`; earlier proposals do not override them.
 - Make surgical changes. Preserve existing style and unrelated work; remove only debris created by the current change.
 - Respect dependency boundaries: business rules stay in `domain` and `application`; frameworks and external systems stay behind inbound and outbound adapters.
 - Preserve application `UserId` values, memory ACLs, evidence, request deduplication, and the ten-minute conversation idle lease.

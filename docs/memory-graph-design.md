@@ -1,5 +1,8 @@
 # 가족 Memory Graph 설계
 
+> 이 문서는 이전 설계다. 2026-10-01의 [자체 본문을 가진 Topic과 Memory 계층 설계](topic-content-memory-design.md)가
+> 이후 논의의 결정을 반영하며, 충돌하는 내용은 새 문서를 따른다.
+
 ## 1. 목표와 결정
 
 가족의 기억은 근거가 있는 원자적 사실인 `Memory`로 보존한다. `Topic`은 하나 이상의

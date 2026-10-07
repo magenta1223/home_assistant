@@ -47,3 +47,8 @@ transaction에서 다시 확인해 겹친 실행이 Topic을 중복 생성하지
 outbox는 변경하지 않는다. `processAvailable()`은 재시도 진입점이며 주기적 caller 연결은 6단계에서
 추가한다. 같은 batch가 계속 실패하면 반복 선택될 수 있으며 자동 격리·분할은 현재 제공하지 않는다.
 기존 소속 재정리나 Topic 설명 수정은 이 초기 배치 작업의 범위가 아니다.
+
+모델 adapter는 입력을 지시문과 분리한 JSON으로 전달하고 기존 Topic은 `existing:<id>`, 신규
+Topic은 `new:<key>`로 변환한다. JSON 형식·참조 표현 오류는 adapter가, 실제 후보 범위와 배치
+완전성은 application이 검증한다. 입력 32,000자·응답 64,000자를 넘으면 자르지 않고 실패한다.
+model prompt·응답 크기 제한은 이 단계의 운영 한도이며 전체 검색 품질 보장을 뜻하지 않는다.

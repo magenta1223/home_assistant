@@ -1,283 +1,254 @@
 # Memory + Topic 그래프 실행 계획
 
-- 상태: TODO — 실행 계획 작성, 구현 전
-- 우선순위: Feature P0 내 Memory 구조 전환 후보. Task 등 다른 기능과의 착수 순서는 별도 결정한다.
+- 상태: TODO — 설계·실행 계획 조정, 구현 전
+- 우선순위: Feature P0 내 Memory 구조 전환 후보. 다른 기능과의 착수 순서는 별도 결정한다.
 - 작성일: 2026-10-06
+- 수정일: 2026-10-07
 - 설계 기준: [Memory와 Topic 그래프 설계](../../../topic-structure-proposal.md), [메모리 구조 판단기준](../../../topic-adoption-criteria.md)
-- 선행 작업: 아래 1단계의 입력·권한·버전·노출 계약 확정
+- 다음 작업: 아래 일곱 커밋을 순서대로 구현·검토. `commit` API 조사는 완료했으며 리팩터링은 필수 선행 작업이 아니다.
 
 ## 1. 문제와 목표
 
-현재 Memory는 사실과 evidence를 보존하지만 `childrenIds`로 다른 Memory를 연결한다. 검색도
-Memory를 직접 찾고 자식을 추가하는 방식이다. 이를 **Topic 검색 → 허용된 Memory 선택 → 원문
-맥락 확인 → 응답**으로 전환한다. Topic은 사실을 대체하거나 공유 권한을 부여하지 않는다.
+Memory가 사실과 조직 관계를 함께 가진 현재 구조에서, 사실은 Memory에 두고 조직 관계는 Topic이
+맡도록 변경한다. 이번 단계의 중심은 Topic 데이터 구조와 전용 배치다. 검색·응답·화면 전체를
+동시에 재설계하지 않는다.
 
-새 구조의 핵심은 Topic 테이블 추가만이 아니다. 하나의 입력에서 나온 원문과 Memory의 권한을
-함께 변경하고, 과거 evidence가 가리키는 원문 버전을 보존하며, 답변 Agent에 전달하기 전에
-비공개 정보와 이를 드러내는 메타데이터를 제거해야 한다.
+### 확정한 전제
 
-이 문서는 구현 작업과 검증 순서를 정한다. 코드 변경, 기존 데이터의 권한 변경, 데이터 초기화와
-운영 배포를 실행한 기록은 아니다. 세부 정책의 제안과 확정된 개념 설계를 구분한다.
+- Source는 한 번 저장하면 불변이다. 별도 Source 버전 모델이나 개정 API를 만들지 않는다.
+- Memory는 ACL만 변경할 수 있다. content·evidence 참조·ID·생성 시각은 불변이다.
+- 다른 내용은 새 Source와 Memory로 저장한다. 기존 기록을 자동으로 덮어쓰거나 무효화하지 않는다.
+- Memory ACL은 `allowedUserIds`를 활용한다. PUBLIC 표현과 원문 열람 권한의 일관성은 별도 설계 사항이다.
+- Topic 소속·분류·연결은 Topic이 관리한다. Memory의 `childrenIds`는 제거한다.
+- 새 DB로 시작한다고 가정한다. 기존 DB migration·backfill·호환 전환은 구현 범위에 넣지 않는다.
+  이 계획 작성은 실제 DB 삭제·초기화나 운영 서비스 실행을 뜻하지 않는다.
 
 ## 2. 현재 구현과 변경 지점
 
-| 현재 구현 | 확인한 동작 | 계획에서 다룰 변경 |
-|---|---|---|
-| `domain/.../memory/Memory.kt` | 내용·ACL·evidence와 `childrenIds` 보유 | 사실은 보존하고 소속·연결을 Topic으로 이동 |
-| `domain/.../source/SourceRecord.kt`, `SourceDocument.kt` | record와 분석 요청 묶음은 있으나 지속되는 입력 ID·버전·조각 순서 계약은 없음 | 입력 단위와 버전·위치 식별 추가 |
-| `SourceRecordRepositoryImpl` | record dedup과 재분석, 다른 ACL의 재입력 거부, alias 변환 시 본문 갱신 경로 존재 | 재입력·개정·권한 변경 분리, 과거 근거 덮어쓰기 방지 |
-| `MemoryRepository.commit` | evidence record들의 ACL 교집합으로 Memory ACL 생성 | 새 입력 단위의 동일 ACL 보장, 기존 다중 근거 데이터 별도 점검 |
-| `MemoryProposalsPersister`, `MemoryIndexingOutboxProcessor` | Memory·evidence·분석 상태·outbox 원자 저장과 색인 재시도 | 기존 내구성 유지, Topic 배치·색인 복구 추가 |
-| `MemoryPlacementService` | visible Memory tree를 모델에 주고 parent 결정, 순환 차단 | Topic 배치와 양방향 관련 관계로 교체, 순환 허용 |
-| `MemorySearcher`, `MemoryAnswerContextProvider` | visible Memory 직접 검색 후 제한된 자식 확장 | Topic 후보와 그 소속 Memory 중심 검색 |
-| `MemoryConversationContextProvider` | Memory 본문을 문자열로 전달하며 최종 8,000자 절단 | 권한 확인한 원문 범위와 확인 상태를 포함하는 context |
-| `HandleMemoryConversation` | 10분 session 재사용, request receipt의 기존 답변 재사용 | ACL 변경 후 provider 문맥과 저장 답변 재사용 차단 |
-| `VisibleMemoryTree`, HTTP tree API·화면 | Memory forest 조회 | 전환 기간 호환과 Topic 기반 읽기 화면의 종료·도입 시점 명시 |
-| `DatabaseFactory`, `ApplicationServicesFactory` | 스키마 초기화와 기존 흐름 조립 | 명시적 데이터 전환·검증과 새 흐름 조립 |
+사용자 피드백의 번호를 유지한다. 아래 상태는 계획의 처리 방향이며 코드 변경 완료를 뜻하지 않는다.
 
-현재 소스 코드 기준이며 운영 DB의 실제 스키마·데이터 분포를 확인한 것은 아니다. 기존 write
-README에도 호환 migration이 없는 변경에 대한 주의가 있으므로, 운영 상태를 코드에서 추정하지 않는다.
+| 번호 | 현재 구현 | 확인한 동작 | 처리 방향 |
+|---|---|---|---|
+| 1 | `domain/.../memory/Memory.kt` | content·ACL·evidence와 `childrenIds` 보유 | **변경:** `childrenIds` 제거. content와 근거는 보존하고 소속·연결은 Topic에서 관리 |
+| 2 | `SourceRecord.kt`, `SourceDocument.kt` | 저장 record와 분석 요청 묶음 | **설계 반영:** Source 불변, Memory는 ACL만 변경. Source 버전 도입·개정 계획 제거. Source 구조 확장을 선행 작업으로 강제하지 않음 |
+| 3 | `SourceRecordRepositoryImpl` | dedup·재분석·ACL 충돌 처리 | **제외:** 재입력·개정·권한 변경 분리나 alias 경로 수정은 이번에 하지 않음 |
+| 4 | `MemoryRepository.commit` | Memory 저장 외에 ACL 계산·분석 완료·outbox 저장까지 수행 | **조사:** API의 실제 책임·원자성·이름·소속을 검토. 조사 없이 새 입력 ACL 모델로 교체하지 않음 |
+| 5 | `MemoryProposalsPersister`, `MemoryIndexingOutboxProcessor` | Memory 색인 outbox가 이미 구현되어 동작 경로에 연결됨 | **유지:** 기존 outbox 재구현 제외. Topic 작업에 대한 확장 여부는 배치 계약을 정한 후 판단 |
+| 6 | `MemoryPlacementService` | Memory 부모·자식 배치와 순환 차단 | **삭제 후 신설:** 기존 tree placement를 제거하고 Topic 전용 배치를 새로 만듦 |
+| 7 | `MemorySearcher`, `MemoryAnswerContextProvider` | Memory 직접 검색과 자식 확장 | **부분 제거:** 마지막 단계에서 자식 확장을 제거. Topic 검색·Memory 선택의 새 알고리즘은 보류 |
+| 8 | `MemoryConversationContextProvider` | Memory 본문 조합과 최대 8,000자 제한 | **현행 유지:** 원문 context·확인 상태·예산 재설계를 지금 진행하지 않음 |
+| 9 | `HandleMemoryConversation` | 10분 session과 기존 request 답변 재사용 | **유지:** 살아 있는 session의 기존 문맥·답변 사용 허용. ACL 변경에 따른 강제 종료·기존 정보 차단을 추가하지 않음. 새 조회에는 현재 ACL 적용 |
+| 10 | `VisibleMemoryTree`, HTTP tree API·화면 | Memory forest 표시 | **소비부 정리:** 마지막 단계에서 기존 tree 소비부를 제거·비활성화. 새 Topic 화면·표시 API는 보류 |
+| 11 | `DatabaseFactory`, `ApplicationServicesFactory` | 테이블 초기화와 서비스 조립 | **변경:** 확정된 Topic 스키마를 새 DB에 생성하고 Topic 전용 기능 연결. migration 제외 |
 
-## 3. 범위와 유지할 계약
+## 3. commit API 조사 결과
 
-첫 릴리스에 포함한다.
+### 현재 호출 경로
 
-- 입력·원문 버전·조각 위치와 파생 Memory의 연결.
-- 입력 단위 ACL 변경과 모든 읽기·재사용 경로의 현재 권한 확인.
-- 원자적 Memory 추출, Topic 설명·분류·복수 소속·양방향 관련 관계 저장.
-- Agent의 초기 Topic 배치, 제한된 후보 검색, 안전한 Topic 투영과 원문 확인 후 응답.
-- 실패한 배치·색인의 재시도, 기존 데이터 전환, 인증된 HTTP 경계의 연결과 검증.
+```text
+MemoryAnalysisService
+  → MemoryProposalsPersister.persist(userId, proposals, analyzedSourceRecordIds)
+  → CanonicalMemoryBatchWriter.commit(createdBy, proposals, analyzedSourceRecordIds)
+  → MemoryRepository의 한 DB transaction
+```
 
-후속 단계로 분리한다.
+`MemoryProposalsPersister`는 작성자·content·evidence ID 집합으로 안정적인 idempotency key를 만들고
+같은 key를 제거한 뒤 writer를 호출한다. 다음 작업들은 `MemoryRepository.commit` 안에 있다.
 
-- 관련 Topic 및 같은 원문의 다른 Memory를 통한 추가 탐색.
-- 자동 Topic 분할·병합과 연결 재정리 알고리즘.
-- 서로 다른 입력의 사실을 하나의 Memory로 합치는 규칙과 자동 정정 판단.
+1. 분석한 SourceRecord가 실제 존재하는지, 각 proposal의 evidence가 해당 batch에 속하는지 검증한다.
+2. 기존 idempotency key가 있으면 기존 Memory를 반환한다.
+3. 새 Memory라면 evidence의 ACL 교집합을 계산하고 Memory·evidence 연결·독자 목록을 저장한다.
+4. Memory 색인 outbox row가 없으면 생성한다.
+5. 전달받은 SourceRecord 전체의 상태를 `ANALYZED`로 바꾼다.
+6. 저장하거나 재사용한 Memory 목록을 반환한다.
 
-application `UserId`, 기존 Memory ID·내용·근거·ACL, 요청 중복 방지, 10분 idle lease를 보존한다.
-새 ACL 변경 유스케이스를 명시적으로 실행하기 전에는 기존 공유 범위를 넓히거나 줄이지 않는다.
-Topic에 ACL·필수 계층·고정 관계 종류를 추가하지 않고, 사용자별·ACL 조합별 Topic 사본을 만들지
-않는다. 그래프 전용 DB나 새 독립 서비스는 도입하지 않고 기존 계층과 저장소 안에서 시작한다.
+즉, 이 API는 단순한 `saveMemory`가 아니라 **한 source 분석 batch의 결과 확정**이다.
+Topic 배치나 실제 벡터 색인 호출은 이 transaction에 들어 있지 않다.
 
-Slack 기능은 추가하지 않는다. 공통 응답 경로 변경에 따른 보안·호환 회귀만 확인한다.
-[Memory DB 조회 최적화](../../p2/memory-query-performance.md)는 사용자 학습 과제로 유지한다.
-기존 전체 조회·N+1 최적화나 해당 작업의 완료 처리를 이 계획에 흡수하지 않는다. 새 검색 계약에
-필수적인 제한 조회와 학습 과제의 변경 범위가 겹치면 구현 전에 경계를 정리한다.
+### 파라미터와 원자성이 필요한 이유
 
-## 4. 단계별 실행
+`analyzedSourceRecordIds`는 `proposals.evidenceIds`의 합집합과 같지 않을 수 있다. 분석했지만
+Memory로 채택할 사실이 없는 record도 분석 완료로 처리해야 한다. proposal이 0개여도 분석한
+record를 완료할 수 있다. 따라서 이 인자를 단순히 중복 데이터로 보고 제거하면 안 된다.
 
-### 1단계 — 구현을 막는 정책과 경계 확정
+Memory 저장만 성공하고 source 분석 완료가 실패하면 재분석이 발생한다. source를 먼저 완료하고
+Memory 저장이 실패하면 사실이 저장되지 않았는데 분석은 완료된 상태가 된다. Memory만 저장하고
+색인 예약이 실패하면 검색 반영이 빠질 수 있다. 현재 transaction은 이 부분 성공을 막는다.
 
-아래는 구현 권고안이다. 개념 설계에서 미정인 항목을 이 문서만으로 확정된 정책으로 취급하지 않는다.
-선택한 정책과 반례를 설계 문서에 기록한 뒤 해당 단계의 구현을 시작한다.
+기존 `CanonicalMemoryBatchRepositoryTest`에는 batch 중간 실패 시 롤백, idempotency 재시도,
+색인 실패 재시도와 오래된 worker 결과 방어 사례가 있다. 이번에는 테스트 코드를 읽었으며 실행하지 않았다.
 
-| 결정 사항 | 권고하는 시작점 | 반드시 해결할 사례 |
-|---|---|---|
-| 입력의 정체성 | 명시적으로 등록한 원문을 지속되는 입력 ID로 식별하고 원문 버전·조각을 연결 | Kakao 중복·겹치는 재수입, 같은 파일의 다른 이름, 동일 bytes의 서로 다른 공유 범위 |
-| 권한의 기준 | 입력 ACL을 유일한 권한 기준으로 두고 Memory·evidence 읽기에서 이를 참조 | 기존 Memory ACL 복제본의 전환, 여러 입력을 근거로 가진 legacy Memory |
-| 공유 범위 변경자 | 최초 입력 등록자만 변경하는 최소 정책부터 검토, Agent에는 권한 없음 | 기존 입력의 등록자를 복원할 수 없는 경우, 등록자 열람권 제거, PUBLIC 전환 |
-| 원문 개정 | 기존 버전을 덮어쓰지 않고 새 버전과 새 Memory를 추가 | 이전 사실의 현재 유효 여부, 분석 실패, 동일 버전 재요청 |
-| Topic의 외부 표현 | 내부 설명·분류명은 기본 비노출. 허용된 Memory만으로 표시용 요약을 구성하거나 중립 표기 | 비공개 사실이 섞인 설명·분류명, 공개 Memory 사이지만 비공개 사실에서 유래한 연결 |
-| Topic 수정 권한 | 내부 정리 작업의 신원·입력 범위를 명시하고 application에서 변경 검증 | 일반 조회자가 Topic 전체를 바꾸는 상황, 비공개 ID를 모델이 제안하는 상황 |
-| 검색·읽기 예산 | Topic 후보·Memory 후보·원문 범위·총 context·추가 읽기 횟수를 각각 제한 | 후보가 ACL 필터에서 전부 사라짐, 긴 원문, 조건·예외가 예산 밖에 있음 |
+### 검토할 API 문제와 권고 방향
 
-입력 ID와 dedup key는 역할이 다르다. 파일명이나 같은 ACL이라는 이유만으로 입력을 합치지 않는다.
-Kakao 겹치는 재수입에서는 기존 record를 여러 입력의 서로 다른 ACL 아래 무작정 공유할 수 없다.
-기존 record 재사용·새 부분만 등록·충돌 거부 중 일관된 정책을 정하고, 기존 dedup 회귀 사례를 유지한다.
-PDF·이미지의 bytes 저장은 중복 제거할 수 있으나 bytes의 hash 자체가 읽기 권한을 주어서는 안 된다.
+- **이름:** `commit`만으로는 source 분석 완료까지 처리한다는 의도가 잘 드러나지 않는다.
+  분석 결과 확정을 나타내는 port·메서드명으로 바꿀지 검토한다.
+- **소속:** 구현체 `MemoryRepository`는 읽기, 분석 결과 저장, tree 수정까지 구현한다.
+  tree 기능을 삭제하면서 분석 batch 저장 책임의 위치를 검토한다.
+- **정책 위치:** ACL 교집합 계산은 domain 연산을 사용하지만 adapter가 호출을 결정한다.
+  ACL만 변경 가능한 새 Memory 계약에서 정책 결정과 실제 저장을 어디서 나눌지 검토한다.
+  정책을 옮기더라도 읽은 ACL과 저장 사이의 일관성은 보존해야 한다.
+- **유지할 경계:** 이름이나 클래스를 정리한다는 이유로 저장 작업을 독립 transaction으로
+  나누지 않는다. 일반 CRUD 저장소로 억지로 축소하지 않는다.
 
-새 Memory는 원칙적으로 한 입력의 한 버전 안에서 추출하고 여러 조각을 근거로 사용할 수 있게 한다.
-서로 다른 입력을 합친 기존 Memory는 자동 분리·ID 재발급·권한 합집합으로 해결하지 않는다.
-원래 ACL과 evidence를 유지한 채 별도 전환 대상으로 보고하고 해결되지 않으면 전환 완료를 선언하지 않는다.
+조사의 결론은 **원자적인 분석 결과 확정은 이유가 있지만, API 이름과 구현체의 책임은 재검토할
+여지가 있다**는 것이다. 이번 조사만으로 API 변경을 확정하거나 코드를 수정하지 않는다.
+Source 분석 처리 상태와 불변 원문 자체의 경계도 계약 검토 시 구분하되, 3번에서 제외한 Source
+저장소 수정으로 작업을 확장하지 않는다.
 
-원문 개정은 이전 사실의 무효화를 자동으로 뜻하지 않는다. 초기에는 입력 버전과 역사적 사실을
-구분해 보여주고 현재 여부를 확인하지 못하면 명시한다. 정정·대체 정책을 추가하더라도 Memory끼리
-그래프를 만들지 않는다.
+관련 코드:
 
-**완료 조건:** 위 결정, 권한 변경의 효력 시점, 동시 요청 처리, 기존 데이터 예외 처리와 읽기 예산을
-테스트 가능한 계약으로 기록한다. 성능 검증용 자료량·ACL 분포·동시 요청 수와 목표 지연도 정한다.
+- [CanonicalMemoryBatchWriter](../../../../application/src/main/kotlin/com/homeassistant/application/port/output/memory/write/CanonicalMemoryBatchWriter.kt)
+- [MemoryProposalsPersister](../../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/MemoryProposalsPersister.kt)
+- [MemoryRepository](../../../../adapter-outbound/src/main/kotlin/com/homeassistant/adapter/outbound/persistence/repo/memory/MemoryRepository.kt)
 
-### 2단계 — 입력·원문 버전과 evidence 기반 마련
+## 4. outbox 현황과 Topic 배치의 경계
 
-1. `domain/source`에 입력·버전·조각 위치의 최소 개념을 정의한다. 실제 테이블 수는 기존
-   `source_records`, `source_references` 재사용 가능성을 확인한 뒤 정한다.
-2. 텍스트·Kakao·PDF·이미지 입력에서 원문을 보존하고 파싱·해석 결과를 해당 버전과 위치에 연결한다.
-   앞뒤 조각 조회가 같은 버전 안에서 동작하게 한다. 원문과 모델 해석을 구분한다.
-3. source 저장·Memory 추출 계약을 변경한다. 조건·예외·대상·버전을 함께 보존하고, 입력 밖의
-   evidence나 근거 없는 사실을 저장하지 않는다. 분석 batch 크기와 재시도 계약을 유지한다.
-4. alias 정규화와 재수입이 이미 참조 중인 원문 내용을 조용히 변경하지 않게 한다.
-5. 사용자와 Memory 근거를 받아 허용된 원문 범위를 읽는 application port를 만든다. ID나 파일
-   hash를 직접 알아도 현재 권한을 우회할 수 없게 한다.
-6. Memory·evidence·분석 상태·후처리 예약의 원자 저장을 유지한다. 새 버전 분석 실패 시 이전
-   버전과 Memory는 보존하고 새 분석을 재시도할 수 있게 한다.
+Memory 색인은 **이미 outbox를 사용한다.**
 
-**완료 조건:** 입력 하나에서 나온 복수 Memory가 같은 원문 버전에 도달한다. 중복 입력·분석 재시도는
-중복 사실을 만들지 않고, 개정 후에도 이전 evidence의 내용이 동일하다. 기존 자료에 원문 전체가
-없으면 보유 범위만 표시하며 누락된 맥락을 복원했다고 주장하지 않는다.
+- Memory 저장 transaction에서 `CANONICAL_MEMORY` 대상의 색인 작업을 함께 기록한다.
+- `MemoryAnalysisService`가 저장 직후 `processAvailable()`을 호출한다.
+- 앱에 연결된 `MemoryIndexingWorker`가 기본 30초 간격으로 처리한다.
+- processor는 기본 30초 retry delay, 5분 processing lease와 attempt 검증을 지원한다.
+- 실패한 작업과 lease가 만료된 작업은 재처리하고, `reindexAll()`로 전체 Memory를 다시 예약할 수 있다.
 
-### 3단계 — 입력 ACL 변경과 재사용 경로 보호
+반면 현재 tree placement는 `MemoryAnalysisService`가 별도로 직접 호출하고 실패를 로그로 남긴다.
+Memory 색인 outbox가 tree placement까지 처리하는 것은 아니다. 따라서 기존 outbox 유지와
+향후 Topic 배치의 실패 복구 방법은 구분해서 결정한다.
 
-1. 확정한 변경자 정책에 따라 인증 사용자·대상 입력·새 공유 범위를 검증하는 use case를 만든다.
-   변경 전후 ACL, 변경자, 시각을 기록하고 동시 변경 충돌·중복 요청을 처리한다.
-2. 입력 ACL과 권한 revision을 하나의 transaction에서 변경한다. Memory와 원문은 같은 기준을
-   읽게 하며, 과도기 ACL 복제본이 필요하다면 같은 transaction에서 일관성을 보장한다.
-3. 검색, 원문 조회, HTTP 조회, 표시용 요약, 캐시, session, request receipt가 의존한 권한을
-   검증한다. 검색 결과를 읽은 뒤 ACL이 바뀌는 경우도 다룬다.
-4. 권한 철회 후 기존 provider conversation에 남은 비공개 문맥을 재사용하지 않는다. revision
-   불일치 시 해당 문맥을 가진 session을 비활성화하고 새 session에서 시작하는 방식을 우선 검토한다.
-   안전한 재사용 판단을 할 수 없는 기존 session도 같은 방식으로 처리한다.
-5. `ANSWER_READY` 등 저장 답변을 반환하거나 전달하기 직전에 재검증한다. 철회된 근거가 포함된
-   답변은 재전달하지 않으며, 기존 request key로 provider를 중복 호출하지 않는 결과 상태를 정한다.
-6. 진행 중인 답변은 권한 변경의 효력 시점을 기준으로 재검증하고, 안전성을 확인하지 못하면 폐기한다.
-   이미 사용자에게 전달된 내용을 소급 회수할 수 있다는 계약은 만들지 않는다.
+Topic 배치가 어떤 입력을 받아 무엇을 확정하는지 정하기 전에 새 outbox 종류나 Topic 색인 작업을
+추가하지 않는다. Topic 검색·색인 설계 역시 Topic 데이터 구조 확정 이후에 다룬다.
 
-**완료 조건:** C를 추가하면 같은 입력의 모든 원문·Memory를 읽고, 제거하면 이후 검색·원문·이전
-session·저장 답변에서 사용할 수 없다. 실패·동시 변경 시 부분 권한 변경이 없고, 10분 idle lease와
-요청 dedup이 유지된다. ACL 변경으로 Memory 내용이나 Topic 소속은 바뀌지 않는다.
+관련 코드:
 
-### 4단계 — Topic 저장과 안전한 조회 모델
+- [MemoryAnalysisService](../../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/analysis/MemoryAnalysisService.kt)
+- [MemoryIndexingOutboxProcessor](../../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/MemoryIndexingOutboxProcessor.kt)
+- [MemoryIndexingWorker](../../../../app/src/main/kotlin/com/homeassistant/app/services/MemoryIndexingWorker.kt)
 
-1. Topic의 내부 설명, Topic 내 분류, Memory 참조, 관련 Topic을 모델링한다. 분류는 Topic 내부
-   이름이며 독립된 하위 Topic이 아니다. Memory는 여러 Topic에 속할 수 있다.
-2. 양방향 관계는 정규화한 ID 쌍 등으로 중복을 막는다. 자기 연결·없는 대상·허가되지 않은 수정을
-   거절하되 순환은 허용한다. 소속·설명·관계 변경을 일관되게 저장한다.
-3. 사용자별 조회 결과에서 비공개 Memory와 빈 분류·빈 Topic을 제거한다. 비공개 ID·개수·내부
-   이름·관련 관계·오류 상세가 응답이나 답변 Agent 입력에 남지 않게 한다.
-4. 표시용 요약이 필요하면 허용된 Memory에서만 구성하고 권한 revision에 따라 재검증한다.
-   연결은 양 끝 Topic이 보인다는 이유만으로 노출하지 않는다. 안전한 유래를 확인할 수 없는
-   연결은 초기 외부 응답에서 생략한다. 내부 검색 점수도 외부 계약에 불필요하게 노출하지 않는다.
+## 5. 실행 순서 — 일곱 커밋
 
-**완료 조건:** 혼합 ACL Topic에서 사용자별 허용 사실만 나온다. 사용자별 Topic 복제 없이 복수 소속이
-동작하고, A–B–C–A 순환을 저장할 수 있다. 비공개 사실의 추가가 외부 메타데이터에 직접 나타나지 않는다.
+각 단계는 앞 단계의 검토와 커밋 이후에 진행한다. 동작 변경은 먼저 실패하는 집중 테스트로
+계약을 표현하고 구현한다. domain·application은 정책과 흐름을, adapter는 DB·모델 호출을 맡는다.
+각 커밋은 해당 범위의 검증을 통과해야 하며, 변경한 use case의 가장 가까운 README를 함께 갱신한다.
 
-### 5단계 — Agent 배치와 Topic 색인
+### 1 — 문서 범위와 규칙 확정
 
-1. 기존 tree placement를 Topic 배치로 대체한다. 새 Memory와 관련 후보 Topic 일부만 정리 Agent에
-   전달한다. 사용자 답변 Agent와 내부 정리 Agent의 권한·입력 범위를 별도로 적용한다.
-2. Agent는 기존 Topic 배치 또는 새 Topic·분류·관련 관계를 제안한다. application은 참조 범위,
-   수정 권한, 중복과 처리 누락을 검증한다. ACL 변경 제안은 받지 않는다.
-3. Memory commit과 배치 작업 예약을 원자적으로 처리한다. 배치 결과 commit과 Topic 색인 작업
-   예약도 원자적으로 처리하고 기존 outbox 방식으로 재시도·중복 실행·중단 복구를 지원한다.
-4. Topic 설명 변경·소속 변경·연결 변경의 동시 갱신 충돌을 검증한다. 전체 그래프를 매번 다시
-   쓰거나 사용자마다 전체 사본을 만들지 않는다.
-5. Topic 색인은 canonical Topic ID와 버전 중심의 재생성 가능한 파생 데이터로 둔다. 오래된 작업이
-   최신 색인을 덮어쓰지 않게 하고, 전체 Topic 재색인과 배치 누락 재처리 경로를 제공한다.
+불변 Source, ACL만 변경 가능한 Memory, Topic의 조직 관계, session 정책과 제외 범위를 기록한다.
+`commit` API와 기존 Memory 색인 outbox 조사 결과는 유지한다. 조사 결과가 별도 리팩터링이나
+새 outbox의 도입을 강제하지 않는다.
 
-**완료 조건:** 모델·색인 장애에도 저장된 Memory·원문이 남고 재시도로 배치와 검색을 복구한다.
-저장 완료와 검색 준비 완료를 구분해 상태를 확인할 수 있다. Topic 미배치·미색인 자료를 조용히
-검색 완료 상태로 취급하지 않는다.
+**완료 조건:** 아래 여섯 구현 커밋과 마지막 소비부 제거의 경계가 문서에 명시되어 있다.
 
-### 6단계 — Topic 검색부터 원문 확인까지 연결
+### 2 — Topic domain 모델
 
-1. 현재 사용자에게 허용된 Memory가 있는 Topic 후보를 검색한다. 내부 색인이 비공개 설명을
-   사용하더라도 사용자·답변 Agent로 보내기 전에 canonical 권한과 Topic 투영을 적용한다.
-2. 후보 Topic 안에서 질문과 관련된 Memory를 선택하고 복수 소속에 따른 중복을 제거한다.
-   ACL 필터로 후보가 사라질 때는 정해진 예산 안에서 보충 검색하고 한도에 도달하면 멈춘다.
-3. 선택한 Memory의 원문 버전·범위를 확인한다. 짧은 입력은 전체, 긴 입력은 해당 사실과 전제·예외를
-   확인할 범위부터 읽는다. 같은 버전의 겹치는 범위는 한 응답 안에서 다시 읽지 않는다.
-4. context를 단순 문자열 절단으로 만들지 않고 근거 단위로 예산을 배분한다. `확인됨`, `맥락 부족`,
-   `접근 불가` 등 의미 있는 결과로 처리하며, 내부 사유가 비공개 자료의 존재를 드러내지 않게 한다.
-5. 답변은 Memory와 확인한 원문 근거에 의존하게 한다. 같은 원문에서 나온 Memory 여러 개를 독립
-   증거 여러 개로 세지 않고, 맥락을 확보하지 못한 사실은 확정하지 않는다.
-6. `MemoryConversationContextProvider`와 prompt, 인증 HTTP 응답 흐름에 연결한다. 검색 없음과
-   색인·원문 조회 장애를 구분하고, 실패를 숨긴 채 Memory 본문만으로 답변을 확정하지 않는다.
+Topic ID·짧은 설명·분류별 Memory 참조·관련 Topic을 표현한다. 분류명은 Topic 안에서만 의미를
+가지며, 한 Memory의 복수 Topic 소속을 허용한다. 관련 관계는 양방향이며 순환을 허용한다.
+중복·자기 연결과 참조의 불변 조건을 모델 테스트로 확정한다. 존재·수정 권한 확인 중 저장된
+상태가 필요한 부분은 이후 application·저장 계약에서 다룬다.
 
-**완료 조건:** Memory에 빠진 예외가 원문에 있으면 답변에 반영한다. Topic 설명만으로 답하지 않으며,
-접근 불가·누락·예산 초과는 안전한 제한 응답으로 끝난다. 기본 경로에 그래프 전체 순회는 없다.
+**완료 조건:** 실제 모델로 설계 예시와 순환 그래프를 표현할 수 있다. 사용자별·ACL 조합별
+Topic 복제나 필수 계층을 도입하지 않고, Topic 변경이 Memory와 Source를 수정하지 않는다.
 
-### 7단계 — 기존 데이터 전환과 HTTP 전환
+### 3 — Topic port·영속화·스키마
 
-1. 먼저 DB 복사본으로 dry-run 보고서를 만든다. 입력 묶음·버전 복원 가능 여부, ACL 불일치,
-   다중 입력 근거, 원문 누락, 고아 참조와 Topic 배치 대상을 집계한다.
-2. 전환은 재실행 가능한 추가 스키마·매핑 작업으로 만든다. 기존 Memory ID·본문·시각·ACL·evidence를
-   변경하지 않는다. 과거 `childrenIds`는 참고 자료로만 보며 기계적으로 Topic 계층으로 바꾸지 않는다.
-3. 입력을 확정할 수 없는 자료는 미해결 목록에 남기고 기존 권한을 유지한다. 임의의 입력 묶음이나
-   새로운 공유 범위를 부여하지 않는다. 해결 또는 명시적인 제외 결정 전에는 해당 자료의 전환을 끝내지 않는다.
-4. Topic을 구성·색인한 뒤 기존 검색과 새 검색을 같은 질문·사용자 권한으로 비교한다. 외부 응답은
-   기존 경로를 유지한 상태에서 누락·권한 노출·원문 도달 여부를 먼저 검증한다.
-5. 인증된 Topic 조회 API와 최소 읽기 화면을 연결한다. 기존 tree API·화면은 전환 기간 보존하되
-   현재 ACL을 적용한다. 제거 시점과 호출자 전환을 기록하며 그래프를 tree인 것처럼 표현하지 않는다.
-6. 배포 전 코드·DB·원문·색인 복구 절차를 점검한다. 운영 작업을 실행할 때는 `ssh homeserver`로
-   접속해 hostname `HOMESERVER`를 확인한다. 로컬에서 production 서비스·managed runtime을 시작하지 않는다.
-7. 새 입력이나 ACL 변경을 받기 전의 되돌리기와 받은 후의 복구를 구분한다. ACL 변경 이후에는
-   옛 ACL·session을 복원하는 단순 binary rollback을 허용하지 않는다. 현재 권한과 신규 기록을
-   보존할 수 없으면 쓰기를 중지하고 복구 또는 수정 배포한다.
-8. 안정화와 복구 검증 후 `childrenIds`, 기존 placement·자식 확장과 tree 전용 코드를 제거한다.
-   원문·Memory·이력은 정리 대상에 넣지 않는다.
+application에 필요한 저장·조회 port를 두고 persistence adapter와 새 DB용 스키마를 구현한다.
+분류·복수 소속·양방향 관계를 저장하고 조회한다. 없는 대상·중복·자기 연결과 원자적 변경을
+저장 계약으로 검증한다. `DatabaseFactory`에 테이블을 등록하며 기존 DB migration은 만들지 않는다.
 
-**완료 조건:** 전환 전후 Memory·evidence·UserId의 보존과 ACL 동등성을 대조하고, 재실행해도 중복이
-없다. 새 HTTP 기본 경로로 원문에 근거한 응답이 가능하며 복구 후에도 철회된 권한이 되살아나지 않는다.
+**완료 조건:** 임시 DB 테스트에서 관계와 순환을 왕복 복원하고, 변경 실패 시 일부 관계만 남지
+않는다. 모델 호출을 DB transaction에 넣지 않는다. 운영 DB나 로컬 관리 런타임을 시작하지 않는다.
 
-### 8단계 — 제한된 추가 탐색과 Topic 정리
+### 4 — Topic 전용 배치 use case와 복구 계약
 
-첫 릴리스 안정화 이후 별도 변경으로 진행한다.
+새 배치 use case를 만들고 fake port 테스트로 정상 흐름과 실패 흐름을 먼저 고정한다. Memory의
+Topic·분류 소속과 Topic 연결 제안을 받아 존재·권한·중복·처리 누락을 확인하며 순환 검사는 하지
+않는다. Topic 전체의 공유 ACL을 만들거나 Agent에게 Memory ACL 변경 권한을 부여하지 않는다.
+배치 입력·확정 단위·호출 시점·실패 결과·재처리 방법을 정하고 README에 기록한다.
 
-- 질문 일부의 근거 부족·조건 불명확·충돌 시에만 관련 Topic, 같은 입력의 다른 Memory, 그 소속
-  Topic으로 확장한다. 방문한 ID·원문 범위를 기록하고 횟수·정보량 제한을 적용한다.
-- 큰 Topic의 분할과 유사 Topic 병합은 후보 제안, 검증, 원자 반영으로 나눈다. 변경 전 상태를
-  기록해 잘못된 정리를 되돌릴 수 있게 하고 관련 색인도 재생성한다.
-- 수정 권한·동시 변경 충돌·중복 edge·자기 연결을 검증한다. 순환을 오류로 취급하지 않는다.
+**완료 조건:** fake 테스트로 성공, 거절, 저장 실패와 재시도의 결과를 설명할 수 있다. 기존 Memory
+색인 outbox와 Topic 배치 복구를 구분하고, 새 복구 장치가 필요하면 이 계약에 근거해 최소한으로 구현한다.
 
-**완료 조건:** 순환 그래프에서 탐색이 끝나며, 분할·병합 후 Memory ID·내용·근거·ACL과 필요한 복수
-소속이 유지된다. 원문을 이미 읽은 경우 같은 사실을 다시 읽는 것만으로 예산을 소비하지 않는다.
+### 5 — LLM adapter와 prompt
 
-## 5. 검증 계획과 작업 단위
+확정된 배치 port에 모델 adapter와 prompt를 구현한다. 모델 응답의 해석·형식 오류는 adapter가,
+배치 정책 검증은 application이 맡는다. 비공개 Memory·Topic 정보를 사용자에게 노출하는 새
+검색·표시 경로를 만들지 않는다.
 
-각 단계는 독립적으로 검토 가능한 변경으로 나눈다. domain 규칙 → application 흐름 → persistence와
-외부 adapter → HTTP·조립 → 문서 순으로 구현하되, 정상 흐름과 실패 복구를 함께 완료한다.
-framework·SQL·모델 응답 형식은 adapter에 두며, 정책·한도·검증은 domain/application에 둔다.
+**완료 조건:** 모델 호출을 대체한 테스트로 응답 해석과 실패 처리를 검증하고, 분류별 참조·복수
+소속·양방향 관련 관계를 제안할 수 있다. 기존 tree 배치 prompt와 혼합하지 않는다.
 
-| 검증 범위 | 핵심 회귀 사례 |
+### 6 — 새 배치 연결과 기존 Memory tree placement 삭제
+
+`MemoryAnalysisService`와 `ApplicationServicesFactory`에 새 배치 및 정해진 복구 경로를 연결한다.
+기존 tree placement 전용 service·port·모델·validator·bootstrap·prompt와 조립을 제거한다.
+기존 클래스에 Topic 분기를 덧붙이지 않는다. Memory 저장과 색인 outbox의 원자성·재시도를 유지한다.
+
+**완료 조건:** 입력 분석 이후 Topic 배치가 호출되고 실패 시 4단계 계약대로 복구할 수 있다.
+기존 Memory tree placement는 호출 경로와 구현에서 제거된다. 아직 남은 `childrenIds` 소비부는
+다음 단계에서 함께 제거하며 이 중간 커밋도 컴파일과 관련 테스트를 통과한다.
+
+### 7 — `childrenIds`와 legacy 소비부 완전 제거
+
+Memory의 `childrenIds`, 저장 컬럼, 직렬화·복원 코드와 관련 테스트를 제거한다. 이를 사용하던
+검색 자식 확장과 `VisibleMemoryTree`·HTTP tree API·tree 페이지 및 이동 링크를 함께 제거한다.
+공유 인증 asset은 다른 페이지에서 사용하는 제공 경로를 유지한다. Topic 검색을 구현하기 전까지
+Memory 직접 검색을 유지하고 answer context에서 자식 확장만 제거한다. 따라서 기존 tree 화면과
+API는 더 이상 제공하지 않으며, 직접 조회·검색은 현재 ACL을 확인하는 경계를 유지한다.
+
+이는 새 Topic 검색 알고리즘·Memory 선택 알고리즘·Topic UI·표시 API를 구현하는 단계가 아니다.
+삭제한 관계를 흉내 내는 빈 tree나 모든 Memory를 루트로 나열하는 호환 tree를 반환하지 않는다.
+참조를 남겨 빌드를 깨뜨리지 않고, 삭제된 tree 기능으로 이동하는 경로나 호출도 정리한다.
+conversation context의 본문 구성·예산과 session 정책은 유지한다.
+
+**완료 조건:** 실행 코드에 `childrenIds`와 tree 전용 소비부가 남지 않고 전체 변경이 컴파일된다.
+관련 회귀 테스트가 통과하며 새 Topic 검색·화면은 후속 작업으로 남아 있음을 명확히 기록한다.
+
+## 6. 보류·제외 범위
+
+| 항목 | 현재 처리 |
 |---|---|
-| 입력·근거 | 하나의 입력에서 여러 사실, 조건·예외 보존, Kakao 겹치는 재수입, 원문 개정과 alias, 같은 bytes의 다른 ACL |
-| 권한 | 추가·철회·PUBLIC 전환, 무권한 변경, Memory와 원문 동등 권한, 혼합 ACL Topic 설명·분류·연결 비노출 |
-| 동시성·재사용 | 검색 후 철회, 모델 응답 중 철회, 오래된 session·`ANSWER_READY`, 동일 request 재전달, 10분 만료 |
-| Topic | 복수 소속, 양방향 중복 제거, 자기 연결·고아 참조 거절, 순환 허용, 모델의 잘못된 참조 |
-| 내구성 | 분석·commit·배치·색인 각 지점 실패, crash 후 재처리, 오래된 작업의 덮어쓰기 차단 |
-| 검색·응답 | Topic 후보 누락, 원문 속 예외, 버전 충돌, 동일 원문 중복 읽기, context 한도와 근거 부족 |
-| 전환 | 기존 ID·ACL·근거 보존, 미해결 자료 보고, 재실행, 신규 기록·권한 철회 이후 복구 |
+| Source repository의 dedup·alias·재입력 흐름 수정 | 하지 않음. 불변성 합의를 이유로 이 작업을 다시 추가하지 않음 |
+| Source 버전·개정 API | 도입하지 않음 |
+| 기존 데이터 migration·backfill·호환 전환 | 새 DB 전제로 제외 |
+| Topic 검색·Memory 선택·추가 탐색 | Topic 데이터 구조 확정 이후에 별도 계획 |
+| conversation context·원문 확인 흐름 변경 | 현재 구현 유지. 설계 문서의 최종 목표와 현재 구현 범위를 구분 |
+| Topic 화면·표시 API | 지금 고려하지 않음 |
+| ACL 변경 API와 Source 열람 권한 연결 | ACL 가변성은 설계에 반영하되 저장·변경 계약은 미정. 별도 ACL 모델을 선행 조건으로 강제하지 않음 |
+| provider 문맥·저장 답변의 철회 정책 | 살아 있는 session에서는 계속 사용. ACL 변경에 따른 session 강제 종료·기존 답변 차단·session 무효화용 revision 도입 제외 |
+| 자동 분할·병합·대규모 성능 검증 | 후속 단계. 사용자 1만 명이라는 설계 목표를 이번 구현 완료로 표시하지 않음 |
 
-변경한 테스트 클래스부터 실행한 뒤 관련 module test로 넓힌다. 예를 들어 domain 규칙 변경은
-`gradlew.bat :domain:test`, application 흐름은 `:application:test`, 저장·HTTP 연결은
-`:adapter-outbound:test :adapter-inbound:test :app:test`로 확인한다. 마지막 통합 변경에서
-`gradlew.bat test`를 실행한다. 모델·색인 장애는 fake와 임시 DB로 재현하며 테스트를 위해 로컬 운영
-서비스를 시작하지 않는다. 새 use case와 흐름이 바뀐 기존 use case의 가장 가까운 README를 함께 갱신한다.
+### 살아 있는 session의 문맥 재사용
 
-### 검색 품질과 사용자 1만 명 검증
+2026-10-07 합의: session이 살아 있는 동안은 이미 전달된 문맥과 생성된 답변을 계속 사용한다.
+권한 철회가 발생해도 session을 강제 종료하거나 기존 문맥·답변을 차단하지 않는다. 새 Memory
+검색과 원문 조회에는 현재 ACL을 적용한다.
 
-1단계에서 정한 데이터셋으로 기존 경로와 새 경로를 비교한다. 전체 등록 사용자 1만 명과 동시 요청
-1만 건을 혼동하지 않는다. Memory·Topic·입력 수, 긴 원문 비율, PUBLIC/RESTRICTED 비율과 독자 수,
-동시 질문·입력·권한 변경 수를 명시한다.
+기존 10분 idle lease를 유지한다. session이 만료·종료되면 그 문맥을 새 session에 넘기지 않고
+현재 ACL에 따라 정보를 다시 조회한다. 이미 전달된 메시지나 사용자가 읽은 정보는 소급 회수하지
+않는다. 이 정책을 이유로 request dedup을 제거하거나 같은 요청을 provider에 중복 전송하지 않는다.
 
-- 품질: 정답에 필요한 Memory·원문 회수율, 조건·예외 반영, 근거 없는 단정, 비공개 정보 노출.
-- 비용: Topic·Memory 후보 수, DB 조회·반환량, 원문 읽기량, 모델 호출·입출력량, 전체 응답 p50/p95.
-- 운영: 배치·색인 대기와 재시도량, ACL 변경 반영 시간, session 폐기와 저장 답변 차단.
+application `UserId`, 요청 dedup, 10분 conversation idle lease를 유지한다. Slack 기능은 추가하지
+않으며 [Memory DB 조회 최적화](../../p2/memory-query-performance.md)는 사용자 학습 과제로 남긴다.
 
-허용되지 않은 정보 노출은 0건이어야 한다. 지연·비용 목표와 품질 허용치는 측정 전에 기록하고,
-통과한 자료량·동시성 범위만 지원 근거로 남긴다. 검증 전에는 1만 명 지원 완료로 표시하지 않는다.
-병목 해결이 보류된 사용자 학습 과제와 겹치면 결과를 남기고 해당 작업의 진행 여부를 별도로 정한다.
+## 7. 검증과 완료 조건
 
-## 6. 착수 순서와 최종 완료 조건
+- [ ] Topic 데이터 구조·저장 관계·변경 계약 확정.
+- [x] 현재 `commit`과 outbox 흐름 조사. API 변경안 채택은 미정.
+- [ ] Topic 모델·저장소·서비스 조립 구현.
+- [ ] 기존 tree placement 삭제와 Topic 전용 배치 구현.
+- [ ] legacy 자식 확장·tree 소비부 정리와 함께 `childrenIds` 완전 제거. 새 검색·UI 구현 제외.
+- [ ] Topic 변경이 불변 Source와 Memory content·근거·ACL을 변경하지 않는 회귀 검증.
+- [ ] 복수 소속·양방향 관계·순환 허용·자기 연결·중복·없는 대상·저장 실패 검증.
+- [ ] 변경한 use case의 가장 가까운 README와 실제 검증 결과 기록.
 
-의존 순서는 **1 → 2 → 3 → 4 → 5 → 6 → 7**, 후속 확장은 **8**이다. 7단계의 데이터 조사와
-dry-run 준비는 2단계부터 수행하되 실제 전환은 기본 경로의 검증 이후에 한다.
+코드 변경 시 관련 테스트 클래스부터 실행하고 해당 module test로 넓힌다. 모델 호출은 fake,
+저장은 임시 DB로 검증한다. 원자 저장이나 outbox를 변경한다면 기존 롤백·중복 방지·재시도 테스트를
+함께 확인한다. 문서 수정만으로 application 테스트나 운영 서비스를 실행하지 않는다.
 
-첫 작업은 **입력 ID·버전·ACL 권위·재수입 계약과 legacy 예외 사례를 확정하는 것**이다. 이를 건너뛰고
-Topic 저장부터 만들면 이후 권한 변경과 evidence 전환에서 다시 구조를 바꾸게 된다.
+## 현재 상태 (2026-10-07)
 
-- [ ] 구현 전 정책·예산·성능 기준과 legacy 예외 처리 확정.
-- [ ] 입력·Memory·원문의 현재 권한 일치와 버전 근거 보존.
-- [ ] Topic 기반 검색, 안전한 context, 원문 확인 후 응답 연결.
-- [ ] 배치·색인 실패의 내구성 있는 복구와 상태 확인.
-- [ ] 기존 데이터 보존·전환·복구 및 HTTP 호출자 전환 검증.
-- [ ] 요청 dedup·10분 idle lease·frozen Slack 회귀 검증.
-- [ ] 품질·비용·규모 검증 결과와 실제 지원 범위 기록.
-- [ ] use-case README와 운영 절차, 실제 변경·검증·남은 제약 기록.
-
-첫 릴리스 완료 시에도 8단계는 후속 작업으로 남는다. 이 계획 전체를 완료 처리할 때는 8단계를
-구현하거나 별도 TODO 문서로 이관하고 링크를 남긴다.
-
-## 현재 상태 (2026-10-06)
-
-설계 문서와 현재 코드·use-case README를 대조해 실행 계획을 작성했다. 구현·데이터 전환·운영
-조회·배포·성능 측정은 수행하지 않았다.
+사용자 피드백 1~11번을 반영해 설계 문서와 계획 범위를 조정했다. `commit` 호출부·구현·기존 테스트와
+outbox processor·worker 연결을 읽어 조사 결과를 기록했다. 살아 있는 session의 기존 문맥·답변
+재사용을 허용하는 정책과 일곱 커밋의 실행 순서를 반영했다. 마지막 커밋의 legacy 소비부 정리는
+필수 제거 범위이며 새 Topic 검색·UI 개발은 보류임을 명시했다. 문서 단계의 `git diff --check`를
+통과했으며 baseline `:domain:test :application:test`는 통과했다(Gradle up-to-date). 애플리케이션
+코드 변경, DB 초기화·migration, 운영 조회·배포는 수행하지 않았다.

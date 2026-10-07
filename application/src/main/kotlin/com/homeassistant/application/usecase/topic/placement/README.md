@@ -44,8 +44,9 @@ transaction에서 다시 확인해 겹친 실행이 Topic을 중복 생성하지
 중단되어도 이미 소속된 Memory는 다음 조회에서 제외된다.
 
 별도 배치 outbox 없이 canonical Memory와 소속 유무를 복구 기준으로 사용한다. 기존 Memory 색인
-outbox는 변경하지 않는다. `processAvailable()`은 재시도 진입점이며 주기적 caller 연결은 6단계에서
-추가한다. 같은 batch가 계속 실패하면 반복 선택될 수 있으며 자동 격리·분할은 현재 제공하지 않는다.
+outbox는 변경하지 않는다. `processAvailable()`은 분석 저장 직후와 앱의 `TopicPlacementWorker`에서
+호출한다. worker는 시작 시 즉시 실행하고, 한 실행이 끝난 뒤 30초 간격으로 반복한다. 종료 시
+실행 중인 coroutine을 취소한다. 같은 batch가 계속 실패하면 반복 선택될 수 있으며 자동 격리·분할은 현재 제공하지 않는다.
 기존 소속 재정리나 Topic 설명 수정은 이 초기 배치 작업의 범위가 아니다.
 
 모델 adapter는 입력을 지시문과 분리한 JSON으로 전달하고 기존 Topic은 `existing:<id>`, 신규

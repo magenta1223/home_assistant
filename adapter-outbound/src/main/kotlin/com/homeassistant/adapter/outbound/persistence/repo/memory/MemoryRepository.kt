@@ -7,8 +7,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTa
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.application.port.output.memory.read.MemoryReader
-import com.homeassistant.application.port.output.memory.placement.MemoryTreeAttachRequest
-import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
 import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
@@ -26,7 +24,7 @@ import java.time.Clock
 internal class MemoryRepository(
     private val db: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : MemoryReader, CanonicalMemoryBatchWriter, MemoryTreeStore {
+) : MemoryReader, CanonicalMemoryBatchWriter {
 
     override fun getMemories(userId: UserId): List<Memory> = transaction(db) {
         MemoryTable.selectAll()
@@ -117,60 +115,6 @@ internal class MemoryRepository(
                 it[attempts] = 0
                 it[lastError] = null
                 it[updatedAt] = now
-            }
-        }
-    }
-
-    override fun attachChildren(request: MemoryTreeAttachRequest): Unit = transaction(db) {
-        if (request.parentByChild.isEmpty()) return@transaction
-
-        val all = getMemories(request.userId).associateBy { it.id }
-        request.parentByChild.forEach { (childMemoryId, parentMemoryId) ->
-            require(parentMemoryId != childMemoryId) {
-                "A memory cannot contain itself as a child"
-            }
-            require(all.containsKey(parentMemoryId)) {
-                "Memory parent does not exist: $parentMemoryId"
-            }
-            require(all.containsKey(childMemoryId)) {
-                "Memory does not exist: $childMemoryId"
-            }
-            val existingContainer = all.values.firstOrNull {
-                it.id != parentMemoryId && childMemoryId in it.childrenIds
-            }
-            require(existingContainer == null) {
-                "Memory already belongs to another parent: $childMemoryId"
-            }
-        }
-
-        val finalChildren = all.mapValues { (_, memory) -> memory.childrenIds.toMutableList() }.toMutableMap()
-        request.parentByChild.forEach { (childMemoryId, parentMemoryId) ->
-            val children = finalChildren.getValue(parentMemoryId)
-            if (childMemoryId !in children) {
-                children += childMemoryId
-            }
-        }
-
-        val visiting = mutableSetOf<Int>()
-        val visited = mutableSetOf<Int>()
-        fun verifyAcyclic(memoryId: Int) {
-            if (memoryId in visited) return
-            require(visiting.add(memoryId)) {
-                "Placement assignments would create a cycle at memory=$memoryId"
-            }
-            finalChildren[memoryId].orEmpty().forEach(::verifyAcyclic)
-            visiting.remove(memoryId)
-            visited += memoryId
-        }
-        all.keys.forEach(::verifyAcyclic)
-
-        request.parentByChild.values.distinct().forEach { parentId ->
-            val parent = all.getValue(parentId)
-            val children = finalChildren.getValue(parentId)
-            if (children != parent.childrenIds) {
-                MemoryTable.update({ MemoryTable.id eq parentId }) {
-                    it[childrenIds] = children.encodeToString()
-                }
             }
         }
     }

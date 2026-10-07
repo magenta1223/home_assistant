@@ -5,7 +5,6 @@ import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
-import com.homeassistant.application.port.output.memory.placement.MemoryTreeStore
 import com.homeassistant.application.port.output.identity.UserStore
 import com.homeassistant.application.port.output.memory.answer.PendingRegistrationQuestionStore
 import com.homeassistant.application.port.output.topic.TopicMaintenanceStore
@@ -16,7 +15,6 @@ data class RepositoryStores(
     val canonicalMemoryBatchWriter: CanonicalMemoryBatchWriter,
     val memoryIndexingOutbox: MemoryIndexingOutbox,
     val canonicalMemories: MemoryReader,
-    val memoryTree: MemoryTreeStore,
     val topicMaintenance: TopicMaintenanceStore,
     val topicPlacement: TopicPlacementStore,
     val memoryConversationSessions: MemoryConversationSessionStore,

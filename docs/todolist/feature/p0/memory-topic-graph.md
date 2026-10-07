@@ -274,6 +274,14 @@ Topic 전용 모델 adapter·prompt·명시적 JSON 응답 계약을 구현했�
 잘못된 JSON·참조 거절, 입력 크기 제한과 취소 전파를 테스트했다. 테스트를 먼저 추가해 미구현
 타입으로 실패하는 것을 확인한 뒤 구현하여 집중 adapter 테스트를 통과했다. 실제 모델은 호출하지 않았다.
 
+### 6단계 완료 (2026-10-07)
+
+분석 commit 이후 Topic 배치를 연결하고, 새 입력 없이도 미배치 Memory를 재처리하는 worker를
+앱 lifecycle에 연결했다. 기존 Memory tree 배치 service·port·extractor·validator·bootstrap과
+쓰기 구현을 삭제했다. 배치 실패가 저장 성공을 취소하지 않는지, worker가 실패 후 재실행하고
+종료 시 취소되는지, 실제 저장소에서 재시작 후 중복 처리되지 않는지 검증했다.
+application 전체, 관련 Memory/Topic 저장소 테스트와 app 전체 테스트가 통과했다.
+
 ### 3단계 진행 (2026-10-07)
 
 TopicMaintenanceStore port, 새 DB용 Topic·소속·관계 테이블, repository와 factory 등록을 구현했다.

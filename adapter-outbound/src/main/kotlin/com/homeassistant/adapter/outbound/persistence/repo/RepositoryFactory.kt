@@ -19,7 +19,6 @@ object RepositoryFactory {
             canonicalMemoryBatchWriter = canonicalMemories,
             memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
-            memoryTree = canonicalMemories,
             topicMaintenance = topics,
             topicPlacement = topics,
             memoryConversationSessions = MemoryConversationSessionRepository(db),

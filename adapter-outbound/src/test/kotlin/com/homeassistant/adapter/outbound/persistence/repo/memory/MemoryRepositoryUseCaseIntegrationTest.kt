@@ -2,17 +2,17 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.port.output.memory.placement.MemoryPlacementDecision
-import com.homeassistant.application.port.output.memory.placement.MemoryPlacementResponse
 import com.homeassistant.application.port.output.memory.search.MemoryIndex
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
-import com.homeassistant.application.usecase.memory.placement.MemoryPlacementService
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
+import com.homeassistant.application.usecase.topic.placement.TopicPlacementService
+import com.homeassistant.application.port.input.topic.placement.TopicPlacementRunResult
+import com.homeassistant.application.port.output.topic.*
+import kotlin.test.assertIs
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -74,28 +74,22 @@ class MemoryRepositoryUseCaseIntegrationTest {
     }
 
     @Test
-    fun `placement reads and attaches through the real repository without caller transaction`() = runBlocking {
-        withRepositories("memory-placement-integration") { stores ->
-            val root = stores.saveMemory(member, "root", MemoryAccess.PUBLIC)
-            val incoming = stores.saveMemory(member, "incoming", MemoryAccess.PUBLIC)
-            val placement = MemoryPlacementService(
-                memoryReader = stores.canonicalMemories,
-                extractor = {
-                    MemoryPlacementResponse(
-                        decisions = listOf(MemoryPlacementDecision(incoming.id, root.id)),
-                    )
-                },
-                tree = stores.memoryTree,
-            )
-
-            placement.place(MemoryPlaceRequest(member, listOf(incoming)))
-
-            val storedRoot = stores.canonicalMemories.getMemories(member)
-                .single { it.id == root.id }
-            assertEquals(listOf(incoming.id), storedRoot.childrenIds)
+    fun `topic placement uses real storage and restart has no duplicate work`() = runBlocking {
+        withRepositories("topic-placement-integration") { stores ->
+            val memory = stores.saveMemory(member, "incoming", MemoryAccess.restricted(listOf(UserId("other"))))
+            val before = stores.canonicalMemories.getMemories(UserId("other"))
+            val placement = TopicPlacementService(stores.topicPlacement, {
+                TopicWriteBatch(
+                    creations = listOf(TopicCreation("new", "Topic")),
+                    memberships = listOf(TopicMembershipAddition(TopicReference.Created("new"), "Facts", listOf(memory.id))),
+                )
+            })
+            assertIs<TopicPlacementRunResult.Placed>(placement.processAvailable())
+            val restarted = TopicPlacementService(stores.topicPlacement, { error("no duplicate model call") })
+            assertEquals(TopicPlacementRunResult.Idle, restarted.processAvailable())
+            assertEquals(before, stores.canonicalMemories.getMemories(UserId("other")))
         }
     }
-
     private inline fun <T> withRepositories(prefix: String, block: (RepositoryStores) -> T): T {
         val databasePath = Files.createTempFile(prefix, ".db")
         return try {

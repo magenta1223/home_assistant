@@ -8,8 +8,8 @@ import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUn
 import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
 import com.homeassistant.application.port.input.memory.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
-import com.homeassistant.application.port.input.memory.placement.MemoryPlaceRequest
-import com.homeassistant.application.port.input.memory.placement.MemoryPlacement
+import com.homeassistant.application.port.input.topic.placement.TopicPlacement
+import com.homeassistant.application.port.input.topic.placement.TopicPlacementRunResult
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
@@ -30,7 +30,7 @@ class MemoryAnalysisService(
     private val sourceRecords: SourceRecordRepository,
     private val memorySaver: MemoryProposalsPersister,
     private val accessPolicy: UserAccessPolicy,
-    private val memoryPlacement: MemoryPlacement = MemoryPlacement.NoOpMemoryPlacement,
+    private val topicPlacement: TopicPlacement = TopicPlacement { TopicPlacementRunResult.Idle },
     private val memoryIndexing: MemoryIndexingOutboxProcessor? = null,
     private val referenceInterpreter: SourceReferenceInterpreter? = null,
 ) : MemoryAnalysis {
@@ -70,13 +70,12 @@ class MemoryAnalysisService(
                 ),
             )
         }
-        val savedMemories = requireAvailable {
+        requireAvailable {
             memorySaver.persist(userId, proposals, recordsToAnalyze.map { it.id })
         }
         runCatching { memoryIndexing?.processAvailable() }
             .onFailure { error -> log.warn("Memory indexing deferred", error) }
-        runCatching { memoryPlacement.place(MemoryPlaceRequest(userId, savedMemories)) }
-            .onFailure { error -> log.warn("Memory tree placement deferred", error) }
+        processTopicPlacement()
         return MemoryAnalysisResult(
             sourceType = parsedSource.source.type,
             sourceName = parsedSource.source.name,
@@ -88,6 +87,19 @@ class MemoryAnalysisService(
             memoryCount = proposals.size,
             memories = proposals,
         )
+    }
+
+    private suspend fun processTopicPlacement() {
+        try {
+            val result = topicPlacement.processAvailable()
+            if (result is TopicPlacementRunResult.Failed) {
+                log.warn("Topic placement deferred stage={}", result.stage)
+            }
+        } catch (error: CancellationException) {
+            throw error
+        } catch (error: Exception) {
+            log.warn("Topic placement deferred category={}", error.javaClass.simpleName)
+        }
     }
 
     private fun requireAuthorized(userId: UserId) {

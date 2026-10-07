@@ -16,5 +16,9 @@ cycles are allowed. Reads return existing topics only, and relation reads includ
 Membership ordering is not a ranking contract. The storage adapter owns transactions and performs no
 model calls or changes to Memory, Source, or indexing outbox state.
 
-This contract supports retrying a completed write proposal. Durable discovery and resumption of
-unfinished placement belong to the subsequent placement use case; this port alone does not provide it.
+This contract supports retrying a completed write proposal. `TopicPlacementStore` additionally discovers
+bounded canonical memories with no membership and conditionally applies a batch in one transaction.
+All scoped memories must still exist and be unplaced. Full overlap returns AlreadyPlaced; partial overlap
+returns Stale without writing. Pending memories remain discoverable after a failed write or restart.
+Its candidate window is a bounded list of recent Topic descriptions, not semantic search. Both ports
+are trusted maintenance boundaries. The placement use-case README describes orchestration and recovery.

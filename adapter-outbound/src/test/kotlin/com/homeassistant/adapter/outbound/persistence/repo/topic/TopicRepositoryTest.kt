@@ -23,8 +23,69 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFails
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
+import kotlin.test.assertIs
 
 class TopicRepositoryTest {
+    @Test
+    fun `unplaced recovery survives restart and excludes successful placement`() = withDatabase { db ->
+        val first = createMemory(db, "first", MemoryAccess.restricted(listOf(UserId("other"))))
+        val second = createMemory(db, "second")
+        val repository = TopicRepository(db)
+        assertEquals(listOf(first), repository.loadUnplaced(1).map { it.id })
+        val batch = placementBatch("recovery", first)
+        transaction(db) {
+            exec("""
+                CREATE TRIGGER fail_membership BEFORE INSERT ON topic_memberships
+                BEGIN SELECT RAISE(ABORT, 'forced membership failure'); END
+            """.trimIndent())
+        }
+        assertFails { repository.commitIfUnplaced(setOf(first), batch) }
+        transaction(db) { exec("DROP TRIGGER fail_membership") }
+
+        val restarted = TopicRepository(db)
+        assertEquals(listOf(first, second), restarted.loadUnplaced(10).map { it.id })
+        assertIs<TopicPlacementCommitResult.Placed>(restarted.commitIfUnplaced(setOf(first), batch))
+        assertEquals(listOf(second), TopicRepository(db).loadUnplaced(10).map { it.id })
+        assertEquals(TopicPlacementCommitResult.AlreadyPlaced, restarted.commitIfUnplaced(setOf(first), batch))
+        assertEquals(1L, transaction(db) { TopicTable.selectAll().count() })
+    }
+
+    @Test
+    fun `overlapping batch is stale without partial writes and candidates are bounded newest first`() = withDatabase { db ->
+        val first = createMemory(db, "first")
+        val second = createMemory(db, "second")
+        val repository = TopicRepository(db)
+        repository.commitIfUnplaced(setOf(first), placementBatch("first", first))
+
+        val stale = repository.commitIfUnplaced(setOf(first, second), placementBatch("overlap", first, second))
+
+        assertEquals(TopicPlacementCommitResult.Stale, stale)
+        assertEquals(1L, transaction(db) { TopicTable.selectAll().count() })
+        assertEquals(listOf(second), repository.loadUnplaced(10).map { it.id })
+        val placed = assertIs<TopicPlacementCommitResult.Placed>(
+            repository.commitIfUnplaced(setOf(second), placementBatch("second", second)),
+        )
+        assertEquals(listOf(placed.writeResult.createdTopicIds.getValue("second")), repository.loadCandidates(1).map { it.id })
+    }
+
+    @Test
+    fun `conditional writer rejects missing memories mismatched coverage and empty scope`() = withDatabase { db ->
+        val memoryId = createMemory(db, "one")
+        val repository = TopicRepository(db)
+        assertFailsWith<IllegalArgumentException> {
+            repository.commitIfUnplaced(setOf(memoryId), placementBatch("foreign", memoryId, 999))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            repository.commitIfUnplaced(setOf(memoryId, 999), placementBatch("missing", memoryId, 999))
+        }
+        assertFailsWith<IllegalArgumentException> {
+            repository.commitIfUnplaced(emptySet(), TopicWriteBatch())
+        }
+        assertFailsWith<IllegalArgumentException> { repository.loadUnplaced(0) }
+        assertFailsWith<IllegalArgumentException> { repository.loadCandidates(0) }
+        assertEquals(0L, transaction(db) { TopicTable.selectAll().count() })
+    }
+
     @Test
     fun `atomic creation supports grouped multi topic memories reversed links cycles and retry`() = withDatabase { db ->
         val memoryId = createMemory(db, "public")
@@ -165,6 +226,10 @@ class TopicRepositoryTest {
     }
 
     private fun source(name: String) = SourceDescriptor("test", name)
+    private fun placementBatch(key: String, vararg ids: Int) = TopicWriteBatch(
+        creations = listOf(TopicCreation(key, "Topic $key")),
+        memberships = listOf(TopicMembershipAddition(created(key), "Facts", ids.toList())),
+    )
     private fun created(key: String) = TopicReference.Created(key)
     private fun link(first: String, second: String) = TopicRelationAddition(created(first), created(second))
 

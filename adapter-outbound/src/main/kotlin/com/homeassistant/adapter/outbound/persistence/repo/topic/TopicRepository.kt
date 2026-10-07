@@ -10,7 +10,39 @@ import com.homeassistant.domain.topic.TopicRelation
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class TopicRepository(private val db: Database) : TopicMaintenanceStore {
+internal class TopicRepository(private val db: Database) : TopicMaintenanceStore, TopicPlacementStore {
+    override fun loadUnplaced(limit: Int): List<TopicPlacementMemory> = transaction(db) {
+        require(limit > 0) { "limit must be positive" }
+        MemoryTable.select(MemoryTable.id, MemoryTable.content).where {
+            notExists(TopicMembershipTable.select(TopicMembershipTable.memoryId).where {
+                TopicMembershipTable.memoryId eq MemoryTable.id
+            })
+        }.orderBy(MemoryTable.id).limit(limit).map { TopicPlacementMemory(it[MemoryTable.id], it[MemoryTable.content]) }
+    }
+
+    override fun loadCandidates(limit: Int): List<TopicCandidate> = transaction(db) {
+        require(limit > 0) { "limit must be positive" }
+        TopicTable.selectAll().orderBy(TopicTable.id, SortOrder.DESC).limit(limit)
+            .map { TopicCandidate(it[TopicTable.id], it[TopicTable.description]) }
+    }
+
+    override fun commitIfUnplaced(memoryIds: Set<Int>, batch: TopicWriteBatch): TopicPlacementCommitResult = transaction(db) {
+        require(memoryIds.isNotEmpty()) { "placement scope must not be empty" }
+        require(batch.memberships.flatMap { it.memoryIds }.toSet() == memoryIds) {
+            "placement must assign all and only scoped memories"
+        }
+        val existingIds = MemoryTable.select(MemoryTable.id).where { MemoryTable.id inList memoryIds }
+            .map { it[MemoryTable.id] }.toSet()
+        require(existingIds == memoryIds) { "placement memory does not exist" }
+        val placedIds = TopicMembershipTable.select(TopicMembershipTable.memoryId)
+            .where { TopicMembershipTable.memoryId inList memoryIds }.map { it[TopicMembershipTable.memoryId] }.toSet()
+        when {
+            placedIds == memoryIds -> TopicPlacementCommitResult.AlreadyPlaced
+            placedIds.isNotEmpty() -> TopicPlacementCommitResult.Stale
+            else -> TopicPlacementCommitResult.Placed(applyBatch(batch))
+        }
+    }
+
     override fun readForMaintenance(topicIds: Collection<Int>): List<Topic> = transaction(db) {
         if (topicIds.isEmpty()) return@transaction emptyList()
         val memberships = TopicMembershipTable.selectAll()
@@ -33,14 +65,16 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
         }.mapTo(linkedSetOf()) { TopicRelation(it[TopicRelationTable.firstTopicId], it[TopicRelationTable.secondTopicId]) }
     }
 
-    override fun apply(batch: TopicWriteBatch): TopicWriteResult = transaction(db) {
+    override fun apply(batch: TopicWriteBatch): TopicWriteResult = transaction(db) { applyBatch(batch) }
+
+    private fun applyBatch(batch: TopicWriteBatch): TopicWriteResult {
         val createdIds = createTopics(batch.creations)
         val memberships = resolveMemberships(batch.memberships, createdIds)
         val relations = resolveRelations(batch.relations, createdIds)
         verifyTargets(memberships, relations)
         addMemberships(memberships)
         addRelations(relations)
-        TopicWriteResult(createdIds)
+        return TopicWriteResult(createdIds)
     }
 
     private fun createTopics(creations: List<TopicCreation>): Map<String, Int> = creations.associate { creation ->

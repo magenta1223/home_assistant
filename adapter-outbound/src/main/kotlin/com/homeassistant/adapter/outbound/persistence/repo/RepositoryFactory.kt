@@ -13,13 +13,15 @@ object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
         val canonicalMemories = MemoryRepository(db)
+        val topics = TopicRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             canonicalMemoryBatchWriter = canonicalMemories,
             memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
             memoryTree = canonicalMemories,
-            topicMaintenance = TopicRepository(db),
+            topicMaintenance = topics,
+            topicPlacement = topics,
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),
             pendingRegistrationQuestions = PendingRegistrationQuestionRepository(db),

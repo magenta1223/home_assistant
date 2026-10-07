@@ -35,7 +35,6 @@ class VectorSemanticMemoryIndexWriterTest {
         }
         val memory = Memory(
             id = 42,
-            childrenIds = listOf(43),
             createdByUserId = "member-1",
             content = "연구자는 센서 오류일 가능성이 있다고 말했다.",
             visibility = MemoryVisibility.RESTRICTED,

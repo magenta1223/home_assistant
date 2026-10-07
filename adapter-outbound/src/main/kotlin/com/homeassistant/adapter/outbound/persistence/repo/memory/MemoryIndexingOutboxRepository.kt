@@ -6,7 +6,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryViewerTable
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingTask
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryVisibility
 import org.jetbrains.exposed.sql.*
@@ -117,8 +116,6 @@ internal class MemoryIndexingOutboxRepository(
             .map { it[MemoryEvidenceTable.sourceRecordId] }
         return Memory(
             id = memoryId,
-            childrenIds = runCatching { this[MemoryTable.childrenIds].decodeFromString<List<Int>>() }
-                .getOrDefault(emptyList()),
             createdByUserId = this[MemoryTable.createdByUserId],
             content = this[MemoryTable.content],
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),

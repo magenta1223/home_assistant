@@ -4,7 +4,6 @@ import org.jetbrains.exposed.sql.Table
 
 internal object MemoryTable : Table("memories") {
     val id = integer("id").autoIncrement()
-    val childrenIds = text("children_ids").default("[]")
     val createdByUserId = text("created_by_user_id")
     val content = text("content")
     val visibility = text("visibility")

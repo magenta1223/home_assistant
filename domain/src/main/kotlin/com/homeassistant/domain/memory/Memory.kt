@@ -4,15 +4,14 @@ import com.homeassistant.domain.identity.UserId
 import kotlinx.serialization.Serializable
 
 /**
- * Evidence-backed, independently searchable content with immutable access.
+ * Evidence-backed, immutable content with independently managed access.
  *
  * Attribution, time, conditions and uncertainty belong in the content, without
- * predefined categories. Child links remain until Topic relations replace placement.
+ * predefined categories. Organization belongs to Topic references.
  */
 @Serializable
 data class Memory(
     val id: Int,
-    val childrenIds: List<Int> = emptyList(),
     val createdByUserId: String,
     val content: String,
     val visibility: MemoryVisibility,
@@ -22,8 +21,6 @@ data class Memory(
     val createdAt: Long,
 ) {
     init {
-        require(childrenIds.distinct().size == childrenIds.size) { "memory children must be unique" }
-        require(id !in childrenIds) { "memory cannot contain itself as a child" }
         require(content.isNotBlank()) { "memory content is required" }
         require(createdByUserId.isNotBlank()) { "createdByUserId is required" }
         MemoryAccess(visibility, allowedUserIds)

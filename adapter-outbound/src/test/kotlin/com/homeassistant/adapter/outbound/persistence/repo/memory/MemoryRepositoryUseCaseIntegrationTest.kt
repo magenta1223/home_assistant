@@ -62,7 +62,7 @@ class MemoryRepositoryUseCaseIntegrationTest {
             )
             assertFalse(otherRestrictedMemory.id in index.lastScope.allowedMemoryIds.orEmpty())
 
-            val answerContext = MemoryAnswerContextProvider(searcher, stores.canonicalMemories, index)
+            val answerContext = MemoryAnswerContextProvider(searcher)
             val conversationContext = MemoryConversationContextProvider(answerContext).context(
                 member,
                 "question",

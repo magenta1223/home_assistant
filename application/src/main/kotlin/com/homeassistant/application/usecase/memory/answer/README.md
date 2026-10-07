@@ -59,31 +59,22 @@ sequenceDiagram
     Workflow-->>Inbound: Completed(replyKey, answer result)
 ```
 
-## Answer context 확장
+## Answer context
 
-`MemoryAnswerContextProvider`는 일반 semantic search 결과를 seed로 사용하고, 보이는 child memory만
-제한적으로 재검색한다. 직접 검색 결과 자체는 바꾸지 않고 Codex reference context만 확장한다.
+`MemoryAnswerContextProvider`는 현재 ACL로 허용된 Memory 직접 검색 결과를 순서와 근거 그대로
+전달한다. Memory 자식 확장은 제거했으며 Topic 검색·추가 탐색은 후속 작업이다. 검색 실패는 기존
+오류 계약을 유지하고, conversation reference 형식·최대 8,000자·session 재사용 정책은 바꾸지 않는다.
 
 ```mermaid
 sequenceDiagram
     participant Conversation as Memory conversation
     participant Context as MemoryAnswerContextProvider
     participant Search as MemorySearch
-    participant Reader as MemoryReader
-    participant Index as SemanticMemoryIndexSearcher
 
     Conversation->>Context: context(search request)
     Context->>Search: search(request)
-    Search-->>Context: direct seed matches
-    alt seed 또는 visible child가 없음
-        Context-->>Conversation: direct matches only
-    else child 후보 존재
-        Context->>Reader: getMemories(userId)
-        Reader-->>Context: visible memory tree
-        Context->>Index: child candidate 범위 semantic search
-        Index-->>Context: ranked children
-        Context-->>Conversation: direct + bounded child context
-    end
+    Search-->>Context: authorized direct matches
+    Context-->>Conversation: direct matches and unchanged context matches
 ```
 
 등록 안내 전송이 실패하면 inbound adapter가 `registrationPromptDeliveryFailed`를 호출한다. 동일한

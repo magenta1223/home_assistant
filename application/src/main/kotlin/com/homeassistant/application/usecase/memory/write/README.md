@@ -62,8 +62,8 @@ sequenceDiagram
 ## 저장 모델과 인덱스
 
 Memory는 ID, content, 근거, ACL, 등록자와 저장 시각을 보존한다. `memoryType`, `certainty`,
-`subject`, Memory DB의 `updatedAt`은 저장하지 않는다. 기존 `childrenIds`는 현재 배치·탐색·답변
-맥락 확장에서 사용하며 Topic 관계 구현 전까지 유지한다. outbox의 상태·시각·재시도 계약은 유지한다.
+`subject`, Memory DB의 `updatedAt`과 `childrenIds`는 저장하지 않는다. 조직 관계는 Topic에서
+관리하며 Memory 저장 transaction과 분리한다. outbox의 상태·시각·재시도 계약은 유지한다.
 
 임베딩 입력은 `passage: ` 접두어와 content다. 벡터 payload에는 `kind`, `memoryId`만 저장하며
 ACL과 배치 관계를 복제하지 않는다. 열람 가능 ID는 canonical DB에서 결정한다.

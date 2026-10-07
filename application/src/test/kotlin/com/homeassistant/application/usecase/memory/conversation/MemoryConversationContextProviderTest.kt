@@ -1,82 +1,59 @@
 package com.homeassistant.application.usecase.memory.conversation
 
-import com.homeassistant.application.port.output.memory.search.MemoryIndex
-import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
-import com.homeassistant.application.port.output.memory.read.MemoryReader
+import com.homeassistant.application.port.input.memory.search.MemorySearch
+import com.homeassistant.application.port.input.memory.search.MemorySearchMatch
+import com.homeassistant.application.port.input.memory.search.SearchMemoriesResult
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
-import com.homeassistant.application.usecase.memory.search.MemorySearcher
-import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
-import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.Memory
-import com.homeassistant.domain.memory.MemoryVisibility
 import kotlin.test.Test
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class MemoryConversationContextProviderTest {
     @Test
-    fun `reference includes a relevant expanded child with provenance`() {
-        val parent = memory(1, childrenIds = listOf(2))
-        val child = memory(2)
-        val memories = listOf(parent, child)
-        val reader = FixedMemoryReader(memories)
-        val semanticSearcher = object : SemanticMemoryIndexSearcher {
-            override fun search(query: String, limit: Int): List<MemoryIndex> =
-                listOf(MemoryIndex(parent.id, 0.9)).take(limit)
-
-            override fun search(
-                query: String,
-                limit: Int,
-                scope: MemoryIndexSearchScope,
-            ): List<MemoryIndex> {
-                val allowedIds = scope.allowedMemoryIds.orEmpty()
-                val results = if (allowedIds == memories.mapTo(mutableSetOf()) { it.id }) {
-                    listOf(MemoryIndex(parent.id, 0.9))
-                } else {
-                    listOf(MemoryIndex(child.id, 0.85))
-                }
-                return results.filter { it.memoryId in allowedIds }.take(limit)
-            }
-        }
-        val memorySearcher = MemorySearcher(
-            memories = reader,
-            searcher = semanticSearcher,
-            accessPolicy = UserAccessPolicy { it == USER_ID },
-        )
-        val provider = MemoryConversationContextProvider(
-            MemoryAnswerContextProvider(memorySearcher, reader, semanticSearcher),
-        )
+    fun `reference retains direct provenance timestamp and existing request budget`() {
+        val provider = provider("saved fact")
 
         val context = provider.context(USER_ID, "question")
 
         assertTrue(context.hasMatches)
-        assertContains(context.reference, "memory-${parent.id}")
-        assertContains(context.reference, "memory-${child.id}")
-        assertContains(context.reference, "source=CHILD")
-        assertContains(context.reference, "score=0.85")
-        assertContains(context.reference, "parentMemoryId=${parent.id}")
-        assertContains(context.reference, "depth=1")
+        assertContains(context.reference, "saved fact")
+        assertContains(context.reference, "savedAt=1970-01-01T00:00:01Z")
+        assertContains(context.reference, "source=DIRECT")
+        assertContains(context.reference, "score=0.9")
+        assertContains(context.reference, "parentMemoryId=none; depth=0")
     }
 
-    private fun memory(
-        id: Int,
-        childrenIds: List<Int> = emptyList(),
-    ) = Memory(
-        id = id,
-        childrenIds = childrenIds,
-        createdByUserId = USER_ID.value,
-        content = "memory-$id",
-        visibility = MemoryVisibility.PUBLIC,
-        evidenceRefs = listOf(id),
-        createdAt = id * 1_000L,
-    )
+    @Test
+    fun `reference retains the eight thousand character limit`() {
+        val context = provider("x".repeat(9_000)).context(USER_ID, "question")
 
-    private class FixedMemoryReader(
-        private val memories: List<Memory>,
-    ) : MemoryReader {
-        override fun getMemories(userId: UserId): List<Memory> = memories
+        assertEquals(8_000, context.reference.length)
+        assertTrue(context.hasMatches)
     }
+
+    @Test
+    fun `empty direct search produces no reference`() {
+        val provider = MemoryConversationContextProvider(MemoryAnswerContextProvider(
+            MemorySearch { SearchMemoriesResult(it.query, emptyList()) },
+        ))
+
+        val context = provider.context(USER_ID, "question")
+
+        assertFalse(context.hasMatches)
+        assertEquals("", context.reference)
+    }
+
+    private fun provider(content: String) = MemoryConversationContextProvider(MemoryAnswerContextProvider(
+        MemorySearch { request ->
+            assertEquals(USER_ID.value, request.userId)
+            assertEquals("question", request.query)
+            assertEquals(5, request.limit)
+            SearchMemoriesResult(request.query, listOf(MemorySearchMatch(1, content, listOf(1), 0.9, 1_000L)))
+        },
+    ))
 
     private companion object {
         val USER_ID = UserId("member-1")

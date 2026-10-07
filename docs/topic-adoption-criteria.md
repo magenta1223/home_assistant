@@ -80,12 +80,12 @@ Memory·Topic 수, 권한 분포, 동시 요청 수, 응답 시간 및 처리 �
 
 현재는 Topic 데이터 구조부터 확정하고 검색·Memory 선택은 그 이후에 진행한다. conversation
 context 구성은 유지하고 화면·표시 API는 보류한다. DB는 새로 시작하며 기존 DB migration은
-계획하지 않는다. 자세한 작업 범위는 [실행 계획](todolist/feature/p0/memory-topic-graph.md)에 기록한다.
+계획하지 않는다. 자세한 작업 범위는 [실행 계획](todolist/done/memory-topic-graph.md)에 기록한다.
 
 
 현재 구현은 문서 → Topic domain → port·영속화·스키마 → 배치 use case·복구 계약 → LLM adapter
 → 새 배치 연결·기존 tree placement 삭제 → `childrenIds`·legacy 소비부 제거의 일곱 커밋으로
-진행한다. 마지막 제거에는 검색의 자식 확장과 기존 tree API·화면 소비부 정리가 포함된다. 새 Topic
+완료했다(2026-10-07). 마지막 제거에는 검색의 자식 확장과 기존 tree API·화면 소비부 정리가 포함된다. 새 Topic
 검색·표시 기능은 후속 범위이며, 빈 tree 등 오해를 부르는 대체 결과로 기존 기능을 유지하지 않는다.
 
 ## 관련 문서

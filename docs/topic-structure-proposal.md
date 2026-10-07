@@ -1,6 +1,6 @@
 # Memory와 Topic 그래프 설계
 
-- 상태: 개념 설계, 미구현
+- 상태: Topic 모델·영속화·초기 배치 구현 완료. 검색·표시·재정리는 후속 범위 (2026-10-07)
 - 기준: [메모리 구조 판단기준](topic-adoption-criteria.md)의 최신 합의
 - 이 문서는 이전의 독립 문서형 Topic 제안과 Memory + Group 제안을 대체한다.
 
@@ -268,3 +268,14 @@ Topic 검색과 Memory 선택은 데이터 구조 확정 후에 다룬다. 현�
 → 새 배치 연결·기존 tree placement 삭제 → `childrenIds`·legacy 소비부 제거의 일곱 커밋으로
 진행한다. 마지막 제거에는 검색의 자식 확장과 기존 tree API·화면 소비부 정리가 포함된다. 새 Topic
 검색·표시 기능은 후속 범위이며, 빈 tree 등 오해를 부르는 대체 결과로 기존 기능을 유지하지 않는다.
+
+### 현재 구현 결과 (2026-10-07)
+
+위 일곱 단계의 구현과 테스트를 완료했다. Topic 배치는 미배치 Memory 최대 20개와 최근 Topic 설명
+최대 20개를 입력으로 사용한다. 제안을 검증한 뒤 원자 저장하며, 미배치 상태를 기준으로 재처리하는
+worker를 연결했다. 내부 정리 정보는 사용자 검색·답변으로 전달하지 않는다.
+
+Memory 직접 검색·현재 ACL 확인·기존 conversation reference와 session 정책을 유지했다.
+기존 tree 배치·자식 확장·tree API와 화면은 제거했다. 의미 기반 Topic 검색, Topic 재정리와 표시
+기능은 아직 구현하지 않았다. 실제 변경과 검증·복구 제약은
+[완료 기록](todolist/done/memory-topic-graph.md)에 정리했다.

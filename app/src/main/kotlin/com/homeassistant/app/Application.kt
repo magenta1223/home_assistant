@@ -57,7 +57,6 @@ fun Application.module() {
             httpApiKeys = httpApiKeys,
             users = services.users,
             memoryConversation = services.memoryConversation,
-            visibleMemoryTree = services.visibleMemoryTree,
             readiness = { services.isReady },
         )
     } catch (failure: Exception) {

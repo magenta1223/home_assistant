@@ -9,8 +9,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordView
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
-import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.memory.MemoryAccess
@@ -68,7 +66,6 @@ internal class MemoryRepository(
                     proposal.evidenceIds.distinct().map(accessByRecordId::getValue),
                 )
                 val memoryId = MemoryTable.insert {
-                    it[childrenIds] = emptyList<Int>().encodeToString()
                     it[createdByUserId] = createdBy.value
                     it[content] = proposal.content
                     it[visibility] = access.visibility.name
@@ -124,11 +121,8 @@ internal class MemoryRepository(
         val evidenceRefs = MemoryEvidenceTable.select(MemoryEvidenceTable.sourceRecordId)
             .where { MemoryEvidenceTable.memoryId eq memoryId }
             .map { it[MemoryEvidenceTable.sourceRecordId] }
-        val children = runCatching { this[MemoryTable.childrenIds].decodeFromString<List<Int>>() }
-            .getOrDefault(emptyList())
         return Memory(
             id = memoryId,
-            childrenIds = children,
             createdByUserId = this[MemoryTable.createdByUserId],
             content = this[MemoryTable.content],
             visibility = MemoryVisibility.valueOf(this[MemoryTable.visibility]),
@@ -148,7 +142,6 @@ internal class MemoryRepository(
     ): Memory {
         return Memory(
             id = memoryId,
-            childrenIds = emptyList(),
             createdByUserId = userId.value,
             content = content,
             visibility = access.visibility,

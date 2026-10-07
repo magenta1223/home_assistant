@@ -1,11 +1,11 @@
 # Memory + Topic 그래프 실행 계획
 
-- 상태: TODO — 설계·실행 계획 조정, 구현 전
+- 상태: DONE — 합의한 일곱 단계 구현·검증 완료 (2026-10-07)
 - 우선순위: Feature P0 내 Memory 구조 전환 후보. 다른 기능과의 착수 순서는 별도 결정한다.
 - 작성일: 2026-10-06
 - 수정일: 2026-10-07
-- 설계 기준: [Memory와 Topic 그래프 설계](../../../topic-structure-proposal.md), [메모리 구조 판단기준](../../../topic-adoption-criteria.md)
-- 다음 작업: 아래 일곱 커밋을 순서대로 구현·검토. `commit` API 조사는 완료했으며 리팩터링은 필수 선행 작업이 아니다.
+- 설계 기준: [Memory와 Topic 그래프 설계](../../topic-structure-proposal.md), [메모리 구조 판단기준](../../topic-adoption-criteria.md)
+- 완료 범위: Topic 모델·저장·초기 배치·복구 연결과 기존 Memory tree 제거. Topic 검색·UI는 후속 범위다.
 
 ## 1. 문제와 목표
 
@@ -25,7 +25,7 @@ Memory가 사실과 조직 관계를 함께 가진 현재 구조에서, 사실�
 
 ## 2. 현재 구현과 변경 지점
 
-사용자 피드백의 번호를 유지한다. 아래 상태는 계획의 처리 방향이며 코드 변경 완료를 뜻하지 않는다.
+사용자 피드백의 번호를 유지한다. 아래 표는 구현 전 조사와 합의한 처리 방향이다. 실제 완료 내용은 문서 하단에 기록한다.
 
 | 번호 | 현재 구현 | 확인한 동작 | 처리 방향 |
 |---|---|---|---|
@@ -97,9 +97,9 @@ Source 분석 처리 상태와 불변 원문 자체의 경계도 계약 검토 �
 
 관련 코드:
 
-- [CanonicalMemoryBatchWriter](../../../../application/src/main/kotlin/com/homeassistant/application/port/output/memory/write/CanonicalMemoryBatchWriter.kt)
-- [MemoryProposalsPersister](../../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/MemoryProposalsPersister.kt)
-- [MemoryRepository](../../../../adapter-outbound/src/main/kotlin/com/homeassistant/adapter/outbound/persistence/repo/memory/MemoryRepository.kt)
+- [CanonicalMemoryBatchWriter](../../../application/src/main/kotlin/com/homeassistant/application/port/output/memory/write/CanonicalMemoryBatchWriter.kt)
+- [MemoryProposalsPersister](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/MemoryProposalsPersister.kt)
+- [MemoryRepository](../../../adapter-outbound/src/main/kotlin/com/homeassistant/adapter/outbound/persistence/repo/memory/MemoryRepository.kt)
 
 ## 4. outbox 현황과 Topic 배치의 경계
 
@@ -120,9 +120,9 @@ Topic 배치가 어떤 입력을 받아 무엇을 확정하는지 정하기 전�
 
 관련 코드:
 
-- [MemoryAnalysisService](../../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/analysis/MemoryAnalysisService.kt)
-- [MemoryIndexingOutboxProcessor](../../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/MemoryIndexingOutboxProcessor.kt)
-- [MemoryIndexingWorker](../../../../app/src/main/kotlin/com/homeassistant/app/services/MemoryIndexingWorker.kt)
+- [MemoryAnalysisService](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/analysis/MemoryAnalysisService.kt)
+- [MemoryIndexingOutboxProcessor](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/MemoryIndexingOutboxProcessor.kt)
+- [MemoryIndexingWorker](../../../app/src/main/kotlin/com/homeassistant/app/services/MemoryIndexingWorker.kt)
 
 ## 5. 실행 순서 — 일곱 커밋
 
@@ -227,69 +227,62 @@ conversation context의 본문 구성·예산과 session 정책은 유지한다.
 않는다. 이 정책을 이유로 request dedup을 제거하거나 같은 요청을 provider에 중복 전송하지 않는다.
 
 application `UserId`, 요청 dedup, 10분 conversation idle lease를 유지한다. Slack 기능은 추가하지
-않으며 [Memory DB 조회 최적화](../../p2/memory-query-performance.md)는 사용자 학습 과제로 남긴다.
+않으며 [Memory DB 조회 최적화](../p2/memory-query-performance.md)는 사용자 학습 과제로 남긴다.
 
 ## 7. 검증과 완료 조건
 
-- [ ] Topic 데이터 구조·저장 관계·변경 계약 확정.
+- [x] Topic 데이터 구조·저장 관계·변경 계약 확정.
 - [x] 현재 `commit`과 outbox 흐름 조사. API 변경안 채택은 미정.
-- [ ] Topic 모델·저장소·서비스 조립 구현.
-- [ ] 기존 tree placement 삭제와 Topic 전용 배치 구현.
-- [ ] legacy 자식 확장·tree 소비부 정리와 함께 `childrenIds` 완전 제거. 새 검색·UI 구현 제외.
-- [ ] Topic 변경이 불변 Source와 Memory content·근거·ACL을 변경하지 않는 회귀 검증.
-- [ ] 복수 소속·양방향 관계·순환 허용·자기 연결·중복·없는 대상·저장 실패 검증.
-- [ ] 변경한 use case의 가장 가까운 README와 실제 검증 결과 기록.
+- [x] Topic 모델·저장소·서비스 조립 구현.
+- [x] 기존 tree placement 삭제와 Topic 전용 배치 구현.
+- [x] legacy 자식 확장·tree 소비부 정리와 함께 `childrenIds` 완전 제거. 새 검색·UI 구현 제외.
+- [x] Topic 변경이 불변 Source와 Memory content·근거·ACL을 변경하지 않는 회귀 검증.
+- [x] 복수 소속·양방향 관계·순환 허용·자기 연결·중복·없는 대상·저장 실패 검증.
+- [x] 변경한 use case의 가장 가까운 README와 실제 검증 결과 기록.
 
 코드 변경 시 관련 테스트 클래스부터 실행하고 해당 module test로 넓힌다. 모델 호출은 fake,
 저장은 임시 DB로 검증한다. 원자 저장이나 outbox를 변경한다면 기존 롤백·중복 방지·재시도 테스트를
 함께 확인한다. 문서 수정만으로 application 테스트나 운영 서비스를 실행하지 않는다.
 
-## 현재 상태 (2026-10-07)
+## 완료 기록 (2026-10-07)
 
-사용자 피드백 1~11번을 반영해 설계 문서와 계획 범위를 조정했다. `commit` 호출부·구현·기존 테스트와
-outbox processor·worker 연결을 읽어 조사 결과를 기록했다. 살아 있는 session의 기존 문맥·답변
-재사용을 허용하는 정책과 일곱 커밋의 실행 순서를 반영했다. 마지막 커밋의 legacy 소비부 정리는
-필수 제거 범위이며 새 Topic 검색·UI 개발은 보류임을 명시했다. 문서 단계의 `git diff --check`를
-통과했으며 baseline `:domain:test :application:test`는 통과했다(Gradle up-to-date). 애플리케이션
-코드 변경, DB 초기화·migration, 운영 조회·배포는 수행하지 않았다.
+합의한 일곱 단계의 구현과 리뷰를 완료했다. Topic·분류별 복수 Memory 소속·양방향 관계를 별도
+테이블로 저장하며 순환을 허용한다. Topic 저장은 생성·소속·연결을 한 transaction으로 반영한다.
+기존 소속을 추가하는 방식으로 비공개 소속을 보존하며 Source·Memory 본문·근거·ACL을 수정하지 않는다.
 
-### 2단계 진행 (2026-10-07)
+Topic 배치는 미배치 Memory 조회 → 후보 설명 조회 → 모델 제안 → 범위·누락 검증 → 조건부 원자
+저장 순서로 동작한다. 이미 처리한 입력과 부분 중복 입력을 구분하고, 실패하면 다음 조회에서
+재시도한다. 분석 저장 이후 호출과 30초 worker를 연결했다. Memory 색인 outbox는 유지한다.
 
-Topic과 정규화된 양방향 TopicRelation domain 모델을 구현했다. 분류 내 중복은 거절하며 분류 간·
-Topic 간 복수 소속과 순환 관계를 허용한다. 구체적인 모델 결정은 설계 문서에 기록했다.
-먼저 새 domain 테스트만 작성한 상태에서 `:domain:test`가 미구현 타입 참조로 실패함을 확인했고,
-모델 구현 후 같은 검증을 통과했다. 저장·배치·기존 Memory 변경은 이후 단계에 남아 있다.
+기존 tree placement와 `childrenIds`·DB 컬럼·직렬화를 삭제했다. 검색의 자식 확장, tree input port,
+`/api/memory/tree`, `/memories`, tree 페이지와 이동 링크도 제거했다. 다른 화면의 공용 인증 스크립트는
+같은 경로로 제공한다. 현재 ACL을 확인하는 직접 Memory 검색과 기존 reference 형식·8,000자 제한,
+request dedup과 10분 idle session 정책은 유지한다.
 
-### 4단계 완료 (2026-10-07)
+### 검증
 
-서브에이전트가 배치 use case와 조건부 저장·미배치 조회를 구현한 뒤 사용량 한도로 중단됐다.
-orchestrator가 코드와 실패·재시도 테스트를 리뷰했고 집중 application·persistence 테스트 및
-architecture 검증을 통과했다. 배치 호출·worker 연결은 아직 없으며 6단계 범위다. 사용자 승인 후
-orchestrator가 직접 구현을 이어받아 실패 단계·예외 종류만 기록하는 안전한 진단과 테스트 가독성을
-보완했다. 모델의 원문·오류 메시지는 로그에 남기지 않는다.
+각 단계에서 집중 테스트를 먼저 작성하고 구현했다. 모델·저장·배치 adapter의 미구현 상태와
+기존 tree URL이 여전히 200을 반환하는 상태에서 테스트 실패를 확인한 뒤 구현 후 통과했다.
+마지막 코드 변경 후 `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test`, `:app:test`를
+통과했고, 최종 `gradlew.bat test`도 성공했다. XML 결과 합계 217개 테스트가 실패·오류·skip 없이
+통과했으며 배포 스크립트의 모의 runtime 제어 테스트 10개도 통과했다. 최종 실행은 이미 검증된
+module task의 up-to-date 결과를 재사용한다.
 
-### 5단계 완료 (2026-10-07)
+검증에는 Topic 관계 왕복·다중 소속·순환·중복·대상 부재·롤백, Source/Memory/숨겨진 소속 보존,
+배치 실패·재시도·재시작·동시 입력 겹침, worker 종료, 직접 검색 순위·근거·허용 범위,
+HTTP 인증·삭제 URL·남은 페이지와 기존 session 회귀 테스트가 포함된다.
+실제 모델 호출, 운영 조회·배포, DB 초기화·migration은 수행하지 않았다.
 
-Topic 전용 모델 adapter·prompt·명시적 JSON 응답 계약을 구현했다. 참조 표현과 다중 소속 변환,
-잘못된 JSON·참조 거절, 입력 크기 제한과 취소 전파를 테스트했다. 테스트를 먼저 추가해 미구현
-타입으로 실패하는 것을 확인한 뒤 구현하여 집중 adapter 테스트를 통과했다. 실제 모델은 호출하지 않았다.
+### 실행 방식과 남은 제약
 
-### 6단계 완료 (2026-10-07)
+GPT-6 Astra 서브에이전트가 1~3단계와 4단계 대부분을 순차 구현했고 orchestrator가 리뷰했다.
+서브에이전트 사용량 한도 이후 사용자 승인에 따라 orchestrator가 나머지를 직접 구현·검증했다.
+요청한 paperthin skill은 설치 경로에서 찾지 못했으며 사용자에게 알린 후 저장소 지침을 따랐다.
 
-분석 commit 이후 Topic 배치를 연결하고, 새 입력 없이도 미배치 Memory를 재처리하는 worker를
-앱 lifecycle에 연결했다. 기존 Memory tree 배치 service·port·extractor·validator·bootstrap과
-쓰기 구현을 삭제했다. 배치 실패가 저장 성공을 취소하지 않는지, worker가 실패 후 재실행하고
-종료 시 취소되는지, 실제 저장소에서 재시작 후 중복 처리되지 않는지 검증했다.
-application 전체, 관련 Memory/Topic 저장소 테스트와 app 전체 테스트가 통과했다.
+- 후보는 최근 Topic 최대 20개다. 의미 기반 Topic 검색과 품질 검증은 후속 작업이다.
+- 미배치 Memory 최대 20개씩 처리한다. 입력 32,000자·응답 64,000자 초과는 실패로 처리한다.
+- 같은 batch가 계속 실패하면 뒤의 작업도 대기할 수 있다. 자동 격리·분할은 아직 없다.
+- 초기 배치만 구현했다. 기존 Topic 재정리·설명 수정·분할·병합, Topic 검색·표시 API·UI는 보류한다.
+- 새 DB 기준의 스키마다. 기존 데이터 변환이나 운영 DB 초기화는 이번 작업에 포함하지 않았다.
 
-### 3단계 진행 (2026-10-07)
-
-TopicMaintenanceStore port, 새 DB용 Topic·소속·관계 테이블, repository와 factory 등록을 구현했다.
-한 transaction의 생성·소속 추가·연결 추가만 제공하며 혼합 ACL Topic 전체를 덮어쓰지 않는다.
-생성 key 재시도·충돌, 대상 존재, 양방향 중복·순환과 실패 롤백을 검증했다. creator가 공유 범위에
-없는 입력도 내부 정리할 수 있으며, 내부 조회를 외부 검색·응답으로 사용하지 않는 경계를 명시했다.
-
-새 저장소 테스트를 먼저 작성해 미구현 타입으로 실패하는 것을 확인했고, 구현 후
-`:adapter-outbound:test --tests '*TopicRepositoryTest'`와
-`:application:test --tests '*ApplicationPackageArchitectureTest'`를 통과했다. Source·Memory 값과
-숨겨진 기존 소속 보존도 테스트했다. 배치 use case·모델 호출·복구 실행 경로는 아직 구현하지 않았다.
+상세 동작과 복구 계약은 [Topic placement README](../../../application/src/main/kotlin/com/homeassistant/application/usecase/topic/placement/README.md)를 따른다.

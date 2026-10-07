@@ -84,6 +84,13 @@ Topic의 설명은 검색할 범위를 알려준다. 자세한 사실은 Memory�
 아니다. domain은 부모·루트·순환 제한이나 프레임워크 의존성을 갖지 않는다. Topic 변경은 Memory
 참조만 다루며 본문·근거·ACL이나 Source를 수정하지 않는다.
 
+저장은 Topic 본체·분류별 소속·정규화된 관련 관계의 세 테이블로 나눈다. trusted internal
+`TopicMaintenanceStore`는 생성·소속 추가·관계 추가를 한 transaction으로 확정하며 기존 소속을
+대체하지 않는다. 생성 key는 재시도 시 같은 Topic ID로 돌아가고, 같은 key의 설명이 다르면
+실패한다. 없는 대상이나 저장 실패는 전체 변경을 롤백한다. 이 내부 조회에는 혼합 ACL 정보가
+포함되므로 사용자 검색·응답 context로 직접 연결하지 않는다. 배치 중인 기록의 복구 경로는
+다음 use case 단계에서 정한다.
+
 ## 4. 그래프는 Topic 사이에만 둔다
 
 Topic 하나를 그래프의 점인 노드(Node), relatedTopics를 통한 연결을 선인 엣지(Edge)로 본다.

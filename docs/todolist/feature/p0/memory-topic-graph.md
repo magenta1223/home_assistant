@@ -259,3 +259,15 @@ Topic과 정규화된 양방향 TopicRelation domain 모델을 구현했다. 분
 Topic 간 복수 소속과 순환 관계를 허용한다. 구체적인 모델 결정은 설계 문서에 기록했다.
 먼저 새 domain 테스트만 작성한 상태에서 `:domain:test`가 미구현 타입 참조로 실패함을 확인했고,
 모델 구현 후 같은 검증을 통과했다. 저장·배치·기존 Memory 변경은 이후 단계에 남아 있다.
+
+### 3단계 진행 (2026-10-07)
+
+TopicMaintenanceStore port, 새 DB용 Topic·소속·관계 테이블, repository와 factory 등록을 구현했다.
+한 transaction의 생성·소속 추가·연결 추가만 제공하며 혼합 ACL Topic 전체를 덮어쓰지 않는다.
+생성 key 재시도·충돌, 대상 존재, 양방향 중복·순환과 실패 롤백을 검증했다. creator가 공유 범위에
+없는 입력도 내부 정리할 수 있으며, 내부 조회를 외부 검색·응답으로 사용하지 않는 경계를 명시했다.
+
+새 저장소 테스트를 먼저 작성해 미구현 타입으로 실패하는 것을 확인했고, 구현 후
+`:adapter-outbound:test --tests '*TopicRepositoryTest'`와
+`:application:test --tests '*ApplicationPackageArchitectureTest'`를 통과했다. Source·Memory 값과
+숨겨진 기존 소속 보존도 테스트했다. 배치 use case·모델 호출·복구 실행 경로는 아직 구현하지 않았다.

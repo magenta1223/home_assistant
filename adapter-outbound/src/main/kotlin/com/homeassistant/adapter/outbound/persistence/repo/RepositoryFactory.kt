@@ -7,6 +7,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexing
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memoryanswer.PendingRegistrationQuestionRepository
+import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
@@ -18,6 +19,7 @@ object RepositoryFactory {
             memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
             memoryTree = canonicalMemories,
+            topicMaintenance = TopicRepository(db),
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),
             pendingRegistrationQuestions = PendingRegistrationQuestionRepository(db),

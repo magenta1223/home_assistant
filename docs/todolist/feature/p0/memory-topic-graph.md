@@ -252,3 +252,10 @@ outbox processor·worker 연결을 읽어 조사 결과를 기록했다. 살아 
 필수 제거 범위이며 새 Topic 검색·UI 개발은 보류임을 명시했다. 문서 단계의 `git diff --check`를
 통과했으며 baseline `:domain:test :application:test`는 통과했다(Gradle up-to-date). 애플리케이션
 코드 변경, DB 초기화·migration, 운영 조회·배포는 수행하지 않았다.
+
+### 2단계 진행 (2026-10-07)
+
+Topic과 정규화된 양방향 TopicRelation domain 모델을 구현했다. 분류 내 중복은 거절하며 분류 간·
+Topic 간 복수 소속과 순환 관계를 허용한다. 구체적인 모델 결정은 설계 문서에 기록했다.
+먼저 새 domain 테스트만 작성한 상태에서 `:domain:test`가 미구현 타입 참조로 실패함을 확인했고,
+모델 구현 후 같은 검증을 통과했다. 저장·배치·기존 Memory 변경은 이후 단계에 남아 있다.

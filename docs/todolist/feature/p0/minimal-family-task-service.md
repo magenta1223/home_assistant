@@ -4,7 +4,7 @@
 - 우선순위: Feature P0
 - 선행 작업: 없음
 
-> 2026-09-08 범위 정리: frozen Slack과 보류 중인 Notification Service에 연결하지 않는다. 기존
+> 2026-09-08 범위 정리: 제거된 Slack 및 보류 중인 Notification Service에 연결하지 않는다. 기존
 > Bearer 인증 HTTP 경계와 작은 웹 화면으로 먼저 제공하고 실제 사용 결과로 후속 알림 필요를 판단한다.
 
 ## 문제
@@ -20,7 +20,7 @@
 - 등록된 가족 구성원에게 하나의 Task를 할당한다.
 - Task가 미완료인지 완료됐는지만 확인하고 변경한다.
 - 누가 언제 생성하고 완료했는지 최소 이력을 보존한다.
-- Slack 같은 채널과 분리된 application use case로 제공한다.
+- HTTP adapter와 분리된 application use case로 제공한다.
 - 인증된 HTTP 사용자에게 생성, 내 미완료 조회와 완료 기능을 제공한다.
 
 ## 최소 모델

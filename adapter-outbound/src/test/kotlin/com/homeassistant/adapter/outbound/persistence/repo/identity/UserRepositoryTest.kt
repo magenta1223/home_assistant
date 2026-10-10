@@ -8,7 +8,6 @@ import java.sql.DriverManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class UserRepositoryTest {
@@ -32,7 +31,7 @@ class UserRepositoryTest {
                         "INSERT INTO household_members VALUES ('member-1', '기존 사용자', 100, 100)",
                     )
                     statement.executeUpdate(
-                        "INSERT INTO conversation_identities VALUES ('team-1', 'slack-1', 'member-1', 100)",
+                        "INSERT INTO conversation_identities VALUES ('http', 'user-1', 'member-1', 100)",
                     )
                 }
             }
@@ -69,24 +68,7 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun `legacy reservation is invisible until named and preserves its userId`() {
-        withStore { _, store ->
-            store.reserve(IDENTITY, UserId("legacy-user"), 100L)
-
-            assertNull(store.find(IDENTITY))
-            assertTrue(store.list().isEmpty())
-            assertFalse(store.isRegistered(UserId("legacy-user")))
-
-            val member = store.register(IDENTITY, UserId("new-user"), "기존 사용자", 101L)
-
-            assertEquals("legacy-user", member.userId.value)
-            assertTrue(store.isRegistered(UserId("legacy-user")))
-            assertFalse(store.isRegistered(UserId("new-user")))
-        }
-    }
-
-    @Test
-    fun `registering the same Slack identity again keeps its userId and updates its name`() {
+    fun `registering the same identity again keeps its userId and updates its name`() {
         withStore { _, store ->
             store.register(IDENTITY, UserId("member-1"), "처음 이름", 100L)
 
@@ -108,6 +90,6 @@ class UserRepositoryTest {
     }
 
     private companion object {
-        val IDENTITY = ConversationIdentity("team-1", "slack-1")
+        val IDENTITY = ConversationIdentity("http", "user-1")
     }
 }

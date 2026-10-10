@@ -20,12 +20,11 @@ internal object DatabaseFactory {
                 SourceRecordTable,
                 SourceRecordViewerTable,
                 IndexingOutboxTable,
-                SlackCodexSessionTable,
-                SlackCodexActiveSessionTable,
-                SlackMessageReceiptTable,
+                MemoryConversationSessionTable,
+                MemoryConversationActiveSessionTable,
+                MemoryConversationReceiptTable,
                 UserTable,
                 ConversationIdentityTable,
-                PendingRegistrationQuestionTable,
             )
             migrateLegacyPrivateAccess()
         }
@@ -34,7 +33,6 @@ internal object DatabaseFactory {
 
     private fun Transaction.migrateLegacyTableNames() {
         renameTableIfNeeded("household_members", "registered_users")
-        renameTableIfNeeded("pending_household_conversations", "pending_registration_questions")
     }
 
     private fun Transaction.renameTableIfNeeded(legacyName: String, currentName: String) {

@@ -9,9 +9,9 @@ import com.homeassistant.application.port.output.memory.conversation.MemoryConve
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import com.homeassistant.application.port.output.memory.conversation.ConversationId
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexActiveSessionTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.SlackCodexSessionTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.SlackMessageReceiptTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryConversationActiveSessionTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryConversationSessionTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryConversationReceiptTable
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
@@ -30,9 +30,9 @@ internal class MemoryConversationSessionRepository(
     override fun claimRequest(key: MemoryConversationRequestKey, now: Long): MemoryConversationReceipt? =
         try {
             transaction(db) {
-                SlackMessageReceiptTable.insert {
-                    it[channelId] = key.streamId
-                    it[messageTs] = key.requestId
+                MemoryConversationReceiptTable.insert {
+                    it[streamId] = key.streamId
+                    it[requestId] = key.requestId
                     it[status] = MemoryConversationRequestStatus.PROCESSING.name
                     it[createdAt] = now
                     it[updatedAt] = now
@@ -44,10 +44,10 @@ internal class MemoryConversationSessionRepository(
         }
 
     override fun receipt(key: MemoryConversationRequestKey): MemoryConversationReceipt? = transaction(db) {
-        SlackMessageReceiptTable.selectAll()
+        MemoryConversationReceiptTable.selectAll()
             .where {
-                (SlackMessageReceiptTable.channelId eq key.streamId) and
-                    (SlackMessageReceiptTable.messageTs eq key.requestId)
+                (MemoryConversationReceiptTable.streamId eq key.streamId) and
+                    (MemoryConversationReceiptTable.requestId eq key.requestId)
             }
             .singleOrNull()
             ?.toReceipt()
@@ -55,7 +55,7 @@ internal class MemoryConversationSessionRepository(
 
     override fun attachSession(key: MemoryConversationRequestKey, sessionId: Int, now: Long) {
         updateReceipt(key, now) {
-            it[SlackMessageReceiptTable.sessionId] = sessionId
+            it[MemoryConversationReceiptTable.sessionId] = sessionId
         }
     }
 
@@ -64,14 +64,6 @@ internal class MemoryConversationSessionRepository(
         updateReceipt(key, now) {
             it[status] = MemoryConversationRequestStatus.ANSWER_READY.name
             it[answerText] = answer
-        }
-    }
-
-    override fun markCompleted(key: MemoryConversationRequestKey, deliveryId: String, now: Long) {
-        require(deliveryId.isNotBlank()) { "deliveryId is required" }
-        updateReceipt(key, now) {
-            it[status] = MemoryConversationRequestStatus.COMPLETED.name
-            it[SlackMessageReceiptTable.responseTs] = deliveryId
         }
     }
 
@@ -86,19 +78,19 @@ internal class MemoryConversationSessionRepository(
         conversationId: ConversationId,
         now: Long,
     ): MemoryConversationSession = transaction(db) {
-        val id = SlackCodexSessionTable.insert {
-            it[teamId] = participant.scopeId
-            it[slackUserId] = participant.participantId
+        val id = MemoryConversationSessionTable.insert {
+            it[scopeId] = participant.scopeId
+            it[participantId] = participant.participantId
             it[userId] = participant.userId.value
-            it[SlackCodexSessionTable.codexThreadId] = conversationId.value
+            it[MemoryConversationSessionTable.conversationId] = conversationId.value
             it[createdAt] = now
             it[lastActiveAt] = now
-        }[SlackCodexSessionTable.id]
+        }[MemoryConversationSessionTable.id]
 
         deleteActive(participant)
-        SlackCodexActiveSessionTable.insert {
-            it[teamId] = participant.scopeId
-            it[slackUserId] = participant.participantId
+        MemoryConversationActiveSessionTable.insert {
+            it[scopeId] = participant.scopeId
+            it[participantId] = participant.participantId
             it[sessionId] = id
         }
         sessionRow(id).toSession()
@@ -110,26 +102,26 @@ internal class MemoryConversationSessionRepository(
         idleTimeoutMillis: Long,
     ): MemoryConversationSessionLease = transaction(db) {
         require(idleTimeoutMillis > 0) { "idleTimeoutMillis must be positive" }
-        val pointer = SlackCodexActiveSessionTable.selectAll()
+        val pointer = MemoryConversationActiveSessionTable.selectAll()
             .where {
-                (SlackCodexActiveSessionTable.teamId eq participant.scopeId) and
-                    (SlackCodexActiveSessionTable.slackUserId eq participant.participantId)
+                (MemoryConversationActiveSessionTable.scopeId eq participant.scopeId) and
+                    (MemoryConversationActiveSessionTable.participantId eq participant.participantId)
             }
             .singleOrNull()
             ?: return@transaction MemoryConversationSessionLease.None
-        val row = SlackCodexSessionTable.selectAll()
-            .where { SlackCodexSessionTable.id eq pointer[SlackCodexActiveSessionTable.sessionId] }
+        val row = MemoryConversationSessionTable.selectAll()
+            .where { MemoryConversationSessionTable.id eq pointer[MemoryConversationActiveSessionTable.sessionId] }
             .singleOrNull()
         if (row == null || !row.matches(participant)) {
             deleteActive(participant)
             return@transaction MemoryConversationSessionLease.None
         }
         val session = row.toSession()
-        if (now - row[SlackCodexSessionTable.lastActiveAt] >= idleTimeoutMillis) {
+        if (now - row[MemoryConversationSessionTable.lastActiveAt] >= idleTimeoutMillis) {
             deleteActive(participant)
             return@transaction MemoryConversationSessionLease.Expired(session)
         }
-        SlackCodexSessionTable.update({ SlackCodexSessionTable.id eq session.id }) {
+        MemoryConversationSessionTable.update({ MemoryConversationSessionTable.id eq session.id }) {
             it[lastActiveAt] = now
         }
         MemoryConversationSessionLease.Active(session.copy(lastActiveAt = now))
@@ -143,11 +135,11 @@ internal class MemoryConversationSessionRepository(
 
     override fun touch(participant: MemoryConversationParticipant, sessionId: Int, now: Long) {
         transaction(db) {
-            val updated = SlackCodexSessionTable.update({
-                (SlackCodexSessionTable.id eq sessionId) and
-                    (SlackCodexSessionTable.teamId eq participant.scopeId) and
-                    (SlackCodexSessionTable.slackUserId eq participant.participantId) and
-                    (SlackCodexSessionTable.userId eq participant.userId.value)
+            val updated = MemoryConversationSessionTable.update({
+                (MemoryConversationSessionTable.id eq sessionId) and
+                    (MemoryConversationSessionTable.scopeId eq participant.scopeId) and
+                    (MemoryConversationSessionTable.participantId eq participant.participantId) and
+                    (MemoryConversationSessionTable.userId eq participant.userId.value)
             }) {
                 it[lastActiveAt] = now
             }
@@ -156,18 +148,18 @@ internal class MemoryConversationSessionRepository(
     }
 
     override fun expireIdle(beforeInclusive: Long): List<MemoryConversationSession> = transaction(db) {
-        val expired = (SlackCodexActiveSessionTable innerJoin SlackCodexSessionTable)
+        val expired = (MemoryConversationActiveSessionTable innerJoin MemoryConversationSessionTable)
             .selectAll()
-            .where { SlackCodexSessionTable.lastActiveAt lessEq beforeInclusive }
+            .where { MemoryConversationSessionTable.lastActiveAt lessEq beforeInclusive }
             .map { it.toSession() }
         expired.forEach { deleteActive(it.participant) }
         expired
     }
 
     override fun failStaleProcessing(before: Long, now: Long): Int = transaction(db) {
-        SlackMessageReceiptTable.update({
-            (SlackMessageReceiptTable.status eq MemoryConversationRequestStatus.PROCESSING.name) and
-                (SlackMessageReceiptTable.updatedAt lessEq before)
+        MemoryConversationReceiptTable.update({
+            (MemoryConversationReceiptTable.status eq MemoryConversationRequestStatus.PROCESSING.name) and
+                (MemoryConversationReceiptTable.updatedAt lessEq before)
         }) {
             it[status] = MemoryConversationRequestStatus.FAILED.name
             it[updatedAt] = now
@@ -177,14 +169,14 @@ internal class MemoryConversationSessionRepository(
     private fun updateReceipt(
         key: MemoryConversationRequestKey,
         now: Long,
-        update: SlackMessageReceiptTable.(org.jetbrains.exposed.sql.statements.UpdateBuilder<*>) -> Unit,
+        update: MemoryConversationReceiptTable.(org.jetbrains.exposed.sql.statements.UpdateBuilder<*>) -> Unit,
     ) {
         transaction(db) {
-            val count = SlackMessageReceiptTable.update({
-                (SlackMessageReceiptTable.channelId eq key.streamId) and
-                    (SlackMessageReceiptTable.messageTs eq key.requestId)
+            val count = MemoryConversationReceiptTable.update({
+                (MemoryConversationReceiptTable.streamId eq key.streamId) and
+                    (MemoryConversationReceiptTable.requestId eq key.requestId)
             }) {
-                update(SlackMessageReceiptTable, it)
+                update(MemoryConversationReceiptTable, it)
                 it[updatedAt] = now
             }
             check(count == 1) { "Message receipt not found" }
@@ -192,54 +184,53 @@ internal class MemoryConversationSessionRepository(
     }
 
     private fun deleteActive(participant: MemoryConversationParticipant) {
-        SlackCodexActiveSessionTable.deleteWhere {
-            (teamId eq participant.scopeId) and
-                (slackUserId eq participant.participantId)
+        MemoryConversationActiveSessionTable.deleteWhere {
+            (scopeId eq participant.scopeId) and
+                (participantId eq participant.participantId)
         }
     }
 
     private fun receiptRow(key: MemoryConversationRequestKey): ResultRow =
-        SlackMessageReceiptTable.selectAll()
+        MemoryConversationReceiptTable.selectAll()
             .where {
-                (SlackMessageReceiptTable.channelId eq key.streamId) and
-                    (SlackMessageReceiptTable.messageTs eq key.requestId)
+                (MemoryConversationReceiptTable.streamId eq key.streamId) and
+                    (MemoryConversationReceiptTable.requestId eq key.requestId)
             }
             .single()
 
     private fun sessionRow(id: Int): ResultRow =
-        SlackCodexSessionTable.selectAll()
-            .where { SlackCodexSessionTable.id eq id }
+        MemoryConversationSessionTable.selectAll()
+            .where { MemoryConversationSessionTable.id eq id }
             .single()
 
     private fun ResultRow.matches(participant: MemoryConversationParticipant): Boolean =
-        this[SlackCodexSessionTable.teamId] == participant.scopeId &&
-            this[SlackCodexSessionTable.slackUserId] == participant.participantId &&
-            this[SlackCodexSessionTable.userId] == participant.userId.value
+        this[MemoryConversationSessionTable.scopeId] == participant.scopeId &&
+            this[MemoryConversationSessionTable.participantId] == participant.participantId &&
+            this[MemoryConversationSessionTable.userId] == participant.userId.value
 
     private fun ResultRow.toSession(): MemoryConversationSession =
         MemoryConversationSession(
-            id = this[SlackCodexSessionTable.id],
+            id = this[MemoryConversationSessionTable.id],
             participant = MemoryConversationParticipant(
-                scopeId = this[SlackCodexSessionTable.teamId],
-                participantId = this[SlackCodexSessionTable.slackUserId],
-                userId = UserId(this[SlackCodexSessionTable.userId]),
+                scopeId = this[MemoryConversationSessionTable.scopeId],
+                participantId = this[MemoryConversationSessionTable.participantId],
+                userId = UserId(this[MemoryConversationSessionTable.userId]),
             ),
-            conversationId = ConversationId(this[SlackCodexSessionTable.codexThreadId]),
-            createdAt = this[SlackCodexSessionTable.createdAt],
-            lastActiveAt = this[SlackCodexSessionTable.lastActiveAt],
+            conversationId = ConversationId(this[MemoryConversationSessionTable.conversationId]),
+            createdAt = this[MemoryConversationSessionTable.createdAt],
+            lastActiveAt = this[MemoryConversationSessionTable.lastActiveAt],
         )
 
     private fun ResultRow.toReceipt(): MemoryConversationReceipt =
         MemoryConversationReceipt(
             key = MemoryConversationRequestKey(
-                streamId = this[SlackMessageReceiptTable.channelId],
-                requestId = this[SlackMessageReceiptTable.messageTs],
+                streamId = this[MemoryConversationReceiptTable.streamId],
+                requestId = this[MemoryConversationReceiptTable.requestId],
             ),
-            status = MemoryConversationRequestStatus.valueOf(this[SlackMessageReceiptTable.status]),
-            sessionId = this[SlackMessageReceiptTable.sessionId],
-            answerText = this[SlackMessageReceiptTable.answerText],
-            deliveryId = this[SlackMessageReceiptTable.responseTs],
-            createdAt = this[SlackMessageReceiptTable.createdAt],
-            updatedAt = this[SlackMessageReceiptTable.updatedAt],
+            status = MemoryConversationRequestStatus.valueOf(this[MemoryConversationReceiptTable.status]),
+            sessionId = this[MemoryConversationReceiptTable.sessionId],
+            answerText = this[MemoryConversationReceiptTable.answerText],
+            createdAt = this[MemoryConversationReceiptTable.createdAt],
+            updatedAt = this[MemoryConversationReceiptTable.updatedAt],
         )
 }

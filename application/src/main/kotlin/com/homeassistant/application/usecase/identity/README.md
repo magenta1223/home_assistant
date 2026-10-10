@@ -29,7 +29,9 @@ sequenceDiagram
 
 ## 규칙
 
-- Slack ID 같은 외부 식별자는 `ConversationIdentity(scopeId, participantId)`로만 application에 들어온다.
+- 외부 식별자는 `ConversationIdentity(scopeId, participantId)`로만 application에 들어온다.
 - 표시 이름의 trim, 빈 값 금지, 50자 제한은 domain의 `RegisteredUser`가 소유한다.
 - 외부 identity를 다시 등록해도 저장소가 기존 application `userId`를 보존한다.
-- `reserveLegacy`는 환경 변수 기반 기존 mapping을 실제 이름 등록 전까지 예약하는 마이그레이션 경로다.
+
+HTTP 인증·열람자 목록은 기존 application userId와 등록 사용자 목록을 사용한다. 이 use case의
+일반 저장 계약은 유지하지만 HTTP 사용자 등록 화면이나 API는 현재 제공하지 않는다.

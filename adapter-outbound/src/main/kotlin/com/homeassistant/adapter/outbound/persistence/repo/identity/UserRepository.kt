@@ -11,7 +11,6 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
-import org.jetbrains.exposed.sql.insertIgnore
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.jetbrains.exposed.sql.update
@@ -65,23 +64,6 @@ internal class UserRepository(
 
     override fun isRegistered(userId: UserId): Boolean = transaction(db) {
         memberRow(userId.value)?.toRegisteredUser() != null
-    }
-
-    override fun reserve(identity: ConversationIdentity, userId: UserId, now: Long) {
-        transaction(db) {
-            UserTable.insertIgnore {
-                it[UserTable.userId] = userId.value
-                it[displayName] = null
-                it[createdAt] = now
-                it[updatedAt] = now
-            }
-            ConversationIdentityTable.insertIgnore {
-                it[scopeId] = identity.scopeId
-                it[participantId] = identity.participantId
-                it[ConversationIdentityTable.userId] = userId.value
-                it[createdAt] = now
-            }
-        }
     }
 
     private fun identityRow(identity: ConversationIdentity): ResultRow? =

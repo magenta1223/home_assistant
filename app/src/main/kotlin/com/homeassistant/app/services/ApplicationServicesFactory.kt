@@ -1,14 +1,11 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.inbound.slack.SlackConfig
-import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.memoryconversation.ConversationGatewayFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
-import com.homeassistant.application.usecase.memory.analysis.KnowledgeInjectionWorkflowService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserAccessPolicies
@@ -24,9 +21,7 @@ import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxPr
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
-import com.homeassistant.application.port.input.identity.ConversationIdentity
 import com.homeassistant.application.usecase.identity.UserRegistryService
-import com.homeassistant.application.usecase.memory.answer.MemoryAnswerWorkflowService
 import org.slf4j.LoggerFactory
 import java.time.Duration
 
@@ -56,13 +51,6 @@ object ApplicationServicesFactory {
             indexWriter = memoryIndexWriter,
         )
         val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
-        val slackConfig = SlackConfig.fromEnv()
-        slackConfig?.legacyMemberMappings.orEmpty().forEach { legacy ->
-            users.reserveLegacy(
-                identity = ConversationIdentity(legacy.teamId, legacy.slackUserId),
-                userId = legacy.userId,
-            )
-        }
         val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)
         val accessPolicy = UserAccessPolicy { userId ->
             users.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
@@ -77,10 +65,6 @@ object ApplicationServicesFactory {
             accessPolicy = accessPolicy,
             memoryIndexing = memoryIndexing,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(),
-        )
-        val knowledgeInjectionWorkflow = KnowledgeInjectionWorkflowService(
-            users = users,
-            memoryAnalysis = memoryAnalysisService,
         )
         val memorySearcherImpl = MemorySearcher(
             memories = repositories.canonicalMemories,
@@ -116,24 +100,9 @@ object ApplicationServicesFactory {
                 ),
             )
         } ?: ConversationExpiryWorker.NONE
-        val memoryAnswerWorkflow = MemoryAnswerWorkflowService(
-            users = users,
-            pendingQuestions = repositories.pendingRegistrationQuestions,
-            memoryConversation = memoryConversation,
-        )
-        val slackRuntime = slackConfig?.let { config ->
-            if (memoryConversation == null) {
-                log.info("Slack memory answers disabled: local Codex CLI is unavailable or its timeout is invalid")
-            }
-            SlackRuntimeFactory.create(config, memoryAnswerWorkflow, knowledgeInjectionWorkflow)
-        }
-        if (slackRuntime == null) {
-            log.info("Slack Socket Mode disabled: Slack token or team configuration is missing")
-        }
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
             memoryConversation = memoryConversation,
-            slackRuntime = slackRuntime,
             users = users,
             vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,

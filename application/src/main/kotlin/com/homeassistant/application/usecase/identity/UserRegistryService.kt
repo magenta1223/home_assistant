@@ -24,8 +24,4 @@ class UserRegistryService(
     override fun list(): List<RegisteredUser> = store.list()
 
     override fun isAuthorized(userId: UserId): Boolean = store.isRegistered(userId)
-
-    fun reserveLegacy(identity: ConversationIdentity, userId: UserId) {
-        store.reserve(identity, userId, clock())
-    }
 }

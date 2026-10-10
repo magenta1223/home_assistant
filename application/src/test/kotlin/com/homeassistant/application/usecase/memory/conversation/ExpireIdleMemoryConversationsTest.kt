@@ -61,7 +61,6 @@ class ExpireIdleMemoryConversationsTest {
         override fun receipt(key: MemoryConversationRequestKey): MemoryConversationReceipt? = error("unused")
         override fun attachSession(key: MemoryConversationRequestKey, sessionId: Int, now: Long) = error("unused")
         override fun markAnswerReady(key: MemoryConversationRequestKey, answer: String, now: Long) = error("unused")
-        override fun markCompleted(key: MemoryConversationRequestKey, deliveryId: String, now: Long) = error("unused")
         override fun markFailed(key: MemoryConversationRequestKey, now: Long) = error("unused")
         override fun createAndActivate(
             participant: MemoryConversationParticipant,

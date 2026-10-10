@@ -6,7 +6,7 @@
 
 ## 현재 결정
 
-Slack은 frozen legacy adapter이고 현재 HTTP 화면은 사용자가 직접 여는 pull 채널이다. 확정되지 않은
+Slack 연결은 제거했으며 현재 HTTP 화면은 사용자가 직접 여는 pull 채널이다. 확정되지 않은
 delivery 채널을 전제로 worker, 승인 UI와 Memory 추론을 먼저 만들지 않는다.
 
 재개 조건은 다음 두 가지다.

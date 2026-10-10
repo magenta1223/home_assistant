@@ -7,7 +7,7 @@
 ## 문제
 
 현재 모듈 의존성은 `app -> adapter-inbound/adapter-outbound -> application -> domain` 방향을
-지키고 있으며, Application과 Domain은 DB, Slack, Qdrant, Ollama, Codex 같은 구체 구현을 직접
+지키고 있으며, Application과 Domain은 DB, Qdrant, Ollama, Codex 같은 구체 구현을 직접
 참조하지 않는다. 다만 엄격한 Layered/Hexagonal Architecture 기준에서는 다음 기술 관심사가
 Core 경계 안에 남아 있다.
 
@@ -42,7 +42,7 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
    - Domain은 Kotlin/JDK와 허용된 domain dependency 외 프레임워크를 import하지 않는다.
    - Application은 adapter, configuration, concrete logging binding을 의존하지 않는다.
    - Application output port와 Domain 모델에는 구현 기술명 및 transport annotation이 없다.
-7. HTTP, Slack, Codex 분석, persistence round-trip 회귀 테스트로 변환 전후 계약 호환성을 검증한다.
+7. HTTP, Codex 분석, persistence round-trip 회귀 테스트로 변환 전후 계약 호환성을 검증한다.
 
 ## 완료 조건
 
@@ -50,9 +50,9 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
   의존이 제거된다.
 - `app`을 제외한 library 모듈에서 `logback-classic` 의존이 제거되고 실제 logging binding은
   composition/runtime 영역에만 존재한다.
-- Application과 Domain이 Ktor, Slack, Exposed/SQLite, Qdrant, Ollama, Codex 구현 클래스를 참조하지
+- Application과 Domain이 Ktor, Exposed/SQLite, Qdrant, Ollama, Codex 구현 클래스를 참조하지
   않는다는 검사가 자동화된다.
-- 기존 HTTP/Slack 요청·응답 형식, 저장 데이터, Codex structured output 호환성이 유지된다.
+- 기존 HTTP 요청·응답 형식, 저장 데이터, Codex structured output 호환성이 유지된다.
 - 전체 테스트가 통과한다.
 
 ## 제외 범위
@@ -61,7 +61,6 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
 - DB schema 또는 memory domain 모델의 기능 변경
 - 새로운 logging/observability 제품 도입
 - MQTT 등 현재 존재하지 않는 외부 채널 추가
-- frozen Slack callback refactor
 
 ## 현재 상태 (2026-09-08)
 

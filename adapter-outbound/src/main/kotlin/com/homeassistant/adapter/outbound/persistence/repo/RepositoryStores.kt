@@ -6,7 +6,6 @@ import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBat
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import com.homeassistant.application.port.output.identity.UserStore
-import com.homeassistant.application.port.output.memory.answer.PendingRegistrationQuestionStore
 import com.homeassistant.application.port.output.topic.TopicMaintenanceStore
 
 data class RepositoryStores(
@@ -17,5 +16,4 @@ data class RepositoryStores(
     val topicMaintenance: TopicMaintenanceStore,
     val memoryConversationSessions: MemoryConversationSessionStore,
     val users: UserStore,
-    val pendingRegistrationQuestions: PendingRegistrationQuestionStore,
 )

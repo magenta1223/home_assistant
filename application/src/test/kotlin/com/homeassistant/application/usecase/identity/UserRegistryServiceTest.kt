@@ -7,7 +7,6 @@ import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
@@ -36,21 +35,7 @@ class UserRegistryServiceTest {
         }
     }
 
-    @Test
-    fun `legacy reservation preserves the existing application user`() {
-        val store = RecordingStore()
-        val service = UserRegistryService(store, { UserId("new-user") }, { 456L })
-
-        service.reserveLegacy(IDENTITY, UserId("existing-user"))
-        val member = service.register(RegisterUserRequest(IDENTITY, "이름"))
-
-        assertEquals("existing-user", member.userId.value)
-        assertTrue(service.isAuthorized(UserId("existing-user")))
-        assertFalse(service.isAuthorized(UserId("new-user")))
-    }
-
     private class RecordingStore : UserStore {
-        private val reservations = mutableMapOf<ConversationIdentity, UserId>()
         private val users = mutableMapOf<ConversationIdentity, RegisteredUser>()
         var registrationNow: Long? = null
 
@@ -63,7 +48,7 @@ class UserRegistryServiceTest {
             now: Long,
         ): RegisteredUser {
             registrationNow = now
-            return RegisteredUser(reservations[identity] ?: proposedUserId, displayName)
+            return RegisteredUser(users[identity]?.userId ?: proposedUserId, displayName)
                 .also { users[identity] = it }
         }
 
@@ -71,12 +56,9 @@ class UserRegistryServiceTest {
 
         override fun isRegistered(userId: UserId): Boolean = users.values.any { it.userId == userId }
 
-        override fun reserve(identity: ConversationIdentity, userId: UserId, now: Long) {
-            reservations.putIfAbsent(identity, userId)
-        }
     }
 
     private companion object {
-        val IDENTITY = ConversationIdentity("team-1", "slack-1")
+        val IDENTITY = ConversationIdentity("http", "user-1")
     }
 }

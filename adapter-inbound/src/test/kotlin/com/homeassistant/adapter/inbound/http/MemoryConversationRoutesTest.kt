@@ -237,7 +237,6 @@ class MemoryConversationRoutesTest {
             return result
         }
 
-        override fun markDelivered(key: MemoryConversationRequestKey, deliveryId: String) = Unit
     }
 
     private class FixedUserRegistry(

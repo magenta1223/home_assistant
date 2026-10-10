@@ -23,7 +23,7 @@
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
 - 사용자 학습 과제 보류: Memory DB 조회 최적화 1개
-- 이번 점검에서 종료: 자동 배포 종료 신뢰성 DONE, Slack HTTP 전환 DONE, Slack integration 분리 CANCELED
+- 사용자 진입점: HTTP만 지원. Slack adapter·전용 workflow·SDK·운영 도구 제거 (2026-10-10)
 
 ## 운영 리스크와 기반 작업
 
@@ -88,6 +88,7 @@
 
 | 문서 | 결과 |
 |---|---|
+| [remove-slack.md](done/remove-slack.md) | Slack adapter·전용 workflow·SDK·설정·운영 도구 제거; HTTP·기존 사용자·세션 유지, 전체 테스트 통과 |
 | [remove-lm-topic-generation.md](done/remove-lm-topic-generation.md) | LM Topic 생성·자동 배치·worker 삭제, Topic 모델·명시적 저장 유지, 전체 테스트 통과 |
 | [memory-topic-graph.md](done/memory-topic-graph.md) | Topic 모델·원자 저장·legacy tree 제거; 당시 LM 생성·자동 배치는 2026-10-10 삭제로 대체 |
 | [visible-memory-tree-page.md](done/visible-memory-tree-page.md) | 인증 사용자별 ACL을 지키는 Memory Tree API와 읽기 전용 웹 화면 추가 |

@@ -1,6 +1,5 @@
 package com.homeassistant.application.port.input.memory.conversation
 
-import com.homeassistant.application.port.input.memory.answer.ConversationRequestKey
 import com.homeassistant.domain.identity.UserId
 
 data class MemoryConversationParticipant(
@@ -14,7 +13,15 @@ data class MemoryConversationParticipant(
     }
 }
 
-typealias MemoryConversationRequestKey = ConversationRequestKey
+data class MemoryConversationRequestKey(
+    val streamId: String,
+    val requestId: String,
+) {
+    init {
+        require(streamId.isNotBlank()) { "streamId is required" }
+        require(requestId.isNotBlank()) { "requestId is required" }
+    }
+}
 
 data class MemoryConversationRequest(
     val participant: MemoryConversationParticipant,
@@ -35,7 +42,4 @@ sealed interface MemoryConversationResult {
 /** Answers one deduplicated question using memories visible to the participant. */
 interface MemoryConversation {
     fun answer(request: MemoryConversationRequest): MemoryConversationResult
-
-    /** Records successful delivery by an inbound adapter. */
-    fun markDelivered(key: MemoryConversationRequestKey, deliveryId: String)
 }

@@ -159,7 +159,7 @@ Ollama로 만든 vector와 ONNX vector는 모델 이름과 차원이 같아도 �
 3. SQLite canonical memory 수와 새 collection point 수, 실패·superseded outbox 수를 대조한다.
 4. 고정 회귀 fixture와 실제 memory query로 top-k, score와 접근 권한 결과를 비교한다.
 5. 검증이 끝난 뒤 application 설정을 새 collection으로 한 번에 전환하고 재시작한다.
-6. Slack memory answer와 새 memory 저장·검색 smoke test를 수행한다.
+6. HTTP memory conversation와 새 memory 저장·검색 smoke test를 수행한다.
 7. 관찰 기간에는 기존 Ollama 설치와 기존 collection을 읽지 않는 상태로 보존한다.
 8. 실패하면 이전 배포본과 이전 collection 설정으로 함께 rollback한다. embedder와 collection 중
    하나만 되돌리는 혼합 상태는 허용하지 않는다.
@@ -196,7 +196,7 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 5. 누락·checksum 불일치·손상된 ONNX·native DLL 로딩 실패 시 setup/startup 오류를 검증한다.
 6. `gradlew test`, `setupEmbedding`, `setupRuntime`, `reindexMemories`를 새 경로로 검증한다.
 7. `HOMESERVER`에서 startup 시간, embedding latency와 memory 사용량을 기준선과 비교한다.
-8. 별도 collection 재색인, 전환, health, Slack 질의와 rollback을 순서대로 rehearsal한다.
+8. 별도 collection 재색인, 전환, health, HTTP 질의와 rollback을 순서대로 rehearsal한다.
 9. 운영 관찰이 끝난 뒤에만 Ollama runtime과 이전 collection 삭제를 별도 정리 작업으로 수행한다.
 
 ## 완료 조건
@@ -215,7 +215,7 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 - 새 embedder와 새 collection이 항상 한 쌍으로 배포·rollback되고 혼합 vector 상태가 없다.
 - 누락되거나 손상된 bundle은 setup 안내가 포함된 오류로 startup 전에 실패한다.
 - concurrent embedding과 application shutdown에서 native resource leak이나 종료 hang이 없다.
-- production에서 health, 새 memory 색인, semantic search와 Slack memory answer smoke test가
+- production에서 health, 새 memory 색인, semantic search와 HTTP memory conversation smoke test가
   통과한다.
 - Ollama 제거 후 Gradle 전체 테스트와 배포 종료·복구 회귀 테스트가 통과한다.
 - rollback rehearsal과 운영 관찰이 끝날 때까지 이전 배포본과 Qdrant collection이 보존된다.

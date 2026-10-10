@@ -18,7 +18,4 @@ interface UserStore {
     fun list(): List<RegisteredUser>
 
     fun isRegistered(userId: UserId): Boolean
-
-    /** Reserves an existing application user for one-time migration from configured mappings. */
-    fun reserve(identity: ConversationIdentity, userId: UserId, now: Long)
 }

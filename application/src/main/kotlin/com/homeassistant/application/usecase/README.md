@@ -1,7 +1,7 @@
 # Application use cases
 
 이 디렉터리는 input port를 구현하고 domain 규칙과 output port를 조합하는 기술 중립적인
-application orchestration을 담는다. HTTP, Slack, SQLite, Codex, Qdrant 같은 기술 이름과
+application orchestration을 담는다. HTTP, SQLite, Codex, Qdrant 같은 기술 이름과
 payload 형식은 여기에서 직접 다루지 않는다.
 
 ## 패키지 지도
@@ -10,7 +10,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 |---|---|---|
 | `identity` | conversation identity를 application user로 해석하고 등록·인가한다. | [identity](identity/README.md) |
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
-| `memory/answer` | 사용자 등록과 memory-backed answer의 채널 독립 workflow를 조정한다. | [answer](memory/answer/README.md) |
+| `memory/answer` | 허용된 Memory 검색 결과를 답변 context로 전달한다. | [answer](memory/answer/README.md) |
 | `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |
 | `memory/search` | 사용자에게 보이는 memory만 semantic search한다. | [search](memory/search/README.md) |
 | `memory/write` | proposal을 원자적으로 저장하고 indexing outbox를 처리한다. | [write](memory/write/README.md) |
@@ -48,59 +48,39 @@ sequenceDiagram
 Canonical database commit까지가 요청 성공의 기준이다. Indexing은 commit 이후의 후처리이므로
 실패해도 저장된 canonical memory를 되돌리지 않는다. Topic 생성·배치는 호출하지 않는다.
 
-채널에서 시작된 지식 주입은 `KnowledgeInjectionWorkflow`가 conversation identity를 등록 사용자로
-해석한 뒤 동일한 `MemoryAnalysis` 쓰기 흐름에 진입한다. 채널 adapter는 application user ID를 직접
-결정하지 않는다.
+HTTP 지식 입력은 인증된 application userId로 `MemoryAnalysis`를 직접 호출한다.
 
-## 전체 Slack memory 응답 흐름
+## HTTP memory 응답 흐름
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant Inbound as Slack inbound adapter
-    participant Workflow as MemoryAnswerWorkflow
-    participant Registry as UserRegistry
-    participant Pending as PendingRegistrationQuestionStore
+    participant HTTP as Authenticated HTTP adapter
     participant Conversation as MemoryConversation
-    participant Search as MemorySearch
+    participant Sessions as MemoryConversationSessionStore
+    participant Context as MemoryConversationContextSource
     participant Gateway as ConversationGateway
 
-    User->>Inbound: DM
-    Inbound->>Workflow: receive(MemoryAnswerRequest)
-    Workflow->>Registry: find(ConversationIdentity)
-    alt 등록되지 않은 사용자
-        Workflow->>Pending: rememberFirst(request)
-        Workflow-->>Inbound: RegistrationRequired 또는 RegistrationPending
-        Inbound-->>User: 등록 UI
-        User->>Inbound: 이름 제출
-        Inbound->>Workflow: completeRegistration(request)
-        Workflow->>Registry: register(request)
-        Workflow->>Pending: find(identity)
-        Workflow->>Conversation: answer(보관된 최초 질문)
-        Workflow->>Pending: remove(identity)
-    else 등록된 사용자
-        Workflow->>Conversation: answer(request + userId)
-    end
-    Conversation->>Search: 허용된 memory context 조회
-    opt 활성 session 없음
+    User->>HTTP: question + requestId
+    HTTP->>Conversation: answer(authenticated user, request key, question)
+    Conversation->>Sessions: claimRequest + lease(idle=10분)
+    Conversation->>Context: context(userId, question)
+    opt 활성 session 없음 및 검색 결과 있음
         Conversation->>Gateway: begin()
         Gateway-->>Conversation: conversationId
     end
-    Conversation->>Gateway: continueConversation(conversationId, prompt)
-    Gateway-->>Conversation: answer
-    Conversation-->>Workflow: AnswerReady
-    Workflow-->>Inbound: AnswerReady
-    Inbound-->>User: Slack message
-    Inbound->>Workflow: markDelivered(requestKey, deliveryId)
+    opt 검색 결과 있음
+        Conversation->>Gateway: continueConversation(conversationId, prompt)
+        Gateway-->>Conversation: answer
+    end
+    Conversation->>Sessions: markAnswerReady
+    Conversation-->>HTTP: AnswerReady / AlreadyHandled / Failed
+    HTTP-->>User: HTTP response
 ```
 
-활성 conversation은 scope, participant, application user ID로 격리된다. 10분 동안 사용되지 않은
-session은 background expiry 흐름이 비활성화하고 provider conversation을 종료한다. Memory conversation
-use case가 conversation 생성·재사용·종료 시점을 결정하며, gateway는 provider 응답을 application의
-`ConversationReply`로 변환한다.
-
-Slack은 application result를 UI로 표현할 뿐이며 사용자 registry, pending question, authorization,
-idempotency와 session expiry를 소유하지 않는다.
+사용자 등록·목록과 application UserId는 공통 identity 기능이다. Slack 등록 대기·최초 질문 재개·
+명령과 DM 처리는 제거했다. HTTP 인증은 기존 API key와 보안 cookie 흐름을 유지한다.
+세션 격리, 동일 요청 답변 재사용, 10분 idle 만료는 `MemoryConversation`이 관리한다.
 
 ## 문서 유지 규칙
 

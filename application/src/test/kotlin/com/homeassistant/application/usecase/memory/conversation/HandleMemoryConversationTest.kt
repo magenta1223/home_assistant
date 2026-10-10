@@ -23,7 +23,7 @@ import kotlin.test.assertTrue
 
 class HandleMemoryConversationTest {
     @Test
-    fun `builds and stores an answer before the inbound adapter marks it delivered`() {
+    fun `builds and stores an answer for HTTP request retries`() {
         val events = mutableListOf<String>()
         val store = RecordingSessionStore(events = events)
         val client = RecordingConversationGateway(events = events)
@@ -41,14 +41,10 @@ class HandleMemoryConversationTest {
         assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
         assertEquals(MemoryConversationRequestStatus.ANSWER_READY, store.receipt(KEY)?.status)
 
-        handler.markDelivered(KEY, "delivery-1")
-
-        assertEquals(MemoryConversationRequestStatus.COMPLETED, store.receipt(KEY)?.status)
-        assertEquals("delivery-1", store.receipt(KEY)?.deliveryId)
     }
 
     @Test
-    fun `returns a stored undelivered answer without invoking the model again`() {
+    fun `returns a stored answer without invoking the model again`() {
         val store = RecordingSessionStore().apply {
             claimRequest(KEY, NOW)
             markAnswerReady(KEY, "stored answer", NOW)
@@ -295,14 +291,6 @@ class HandleMemoryConversationTest {
             receipts[key] = receipts.getValue(key).copy(
                 status = MemoryConversationRequestStatus.ANSWER_READY,
                 answerText = answer,
-                updatedAt = now,
-            )
-        }
-
-        override fun markCompleted(key: MemoryConversationRequestKey, deliveryId: String, now: Long) {
-            receipts[key] = receipts.getValue(key).copy(
-                status = MemoryConversationRequestStatus.COMPLETED,
-                deliveryId = deliveryId,
                 updatedAt = now,
             )
         }

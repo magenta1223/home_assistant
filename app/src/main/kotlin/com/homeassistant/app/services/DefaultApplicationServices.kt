@@ -1,6 +1,5 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.inbound.slack.SlackRuntime
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.identity.UserRegistry
@@ -10,7 +9,6 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 internal class DefaultApplicationServices(
     override val memoryAnalysis: MemoryAnalysis,
     override val memoryConversation: MemoryConversation? = null,
-    override val slackRuntime: SlackRuntime?,
     override val users: UserRegistry = UserRegistry.NONE,
     private val vectorRuntime: VectorServerRuntime,
     private val embeddingRuntime: EmbeddingServerRuntime,
@@ -26,27 +24,22 @@ internal class DefaultApplicationServices(
         embeddingRuntime.start()
         indexingWorker.start()
         conversationExpiryWorker.start()
-        slackRuntime?.startAsync()
     }
 
     override fun close() {
         try {
-            slackRuntime?.close()
+            conversationExpiryWorker.close()
         } finally {
             try {
-                conversationExpiryWorker.close()
+                conversationGateway?.close()
             } finally {
                 try {
-                    conversationGateway?.close()
+                    indexingWorker.close()
                 } finally {
                     try {
-                        indexingWorker.close()
+                        embeddingRuntime.close()
                     } finally {
-                        try {
-                            embeddingRuntime.close()
-                        } finally {
-                            vectorRuntime.close()
-                        }
+                        vectorRuntime.close()
                     }
                 }
             }

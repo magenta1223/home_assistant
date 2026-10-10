@@ -6,6 +6,7 @@ import com.homeassistant.application.port.input.memory.conversation.MemoryConver
 enum class MemoryConversationRequestStatus {
     PROCESSING,
     ANSWER_READY,
+    /** Read compatibility for previously completed requests; HTTP writes ANSWER_READY. */
     COMPLETED,
     FAILED,
 }
@@ -29,7 +30,6 @@ data class MemoryConversationReceipt(
     val status: MemoryConversationRequestStatus,
     val sessionId: Int? = null,
     val answerText: String? = null,
-    val deliveryId: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
 )
@@ -40,7 +40,6 @@ interface MemoryConversationSessionStore {
     fun receipt(key: MemoryConversationRequestKey): MemoryConversationReceipt?
     fun attachSession(key: MemoryConversationRequestKey, sessionId: Int, now: Long)
     fun markAnswerReady(key: MemoryConversationRequestKey, answer: String, now: Long)
-    fun markCompleted(key: MemoryConversationRequestKey, deliveryId: String, now: Long)
     fun markFailed(key: MemoryConversationRequestKey, now: Long)
 
     fun createAndActivate(

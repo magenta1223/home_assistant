@@ -9,32 +9,8 @@ canonical memory로 즉시 확정한다. 별도의 preview/review 단계는 없�
 제한하지 않으며, 원문에 없는 사실을 추가하거나 발언·추정을 확정된 사실로 바꾸지 않는다.
 권한은 추출 모델이 판단하지 않고 근거 source의 immutable access에서 결정한다.
 
-`KnowledgeInjectionWorkflowService`는 외부 채널의 인증된 conversation identity를 application user로
-해석하고, 등록된 사용자에게만 같은 `MemoryAnalysis` 흐름을 제공한다.
-
-## 채널 기반 지식 주입
-
-```mermaid
-sequenceDiagram
-    actor Caller
-    participant Injection as KnowledgeInjectionWorkflow
-    participant Registry as UserRegistry
-    participant Analysis as MemoryAnalysis
-
-    Caller->>Injection: prepare(identity)
-    Injection->>Registry: find(identity)
-    alt 등록되지 않은 사용자
-        Injection-->>Caller: RegistrationRequired
-    else 등록된 사용자
-        Injection->>Registry: list()
-        Injection-->>Caller: Ready(requester, availableViewers)
-        Caller->>Injection: execute(identity, source, access)
-        Injection->>Registry: find(identity)
-        Injection->>Analysis: execute(userId, source, access)
-        Analysis-->>Injection: MemoryAnalysisResult
-        Injection-->>Caller: MemoryAnalysisResult
-    end
-```
+HTTP adapter가 인증된 principal의 application userId, source, access를 `MemoryAnalysis`에 직접 전달한다.
+사용자 목록 조회는 공통 `UserRegistry`를 사용한다. 채널 identity 해석과 등록 대기 workflow는 없다.
 
 ## 분석과 저장
 
@@ -93,4 +69,3 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
 - 손상되었거나 지원하지 않는 reference는 `InvalidKnowledgeReferenceException`으로 변환한다.
 - indexing 실패는 canonical commit을 취소하지 않으며 기존 outbox로 복구한다.
   Memory 저장 후 Topic 생성·배치는 호출하지 않는다. LM Topic 생성 경로와 worker는 제거했다.
-- 채널 identity가 등록된 application user로 해석되지 않으면 지식 주입을 시작하거나 실행하지 않는다.

@@ -81,10 +81,6 @@ class HandleMemoryConversation(
         }
     }
 
-    override fun markDelivered(key: MemoryConversationRequestKey, deliveryId: String) {
-        sessions.markCompleted(key, deliveryId, now())
-    }
-
     private fun existingResult(key: MemoryConversationRequestKey): MemoryConversationResult {
         val receipt = sessions.receipt(key) ?: return MemoryConversationResult.AlreadyHandled
         return if (receipt.status == MemoryConversationRequestStatus.ANSWER_READY) {

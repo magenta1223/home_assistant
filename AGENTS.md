@@ -11,7 +11,7 @@ This project is a low-maintenance **home second brain** for a family, not a gene
 
 Prefer memory-backed retrieval over a new structured feature. Add a dedicated service only when the behavior needs durable state changes, proactive delivery, or coordination between family members.
 
-Knowledge enters explicitly from text or Kakao records, receives PUBLIC or immutable user-based access, and is analyzed into canonical topics and memories. Registered users retrieve and discuss those memories through authenticated HTTP. Slack is a frozen legacy adapter: preserve it, fix security or data-loss defects, and eventually remove it; do not add Slack features or restore a general chat surface.
+Knowledge enters explicitly from text or Kakao records, receives PUBLIC or immutable user-based access, and is analyzed into canonical topics and memories. Registered users retrieve and discuss those memories through authenticated HTTP. HTTP is the only supported user-facing channel. Slack integration has been removed; do not restore it or a general chat surface.
 
 The repository is also a hands-on environment for learning implementation, deployment, and operations. Learning value and understandable end-to-end behavior matter as much as delivery speed.
 

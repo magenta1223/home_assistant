@@ -3,14 +3,12 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.inbound.slack.SlackConfig
 import com.homeassistant.adapter.inbound.slack.SlackRuntimeFactory
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
-import com.homeassistant.adapter.outbound.topic.TopicPlacementProposerFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.memoryconversation.ConversationGatewayFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.application.usecase.memory.analysis.KnowledgeInjectionWorkflowService
-import com.homeassistant.application.usecase.topic.placement.TopicPlacementService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserAccessPolicies
@@ -72,16 +70,11 @@ object ApplicationServicesFactory {
         val memorySaver = MemoryProposalsPersister(
             batchWriter = repositories.canonicalMemoryBatchWriter,
         )
-        val topicPlacement = TopicPlacementService(
-            store = repositories.topicPlacement,
-            proposer = TopicPlacementProposerFactory.create(),
-        )
         val memoryAnalysisService = MemoryAnalysisService(
             memoryExtractor = MemoryExtractorFactory.create(),
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
             accessPolicy = accessPolicy,
-            topicPlacement = topicPlacement,
             memoryIndexing = memoryIndexing,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(),
         )
@@ -145,7 +138,6 @@ object ApplicationServicesFactory {
             vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
-            placementWorker = TopicPlacementWorker(topicPlacement),
             conversationExpiryWorker = conversationExpiryWorker,
             conversationGateway = conversationGateway,
         )

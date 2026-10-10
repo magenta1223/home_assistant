@@ -1,5 +1,7 @@
 # Memory + Topic 그래프 실행 계획
 
+> 2026-10-10 변경: 아래 기록은 2026-10-07 구현 이력이다. 사용자 요청으로 LM Topic 생성·자동 배치와 worker를 삭제했다. Topic 모델·저장소는 유지한다. [변경 기록](remove-lm-topic-generation.md).
+
 - 상태: DONE — 합의한 일곱 단계 구현·검증 완료 (2026-10-07)
 - 우선순위: Feature P0 내 Memory 구조 전환 후보. 다른 기능과의 착수 순서는 별도 결정한다.
 - 작성일: 2026-10-06
@@ -285,4 +287,4 @@ GPT-6 Astra 서브에이전트가 1~3단계와 4단계 대부분을 순차 구�
 - 초기 배치만 구현했다. 기존 Topic 재정리·설명 수정·분할·병합, Topic 검색·표시 API·UI는 보류한다.
 - 새 DB 기준의 스키마다. 기존 데이터 변환이나 운영 DB 초기화는 이번 작업에 포함하지 않았다.
 
-상세 동작과 복구 계약은 [Topic placement README](../../../application/src/main/kotlin/com/homeassistant/application/usecase/topic/placement/README.md)를 따른다.
+당시 Topic placement README와 구현은 2026-10-10에 삭제했다. 남아 있는 명시적 저장 계약은 [Topic storage README](../../../application/src/main/kotlin/com/homeassistant/application/port/output/topic/README.md)를 따른다.

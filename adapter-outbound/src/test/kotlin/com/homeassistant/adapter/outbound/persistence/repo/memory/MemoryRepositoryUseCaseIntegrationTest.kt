@@ -9,10 +9,7 @@ import com.homeassistant.application.port.output.memory.search.SemanticMemoryInd
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
-import com.homeassistant.application.usecase.topic.placement.TopicPlacementService
-import com.homeassistant.application.port.input.topic.placement.TopicPlacementRunResult
 import com.homeassistant.application.port.output.topic.*
-import kotlin.test.assertIs
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -26,7 +23,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
-import kotlinx.coroutines.runBlocking
 
 class MemoryRepositoryUseCaseIntegrationTest {
     private val member = UserId("member-1")
@@ -74,19 +70,17 @@ class MemoryRepositoryUseCaseIntegrationTest {
     }
 
     @Test
-    fun `topic placement uses real storage and restart has no duplicate work`() = runBlocking {
+    fun `explicit topic storage preserves memory content and audience`() {
         withRepositories("topic-placement-integration") { stores ->
             val memory = stores.saveMemory(member, "incoming", MemoryAccess.restricted(listOf(UserId("other"))))
             val before = stores.canonicalMemories.getMemories(UserId("other"))
-            val placement = TopicPlacementService(stores.topicPlacement, {
+            val result = stores.topicMaintenance.apply(
                 TopicWriteBatch(
                     creations = listOf(TopicCreation("new", "Topic")),
                     memberships = listOf(TopicMembershipAddition(TopicReference.Created("new"), "Facts", listOf(memory.id))),
                 )
-            })
-            assertIs<TopicPlacementRunResult.Placed>(placement.processAvailable())
-            val restarted = TopicPlacementService(stores.topicPlacement, { error("no duplicate model call") })
-            assertEquals(TopicPlacementRunResult.Idle, restarted.processAvailable())
+            )
+            assertEquals("Topic", stores.topicMaintenance.readForMaintenance(result.createdTopicIds.values).single().description)
             assertEquals(before, stores.canonicalMemories.getMemories(UserId("other")))
         }
     }

@@ -44,7 +44,6 @@ dependencies {
     implementation(project(":configuration"))
     implementation(project(":application"))
     implementation(project(":domain"))
-    implementation(libs.kotlinx.coroutines.core)
 
     // Ktor server
     implementation(libs.ktor.server.core)

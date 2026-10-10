@@ -8,7 +8,6 @@ import com.homeassistant.application.port.output.memory.conversation.MemoryConve
 import com.homeassistant.application.port.output.identity.UserStore
 import com.homeassistant.application.port.output.memory.answer.PendingRegistrationQuestionStore
 import com.homeassistant.application.port.output.topic.TopicMaintenanceStore
-import com.homeassistant.application.port.output.topic.TopicPlacementStore
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,
@@ -16,7 +15,6 @@ data class RepositoryStores(
     val memoryIndexingOutbox: MemoryIndexingOutbox,
     val canonicalMemories: MemoryReader,
     val topicMaintenance: TopicMaintenanceStore,
-    val topicPlacement: TopicPlacementStore,
     val memoryConversationSessions: MemoryConversationSessionStore,
     val users: UserStore,
     val pendingRegistrationQuestions: PendingRegistrationQuestionStore,

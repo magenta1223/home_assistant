@@ -18,7 +18,7 @@
 ## 현재 상태
 
 - 다음 구현 후보: 최소 가족 Task 서비스 1개
-- Memory 구조 전환 완료: Topic 모델·저장·초기 배치와 legacy tree 제거. Topic 검색·UI는 후속 범위
+- Memory 구조 전환: Topic 모델·저장 유지, legacy tree 제거. LM Topic 생성·자동 배치는 제거했으며 생성 방식·검색·UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
@@ -88,7 +88,8 @@
 
 | 문서 | 결과 |
 |---|---|
-| [memory-topic-graph.md](done/memory-topic-graph.md) | Topic 모델·원자 저장·복구 가능한 초기 배치 구현, legacy tree 제거, 전체 테스트 통과; 검색·UI 보류 |
+| [remove-lm-topic-generation.md](done/remove-lm-topic-generation.md) | LM Topic 생성·자동 배치·worker 삭제, Topic 모델·명시적 저장 유지, 전체 테스트 통과 |
+| [memory-topic-graph.md](done/memory-topic-graph.md) | Topic 모델·원자 저장·legacy tree 제거; 당시 LM 생성·자동 배치는 2026-10-10 삭제로 대체 |
 | [visible-memory-tree-page.md](done/visible-memory-tree-page.md) | 인증 사용자별 ACL을 지키는 Memory Tree API와 읽기 전용 웹 화면 추가 |
 | [deploy-runtime-shutdown-reliability.md](done/deploy-runtime-shutdown-reliability.md) | 종료 경쟁과 실패 복구 경로가 자동 배포에서 실행되어 production 재기동·health·성공 SHA 기록 검증 완료 |
 | [slack-freeze-and-http-access.md](done/slack-freeze-and-http-access.md) | Slack을 동결하고 인증된 HTTP knowledge·conversation과 웹 UI를 production에 배포 |

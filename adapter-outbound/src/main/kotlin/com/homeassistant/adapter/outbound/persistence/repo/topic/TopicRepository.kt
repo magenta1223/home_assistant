@@ -10,39 +10,7 @@ import com.homeassistant.domain.topic.TopicRelation
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class TopicRepository(private val db: Database) : TopicMaintenanceStore, TopicPlacementStore {
-    override fun loadUnplaced(limit: Int): List<TopicPlacementMemory> = transaction(db) {
-        require(limit > 0) { "limit must be positive" }
-        MemoryTable.select(MemoryTable.id, MemoryTable.content).where {
-            notExists(TopicMembershipTable.select(TopicMembershipTable.memoryId).where {
-                TopicMembershipTable.memoryId eq MemoryTable.id
-            })
-        }.orderBy(MemoryTable.id).limit(limit).map { TopicPlacementMemory(it[MemoryTable.id], it[MemoryTable.content]) }
-    }
-
-    override fun loadCandidates(limit: Int): List<TopicCandidate> = transaction(db) {
-        require(limit > 0) { "limit must be positive" }
-        TopicTable.selectAll().orderBy(TopicTable.id, SortOrder.DESC).limit(limit)
-            .map { TopicCandidate(it[TopicTable.id], it[TopicTable.description]) }
-    }
-
-    override fun commitIfUnplaced(memoryIds: Set<Int>, batch: TopicWriteBatch): TopicPlacementCommitResult = transaction(db) {
-        require(memoryIds.isNotEmpty()) { "placement scope must not be empty" }
-        require(batch.memberships.flatMap { it.memoryIds }.toSet() == memoryIds) {
-            "placement must assign all and only scoped memories"
-        }
-        val existingIds = MemoryTable.select(MemoryTable.id).where { MemoryTable.id inList memoryIds }
-            .map { it[MemoryTable.id] }.toSet()
-        require(existingIds == memoryIds) { "placement memory does not exist" }
-        val placedIds = TopicMembershipTable.select(TopicMembershipTable.memoryId)
-            .where { TopicMembershipTable.memoryId inList memoryIds }.map { it[TopicMembershipTable.memoryId] }.toSet()
-        when {
-            placedIds == memoryIds -> TopicPlacementCommitResult.AlreadyPlaced
-            placedIds.isNotEmpty() -> TopicPlacementCommitResult.Stale
-            else -> TopicPlacementCommitResult.Placed(applyBatch(batch))
-        }
-    }
-
+internal class TopicRepository(private val db: Database) : TopicMaintenanceStore {
     override fun readForMaintenance(topicIds: Collection<Int>): List<Topic> = transaction(db) {
         if (topicIds.isEmpty()) return@transaction emptyList()
         val memberships = TopicMembershipTable.selectAll()

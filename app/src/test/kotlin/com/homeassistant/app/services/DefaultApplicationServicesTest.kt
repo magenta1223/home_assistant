@@ -19,10 +19,6 @@ class DefaultApplicationServicesTest {
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
         val expiry = RecordingConversationExpiryWorker(events)
-        val placement = object : PlacementWorker {
-            override fun start() { events += "placement.start" }
-            override fun close() { events += "placement.close" }
-        }
         val codex = AutoCloseable { events += "codex.close" }
         val slack = object : SlackRuntime {
             override fun startAsync() {
@@ -39,7 +35,6 @@ class DefaultApplicationServicesTest {
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
-            placementWorker = placement,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,
         )
@@ -54,11 +49,9 @@ class DefaultApplicationServicesTest {
                 "vector.start",
                 "embedding.start",
                 "indexing.start",
-                "placement.start",
                 "expiry.start",
                 "slack.start",
                 "slack.close",
-                "placement.close",
                 "expiry.close",
                 "codex.close",
                 "indexing.close",
@@ -77,10 +70,6 @@ class DefaultApplicationServicesTest {
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
         val expiry = RecordingConversationExpiryWorker(events)
-        val placement = object : PlacementWorker {
-            override fun start() { events += "placement.start" }
-            override fun close() { events += "placement.close" }
-        }
         val codex = AutoCloseable { events += "codex.close" }
         val slack = object : SlackRuntime {
             override fun startAsync() = Unit
@@ -96,7 +85,6 @@ class DefaultApplicationServicesTest {
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
-            placementWorker = placement,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,
         )
@@ -109,10 +97,8 @@ class DefaultApplicationServicesTest {
                 "vector.start",
                 "embedding.start",
                 "indexing.start",
-                "placement.start",
                 "expiry.start",
                 "slack.close",
-                "placement.close",
                 "expiry.close",
                 "codex.close",
                 "indexing.close",

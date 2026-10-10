@@ -20,7 +20,6 @@ object RepositoryFactory {
             memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
             topicMaintenance = topics,
-            topicPlacement = topics,
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),
             pendingRegistrationQuestions = PendingRegistrationQuestionRepository(db),

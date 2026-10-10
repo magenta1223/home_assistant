@@ -12,7 +12,6 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
 | `memory/answer` | 사용자 등록과 memory-backed answer의 채널 독립 workflow를 조정한다. | [answer](memory/answer/README.md) |
 | `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |
-| `topic/placement` | 미배치 Memory를 Topic에 소속시키고 재처리한다. | [placement](topic/placement/README.md) |
 | `memory/search` | 사용자에게 보이는 memory만 semantic search한다. | [search](memory/search/README.md) |
 | `memory/write` | proposal을 원자적으로 저장하고 indexing outbox를 처리한다. | [write](memory/write/README.md) |
 
@@ -29,7 +28,6 @@ sequenceDiagram
     participant Writer as MemoryProposalsPersister
     participant DB as CanonicalMemoryBatchWriter
     participant Indexing as MemoryIndexingOutboxProcessor
-    participant Placement as TopicPlacement
 
     Caller->>Analysis: execute(request)
     Analysis->>Access: 작성자와 audience 인가 확인
@@ -44,12 +42,11 @@ sequenceDiagram
     DB-->>Writer: canonical memories
     Writer-->>Analysis: saved memories
     Analysis->>Indexing: 처리 가능한 outbox projection
-    Analysis->>Placement: processAvailable(): 미배치 Memory를 Topic에 배치
     Analysis-->>Caller: MemoryAnalysisResult
 ```
 
-Canonical database commit까지가 요청 성공의 기준이다. Indexing과 Topic placement는 commit 이후의
-후처리이므로 실패하면 기록만 남기고 저장된 canonical memory를 되돌리지 않는다.
+Canonical database commit까지가 요청 성공의 기준이다. Indexing은 commit 이후의 후처리이므로
+실패해도 저장된 canonical memory를 되돌리지 않는다. Topic 생성·배치는 호출하지 않는다.
 
 채널에서 시작된 지식 주입은 `KnowledgeInjectionWorkflow`가 conversation identity를 등록 사용자로
 해석한 뒤 동일한 `MemoryAnalysis` 쓰기 흐름에 진입한다. 채널 adapter는 application user ID를 직접

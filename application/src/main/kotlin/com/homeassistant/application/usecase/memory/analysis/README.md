@@ -48,7 +48,6 @@ sequenceDiagram
     participant Extractor as MemoryExtractor
     participant Persister as MemoryProposalsPersister
     participant Indexing as MemoryIndexingOutboxProcessor
-    participant Placement as TopicPlacement
 
     Caller->>Analysis: execute(request)
     Analysis->>Access: request.userId 인가
@@ -74,7 +73,6 @@ sequenceDiagram
             Analysis->>Persister: persist(userId, proposals, recordIds)
             Persister-->>Analysis: canonical memories
             Analysis->>Indexing: processAvailable()
-            Analysis->>Placement: processAvailable()
             Analysis-->>Caller: MemoryAnalysisResult
         end
     end
@@ -93,7 +91,6 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
   `ConflictingSourceAudienceException`으로 변환하여 호출자가 정확한 재등록 방법을 안내할 수 있게 한다.
 - source 저장, extraction, canonical commit 실패는 `MemoryAnalysisUnavailableException`으로 변환한다.
 - 손상되었거나 지원하지 않는 reference는 `InvalidKnowledgeReferenceException`으로 변환한다.
-- indexing과 Topic placement 실패는 canonical commit을 취소하지 않는다. 색인은 기존 outbox로,
-  Topic 배치는 아직 소속 없는 Memory를 재조회하는 worker로 복구한다. 두 후처리는 저장 후 순차 호출한다.
-  Topic 후보·제안은 내부 정리 정보이며 사용자에게 반환하지 않는다. 취소는 전파한다.
+- indexing 실패는 canonical commit을 취소하지 않으며 기존 outbox로 복구한다.
+  Memory 저장 후 Topic 생성·배치는 호출하지 않는다. LM Topic 생성 경로와 worker는 제거했다.
 - 채널 identity가 등록된 application user로 해석되지 않으면 지식 주입을 시작하거나 실행하지 않는다.

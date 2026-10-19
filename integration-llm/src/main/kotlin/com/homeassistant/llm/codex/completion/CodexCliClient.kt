@@ -1,7 +1,8 @@
 package com.homeassistant.llm.codex.completion
 
 import com.homeassistant.llm.codex.transport.CodexAppServerTransport
-import com.homeassistant.llm.codex.transport.CodexAppServerTransportFactory
+import com.homeassistant.llm.codex.transport.DefaultCodexAppServerTransport
+import com.homeassistant.llm.codex.transport.process.StdioProcessTransport
 import com.homeassistant.llm.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.llm.codex.transport.protocol.ClientInfo
 import com.homeassistant.llm.codex.transport.protocol.LocalImageUserInput
@@ -21,7 +22,8 @@ import kotlin.io.path.writeBytes
 internal class CodexCliClient(
     private val executable: String = CodexExecutableFactory.get(),
     private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
-    private val transportFactory: (List<String>, Path) -> CodexAppServerTransport = CodexAppServerTransportFactory::create,
+    private val transportFactory: (List<String>, Path) -> CodexAppServerTransport =
+        { command, workDir -> DefaultCodexAppServerTransport(StdioProcessTransport(command, workDir)) },
 ) : CompletionClient {
     override suspend fun complete(
         system: String,

@@ -1,12 +1,10 @@
 package com.homeassistant.llm.claude.conversation
 
-import com.homeassistant.application.port.output.memory.conversation.ConversationGateway
-import com.homeassistant.application.port.output.memory.conversation.ConversationId
-import com.homeassistant.application.port.output.memory.conversation.ConversationReply
 import com.homeassistant.llm.claude.cli.ClaudeCommandLine
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
 import com.homeassistant.llm.claude.cli.ClaudeStreamJson
 import com.homeassistant.llm.claude.cli.SystemClaudeProcessRunner
+import com.homeassistant.llm.conversation.ConversationClient
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
@@ -18,33 +16,24 @@ internal class ClaudeConversationException(val category: String) : RuntimeExcept
  * Keeps each conversation as a persisted Claude Code session. A conversation id is a session UUID chosen here: its
  * first turn creates the session with `--session-id`, and later turns load its history with `--resume`.
  */
-internal class ClaudeConversationGateway(
+internal class ClaudeConversationClient(
     private val config: ClaudeConversationConfig,
     private val runner: ClaudeProcessRunner = SystemClaudeProcessRunner,
-) : ConversationGateway {
+) : ConversationClient {
     private val log = LoggerFactory.getLogger(javaClass)
     private val unstartedConversations = ConcurrentHashMap.newKeySet<String>()
     private val activeTurns = ConcurrentHashMap.newKeySet<String>()
     private val closed = AtomicBoolean(false)
 
-    override fun begin(): Result<ConversationId> {
+    override fun begin(): Result<String> {
         if (closed.get()) return Result.failure(ClaudeConversationException("CLOSED"))
         val conversationId = UUID.randomUUID().toString()
         unstartedConversations += conversationId
-        return Result.success(ConversationId(conversationId))
+        return Result.success(conversationId)
     }
 
-    override fun continueConversation(conversationId: ConversationId, prompt: String): ConversationReply =
-        execute(conversationId, prompt).fold(
-            onSuccess = ConversationReply::Success,
-            onFailure = { error ->
-                log.warn("Conversation turn failed category={}", error.message ?: error.javaClass.simpleName)
-                ConversationReply.Failure
-            },
-        )
-
-    override fun end(conversationId: ConversationId) {
-        unstartedConversations.remove(conversationId.value)
+    override fun end(conversationId: String) {
+        unstartedConversations.remove(conversationId)
     }
 
     override fun close() {
@@ -52,17 +41,16 @@ internal class ClaudeConversationGateway(
         unstartedConversations.clear()
     }
 
-    internal fun execute(conversationId: ConversationId, prompt: String): Result<String> {
-        val id = conversationId.value
+    override fun send(conversationId: String, prompt: String): Result<String> {
         return try {
             if (closed.get()) throw ClaudeConversationException("CLOSED")
-            if (!SESSION_ID_PATTERN.matches(id)) throw ClaudeConversationException("INVALID_CONVERSATION_ID")
+            if (!SESSION_ID_PATTERN.matches(conversationId)) throw ClaudeConversationException("INVALID_CONVERSATION_ID")
             if (prompt.isBlank()) throw ClaudeConversationException("EMPTY_PROMPT")
-            if (!activeTurns.add(id)) throw ClaudeConversationException("CONVERSATION_BUSY")
+            if (!activeTurns.add(conversationId)) throw ClaudeConversationException("CONVERSATION_BUSY")
             try {
-                Result.success(runTurn(id, prompt))
+                Result.success(runTurn(conversationId, prompt))
             } finally {
-                activeTurns.remove(id)
+                activeTurns.remove(conversationId)
             }
         } catch (error: ClaudeConversationException) {
             Result.failure(error)

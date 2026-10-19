@@ -1,13 +1,15 @@
 package com.homeassistant.llm.codex.conversation
 
 import com.homeassistant.llm.codex.transport.CodexAppServerTransport
-import com.homeassistant.llm.codex.transport.CodexAppServerTransportFactory
+import com.homeassistant.llm.codex.transport.DefaultCodexAppServerTransport
+import com.homeassistant.llm.codex.transport.process.StdioProcessTransport
 import com.homeassistant.llm.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.llm.codex.transport.protocol.AppServerThreadItem
 import com.homeassistant.llm.codex.transport.protocol.ClientInfo
 import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
 import com.homeassistant.llm.codex.transport.protocol.ThreadConfig
+import com.homeassistant.llm.conversation.ConversationClient
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -27,12 +29,11 @@ import java.util.concurrent.atomic.AtomicReference
 
 internal class DefaultCodexAppServer(
     private val config: CodexConversationConfig,
-    private val transport: CodexAppServerTransport = CodexAppServerTransportFactory.create(
-        command = appServerCommand(config),
-        workDir = config.workDir,
+    private val transport: CodexAppServerTransport = DefaultCodexAppServerTransport(
+        StdioProcessTransport(appServerCommand(config), config.workDir),
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
-) : CodexAppServer, CodexAppServerTransport.Listener {
+) : ConversationClient, CodexAppServerTransport.Listener {
     private val log = LoggerFactory.getLogger(javaClass)
     private val activeTurns = ConcurrentHashMap<String, TurnState>()
     private val loadedThreads = ConcurrentHashMap.newKeySet<String>()
@@ -89,7 +90,7 @@ internal class DefaultCodexAppServer(
         }
     }
 
-    override fun createThread(): Result<CodexThreadId> = executeOperation("create") { deadline ->
+    override fun begin(): Result<String> = executeOperation("create") { deadline ->
         val response = await(transport.startThread(threadStartMessage()), deadline.remaining())
         val threadId = response.thread.id.takeIf(CODEX_THREAD_ID_PATTERN::matches)
             ?: throw CodexConversationException("INVALID_THREAD_ID")
@@ -99,11 +100,11 @@ internal class DefaultCodexAppServer(
             config.model,
             deadline.elapsedMillis(),
         )
-        CodexThreadId(threadId)
+        threadId
     }
 
-    override fun executeTurn(threadId: CodexThreadId, prompt: String): Result<String> = executeOperation("execute") { deadline ->
-        val threadIdValue = threadId.value
+    override fun send(conversationId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
+        val threadIdValue = conversationId
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) {
             throw CodexConversationException("INVALID_THREAD_ID")
         }
@@ -114,8 +115,8 @@ internal class DefaultCodexAppServer(
         runTurn(threadIdValue, prompt, deadline)
     }
 
-    override fun releaseThread(threadId: CodexThreadId) {
-        val threadIdValue = threadId.value
+    override fun end(conversationId: String) {
+        val threadIdValue = conversationId
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
         loadedThreads.remove(threadIdValue)
         if (!ready.get()) return

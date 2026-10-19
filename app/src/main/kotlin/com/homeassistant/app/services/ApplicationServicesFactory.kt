@@ -1,5 +1,6 @@
 package com.homeassistant.app.services
 
+import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
@@ -108,7 +109,7 @@ object ApplicationServicesFactory {
         val conversationGateway = AgentClientFactory.conversation(
             backend = agentBackend,
             timeout = Duration.ofSeconds(agentTimeoutSeconds),
-        )
+        )?.let(::AgentConversationGateway)
         log.info(
             "Agent backend={} conversation={}",
             agentBackend,

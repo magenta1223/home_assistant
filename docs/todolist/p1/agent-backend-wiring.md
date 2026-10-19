@@ -109,3 +109,4 @@ app만 `AgentBackend`를 알고, adapter-outbound는 `CompletionClient` 타입�
 - 검증: `./gradlew test` 통과(domain 21, application 45, adapter-inbound 25, adapter-outbound 84, app 4,
   integration-llm 46). 실제 서버 기동과 Claude CLI 실호출은 아직 하지 않았다.
 - 이후 기본 backend를 `claude`로 바꿨다. 계획의 "기본값 `codex`로 현재 동작 유지"는 이 결정으로 대체한다.
+- 이후 대화 계약을 integration-llm의 `ConversationClient`로 분리했다. integration-llm은 application을 의존하지 않고, adapter-outbound의 `AgentConversationGateway`가 application `ConversationGateway`로 연결한다. 의존 방향은 `app -> adapter-outbound -> integration-llm`이고 application port를 아는 모듈은 adapter-outbound뿐이다.

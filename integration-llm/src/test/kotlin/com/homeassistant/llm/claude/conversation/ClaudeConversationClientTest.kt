@@ -1,7 +1,5 @@
 package com.homeassistant.llm.claude.conversation
 
-import com.homeassistant.application.port.output.memory.conversation.ConversationId
-import com.homeassistant.application.port.output.memory.conversation.ConversationReply
 import com.homeassistant.llm.claude.cli.ClaudeProcessOutput
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
 import java.nio.file.Files
@@ -16,7 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ClaudeConversationGatewayTest {
+class ClaudeConversationClientTest {
     private val temporaryDirectory: Path = Files.createTempDirectory("claude-conversation-test")
 
     @AfterTest
@@ -30,11 +28,11 @@ class ClaudeConversationGatewayTest {
         val client = client(runner)
         val conversation = client.begin().getOrThrow()
 
-        assertEquals("first", client.execute(conversation, "hello").getOrThrow())
-        assertEquals("first", client.execute(conversation, "again").getOrThrow())
+        assertEquals("first", client.send(conversation, "hello").getOrThrow())
+        assertEquals("first", client.send(conversation, "again").getOrThrow())
 
-        assertEquals(conversation.value, runner.commands[0].after("--session-id"))
-        assertEquals(conversation.value, runner.commands[1].after("--resume"))
+        assertEquals(conversation, runner.commands[0].after("--session-id"))
+        assertEquals(conversation, runner.commands[1].after("--resume"))
         assertTrue(runner.commands.none { "--no-session-persistence" in it })
         assertEquals(setOf(config().workDir), runner.workingDirectories.toSet())
         assertTrue(Path.of(runner.commands[0].after("--system-prompt-file")).readText().isNotBlank())
@@ -44,11 +42,11 @@ class ClaudeConversationGatewayTest {
     @Test
     fun `a session id this process did not create is resumed`() {
         val runner = RecordingRunner()
-        val restored = ConversationId("3f2b8c1e-6a4d-4e2f-9b1a-7c5d3e2f1a0b")
+        val restored = "3f2b8c1e-6a4d-4e2f-9b1a-7c5d3e2f1a0b"
 
-        client(runner).execute(restored, "hello").getOrThrow()
+        client(runner).send(restored, "hello").getOrThrow()
 
-        assertEquals(restored.value, runner.commands.single().after("--resume"))
+        assertEquals(restored, runner.commands.single().after("--resume"))
     }
 
     @Test
@@ -57,9 +55,9 @@ class ClaudeConversationGatewayTest {
         val client = client(runner)
         val conversation = client.begin().getOrThrow()
 
-        assertEquals("TIMEOUT", client.execute(conversation, "hello").failureCategory())
+        assertEquals("TIMEOUT", client.send(conversation, "hello").failureCategory())
         runner.output = ClaudeProcessOutput(0, ANSWER, "")
-        client.execute(conversation, "hello").getOrThrow()
+        client.send(conversation, "hello").getOrThrow()
 
         assertTrue(runner.commands.all { "--session-id" in it })
     }
@@ -70,15 +68,15 @@ class ClaudeConversationGatewayTest {
         val client = client(runner)
         val conversation = client.begin().getOrThrow()
 
-        assertEquals("INVALID_CONVERSATION_ID", client.execute(ConversationId("not-a-uuid"), "hi").failureCategory())
-        assertEquals("EMPTY_PROMPT", client.execute(conversation, " ").failureCategory())
-        assertEquals("TURN_FAILED", client.execute(conversation, "hi").failureCategory())
+        assertEquals("INVALID_CONVERSATION_ID", client.send("not-a-uuid", "hi").failureCategory())
+        assertEquals("EMPTY_PROMPT", client.send(conversation, " ").failureCategory())
+        assertEquals("TURN_FAILED", client.send(conversation, "hi").failureCategory())
         runner.output = ClaudeProcessOutput(0, "", "")
-        assertEquals("NO_RESULT", client.execute(conversation, "hi").failureCategory())
+        assertEquals("NO_RESULT", client.send(conversation, "hi").failureCategory())
         runner.output = ClaudeProcessOutput(0, """{"type":"result","is_error":false,"result":" "}""", "")
-        assertEquals("EMPTY_ANSWER", client.execute(conversation, "hi").failureCategory())
+        assertEquals("EMPTY_ANSWER", client.send(conversation, "hi").failureCategory())
         client.close()
-        assertEquals("CLOSED", client.execute(conversation, "hi").failureCategory())
+        assertEquals("CLOSED", client.send(conversation, "hi").failureCategory())
         assertTrue(client.begin().isFailure)
     }
 
@@ -93,28 +91,18 @@ class ClaudeConversationGatewayTest {
         }
         val client = client(runner)
         val conversation = client.begin().getOrThrow()
-        val first = thread { client.execute(conversation, "first") }
+        val first = thread { client.send(conversation, "first") }
 
         assertTrue(entered.await(5, TimeUnit.SECONDS))
-        assertEquals("CONVERSATION_BUSY", client.execute(conversation, "second").failureCategory())
+        assertEquals("CONVERSATION_BUSY", client.send(conversation, "second").failureCategory())
         release.countDown()
         first.join()
     }
 
-    @Test
-    fun `gateway turns map to conversation replies`() {
-        val runner = RecordingRunner(ClaudeProcessOutput(1, """{"type":"result","is_error":true}""", ""))
-        val client = client(runner)
-        val conversation = client.begin().getOrThrow()
-
-        assertEquals(ConversationReply.Failure, client.continueConversation(conversation, "hi"))
-        runner.output = ClaudeProcessOutput(0, ANSWER, "")
-        assertEquals(ConversationReply.Success("first"), client.continueConversation(conversation, "hi"))
-    }
 
     private fun config() = ClaudeConversationConfig.local(Duration.ofSeconds(5), "claude-test", temporaryDirectory)!!
 
-    private fun client(runner: ClaudeProcessRunner) = ClaudeConversationGateway(config(), runner)
+    private fun client(runner: ClaudeProcessRunner) = ClaudeConversationClient(config(), runner)
 
     private fun Result<String>.failureCategory(): String? =
         (exceptionOrNull() as? ClaudeConversationException)?.category

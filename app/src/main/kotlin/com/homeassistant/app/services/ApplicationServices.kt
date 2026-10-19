@@ -1,6 +1,7 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.application.port.input.identity.UserRegistry
+import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
 
@@ -14,6 +15,9 @@ interface ApplicationServices : AutoCloseable {
 
     /** Registered application users that may be selected as knowledge viewers. */
     val users: UserRegistry
+
+    /** Explicit trusted maintenance; starting the application does not run this use case. */
+    val organizeTopics: OrganizePendingTopics
 
     /** Reports whether required managed runtimes are available. */
     val isReady: Boolean

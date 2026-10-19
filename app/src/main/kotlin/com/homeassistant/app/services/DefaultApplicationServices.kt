@@ -3,11 +3,13 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.identity.UserRegistry
+import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
 
 internal class DefaultApplicationServices(
     override val memoryAnalysis: MemoryAnalysis,
+    override val organizeTopics: OrganizePendingTopics,
     override val memoryConversation: MemoryConversation? = null,
     override val users: UserRegistry = UserRegistry.NONE,
     private val vectorRuntime: VectorServerRuntime,

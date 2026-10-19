@@ -17,8 +17,9 @@
 
 ## 현재 상태
 
-- 다음 구현 후보: 최소 가족 Task 서비스 1개
-- Memory 구조 전환: Topic 모델·저장 유지, legacy tree 제거. LM Topic 생성·자동 배치는 제거했으며 생성 방식·검색·UI는 후속 범위
+- 최근 구현 완료: Topic을 component로 사용하는 Group 생성·배치·분할 (명시적 내부 호출, 2026-10-19)
+- 별도 구현 후보: 최소 가족 Task 서비스 1개
+- Memory 구조 전환: Topic 모델·저장 유지, legacy tree·LM Topic 생성 제거. Group 구성·분할 구현; Topic 생성·자체 분할·자동 실행·검색·UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
@@ -82,6 +83,8 @@
 | [multi-family-group-expansion.md](feature/p2/multi-family-group-expansion.md) | HOLD: 외부 제품화 후 약 1,000개 가족 그룹의 로컬 우선 운영 구조 결정 |
 
 ## 완료된 작업
+
+최근 완료: [Topic → Group 생성·배치·분할](done/topic-group-construction.md). 원자 저장·재시도·후속 병합 저장 계약을 포함하며 내부 호출 전용이다. 전체 테스트 통과.
 
 완료·취소 문서는 [done](done/)에서 지속적으로 찾아볼 수 있는 단일 이력과 release note로 사용한다.
 완료 시 원래 계획 문서를 이곳으로 이동하고, 완료일·실제 변경·검증·남은 제약(취소 시 사유)을 기록한다.

@@ -7,18 +7,25 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexing
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
+import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
+import com.homeassistant.adapter.outbound.persistence.repo.group.TopicEmbeddingRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
         val canonicalMemories = MemoryRepository(db)
         val topics = TopicRepository(db)
+        val groups = GroupRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             canonicalMemoryBatchWriter = canonicalMemories,
             memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
             topicMaintenance = topics,
+            pendingTopics = groups,
+            topicEmbeddings = TopicEmbeddingRepository(db),
+            groupSnapshots = groups,
+            groupChanges = groups,
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),
         )

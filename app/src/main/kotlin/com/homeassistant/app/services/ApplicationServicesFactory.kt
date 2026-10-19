@@ -22,6 +22,9 @@ import com.homeassistant.application.usecase.memory.conversation.HandleMemoryCon
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.usecase.identity.UserRegistryService
+import com.homeassistant.adapter.outbound.embedding.topic.TopicEmbeddingAdapter
+import com.homeassistant.application.usecase.group.*
+import com.homeassistant.domain.group.*
 import org.slf4j.LoggerFactory
 import java.time.Duration
 
@@ -32,6 +35,7 @@ object ApplicationServicesFactory {
     fun create(
         dbPath: String,
         httpUsers: Collection<UserId> = emptyList(),
+        groupSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
         val users = UserRegistryService(repositories.users)
@@ -39,6 +43,15 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
+        val organizeTopics = OrganizePendingTopicsService(
+            repositories.pendingTopics,
+            OrganizeTopic(
+                repositories.groupSnapshots,
+                repositories.groupChanges,
+                PrepareTopicEmbedding(TopicEmbeddingAdapter(textEmbedder, embeddingModel), repositories.topicEmbeddings),
+                GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
+            ),
+        )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
         val managedVectorStore = ManagedQdrantVectorStoreFactory.create(
             baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
@@ -102,6 +115,7 @@ object ApplicationServicesFactory {
         } ?: ConversationExpiryWorker.NONE
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
+            organizeTopics = organizeTopics,
             memoryConversation = memoryConversation,
             users = users,
             vectorRuntime = managedVectorStore.runtime,

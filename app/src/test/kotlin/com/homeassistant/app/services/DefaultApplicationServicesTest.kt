@@ -4,6 +4,7 @@ import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntim
 import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,6 +22,7 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
+            organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
@@ -66,6 +68,7 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
+            organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,

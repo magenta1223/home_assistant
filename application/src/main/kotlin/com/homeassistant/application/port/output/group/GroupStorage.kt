@@ -8,7 +8,12 @@ data class StoredGroup(val group: Group, val revision: Long, val centroid: Topic
     init { require(revision > 0) }
 }
 
-data class GroupSnapshot(val groups: List<StoredGroup>, val embeddings: Map<Int, TopicEmbedding>)
+/** [staleTopics] are grouped topics whose current description no longer matches their membership vector. */
+data class GroupSnapshot(
+    val groups: List<StoredGroup>,
+    val embeddings: Map<Int, TopicEmbedding>,
+    val staleTopics: List<PendingTopic> = emptyList(),
+)
 
 /** Trusted internal metadata only; this is not an ACL-filtered user projection. */
 interface GroupSnapshotReader {

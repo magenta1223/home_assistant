@@ -22,7 +22,10 @@ import com.homeassistant.application.usecase.memory.conversation.HandleMemoryCon
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.usecase.identity.UserRegistryService
+import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
 import com.homeassistant.adapter.outbound.embedding.topic.TopicEmbeddingAdapter
+import com.homeassistant.adapter.outbound.topicdescription.TopicDescriptionGeneratorFactory
+import com.homeassistant.application.usecase.topic.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
 import org.slf4j.LoggerFactory
@@ -36,6 +39,7 @@ object ApplicationServicesFactory {
         dbPath: String,
         httpUsers: Collection<UserId> = emptyList(),
         groupSettings: GroupPolicySettings = GroupPolicySettings(),
+        topicSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
         val users = UserRegistryService(repositories.users)
@@ -43,14 +47,31 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
+        val topicEmbeddings = PrepareTopicEmbedding(TopicEmbeddingAdapter(textEmbedder, embeddingModel), repositories.topicEmbeddings)
         val organizeTopics = OrganizePendingTopicsService(
             repositories.pendingTopics,
             OrganizeTopic(
                 repositories.groupSnapshots,
                 repositories.groupChanges,
-                PrepareTopicEmbedding(TopicEmbeddingAdapter(textEmbedder, embeddingModel), repositories.topicEmbeddings),
+                topicEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
             ),
+        )
+        val organizeMemories = OrganizePendingMemoriesService(
+            repositories.pendingMemories,
+            OrganizeMemory(
+                repositories.topicOrganizationSnapshots,
+                repositories.topicOrganizationChanges,
+                PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel), repositories.memoryEmbeddings),
+                GroupOrganizationPlanner(GroupPlacementPolicy(topicSettings), GroupSplitPolicy(topicSettings)),
+            ),
+            DescribeOrganizedTopics(
+                repositories.pendingTopicDescriptions,
+                TopicDescriptionGeneratorFactory.create(),
+                repositories.topicOrganizationChanges,
+            ),
+            RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
+            organizeTopics,
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
         val managedVectorStore = ManagedQdrantVectorStoreFactory.create(
@@ -116,6 +137,7 @@ object ApplicationServicesFactory {
         return DefaultApplicationServices(
             memoryAnalysis = memoryAnalysisService,
             organizeTopics = organizeTopics,
+            organizeMemories = organizeMemories,
             memoryConversation = memoryConversation,
             users = users,
             vectorRuntime = managedVectorStore.runtime,

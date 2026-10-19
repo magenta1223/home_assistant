@@ -74,6 +74,8 @@ Group 요약·자동 병합·kNN 검색·entropy 기반 원문 확장은 구현�
 - 유한하지 않은 값·영벡터·차원 불일치·계산 불가능한 centroid는 성공으로 처리하지 않는다.
 - Group 소속·centroid·revision·receipt는 한 transaction으로 확정한다. 실패 시 모두 롤백한다.
 - 모델·규약·차원 또는 이미 배치된 Topic 설명이 바뀌면 `RebuildRequired`로 실행을 중단한다.
+  `organizeMemories`는 이 단계 전에 `RefreshGroupedTopicEmbeddings`로 설명이 바뀐 Topic을 재임베딩하고
+  그 Group의 벡터·centroid만 교체한다. Group 소속은 옮기지 않는다.
   모델 이름이 같아도 실제 가중치를 교체했다면 식별자를 변경해야 한다. 자동 재구성은 후속 작업이다.
 - 개별 Topic 실패는 `Failed`, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Topic은 계속 처리한다.
   취소 예외는 삼키지 않는다. Pending 조회 자체의 저장소 장애는 호출자에게 전파한다.

@@ -6,7 +6,7 @@ import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBat
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox
 import com.homeassistant.application.port.output.memory.conversation.MemoryConversationSessionStore
 import com.homeassistant.application.port.output.identity.UserStore
-import com.homeassistant.application.port.output.topic.TopicMaintenanceStore
+import com.homeassistant.application.port.output.topic.*
 import com.homeassistant.application.port.output.group.*
 
 data class RepositoryStores(
@@ -19,6 +19,11 @@ data class RepositoryStores(
     val topicEmbeddings: TopicEmbeddingStore,
     val groupSnapshots: GroupSnapshotReader,
     val groupChanges: GroupChangeWriter,
+    val pendingMemories: PendingMemorySource,
+    val memoryEmbeddings: MemoryEmbeddingStore,
+    val topicOrganizationSnapshots: TopicOrganizationSnapshotReader,
+    val topicOrganizationChanges: TopicOrganizationWriter,
+    val pendingTopicDescriptions: PendingTopicDescriptionSource,
     val memoryConversationSessions: MemoryConversationSessionStore,
     val users: UserStore,
 )

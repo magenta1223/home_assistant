@@ -25,7 +25,7 @@ class OrganizeTopic(
             if (snapshot.embeddings.containsKey(topic.id)) return TopicOrganizationOutcome.AlreadyOrganized
             validateDimension(snapshot, embedding)
             val allEmbeddings = snapshot.embeddings + (topic.id to embedding)
-            val decision = planner.plan(topic.id, snapshot.groups.map { it.group },
+            val decision = planner.plan(topic.id, snapshot.groups.associate { it.group.id to it.group.topicIds },
                 snapshot.groups.associate { it.group.id to it.centroid }, allEmbeddings.mapValues { it.value.vector })
             val change = changeFor(snapshot, embedding, decision)
             when (val result = writer.apply(change)) {
@@ -38,6 +38,7 @@ class OrganizeTopic(
     }
 
     private fun validateSpace(snapshot: GroupSnapshot) {
+        if (snapshot.staleTopics.isNotEmpty()) throw GroupRebuildRequired("group topic description changed")
         if (snapshot.embeddings.values.any { it.key.space != embeddings.space }) {
             throw GroupRebuildRequired("group embeddings use a different model or input format")
         }

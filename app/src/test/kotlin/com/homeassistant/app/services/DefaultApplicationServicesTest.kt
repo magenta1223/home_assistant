@@ -5,6 +5,7 @@ import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.group.OrganizePendingTopics
+import com.homeassistant.application.port.input.topic.OrganizePendingMemories
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -23,6 +24,7 @@ class DefaultApplicationServicesTest {
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
+            organizeMemories = OrganizePendingMemories { error("must only run on explicit invocation") },
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
@@ -69,6 +71,7 @@ class DefaultApplicationServicesTest {
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
+            organizeMemories = OrganizePendingMemories { error("must only run on explicit invocation") },
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,

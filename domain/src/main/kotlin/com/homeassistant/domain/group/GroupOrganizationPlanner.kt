@@ -6,24 +6,28 @@ data class GroupOrganizationPlan(
     val split: GroupSplit,
 )
 
-/** Combines pure policies into one incremental organization decision; no persistence identities are allocated. */
+/**
+ * Combines pure policies into one incremental organization decision; no persistence identities are allocated.
+ * The same xMemory placement and split rules organize Topics into Groups and Memories into Topics,
+ * so clusters are plain member ID sets keyed by cluster ID.
+ */
 class GroupOrganizationPlanner(
     private val placement: GroupPlacementPolicy,
     private val splitting: GroupSplitPolicy,
 ) {
     fun plan(
-        incomingTopicId: Int,
-        groups: List<Group>,
+        incomingId: Int,
+        clusters: Map<Int, Set<Int>>,
         centroids: Map<Int, TopicVector>,
         vectors: Map<Int, TopicVector>,
     ): GroupOrganizationPlan {
-        require(groups.none { incomingTopicId in it.topicIds }) { "incoming topic is already grouped" }
-        val consumed = when (val choice = placement.decide(vectors.getValue(incomingTopicId), centroids)) {
+        require(clusters.values.none { incomingId in it }) { "incoming member is already organized" }
+        val consumed = when (val choice = placement.decide(vectors.getValue(incomingId), centroids)) {
             GroupPlacement.Create -> emptySet()
             is GroupPlacement.Attach -> setOf(choice.groupId)
         }
-        val target = groups.filter { it.id in consumed }.flatMap { it.topicIds }.toSet() + incomingTopicId
-        val surrounding = groups.filter { it.id !in consumed }.map { it.topicIds }
+        val target = consumed.flatMap { clusters.getValue(it) }.toSet() + incomingId
+        val surrounding = clusters.filterKeys { it !in consumed }.values.toList()
         val split = splitting.decide(target, surrounding, vectors)
         val partition = when (split) {
             GroupSplit.Unchanged -> TopicPartition(listOf(target))

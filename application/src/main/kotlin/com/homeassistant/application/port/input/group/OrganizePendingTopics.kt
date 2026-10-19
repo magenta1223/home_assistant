@@ -20,3 +20,9 @@ sealed interface GroupOrganizationResult {
     data class Completed(override val topics: List<TopicOrganizationResult>) : GroupOrganizationResult
     data class RebuildRequired(override val topics: List<TopicOrganizationResult>, val reason: String) : GroupOrganizationResult
 }
+
+sealed interface GroupRefreshOutcome {
+    val groupId: Int
+    data class Refreshed(override val groupId: Int) : GroupRefreshOutcome
+    data class ConflictExhausted(override val groupId: Int) : GroupRefreshOutcome
+}

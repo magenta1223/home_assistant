@@ -2,6 +2,7 @@ package com.homeassistant.adapter.outbound.runtime.distribution
 
 import com.homeassistant.adapter.outbound.runtime.distribution.downloader.AssetDownloader
 import org.slf4j.LoggerFactory
+import java.io.BufferedInputStream
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.Path
@@ -9,6 +10,7 @@ import java.nio.file.StandardCopyOption
 import java.security.MessageDigest
 import java.util.Comparator
 import java.util.HexFormat
+import java.util.zip.ZipInputStream
 import kotlin.io.DEFAULT_BUFFER_SIZE
 
 internal abstract class DistributionInstaller(
@@ -121,6 +123,24 @@ internal abstract class DistributionInstaller(
      * modify the installation.
      */
     protected abstract fun checkInstallation(installationRoot: Path)
+
+    /** Extracts [archive] into [target], rejecting entries that would escape [target]. */
+    protected fun extractZip(archive: Path, target: Path) {
+        ZipInputStream(BufferedInputStream(Files.newInputStream(archive))).use { zip ->
+            while (true) {
+                val entry = zip.nextEntry ?: break
+                val destination = target.resolve(entry.name).normalize()
+                check(destination.startsWith(target)) { "Unsafe path in ${manifest.productName} archive: ${entry.name}" }
+                if (entry.isDirectory) {
+                    Files.createDirectories(destination)
+                } else {
+                    Files.createDirectories(destination.parent)
+                    Files.copy(zip, destination)
+                }
+                zip.closeEntry()
+            }
+        }
+    }
 
     private fun publish(stagedRoot: Path, versionRoot: Path) {
         try {

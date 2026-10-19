@@ -3,7 +3,6 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
-import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
@@ -103,9 +102,6 @@ object ApplicationServicesFactory {
             accessPolicy = accessPolicy,
             searcher = semanticMemoryIndexSearcher,
         )
-        val answerContext = MemoryAnswerContextProvider(
-            memorySearcher = memorySearcherImpl,
-        )
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
@@ -126,7 +122,7 @@ object ApplicationServicesFactory {
             )
             HandleMemoryConversation(
                 sessions = repositories.memoryConversationSessions,
-                contextProvider = MemoryConversationContextProvider(answerContext),
+                contextProvider = MemoryConversationContextProvider(memorySearcherImpl),
                 conversationGateway = it,
             )
         }
@@ -152,7 +148,7 @@ object ApplicationServicesFactory {
         )
     }
 
-    /** Reads [AppConfig.ENV_VAR_AGENT_BACKEND]; an unknown value stops startup instead of silently using Codex. */
+    /** Reads [AppConfig.ENV_VAR_AGENT_BACKEND]; an unknown value stops startup instead of silently using the default. */
     private fun agentBackend(): AgentBackend {
         val value = Env[AppConfig.ENV_VAR_AGENT_BACKEND] ?: AppConfig.DEFAULT_AGENT_BACKEND
         return AgentBackend.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }

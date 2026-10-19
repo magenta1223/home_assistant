@@ -1,8 +1,8 @@
 # Memory와 Group 중심의 메모리 구조
 
 - 상태: 이전 중간 제안, 미구현
-- 현재 설계: [Memory와 Topic 그래프 설계](topic-structure-proposal.md). Topic을 검색용 Group으로 사용하고, 입력 단위의 ACL 변경과 원문 확인을 기본 경로에 포함하는 방향으로 대체되었다. 아래 내용은 이전 논의의 기록이다.
-- 기준: [메모리 구조 판단기준](topic-adoption-criteria.md)
+- 현재 설계: [Memory와 Topic 그래프 설계](../../topic-structure-proposal.md). Topic을 검색용 Group으로 사용하고, 입력 단위의 ACL 변경과 원문 확인을 기본 경로에 포함하는 방향으로 대체되었다. 아래 내용은 이전 논의의 기록이다.
+- 기준: [메모리 구조 판단기준](../../topic-adoption-criteria.md)
 - 방향: 별도 Topic 모델을 두지 않고 Memory를 기본 단위로 사용한다. Group은 검색을 위한 묶음이다.
 
 ## 1. 두 가지 역할만 구분한다

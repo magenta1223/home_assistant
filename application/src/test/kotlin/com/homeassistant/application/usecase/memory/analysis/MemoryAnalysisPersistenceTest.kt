@@ -5,6 +5,8 @@ import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBat
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.memory.*
+import com.homeassistant.application.port.output.source.SourceRecordRepository
+import com.homeassistant.application.port.output.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.*
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*

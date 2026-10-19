@@ -25,12 +25,6 @@ internal class ClaudeCliCompletionClient(
         system: String,
         userMessage: String,
         outputSchema: String,
-    ): String = completeWithImages(system, userMessage, outputSchema, emptyList())
-
-    override suspend fun completeWithImages(
-        system: String,
-        userMessage: String,
-        outputSchema: String,
         images: List<CompletionImage>,
     ): String = runInterruptible(Dispatchers.IO) {
         val schema = Json.parseToJsonElement(outputSchema).toString()

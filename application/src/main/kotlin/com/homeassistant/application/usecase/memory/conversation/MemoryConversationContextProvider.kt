@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.memory.conversation
 
+import com.homeassistant.application.port.input.memory.search.MemorySearch
 import com.homeassistant.application.port.input.memory.search.MemorySearchMatch
 import com.homeassistant.application.port.input.memory.search.SearchMemoriesRequest
-import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.domain.identity.UserId
 import java.time.Instant
 
@@ -11,10 +11,10 @@ fun interface MemoryConversationContextSource {
 }
 
 class MemoryConversationContextProvider(
-    private val answerContext: MemoryAnswerContextProvider,
+    private val memorySearch: MemorySearch,
 ) : MemoryConversationContextSource {
     override fun context(userId: UserId, question: String): MemoryConversationContext {
-        val result = answerContext.context(
+        val result = memorySearch.search(
             SearchMemoriesRequest(
                 userId = userId.value,
                 query = question,
@@ -22,9 +22,9 @@ class MemoryConversationContextProvider(
             ),
         )
         return MemoryConversationContext(
-            reference = result.contextMatches.joinToString("\n", transform = ::memoryReferenceLine)
+            reference = result.matches.joinToString("\n", transform = ::memoryReferenceLine)
                 .take(MAX_CONTEXT_CHARS),
-            hasMatches = result.directMatches.isNotEmpty(),
+            hasMatches = result.matches.isNotEmpty(),
         )
     }
 
@@ -35,8 +35,7 @@ class MemoryConversationContextProvider(
 }
 
 internal fun memoryReferenceLine(match: MemorySearchMatch): String =
-    "- [savedAt=${Instant.ofEpochMilli(match.createdAt)}; source=${match.source}; " +
-        "score=${match.score}; parentMemoryId=${match.parentMemoryId ?: "none"}; depth=${match.depth}] ${match.content}"
+    "- [savedAt=${Instant.ofEpochMilli(match.createdAt)}; score=${match.score}] ${match.content}"
 
 data class MemoryConversationContext(
     val reference: String,

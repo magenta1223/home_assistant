@@ -3,9 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
-import com.homeassistant.application.port.input.identity.ConversationIdentity
 import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.identity.RegisterUserRequest
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
@@ -209,11 +207,6 @@ class KnowledgeInjectionRoutesTest {
     private class FixedUserRegistry(
         private vararg val users: RegisteredUser,
     ) : UserRegistry {
-        override fun find(identity: ConversationIdentity): RegisteredUser? = null
-
-        override fun register(request: RegisterUserRequest): RegisteredUser =
-            error("not used")
-
         override fun list(): List<RegisteredUser> = users.toList()
     }
 

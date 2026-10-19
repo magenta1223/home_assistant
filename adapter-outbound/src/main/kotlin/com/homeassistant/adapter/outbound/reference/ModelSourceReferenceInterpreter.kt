@@ -85,7 +85,7 @@ internal class ModelSourceReferenceInterpreter(
         sourceName: String,
     ): List<SourceReferenceInterpretation> {
         val segmentKeys = segments.map { it.key }
-        val response = client.completeWithImages(
+        val response = client.complete(
             system = SYSTEM_PROMPT,
             userMessage = buildString {
                 appendLine("Source file: $sourceName")

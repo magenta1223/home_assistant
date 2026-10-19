@@ -18,7 +18,7 @@ object AppConfig {
     const val DEFAULT_QDRANT_COLLECTION     = "canonical_memories"
     const val DEFAULT_EMBEDDING_MODEL_NAME  = "qllama/multilingual-e5-base"
     const val DEFAULT_EMBEDDING_VECTOR_SIZE = 768
-    const val DEFAULT_AGENT_BACKEND         = "codex"
+    const val DEFAULT_AGENT_BACKEND         = "claude"
     const val DEFAULT_AGENT_TIMEOUT_SECONDS = 600L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val ROUTE_HEALTH              = "/health"

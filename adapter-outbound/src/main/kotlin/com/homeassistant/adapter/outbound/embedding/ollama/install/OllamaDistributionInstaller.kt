@@ -5,10 +5,8 @@ import com.homeassistant.adapter.outbound.runtime.distribution.DistributionManif
 import com.homeassistant.adapter.outbound.runtime.distribution.WindowsX64Platform
 import com.homeassistant.adapter.outbound.runtime.distribution.downloader.AssetDownloader
 import com.homeassistant.adapter.outbound.runtime.distribution.downloader.HttpAssetDownloader
-import java.io.BufferedInputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.zip.ZipInputStream
 
 internal class OllamaDistributionInstaller(
     manifest: DistributionManifest = PinnedOllamaDistribution.manifest,
@@ -26,23 +24,6 @@ internal class OllamaDistributionInstaller(
         }
         check(Files.isDirectory(installationRoot.resolve("lib/ollama"))) {
             "Ollama archive does not contain lib/ollama"
-        }
-    }
-
-    private fun extractZip(archive: Path, target: Path) {
-        ZipInputStream(BufferedInputStream(Files.newInputStream(archive))).use { zip ->
-            while (true) {
-                val entry = zip.nextEntry ?: break
-                val destination = target.resolve(entry.name).normalize()
-                check(destination.startsWith(target)) { "Unsafe path in Ollama archive: ${entry.name}" }
-                if (entry.isDirectory) {
-                    Files.createDirectories(destination)
-                } else {
-                    Files.createDirectories(destination.parent)
-                    Files.copy(zip, destination)
-                }
-                zip.closeEntry()
-            }
         }
     }
 }

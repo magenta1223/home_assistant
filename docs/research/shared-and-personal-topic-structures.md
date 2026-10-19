@@ -2,7 +2,7 @@
 
 - 조사일: 2026-10-06
 - 상태: 조사 및 설계 제안. 기존 설계의 확정 결정이나 구현 변경이 아니다.
-- 맥락: [Topic 본문 설계](../topic-content-memory-design.md), [기존 구조 조사](memory-consolidation-and-topic-hierarchy.md)
+- 맥락: [Topic 본문 설계](../archive/designs/topic-content-memory-design.md), [기존 구조 조사](memory-consolidation-and-topic-hierarchy.md)
 
 ## 1. 결론
 

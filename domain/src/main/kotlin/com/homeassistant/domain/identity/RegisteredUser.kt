@@ -13,12 +13,5 @@ data class RegisteredUser(
 
     companion object {
         const val MAX_DISPLAY_NAME_LENGTH = 50
-
-        fun normalizeDisplayName(value: String): String = value.trim().also { normalized ->
-            require(normalized.isNotEmpty()) { "displayName is required" }
-            require(normalized.length <= MAX_DISPLAY_NAME_LENGTH) {
-                "displayName must be at most $MAX_DISPLAY_NAME_LENGTH characters"
-            }
-        }
     }
 }

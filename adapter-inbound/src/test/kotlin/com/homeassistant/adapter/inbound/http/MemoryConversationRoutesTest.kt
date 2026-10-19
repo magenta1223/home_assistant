@@ -1,7 +1,5 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.identity.ConversationIdentity
-import com.homeassistant.application.port.input.identity.RegisterUserRequest
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
@@ -242,10 +240,6 @@ class MemoryConversationRoutesTest {
     private class FixedUserRegistry(
         private vararg val users: RegisteredUser,
     ) : UserRegistry {
-        override fun find(identity: ConversationIdentity): RegisteredUser? = null
-
-        override fun register(request: RegisterUserRequest): RegisteredUser = error("not used")
-
         override fun list(): List<RegisteredUser> = users.toList()
     }
 

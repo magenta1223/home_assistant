@@ -4,10 +4,10 @@
 - 상태: 설계, 미구현
 - 기준: [기존 Memory Graph 설계](memory-graph-design.md)를 이후 논의에 따라 대체한다.
 
-> 2026-10-06에 [Topic 구조 도입 판단기준](topic-adoption-criteria.md)을 새로 확정했다.
+> 2026-10-06에 [Topic 구조 도입 판단기준](../../topic-adoption-criteria.md)을 새로 확정했다.
 > 이 문서와 충돌하면 해당 판단기준을 우선한다. 특히 아래의 문단별 ACL 설계는 본문 전체에
 > 동일 ACL을 적용한다는 확정 기준과 충돌하므로 재설계 대상이며, 그대로 구현하지 않는다.
-> 현재 설계는 [Memory와 Topic 그래프 설계](topic-structure-proposal.md)다. Topic은 검색용 묶음과 그래프이며, 접근 권한은 입력의 원문과 파생 Memory를 기준으로 관리한다. 아래 설계를 그대로 구현하지 않는다.
+> 현재 설계는 [Memory와 Topic 그래프 설계](../../topic-structure-proposal.md)다. Topic은 검색용 묶음과 그래프이며, 접근 권한은 입력의 원문과 파생 Memory를 기준으로 관리한다. 아래 설계를 그대로 구현하지 않는다.
 
 ## 1. 목적과 결정
 
@@ -458,10 +458,10 @@ Topic과 부분별 본문·갱신 구조는 아직 구현하지 않았다. 기�
 ## 참고
 
 - [이전 설계](memory-graph-design.md): 변경 전 결정과 배경
-- [구조 조사](research/memory-consolidation-and-topic-hierarchy.md)
-- [운영 참고](research/memory-consolidation-operations-notes.md)
-- [현재 Memory 저장 use case](../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/README.md)
-- [현재 Memory 배치 use case](../application/src/main/kotlin/com/homeassistant/application/usecase/memory/placement/README.md)
+- [구조 조사](../../research/memory-consolidation-and-topic-hierarchy.md)
+- [운영 참고](../../research/memory-consolidation-operations-notes.md)
+- [현재 Memory 저장 use case](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/README.md)
+- [현재 Memory 배치 use case](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/placement/README.md)
 
 기존 문서와 충돌하면 이 문서의 결정을 우선한다. 구체 테이블·포트·작업 상태와 편집 권한 정책은
 이 계약과 §5.8의 도입 순서를 바탕으로 후속 구현 계획에서 확정한다. 그룹 기반 신규 정책을 기존

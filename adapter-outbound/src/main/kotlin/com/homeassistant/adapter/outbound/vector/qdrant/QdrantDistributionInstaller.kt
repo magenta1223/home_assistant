@@ -5,10 +5,8 @@ import com.homeassistant.adapter.outbound.runtime.distribution.DistributionManif
 import com.homeassistant.adapter.outbound.runtime.distribution.WindowsX64Platform
 import com.homeassistant.adapter.outbound.runtime.distribution.downloader.AssetDownloader
 import com.homeassistant.adapter.outbound.runtime.distribution.downloader.HttpAssetDownloader
-import java.io.BufferedInputStream
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.zip.ZipInputStream
 
 internal class QdrantDistributionInstaller(
     manifest: DistributionManifest = PinnedQdrantDistribution.manifest,
@@ -23,23 +21,6 @@ internal class QdrantDistributionInstaller(
     override fun checkInstallation(installationRoot: Path) {
         check(Files.isRegularFile(installationRoot.resolve("qdrant.exe"))) {
             "Qdrant archive does not contain qdrant.exe"
-        }
-    }
-
-    private fun extractZip(archive: Path, target: Path) {
-        ZipInputStream(BufferedInputStream(Files.newInputStream(archive))).use { zip ->
-            while (true) {
-                val entry = zip.nextEntry ?: break
-                val destination = target.resolve(entry.name).normalize()
-                check(destination.startsWith(target)) { "Unsafe path in Qdrant archive: ${entry.name}" }
-                if (entry.isDirectory) {
-                    Files.createDirectories(destination)
-                } else {
-                    Files.createDirectories(destination.parent)
-                    Files.copy(zip, destination)
-                }
-                zip.closeEntry()
-            }
         }
     }
 }

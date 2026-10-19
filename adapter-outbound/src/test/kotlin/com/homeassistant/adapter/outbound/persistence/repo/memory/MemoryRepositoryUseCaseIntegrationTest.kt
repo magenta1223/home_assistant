@@ -7,7 +7,6 @@ import com.homeassistant.application.port.output.memory.search.MemoryIndex
 import com.homeassistant.application.port.output.memory.search.MemoryIndexSearchScope
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
-import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.port.output.topic.*
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
@@ -58,8 +57,7 @@ class MemoryRepositoryUseCaseIntegrationTest {
             )
             assertFalse(otherRestrictedMemory.id in index.lastScope.allowedMemoryIds.orEmpty())
 
-            val answerContext = MemoryAnswerContextProvider(searcher)
-            val conversationContext = MemoryConversationContextProvider(answerContext).context(
+            val conversationContext = MemoryConversationContextProvider(searcher).context(
                 member,
                 "question",
             )

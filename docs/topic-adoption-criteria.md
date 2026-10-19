@@ -100,7 +100,7 @@ Topic 모델과 명시적 저장 기능은 유지하며 대체 생성 알고리�
 ## 관련 문서
 
 - [Memory와 Topic 그래프 설계](topic-structure-proposal.md): 현재 개념 설계.
-- [Memory와 Group 중심의 메모리 구조](memory-group-proposal.md): 이전 중간 제안. 현재 설계로 대체되었다.
-- [자체 본문을 가진 Topic과 Memory 계층 설계](topic-content-memory-design.md): 이전 설계안.
-- [가족 Memory Graph 설계](memory-graph-design.md): 이전 구조 설계.
+- [Memory와 Group 중심의 메모리 구조](archive/designs/memory-group-proposal.md): 이전 중간 제안. 현재 설계로 대체되었다.
+- [자체 본문을 가진 Topic과 Memory 계층 설계](archive/designs/topic-content-memory-design.md): 이전 설계안.
+- [가족 Memory Graph 설계](archive/designs/memory-graph-design.md): 이전 구조 설계.
 - [공유 Topic과 개인 Topic 구조 사이의 절충점](research/shared-and-personal-topic-structures.md): 대안 검토 자료.

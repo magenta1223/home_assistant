@@ -1,7 +1,6 @@
 package com.homeassistant.llm.codex.conversation
 
 import com.homeassistant.llm.codex.completion.CodexExecutableFactory
-import com.homeassistant.llm.codex.transport.CodexAppServerTransport
 import java.nio.file.Path
 import java.time.Duration
 
@@ -10,8 +9,8 @@ internal object CodexAppServerFactory {
         timeout: Duration,
         executable: String = CodexExecutableFactory.get(),
         temporaryDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
-        model: String = DEFAULT_MODEL,
-        reasoningEffort: String = DEFAULT_REASONING_EFFORT,
+        model: String = CodexConversationConfig.DEFAULT_MODEL,
+        reasoningEffort: String = CodexConversationConfig.DEFAULT_REASONING_EFFORT,
     ): CodexAppServer? {
         val config = CodexConversationConfig.local(
             timeout = timeout,
@@ -20,27 +19,14 @@ internal object CodexAppServerFactory {
             model = model,
             reasoningEffort = reasoningEffort,
         ) ?: return null
-        val server = DefaultCodexAppServer(config)
-        return server.takeIf { runCatching(it::prepare).getOrDefault(false) }
+        return prepare(DefaultCodexAppServer(config))
+    }
+
+    /** Returns [server] once it is available and initialized; otherwise closes it and returns null. */
+    internal fun prepare(server: DefaultCodexAppServer): CodexAppServer? =
+        server.takeIf { runCatching(it::prepare).getOrDefault(false) }
             ?: run {
                 server.close()
                 null
             }
-    }
-
-    internal fun create(
-        config: CodexConversationConfig,
-        transport: CodexAppServerTransport,
-        availabilityProbe: () -> Boolean,
-    ): CodexAppServer? {
-        val server = DefaultCodexAppServer(config, transport, availabilityProbe)
-        return server.takeIf { runCatching(it::prepare).getOrDefault(false) }
-            ?: run {
-                server.close()
-                null
-            }
-    }
-
-    private const val DEFAULT_MODEL = "gpt-5.6-luna"
-    private const val DEFAULT_REASONING_EFFORT = "medium"
 }

@@ -30,7 +30,7 @@ ID를 가리키는 화면 표현이다. 저장된 base parent나 사용자별 ba
 6. 같은 사실·범위·포함 관계가 서로 다른 ACL과 근거로 기록될 수 있다. 각 기록은 유지하고,
    여러 기록을 볼 수 있는 사용자에게만 화면에서 중복을 묶는다.
 
-이 설계는 기존의 [구조 탐색](research/memory-consolidation-and-topic-hierarchy.md)을
+이 설계는 기존의 [구조 탐색](../../research/memory-consolidation-and-topic-hierarchy.md)을
 구체화한다. 구현이나 운영 데이터 변경은 이 문서의 범위가 아니다.
 
 ### 1.1 Memory 필드 단순화와 구현 경계
@@ -46,7 +46,7 @@ Memory의 정보 종류는 열린 범위로 둔다. `memoryType`과 그 상위 g
 Topic 관계 테이블로 전환할 때까지 유지한다.
 
 필드 단순화는 미배포 상태를 전제로 하며 기존 DB·벡터 데이터의 자동 변환이나 초기화를 수행하지
-않는다. [저장 use case](../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/README.md)에
+않는다. [저장 use case](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/write/README.md)에
 새 저장 계약과 기존 개발 데이터의 처리 경계를 기록한다.
 
 ## 2. 그래프의 의미
@@ -306,10 +306,10 @@ Memory의 근거·권한을 Topic 본문에 복제하거나, 본문의 설명을
 
 ## 참고
 
-- [기존 구조 조사](research/memory-consolidation-and-topic-hierarchy.md)
-- [운영·권한 참고](research/memory-consolidation-operations-notes.md)
-- [현재 Memory 배치 use case](../application/src/main/kotlin/com/homeassistant/application/usecase/memory/placement/README.md)
-- [현재 visible tree use case](../application/src/main/kotlin/com/homeassistant/application/usecase/memory/tree/README.md)
+- [기존 구조 조사](../../research/memory-consolidation-and-topic-hierarchy.md)
+- [운영·권한 참고](../../research/memory-consolidation-operations-notes.md)
+- [현재 Memory 배치 use case](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/placement/README.md)
+- [현재 visible tree use case](../../../application/src/main/kotlin/com/homeassistant/application/usecase/memory/tree/README.md)
 - [SKOS의 계층·관련·collection 구분](https://www.w3.org/TR/skos-reference/)
 - [Getty의 복수 부모와 preferred parent](https://www.getty.edu/publications/vocabularies-editorial-guidelines/aat-guidelines/3_editorial_rules/3.1/)
 - [W3C PROV의 동일 대상에 대한 별도 기록과 출처](https://www.w3.org/TR/prov-dm/)

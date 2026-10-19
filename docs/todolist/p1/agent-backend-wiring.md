@@ -97,7 +97,7 @@ app만 `AgentBackend`를 알고, adapter-outbound는 `CompletionClient` 타입�
 
 ## 구현 결과 (2026-10-19)
 
-- `AGENT_BACKEND`(기본 `codex`)와 `AGENT_TIMEOUT_SECONDS`를 추가하고 `CODEX_TIMEOUT_SECONDS`를 제거했다.
+- `AGENT_BACKEND`와 `AGENT_TIMEOUT_SECONDS`를 추가하고 `CODEX_TIMEOUT_SECONDS`를 제거했다.
   알 수 없는 backend 값은 저장소를 열기 전에 시작을 실패시킨다.
 - app이 completion client 하나를 만들어 Memory 분석·Topic 배정·이미지 해석 Factory에 넘기고, 대화는
   `AgentClientFactory.conversation`을 그대로 쓴다.
@@ -108,3 +108,4 @@ app만 `AgentBackend`를 알고, adapter-outbound는 `CompletionClient` 타입�
 - analysis README, Codex transport README, 배포 문서, core 경계 강화 문서의 Codex 전용 서술을 고쳤다.
 - 검증: `./gradlew test` 통과(domain 21, application 45, adapter-inbound 25, adapter-outbound 84, app 4,
   integration-llm 46). 실제 서버 기동과 Claude CLI 실호출은 아직 하지 않았다.
+- 이후 기본 backend를 `claude`로 바꿨다. 계획의 "기본값 `codex`로 현재 동작 유지"는 이 결정으로 대체한다.

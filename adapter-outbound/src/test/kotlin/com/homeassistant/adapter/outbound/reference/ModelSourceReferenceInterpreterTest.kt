@@ -59,10 +59,7 @@ class ModelSourceReferenceInterpreterTest {
         val imageCounts = mutableListOf<Int>()
         val images = mutableListOf<List<CompletionImage>>()
 
-        override suspend fun complete(system: String, userMessage: String, outputSchema: String): String =
-            error("image completion expected")
-
-        override suspend fun completeWithImages(
+        override suspend fun complete(
             system: String,
             userMessage: String,
             outputSchema: String,

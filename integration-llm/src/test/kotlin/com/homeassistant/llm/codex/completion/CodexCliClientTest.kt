@@ -62,7 +62,7 @@ class CodexCliClientTest {
             }
         }
 
-        client(process).completeWithImages("system", "image", "{}", listOf(CompletionImage("photo.png", original)))
+        client(process).complete("system", "image", "{}", listOf(CompletionImage("photo.png", original)))
 
         assertClosedAndCleaned(process)
     }

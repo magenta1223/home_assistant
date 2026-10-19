@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.llm.completion.CompletionClient
+import com.homeassistant.llm.completion.CompletionImage
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -219,7 +220,12 @@ class MemoryExtractorTest {
     ) : CompletionClient {
         val calls = mutableListOf<Call>()
 
-        override suspend fun complete(system: String, userMessage: String, outputSchema: String): String {
+        override suspend fun complete(
+            system: String,
+            userMessage: String,
+            outputSchema: String,
+            images: List<CompletionImage>,
+        ): String {
             calls += Call(system, userMessage)
             return responses.removeFirst()
         }
@@ -235,7 +241,12 @@ class MemoryExtractorTest {
     ) : CompletionClient {
         val calls = mutableListOf<Call>()
 
-        override suspend fun complete(system: String, userMessage: String, outputSchema: String): String {
+        override suspend fun complete(
+            system: String,
+            userMessage: String,
+            outputSchema: String,
+            images: List<CompletionImage>,
+        ): String {
             synchronized(calls) { calls += Call(system, userMessage) }
             return block(system, userMessage, outputSchema)
         }

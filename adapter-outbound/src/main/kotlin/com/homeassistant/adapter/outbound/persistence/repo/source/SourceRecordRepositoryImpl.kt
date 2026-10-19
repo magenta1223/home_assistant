@@ -9,8 +9,8 @@ import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
-import com.homeassistant.domain.source.SourceRecordRepository
-import com.homeassistant.domain.source.SourceRecordSaveResult
+import com.homeassistant.application.port.output.source.SourceRecordRepository
+import com.homeassistant.application.port.output.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceReference
 import com.homeassistant.domain.source.SourceReferenceDraft

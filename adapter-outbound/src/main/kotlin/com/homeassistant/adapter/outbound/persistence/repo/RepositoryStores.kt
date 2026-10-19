@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
-import com.homeassistant.domain.source.SourceRecordRepository
+import com.homeassistant.application.port.output.source.SourceRecordRepository
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
 import com.homeassistant.application.port.output.memory.write.MemoryIndexingOutbox

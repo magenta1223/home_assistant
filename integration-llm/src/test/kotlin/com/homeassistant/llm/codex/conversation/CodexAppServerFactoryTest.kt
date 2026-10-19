@@ -18,10 +18,8 @@ class CodexAppServerFactoryTest {
     fun `returns one initialized app server`() {
         val transport = InitializingTransport()
 
-        val server = CodexAppServerFactory.create(
-            config = config(),
-            transport = transport,
-            availabilityProbe = { true },
+        val server = CodexAppServerFactory.prepare(
+            DefaultCodexAppServer(config(), transport, availabilityProbe = { true }),
         )
 
         assertNotNull(server)
@@ -34,10 +32,8 @@ class CodexAppServerFactoryTest {
     fun `closes resources when preparation fails`() {
         val transport = InitializingTransport()
 
-        val server = CodexAppServerFactory.create(
-            config = config(),
-            transport = transport,
-            availabilityProbe = { false },
+        val server = CodexAppServerFactory.prepare(
+            DefaultCodexAppServer(config(), transport, availabilityProbe = { false }),
         )
 
         assertNull(server)

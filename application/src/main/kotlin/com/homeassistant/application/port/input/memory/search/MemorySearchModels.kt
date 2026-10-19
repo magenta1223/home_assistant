@@ -30,13 +30,4 @@ data class MemorySearchMatch(
     val evidenceRefs: List<Int>,
     val score: Double,
     val createdAt: Long,
-    val source: MemorySearchMatchSource = MemorySearchMatchSource.DIRECT,
-    val parentMemoryId: Int? = null,
-    val depth: Int = 0,
 )
-
-@Serializable
-enum class MemorySearchMatchSource {
-    DIRECT,
-    CHILD,
-}

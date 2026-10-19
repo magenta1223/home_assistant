@@ -42,7 +42,7 @@ class ClaudeCliCompletionClientTest {
     fun `images are sent inline instead of as files`() = runBlocking {
         val runner = RecordingRunner(RESULT)
 
-        client(runner).completeWithImages("system", "image", "{}", listOf(CompletionImage("photo.png", byteArrayOf(1))))
+        client(runner).complete("system", "image", "{}", listOf(CompletionImage("photo.png", byteArrayOf(1))))
 
         assertTrue(runner.stdin.contains("\"media_type\":\"image/png\""))
     }

@@ -60,7 +60,7 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
 채택한 canonical memory evidence에서 원본 파일과 해당 segment 해석을 함께 추적할 수 있다. 원본과
 해석 record는 요청에서 지정한 동일한 access scope를 상속한다.
 
-분석은 `integration-llm`의 `CompletionClient`로 실행한다. backend는 `AGENT_BACKEND`(`codex` 기본, `claude`)로
+분석은 `integration-llm`의 `CompletionClient`로 실행한다. backend는 `AGENT_BACKEND`(`claude` 기본, `codex`)로
 고르며, 어느 쪽이든 호출마다 일회성 세션에서 호출자가 준 output schema로 응답을 받고 요청 종료 시 임시 파일을
 정리한다. backend별 모델·실행 제한과 CLI 설정은 `integration-llm`의 각 구현이 소유한다.
 

@@ -134,14 +134,16 @@ class DefaultCodexAppServerTest {
 
     private fun server(transport: FakeCodexAppServerTransport): CodexAppServer =
         requireNotNull(
-            CodexAppServerFactory.create(
-                config = CodexConversationConfig(
-                    executable = "unused",
-                    workDir = Files.createTempDirectory("codex-app-server-test-"),
-                    timeout = Duration.ofSeconds(5),
+            CodexAppServerFactory.prepare(
+                DefaultCodexAppServer(
+                    config = CodexConversationConfig(
+                        executable = "unused",
+                        workDir = Files.createTempDirectory("codex-app-server-test-"),
+                        timeout = Duration.ofSeconds(5),
+                    ),
+                    transport = transport,
+                    availabilityProbe = { true },
                 ),
-                transport = transport,
-                availabilityProbe = { true },
             ),
         )
 

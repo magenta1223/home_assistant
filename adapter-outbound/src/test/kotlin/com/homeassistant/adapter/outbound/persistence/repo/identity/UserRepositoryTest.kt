@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.identity
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.input.identity.ConversationIdentity
+import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import java.sql.DriverManager
@@ -22,23 +22,14 @@ class UserRepositoryTest {
                             "user_id TEXT PRIMARY KEY, display_name TEXT, created_at INTEGER, updated_at INTEGER)",
                     )
                     statement.executeUpdate(
-                        "CREATE TABLE conversation_identities (" +
-                            "scope_id TEXT, participant_id TEXT, user_id TEXT, created_at INTEGER, " +
-                            "PRIMARY KEY (scope_id, participant_id), " +
-                            "FOREIGN KEY (user_id) REFERENCES household_members(user_id))",
-                    )
-                    statement.executeUpdate(
                         "INSERT INTO household_members VALUES ('member-1', '기존 사용자', 100, 100)",
-                    )
-                    statement.executeUpdate(
-                        "INSERT INTO conversation_identities VALUES ('http', 'user-1', 'member-1', 100)",
                     )
                 }
             }
 
             val store = RepositoryFactory.create(path.toString()).users
 
-            assertEquals("기존 사용자", store.find(IDENTITY)?.displayName)
+            assertEquals(listOf(RegisteredUser(UserId("member-1"), "기존 사용자")), store.list())
             DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
                 connection.prepareStatement(
                     "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
@@ -53,43 +44,22 @@ class UserRepositoryTest {
     }
 
     @Test
-    fun `registration persists identity name and authorization across repository instances`() {
-        withStore { path, store ->
-            val member = store.register(IDENTITY, UserId("member-1"), "홍길동", 100L)
-
-            assertEquals("member-1", member.userId.value)
-            assertEquals("홍길동", member.displayName)
-
-            val reopened = RepositoryFactory.create(path.toString()).users
-            assertEquals(member, reopened.find(IDENTITY))
-            assertEquals(listOf(member), reopened.list())
-            assertTrue(reopened.isRegistered(UserId("member-1")))
-        }
-    }
-
-    @Test
-    fun `registering the same identity again keeps its userId and updates its name`() {
-        withStore { _, store ->
-            store.register(IDENTITY, UserId("member-1"), "처음 이름", 100L)
-
-            val updated = store.register(IDENTITY, UserId("member-2"), "새 이름", 101L)
-
-            assertEquals("member-1", updated.userId.value)
-            assertEquals("새 이름", updated.displayName)
-            assertFalse(store.isRegistered(UserId("member-2")))
-        }
-    }
-
-    private fun withStore(block: (java.nio.file.Path, com.homeassistant.application.port.output.identity.UserStore) -> Unit) {
+    fun `only users with a display name are listed and authorized`() {
         val path = Files.createTempFile("registered-user", ".db")
         try {
-            block(path, RepositoryFactory.create(path.toString()).users)
+            val store = RepositoryFactory.create(path.toString()).users
+            DriverManager.getConnection("jdbc:sqlite:$path").use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeUpdate("INSERT INTO registered_users VALUES ('member-1', '홍길동', 100, 100)")
+                    statement.executeUpdate("INSERT INTO registered_users VALUES ('member-2', NULL, 100, 100)")
+                }
+            }
+
+            assertEquals(listOf(RegisteredUser(UserId("member-1"), "홍길동")), store.list())
+            assertTrue(store.isRegistered(UserId("member-1")))
+            assertFalse(store.isRegistered(UserId("member-2")))
         } finally {
             Files.deleteIfExists(path)
         }
-    }
-
-    private companion object {
-        val IDENTITY = ConversationIdentity("http", "user-1")
     }
 }

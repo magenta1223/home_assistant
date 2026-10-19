@@ -19,7 +19,7 @@ import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceAccessConflictException
-import com.homeassistant.domain.source.SourceRecordRepository
+import com.homeassistant.application.port.output.source.SourceRecordRepository
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
 

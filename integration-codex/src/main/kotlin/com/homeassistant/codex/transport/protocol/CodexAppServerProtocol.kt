@@ -39,6 +39,7 @@ internal sealed class AppServerProtocol(
         val sandbox: SandboxMode = SandboxMode.READ_ONLY,
         val serviceName: String = "home_second_brain",
         val config: ThreadConfig,
+        val ephemeral: Boolean = false,
     ) : AppServerProtocol("thread/start")
 
     @Serializable
@@ -57,7 +58,7 @@ internal sealed class AppServerProtocol(
     @Serializable
     data class TurnStart(
         val threadId: String,
-        val input: List<TextUserInput>,
+        val input: List<UserInput>,
         val cwd: String,
         val approvalPolicy: ApprovalPolicy = ApprovalPolicy.NEVER,
         val sandboxPolicy: ReadOnlySandboxPolicy = ReadOnlySandboxPolicy(),
@@ -110,10 +111,15 @@ internal data class ClientInfo(
 )
 
 @Serializable
-internal data class TextUserInput(
-    val type: UserInputType = UserInputType.TEXT,
-    val text: String,
-)
+internal sealed interface UserInput
+
+@Serializable
+@SerialName("text")
+internal data class TextUserInput(val text: String) : UserInput
+
+@Serializable
+@SerialName("localImage")
+internal data class LocalImageUserInput(val path: String) : UserInput
 
 @Serializable
 internal data class ReadOnlySandboxPolicy(
@@ -139,11 +145,6 @@ internal enum class SandboxMode {
 @Serializable
 internal enum class SandboxPolicyType {
     @SerialName("readOnly") READ_ONLY,
-}
-
-@Serializable
-internal enum class UserInputType {
-    @SerialName("text") TEXT,
 }
 
 @Serializable

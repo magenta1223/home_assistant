@@ -1,20 +1,25 @@
 package com.homeassistant.codex.completion
 
-import com.homeassistant.codex.subprocess.ProcessExecutor
-import com.homeassistant.codex.subprocess.SystemProcessExecutor
+import com.homeassistant.codex.transport.CodexAppServerTransport
+import com.homeassistant.codex.transport.CodexAppServerTransportFactory
+import com.homeassistant.codex.transport.protocol.AppServerProtocol
+import com.homeassistant.codex.transport.protocol.ClientInfo
+import com.homeassistant.codex.transport.protocol.LocalImageUserInput
+import com.homeassistant.codex.transport.protocol.TextUserInput
+import com.homeassistant.codex.transport.protocol.ThreadConfig
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.runInterruptible
+import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
-import kotlin.io.path.readText
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.writeBytes
-import kotlin.io.path.writeText
-import kotlin.use
 
 internal class CodexCliClient(
     private val executable: String = CodexExecutableFactory.get(),
     private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
-    private val processExecutor: ProcessExecutor = SystemProcessExecutor,
+    private val transportFactory: (List<String>, Path) -> CodexAppServerTransport = CodexAppServerTransportFactory::create,
 ) : CompletionClient {
     override suspend fun complete(
         system: String,
@@ -27,62 +32,72 @@ internal class CodexCliClient(
         userMessage: String,
         outputSchema: String,
         images: List<CodexImage>,
-    ): String = withContext(Dispatchers.IO) {
+    ): String = runInterruptible(Dispatchers.IO) {
+        val schema = Json.parseToJsonElement(outputSchema)
         val workingDirectory = Files.createTempDirectory("homeassistant-codex-")
         try {
-            val schemaFile = workingDirectory.resolve("output-schema.json")
-            val outputFile = workingDirectory.resolve("output.json")
-            schemaFile.writeText(outputSchema)
-            val command = mutableListOf(
-                executable,
-                "exec",
-                "--model", MEMORY_GENERATION_MODEL,
-                "--ephemeral",
-                "--ignore-user-config",
-                "--ignore-rules",
-                "--config", "model_reasoning_effort=\"$MEMORY_GENERATION_REASONING_EFFORT\"",
-                "--sandbox", "read-only",
-                "--skip-git-repo-check",
-                "--output-schema", schemaFile.toString(),
-                "--output-last-message", outputFile.toString(),
-            )
-            images.forEachIndexed { index, image ->
-                val extension = image.fileName.substringAfterLast('.', "png")
-                    .lowercase()
-                    .takeIf { it.matches(Regex("[a-z0-9]{1,5}")) }
-                    ?: "png"
-                val imageFile = workingDirectory.resolve("input-${index + 1}.$extension")
-                imageFile.writeBytes(image.bytes)
-                command += listOf("--image", imageFile.toString())
+            val input = listOf(TextUserInput("$system\n\n[user]\n$userMessage")) +
+                images.mapIndexed { index, image ->
+                    val extension = image.fileName.substringAfterLast('.', "png").lowercase()
+                        .takeIf { it.matches(Regex("[a-z0-9]{1,5}")) } ?: "png"
+                    val file = workingDirectory.resolve("input-${index + 1}.$extension")
+                    file.writeBytes(image.bytes)
+                    LocalImageUserInput(file.toString())
+                }
+            transportFactory(listOf(executable, "app-server", "--stdio"), workingDirectory).use { transport ->
+                val result = CompletionResult()
+                val deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)
+                check(transport.start(result)) { "Codex app-server could not start" }
+                await(transport.initialize(AppServerProtocol.Initialize(ClientInfo("home_second_brain", "Home Second Brain", "1"))), deadline)
+                val thread = await(transport.startThread(AppServerProtocol.ThreadStart(
+                    model = MEMORY_GENERATION_MODEL,
+                    cwd = workingDirectory.toString(),
+                    config = ThreadConfig(modelReasoningEffort = MEMORY_GENERATION_REASONING_EFFORT),
+                    ephemeral = true,
+                )), deadline).thread
+                await(transport.startTurn(AppServerProtocol.TurnStart(
+                    threadId = thread.id,
+                    input = input,
+                    cwd = workingDirectory.toString(),
+                    model = MEMORY_GENERATION_MODEL,
+                    effort = MEMORY_GENERATION_REASONING_EFFORT,
+                    outputSchema = schema,
+                )), deadline)
+                await(result.completed, deadline)
             }
-            command += "-"
-            val result = processExecutor.execute(
-                command,
-                workingDirectory,
-                timeoutMillis,
-                buildPrompt(system, userMessage),
-            )
-            check(!result.timedOut) { "Codex CLI timed out after ${timeoutMillis}ms" }
-            check(result.exitCode == 0) {
-                "Codex CLI exited with code ${result.exitCode}: ${result.stderr.trim()}"
-            }
-            check(Files.exists(outputFile)) { "Codex CLI did not write its final response" }
-            outputFile.readText()
         } finally {
-            workingDirectory.deleteRecursively()
+            Files.walk(workingDirectory).use { paths ->
+                paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+            }
         }
     }
 
-    private fun buildPrompt(system: String, userMessage: String): String = buildString {
-        appendLine(system)
-        appendLine()
-        appendLine("[user]")
-        append(userMessage)
-    }
+    private fun <T> await(response: CompletableFuture<T>, deadline: Long): T =
+        response.get((deadline - System.nanoTime()).coerceAtLeast(0), TimeUnit.NANOSECONDS)
 
-    private fun Path.deleteRecursively() {
-        Files.walk(this).use { paths ->
-            paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
+    private class CompletionResult : CodexAppServerTransport.Listener {
+        val completed = CompletableFuture<String>()
+        private var answer: String? = null
+
+        override fun onItemCompleted(event: AppServerProtocol.ItemCompleted) {
+            if (event.item.type == "agentMessage") event.item.text?.let { answer = it }
+        }
+
+        override fun onTurnCompleted(event: AppServerProtocol.TurnCompleted) {
+            val text = event.turn.items.lastOrNull { it.type == "agentMessage" && it.text != null }?.text ?: answer
+            when {
+                event.turn.status != "completed" -> fail("Codex turn ${event.turn.status}")
+                text == null -> fail("Codex app-server did not return its final response")
+                else -> completed.complete(text)
+            }
+        }
+
+        override fun onThreadClosed(event: AppServerProtocol.ThreadClosed) = fail("Codex thread closed")
+        override fun onProtocolError() = fail("Invalid Codex app-server message")
+        override fun onAppServerExited() = fail("Codex app-server exited")
+
+        private fun fail(message: String) {
+            completed.completeExceptionally(IllegalStateException(message))
         }
     }
 

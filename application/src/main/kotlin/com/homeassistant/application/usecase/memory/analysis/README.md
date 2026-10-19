@@ -60,6 +60,12 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
 채택한 canonical memory evidence에서 원본 파일과 해당 segment 해석을 함께 추적할 수 있다. 원본과
 해석 record는 요청에서 지정한 동일한 access scope를 상속한다.
 
+Codex 분석은 `CompletionClient`에서 기존 `CodexAppServerTransport`를 직접 이용한다. 호출마다 app-server를
+열고 비영속 스레드로 실행한 뒤 성공·실패·취소 시 닫는다. 이미지 임시 파일도 요청 종료 시 정리한다.
+분석 모델(`gpt-5.6-sol` / `high`)과 10분 실행 제한은 유지하며, 제한 시간에는 서버 초기화도 포함된다.
+app-server가 지원하지 않는 기존 exec 전용 `--ignore-user-config`, `--ignore-rules` 대신
+서버의 일반 Codex 설정을 사용한다. 읽기 전용 sandbox와 승인 없음은 명시적으로 설정한다.
+
 ## 실패 계약
 
 - 등록되지 않은 작성자 또는 audience는 domain access exception/application audience exception으로 거절한다.

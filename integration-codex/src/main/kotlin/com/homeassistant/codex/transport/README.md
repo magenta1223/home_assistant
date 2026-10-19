@@ -25,6 +25,17 @@ only for a newly started process. Process exit and protocol events return throug
 Request timeouts belong to the caller. Cancelling a returned future removes its request from the transport's pending
 response tracking, so an abandoned request is not retained when the app-server never responds.
 
+## Completion
+
+`CompletionClient` uses the existing `CodexAppServerTransport` initialization, thread/start, and turn/start operations.
+Each call opens and closes its own app-server, preserving the previous per-request lifetime. Conversation wiring and
+ownership are unchanged. Completion uses an ephemeral thread, a caller-provided output schema, and text/local-image
+inputs; temporary image files are removed on success, failure, or cancellation.
+
+Analysis retains `gpt-5.6-sol` / `high` and a ten-minute execution timeout, including initialization. App-server
+uses normal Codex settings; the previous exec-only `--ignore-user-config` and `--ignore-rules` flags are not supported.
+The existing read-only sandbox, no-approval policy, and disabled web search apply.
+
 ## Process lifecycle
 
 The following states belong only to `StdioProcessTransport`:

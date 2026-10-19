@@ -15,7 +15,7 @@ Core 경계 안에 남아 있다.
    의존한다.
 2. Application input/result 모델이 `@Serializable`에 의존해 전송 형식과 use case 계약의 경계가
    섞여 있다.
-3. Application뿐 아니라 `adapter-inbound`, `adapter-outbound`, `integration-codex` 같은 library
+3. Application뿐 아니라 `adapter-inbound`, `adapter-outbound`, `integration-llm` 같은 library
    모듈도 SLF4J API가 아니라 구체 logging binding인 `logback-classic`을 직접 의존한다.
 
 현재 동작 오류는 아니지만 이 결합을 방치하면 다른 transport나 serialization 방식으로 교체할 때
@@ -36,7 +36,7 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
    Application 모델과 양방향으로 변환한다.
 3. Domain과 Application에서 Kotlin serialization Gradle plugin 및 API 의존을 제거하고 전체
    import 경계를 검증한다.
-4. `application`, 두 adapter와 `integration-codex`의 `logback-classic` 의존을 `slf4j-api`로
+4. `application`, 두 adapter와 `integration-llm`의 `logback-classic` 의존을 `slf4j-api`로
    교체하고 실제 Logback binding은 `app` 모듈에만 둔다.
 5. 다음 규칙을 architecture test에 추가한다.
    - Domain은 Kotlin/JDK와 허용된 domain dependency 외 프레임워크를 import하지 않는다.
@@ -65,6 +65,6 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
 ## 현재 상태 (2026-09-08)
 
 미구현이다. Domain과 Application 모델에 `kotlinx.serialization` annotation이 남아 있고,
-`application`, `adapter-inbound`, `adapter-outbound`, `integration-codex`가 `logback-classic`을 직접
+`application`, `adapter-inbound`, `adapter-outbound`, `integration-llm`가 `logback-classic`을 직접
 의존한다. logging binding 정리는 작은 독립 변경으로 먼저 수행할 수 있다. serialization DTO 분리는
 호환성 회귀 범위가 크므로 transport 교체 필요가 생기기 전까지 P2를 유지한다.

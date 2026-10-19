@@ -55,16 +55,14 @@ sequenceDiagram
 ```
 
 PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 단위로 렌더링하고 이미지와 함께
-추출 가능한 텍스트를 Codex에 제공하며, 이미지는 하나의 segment로 해석한다. 원본 binary는 SHA-256으로
+추출 가능한 텍스트를 선택된 agent backend에 제공하며, 이미지는 하나의 segment로 해석한다. 원본 binary는 SHA-256으로
 중복 제거해 SQLite에 저장하고 각 해석 source record가 같은 reference를 가리킨다. 따라서 해석 record를
 채택한 canonical memory evidence에서 원본 파일과 해당 segment 해석을 함께 추적할 수 있다. 원본과
 해석 record는 요청에서 지정한 동일한 access scope를 상속한다.
 
-Codex 분석은 `CompletionClient`에서 기존 `CodexAppServerTransport`를 직접 이용한다. 호출마다 app-server를
-열고 비영속 스레드로 실행한 뒤 성공·실패·취소 시 닫는다. 이미지 임시 파일도 요청 종료 시 정리한다.
-분석 모델(`gpt-5.6-sol` / `high`)과 10분 실행 제한은 유지하며, 제한 시간에는 서버 초기화도 포함된다.
-app-server가 지원하지 않는 기존 exec 전용 `--ignore-user-config`, `--ignore-rules` 대신
-서버의 일반 Codex 설정을 사용한다. 읽기 전용 sandbox와 승인 없음은 명시적으로 설정한다.
+분석은 `integration-llm`의 `CompletionClient`로 실행한다. backend는 `AGENT_BACKEND`(`codex` 기본, `claude`)로
+고르며, 어느 쪽이든 호출마다 일회성 세션에서 호출자가 준 output schema로 응답을 받고 요청 종료 시 임시 파일을
+정리한다. backend별 모델·실행 제한과 CLI 설정은 `integration-llm`의 각 구현이 소유한다.
 
 ## 실패 계약
 

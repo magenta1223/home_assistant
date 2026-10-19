@@ -44,6 +44,7 @@ dependencies {
     implementation(project(":configuration"))
     implementation(project(":application"))
     implementation(project(":domain"))
+    implementation(project(":integration-llm"))
 
     // Ktor server
     implementation(libs.ktor.server.core)

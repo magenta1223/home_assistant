@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
-import com.homeassistant.codex.completion.CompletionClient
+import com.homeassistant.llm.completion.CompletionClient
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDocument
@@ -12,7 +12,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
-/** Runs Codex memory analysis for normalized source documents. */
+/** Runs model memory analysis for normalized source documents. */
 internal class MemoryExtractor(
     private val client: CompletionClient,
     private val chunkSize: Int = CHUNK_SIZE,

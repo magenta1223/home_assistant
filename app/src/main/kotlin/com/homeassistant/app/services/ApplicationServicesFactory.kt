@@ -2,7 +2,6 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.adapter.outbound.memoryconversation.ConversationGatewayFactory
 import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.answer.MemoryAnswerContextProvider
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
@@ -28,6 +27,8 @@ import com.homeassistant.adapter.outbound.topicassignment.TopicAssignmentGenerat
 import com.homeassistant.application.usecase.topic.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
+import com.homeassistant.llm.AgentBackend
+import com.homeassistant.llm.AgentClientFactory
 import org.slf4j.LoggerFactory
 import java.time.Duration
 
@@ -40,6 +41,8 @@ object ApplicationServicesFactory {
         httpUsers: Collection<UserId> = emptyList(),
         groupSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
+        val agentBackend = agentBackend()
+        val completionClient = AgentClientFactory.completion(agentBackend)
         val repositories = RepositoryFactory.create(dbPath)
         val users = UserRegistryService(repositories.users)
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
@@ -62,7 +65,7 @@ object ApplicationServicesFactory {
                 repositories.topicCatalog,
                 PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel), repositories.memoryEmbeddings),
                 topicEmbeddings,
-                TopicAssignmentGeneratorFactory.create(),
+                TopicAssignmentGeneratorFactory.create(completionClient),
                 repositories.topicMaintenance,
             ),
             RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
@@ -88,12 +91,12 @@ object ApplicationServicesFactory {
             batchWriter = repositories.canonicalMemoryBatchWriter,
         )
         val memoryAnalysisService = MemoryAnalysisService(
-            memoryExtractor = MemoryExtractorFactory.create(),
+            memoryExtractor = MemoryExtractorFactory.create(completionClient),
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
             accessPolicy = accessPolicy,
             memoryIndexing = memoryIndexing,
-            referenceInterpreter = SourceReferenceInterpreterFactory.create(),
+            referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
         val memorySearcherImpl = MemorySearcher(
             memories = repositories.canonicalMemories,
@@ -103,11 +106,17 @@ object ApplicationServicesFactory {
         val answerContext = MemoryAnswerContextProvider(
             memorySearcher = memorySearcherImpl,
         )
-        val codexTimeoutSeconds = Env[AppConfig.ENV_VAR_CODEX_TIMEOUT_SECONDS]
+        val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
-            ?: AppConfig.DEFAULT_CODEX_TIMEOUT_SECONDS
-        val conversationGateway = ConversationGatewayFactory.create(
-            timeout = Duration.ofSeconds(codexTimeoutSeconds),
+            ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
+        val conversationGateway = AgentClientFactory.conversation(
+            backend = agentBackend,
+            timeout = Duration.ofSeconds(agentTimeoutSeconds),
+        )
+        log.info(
+            "Agent backend={} conversation={}",
+            agentBackend,
+            if (conversationGateway == null) "unavailable" else "enabled",
         )
         val memoryConversation = conversationGateway?.let {
             val now = System.currentTimeMillis()
@@ -141,5 +150,12 @@ object ApplicationServicesFactory {
             conversationExpiryWorker = conversationExpiryWorker,
             conversationGateway = conversationGateway,
         )
+    }
+
+    /** Reads [AppConfig.ENV_VAR_AGENT_BACKEND]; an unknown value stops startup instead of silently using Codex. */
+    private fun agentBackend(): AgentBackend {
+        val value = Env[AppConfig.ENV_VAR_AGENT_BACKEND] ?: AppConfig.DEFAULT_AGENT_BACKEND
+        return AgentBackend.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }
+            ?: error("Unknown ${AppConfig.ENV_VAR_AGENT_BACKEND}: $value (expected one of ${AgentBackend.entries.joinToString { it.name.lowercase() }})")
     }
 }

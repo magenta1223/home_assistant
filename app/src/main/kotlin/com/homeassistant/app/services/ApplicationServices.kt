@@ -11,7 +11,7 @@ interface ApplicationServices : AutoCloseable {
     /** Provides the memory-analysis use case. */
     val memoryAnalysis: MemoryAnalysis
 
-    /** Provides memory-backed conversations when the local Codex runtime is available. */
+    /** Provides memory-backed conversations when the selected agent backend CLI is available. */
     val memoryConversation: MemoryConversation?
 
     /** Registered application users that may be selected as knowledge viewers. */

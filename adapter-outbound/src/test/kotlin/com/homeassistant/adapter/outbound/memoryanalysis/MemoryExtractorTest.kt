@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.memoryanalysis
 
-import com.homeassistant.codex.completion.CompletionClient
+import com.homeassistant.llm.completion.CompletionClient
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument

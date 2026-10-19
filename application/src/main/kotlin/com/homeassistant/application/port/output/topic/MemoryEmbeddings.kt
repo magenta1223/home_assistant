@@ -4,7 +4,7 @@ import com.homeassistant.application.port.output.group.EmbeddingSpace
 import com.homeassistant.application.port.output.group.descriptionFingerprint
 import com.homeassistant.domain.group.TopicVector
 
-/** A memory that no organized Topic contains yet. Content is immutable, so its hash keys the vector cache. */
+/** A memory that belongs to no Topic yet. Content is immutable, so its hash keys the vector cache. */
 data class PendingMemory(val id: Int, val content: String) {
     init { require(id > 0 && content.isNotBlank()) }
     fun embeddingKey(space: EmbeddingSpace) = MemoryEmbeddingKey(id, descriptionFingerprint(content), space)

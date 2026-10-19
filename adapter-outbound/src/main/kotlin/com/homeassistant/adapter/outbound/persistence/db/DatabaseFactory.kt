@@ -17,8 +17,6 @@ internal object DatabaseFactory {
                 TopicMembershipTable,
                 TopicRelationTable,
                 MemoryEmbeddingTable,
-                TopicOrganizationTable,
-                TopicOrganizedMemoryTable,
                 TopicEmbeddingTable,
                 GroupTable,
                 GroupMembershipTable,

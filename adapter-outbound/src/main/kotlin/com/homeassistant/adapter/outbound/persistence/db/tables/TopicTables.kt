@@ -35,19 +35,3 @@ internal object MemoryEmbeddingTable : Table("memory_embeddings") {
     val vector = text("vector")
     override val primaryKey = PrimaryKey(key)
 }
-
-/** Topics created by Memory organization. Revision counts membership changes; summaries follow it. */
-internal object TopicOrganizationTable : Table("topic_organization") {
-    val topicId = integer("topic_id").references(TopicTable.id)
-    val revision = long("revision")
-    val describedRevision = long("described_revision")
-    val centroid = text("centroid")
-    override val primaryKey = PrimaryKey(topicId)
-}
-
-internal object TopicOrganizedMemoryTable : Table("topic_organized_memories") {
-    val memoryId = integer("memory_id").references(MemoryTable.id)
-    val topicId = integer("topic_id").references(TopicOrganizationTable.topicId).index()
-    val embeddingKey = text("embedding_key").references(MemoryEmbeddingTable.key)
-    override val primaryKey = PrimaryKey(memoryId)
-}

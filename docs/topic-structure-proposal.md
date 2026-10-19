@@ -1,6 +1,6 @@
 # Memory·Topic 그래프와 Group 설계
 
-- 상태: Memory → Topic(xMemory 배치·분할 + LM 설명)과 Topic → Group을 명시적 내부 호출 `organizeMemories`로 구현 (2026-10-19). 자동 실행·검색 연결은 없음
+- 상태: Memory → Topic(LM 복수 배정)과 Topic → Group(xMemory)을 명시적 내부 호출 `organizeMemories`로 구현 (2026-10-19). 자동 실행·검색 연결은 없음
 - 기준: [메모리 구조 판단기준](topic-adoption-criteria.md)의 최신 합의
 - 이 문서는 이전의 독립 문서형 Topic 제안과 Memory + Group 제안을 대체한다.
 
@@ -248,7 +248,7 @@ Source ID는 변하지 않는 원문을 가리킨다. 내용이 다른 입력은
 
 ## 9. Agent의 구성·정리와 규모
 
-Memory 추출은 기존 분석 경로를 사용한다. Topic 소속은 임베딩으로 정하고 설명은 xMemory처럼 LM이 요약한다 (2026-10-19).
+Memory 추출은 기존 분석 경로를 사용한다. Topic 소속과 설명은 임베딩 후보 중에서 LM이 정한다 (2026-10-19).
 Topic 연결 정리의 구체적인 방식은 별도로 정하며, 현재 자동 실행하지 않는다.
 새 입력이 기존 사실을 반복하는지, 변경 사항인지 구분하되 기존 Source와 Memory content는 수정하지 않는다.
 같은 사실이라도 출처와 공유 범위가 다르면 단순 중복으로 합치지 않는다.
@@ -316,8 +316,9 @@ SparsityScore는 Group 크기 균형 점수이며 Group 수 자체의 벌점은 
 
 ### Memory → Topic 구현 결과 (2026-10-19)
 
-사용자 결정에 따라 Topic을 xMemory와 같은 방식으로 만든다. Memory 벡터와 Topic centroid의 cosine으로
-배치하고(0.6 초과 시 부착), 12개 초과 Topic을 Group과 같은 정책으로 분할한다. 설명은 LM이 소속 Memory를
-요약하며 소속 revision이 바뀐 Topic만 실행당 한 번 다시 요약한다. 설명이 바뀐 Group 소속 Topic은 재임베딩하고
-그 Group의 centroid만 갱신한다. 이 결정은 2026-10-10의 'Topic을 LM으로 생성하지 않는다'를 대체한다.
+xMemory 대응은 Source가 segment, Memory가 component, Group이 group이다. xMemory group은 한 component가
+한 group에만 속하는 분할이므로, Memory 복수 소속을 위해 Topic을 그 사이의 겹침 허용 묶음으로 유지한다.
+Topic 소속은 LM이 정한다. Memory·Topic 설명 임베딩으로 후보 Topic을 좁히고, LM이 참여할 Topic들과 분류,
+수정 설명 또는 새 Topic을 고른다. 소속이 바뀐 Topic의 설명은 같은 저장에서 교체되며, Group 소속 Topic이면
+재임베딩해 그 Group의 centroid만 갱신한다. 이 결정은 2026-10-10의 'Topic을 LM으로 생성하지 않는다'를 대체한다.
 세부 흐름과 실패 처리는 [Memory → Topic use case](../application/src/main/kotlin/com/homeassistant/application/usecase/topic/README.md)에 있다.

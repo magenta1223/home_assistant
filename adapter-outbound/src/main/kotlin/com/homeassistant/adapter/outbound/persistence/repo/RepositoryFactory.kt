@@ -7,7 +7,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexing
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.MemoryEmbeddingRepository
-import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicOrganizationRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.TopicEmbeddingRepository
@@ -18,7 +17,6 @@ object RepositoryFactory {
         val canonicalMemories = MemoryRepository(db)
         val topics = TopicRepository(db)
         val groups = GroupRepository(db)
-        val topicOrganization = TopicOrganizationRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             canonicalMemoryBatchWriter = canonicalMemories,
@@ -29,11 +27,9 @@ object RepositoryFactory {
             topicEmbeddings = TopicEmbeddingRepository(db),
             groupSnapshots = groups,
             groupChanges = groups,
-            pendingMemories = topicOrganization,
+            topicCatalog = topics,
+            pendingMemories = topics,
             memoryEmbeddings = MemoryEmbeddingRepository(db),
-            topicOrganizationSnapshots = topicOrganization,
-            topicOrganizationChanges = topicOrganization,
-            pendingTopicDescriptions = topicOrganization,
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),
         )

@@ -10,7 +10,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 |---|---|---|
 | `identity` | conversation identity를 application user로 해석하고 등록·인가한다. | [identity](identity/README.md) |
 | `group` | 저장된 Topic을 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](group/README.md) |
-| `topic` | Memory를 Topic에 배치·분할하고 LM 요약으로 설명한 뒤 Group 정리까지 이어간다. 명시적 내부 호출 전용이다. | [topic](topic/README.md) |
+| `topic` | Memory를 LM 판단으로 하나 이상의 Topic에 배정한 뒤 Group 정리까지 이어간다. 명시적 내부 호출 전용이다. | [topic](topic/README.md) |
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
 | `memory/answer` | 허용된 Memory 검색 결과를 답변 context로 전달한다. | [answer](memory/answer/README.md) |
 | `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |

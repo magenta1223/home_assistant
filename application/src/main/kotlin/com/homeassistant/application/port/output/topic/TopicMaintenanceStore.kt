@@ -14,7 +14,8 @@ interface TopicMaintenanceStore {
     fun relationsForMaintenance(topicIds: Collection<Int>): Set<TopicRelation>
 
     /**
-     * Atomically creates topics and adds references/relations without replacing existing membership.
+     * Atomically creates topics, adds references/relations and replaces the listed descriptions,
+     * without replacing existing membership.
      * Stable creation keys reuse the same topic; conflicting descriptions are rejected.
      * Repeated memberships and reverse relations are harmless. Missing references fail the batch.
      * Implementations own the transaction and must not call a model or modify Memory/Source state.

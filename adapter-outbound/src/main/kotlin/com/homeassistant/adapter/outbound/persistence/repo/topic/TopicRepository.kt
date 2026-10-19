@@ -10,7 +10,19 @@ import com.homeassistant.domain.topic.TopicRelation
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class TopicRepository(private val db: Database) : TopicMaintenanceStore {
+internal class TopicRepository(private val db: Database) : TopicMaintenanceStore, TopicCatalog, PendingMemorySource {
+    override fun topics(): List<TopicCandidate> = transaction(db) {
+        TopicTable.selectAll().orderBy(TopicTable.id).map { TopicCandidate(it[TopicTable.id], it[TopicTable.description]) }
+    }
+
+    /** Memories that belong to no Topic, in ID order. Assignment always adds at least one membership. */
+    override fun pending(limit: Int): List<PendingMemory> = transaction(db) {
+        require(limit > 0)
+        MemoryTable.selectAll().where {
+            notExists(TopicMembershipTable.selectAll().where { TopicMembershipTable.memoryId eq MemoryTable.id })
+        }.orderBy(MemoryTable.id).limit(limit).map { PendingMemory(it[MemoryTable.id], it[MemoryTable.content]) }
+    }
+
     override fun readForMaintenance(topicIds: Collection<Int>): List<Topic> = transaction(db) {
         if (topicIds.isEmpty()) return@transaction emptyList()
         val memberships = TopicMembershipTable.selectAll()
@@ -39,9 +51,10 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
         val createdIds = createTopics(batch.creations)
         val memberships = resolveMemberships(batch.memberships, createdIds)
         val relations = resolveRelations(batch.relations, createdIds)
-        verifyTargets(memberships, relations)
+        verifyTargets(memberships, relations, batch.descriptionUpdates)
         addMemberships(memberships)
         addRelations(relations)
+        replaceDescriptions(batch.descriptionUpdates)
         return TopicWriteResult(createdIds)
     }
 
@@ -73,8 +86,9 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
         is TopicReference.Created -> requireNotNull(createdIds[reference.creationKey]) { "topic creation reference is not declared in this batch" }
     }
 
-    private fun verifyTargets(memberships: List<Membership>, relations: Set<TopicRelation>) {
-        val topicIds = memberships.map { it.topicId }.toSet() + relations.flatMap { listOf(it.firstTopicId, it.secondTopicId) }
+    private fun verifyTargets(memberships: List<Membership>, relations: Set<TopicRelation>, updates: List<TopicDescriptionUpdate>) {
+        val topicIds = memberships.map { it.topicId }.toSet() + relations.flatMap { listOf(it.firstTopicId, it.secondTopicId) } +
+            updates.map { it.topicId }
         if (topicIds.isNotEmpty()) {
             val existing = TopicTable.select(TopicTable.id).where { TopicTable.id inList topicIds }.map { it[TopicTable.id] }.toSet()
             require(existing == topicIds) { "topic reference does not exist" }
@@ -102,6 +116,12 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
                 it[firstTopicId] = relation.firstTopicId
                 it[secondTopicId] = relation.secondTopicId
             }
+        }
+    }
+
+    private fun replaceDescriptions(updates: List<TopicDescriptionUpdate>) {
+        updates.forEach { update ->
+            TopicTable.update({ TopicTable.id eq update.topicId }) { it[description] = update.description }
         }
     }
 

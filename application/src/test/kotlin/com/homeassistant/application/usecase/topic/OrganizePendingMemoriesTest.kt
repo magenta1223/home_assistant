@@ -8,157 +8,119 @@ import com.homeassistant.application.port.output.topic.*
 import com.homeassistant.application.usecase.group.PrepareTopicEmbedding
 import com.homeassistant.application.usecase.group.RefreshGroupedTopicEmbeddings
 import com.homeassistant.domain.group.*
+import com.homeassistant.domain.topic.Topic
+import com.homeassistant.domain.topic.TopicRelation
 import kotlin.test.*
 
 class OrganizePendingMemoriesTest {
     private val space = EmbeddingSpace("test", "v1")
     private val east = TopicVector.normalized(listOf(1.0, 0.0))
     private val north = TopicVector.normalized(listOf(0.0, 1.0))
+    private val northEast = TopicVector.normalized(listOf(1.0, 1.0))
 
-    @Test fun `nearby memory attaches to the nearest topic and a distant one creates a topic`() {
+    @Test fun `without topics the model creates one without any embedding work`() {
         val fixture = Fixture()
-        fixture.snapshot = snapshotOf(OrganizedTopic(4, setOf(9), 2, east), 9 to east)
-        fixture.vectors = mapOf("1" to east, "2" to north)
-        val result = assertIs<MemoryOrganizationResult.Completed>(fixture.service.execute(2))
-        assertEquals(listOf(1, 2), result.memories.map { it.memoryId })
-        val (attach, create) = fixture.writes
-        assertEquals(mapOf(4 to 2L), attach.expectedTopics)
-        assertEquals(listOf(ResultingTopic(TopicTarget.Existing(4), setOf(1, 9), east)), attach.resultingTopics)
-        assertEquals(emptyMap(), create.expectedTopics)
-        assertEquals(TopicTarget.Created, create.resultingTopics.single().target)
+        fixture.decide = { TopicAssignmentDecision(emptyList(), listOf(NewTopic("보일러 관리", "수리"))) }
+        val result = fixture.service.execute(1)
+        assertEquals(MemoryAssignmentOutcome.Assigned(emptyList(), listOf(100)), result.memories.single().outcome)
+        assertEquals(0, fixture.embedded)
+        val batch = fixture.batches.single()
+        assertEquals(listOf(TopicCreation("memory:1:0", "보일러 관리")), batch.creations)
+        assertEquals(listOf(TopicMembershipAddition(TopicReference.Created("memory:1:0"), "수리", listOf(1))), batch.memberships)
     }
 
-    @Test fun `oversized topic splits in one change that keeps the old topic id`() {
-        val fixture = Fixture(maxMembers = 2)
-        fixture.snapshot = snapshotOf(OrganizedTopic(4, setOf(8, 9), 7, east), 8 to east, 9 to east)
-        fixture.vectors = mapOf("1" to east)
+    @Test fun `only the nearest candidates are offered and a memory may join several of them`() {
+        val fixture = Fixture(candidateLimit = 2)
+        fixture.topics = listOf(TopicCandidate(7, "east"), TopicCandidate(8, "north"), TopicCandidate(9, "northEast"))
+        fixture.vectors = mapOf("1" to east, "east" to east, "north" to north, "northEast" to northEast)
+        fixture.decide = { request ->
+            assertEquals(listOf(7, 9), request.candidates.map { it.topicId })
+            TopicAssignmentDecision(listOf(TopicJoin(7, "수리", "보일러 관리와 수리"), TopicJoin(9, "지출", "주거비 지출")), emptyList())
+        }
         val outcome = fixture.service.execute(1).memories.single().outcome
-        assertIs<GroupSplit.Divided>(assertIs<MemoryOrganizationOutcome.Organized>(outcome).split)
-        val change = fixture.writes.single()
-        assertEquals(setOf(1, 8, 9), change.resultingTopics.flatMap { it.memoryIds }.toSet())
-        assertEquals(TopicTarget.Existing(4), change.resultingTopics.first().target)
-        assertEquals(listOf(TopicTarget.Created), change.resultingTopics.drop(1).map { it.target })
+        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(7, 9), emptyList()), outcome)
+        val batch = fixture.batches.single()
+        assertEquals(setOf(7, 9), batch.memberships.map { (it.topic as TopicReference.Existing).topicId }.toSet())
+        assertEquals(listOf(TopicDescriptionUpdate(7, "보일러 관리와 수리"), TopicDescriptionUpdate(9, "주거비 지출")), batch.descriptionUpdates)
     }
 
-    @Test fun `conflict replans from a fresh snapshot without embedding the memory again`() {
+    @Test fun `joining a topic that was not offered fails that memory only`() {
         val fixture = Fixture()
-        fixture.write = { if (fixture.writes.size == 1) TopicOrganizationWriteResult.Conflict else TopicOrganizationWriteResult.Applied(listOf(5)) }
-        assertIs<MemoryOrganizationOutcome.Organized>(fixture.service.execute(1).memories.single().outcome)
-        assertEquals(2, fixture.writes.size)
-        assertEquals(1, fixture.generated)
+        fixture.topics = listOf(TopicCandidate(7, "east"))
+        fixture.decide = { request ->
+            if (request.memory.id == 1) TopicAssignmentDecision(listOf(TopicJoin(99, "x", "y")), emptyList())
+            else TopicAssignmentDecision(listOf(TopicJoin(7, "x", "y")), emptyList())
+        }
+        val result = fixture.service.execute(2)
+        assertIs<MemoryAssignmentOutcome.Failed>(result.memories.first().outcome)
+        assertIs<MemoryAssignmentOutcome.Assigned>(result.memories.last().outcome)
+        assertEquals(1, fixture.batches.size)
     }
 
-    @Test fun `failed memory does not stop the batch and model change stops before later stages`() {
-        val fixture = Fixture()
-        fixture.generate = { if (it == "1") error("unavailable") else east }
-        val result = assertIs<MemoryOrganizationResult.Completed>(fixture.service.execute(2))
-        assertIs<MemoryOrganizationOutcome.Failed>(result.memories.first().outcome)
-        assertIs<MemoryOrganizationOutcome.Organized>(result.memories.last().outcome)
-
-        val changed = Fixture()
-        changed.snapshot = snapshotOf(OrganizedTopic(4, setOf(9), 1, east), 9 to east, space = EmbeddingSpace("old", "v1"))
-        assertIs<MemoryOrganizationResult.RebuildRequired>(changed.service.execute(2))
-        assertEquals(0, changed.generated)
-        assertEquals(0, changed.groupRuns)
-    }
-
-    @Test fun `descriptions are summarized per topic and superseded or failed summaries are reported`() {
-        val fixture = Fixture()
-        fixture.descriptionRequests = listOf(
-            TopicDescriptionRequest(1, 3, listOf("보일러 점검")),
-            TopicDescriptionRequest(2, 1, listOf("화분 물주기")),
-            TopicDescriptionRequest(3, 1, listOf("실패")),
-        )
-        fixture.describe = { contents -> if (contents == listOf("실패")) error("model down") else "요약: ${contents.single()}" }
-        fixture.describeWrite = { topicId, _, _ -> if (topicId == 2) TopicDescriptionWriteResult.Conflict else TopicDescriptionWriteResult.Applied }
-        val result = assertIs<MemoryOrganizationResult.Completed>(fixture.service.execute(1))
-        assertEquals(listOf(
-            TopicDescriptionOutcome.Described(1),
-            TopicDescriptionOutcome.Superseded(2),
-            TopicDescriptionOutcome.Failed(3, "model down"),
-        ), result.descriptions)
-        assertEquals(listOf(Triple(1, 3L, "요약: 보일러 점검"), Triple(2, 1L, "요약: 화분 물주기")), fixture.descriptions)
-        assertEquals(1, fixture.groupRuns)
-    }
-
-    @Test fun `grouped topic with a new description is re-embedded in place without moving`() {
+    @Test fun `revised descriptions refresh group vectors before new topics are grouped`() {
         val fixture = Fixture()
         val old = TopicEmbedding(PendingTopic(7, "old").embeddingKey(space), east)
-        val other = TopicEmbedding(PendingTopic(8, "other").embeddingKey(space), east)
-        fixture.groupSnapshot = GroupSnapshot(listOf(StoredGroup(Group(3, setOf(7, 8)), 5, east)),
-            mapOf(7 to old, 8 to other), listOf(PendingTopic(7, "new")))
+        fixture.groupSnapshot = GroupSnapshot(listOf(StoredGroup(Group(3, setOf(7)), 5, east)), mapOf(7 to old),
+            listOf(PendingTopic(7, "new")))
         fixture.vectors = mapOf("new" to north)
-        val result = assertIs<MemoryOrganizationResult.Completed>(fixture.service.execute(1))
+        val result = fixture.service.execute(1)
         assertEquals(1, result.groupRefreshes.size)
         val change = fixture.groupWrites.single()
         assertEquals(mapOf(3 to 5L), change.expectedGroups)
         assertTrue(change.incomingTopicIds.isEmpty())
-        assertEquals(setOf(7, 8), change.resultingGroups.single().topicIds)
         assertEquals(PendingTopic(7, "new").embeddingKey(space), change.embeddings.getValue(7).key)
-        assertEquals(other, change.embeddings.getValue(8))
+        assertEquals("groups", fixture.order.last())
     }
 
-    private fun snapshotOf(topic: OrganizedTopic, vararg vectors: Pair<Int, TopicVector>, space: EmbeddingSpace = this.space) =
-        TopicOrganizationSnapshot(listOf(topic), vectors.associate { (id, vector) ->
-            id to MemoryEmbedding(PendingMemory(id, "$id").embeddingKey(space), vector)
-        })
-
-    private inner class Fixture(maxMembers: Int = 12) {
-        var snapshot = TopicOrganizationSnapshot(emptyList(), emptyMap())
-        var groupSnapshot = GroupSnapshot(emptyList(), emptyMap())
+    private inner class Fixture(candidateLimit: Int = 5) {
+        var topics = emptyList<TopicCandidate>()
         var vectors = emptyMap<String, TopicVector>()
-        var generate: (String) -> TopicVector = { vectors[it] ?: east }
-        var write: (TopicOrganizationChange) -> TopicOrganizationWriteResult = { TopicOrganizationWriteResult.Applied(listOf(5)) }
-        var descriptionRequests = emptyList<TopicDescriptionRequest>()
-        var describe: (List<String>) -> String = { "summary" }
-        var describeWrite: (Int, Long, String) -> TopicDescriptionWriteResult = { _, _, _ -> TopicDescriptionWriteResult.Applied }
-        val writes = mutableListOf<TopicOrganizationChange>()
+        var decide: (TopicAssignmentRequest) -> TopicAssignmentDecision = { TopicAssignmentDecision(emptyList(), listOf(NewTopic("t", "c"))) }
+        var groupSnapshot = GroupSnapshot(emptyList(), emptyMap())
+        val batches = mutableListOf<TopicWriteBatch>()
         val groupWrites = mutableListOf<GroupChange>()
-        val descriptions = mutableListOf<Triple<Int, Long, String>>()
-        var generated = 0
-        var groupRuns = 0
+        val order = mutableListOf<String>()
+        var embedded = 0
 
-        private val memoryGenerator = object : MemoryEmbeddingGenerator {
-            override val space = this@OrganizePendingMemoriesTest.space
-            override fun generate(content: String): TopicVector { generated++; return generate.invoke(content) }
-        }
+        private fun embed(text: String): TopicVector { embedded++; return vectors[text] ?: east }
         private val memoryCache = mutableMapOf<MemoryEmbeddingKey, MemoryEmbedding>()
-        private val memoryStore = object : MemoryEmbeddingStore {
+        private val memoryEmbeddings = PrepareMemoryEmbedding(object : MemoryEmbeddingGenerator {
+            override val space = this@OrganizePendingMemoriesTest.space
+            override fun generate(content: String) = embed(content)
+        }, object : MemoryEmbeddingStore {
             override fun find(key: MemoryEmbeddingKey) = memoryCache[key]
             override fun save(embedding: MemoryEmbedding) = memoryCache.getOrPut(embedding.key) { embedding }
-        }
-        private val writer = object : TopicOrganizationWriter {
-            override fun apply(change: TopicOrganizationChange): TopicOrganizationWriteResult { writes.add(change); return write(change) }
-            override fun describe(topicId: Int, revision: Long, description: String): TopicDescriptionWriteResult {
-                descriptions.add(Triple(topicId, revision, description))
-                return describeWrite(topicId, revision, description)
-            }
-        }
-        private val topicGenerator = object : TopicEmbeddingGenerator {
-            override val space = this@OrganizePendingMemoriesTest.space
-            override fun generate(description: String) = generate.invoke(description)
-        }
+        })
         private val topicCache = mutableMapOf<TopicEmbeddingKey, TopicEmbedding>()
-        private val topicStore = object : TopicEmbeddingStore {
+        private val topicEmbeddings = PrepareTopicEmbedding(object : TopicEmbeddingGenerator {
+            override val space = this@OrganizePendingMemoriesTest.space
+            override fun generate(description: String) = embed(description)
+        }, object : TopicEmbeddingStore {
             override fun find(key: TopicEmbeddingKey) = topicCache[key]
             override fun save(embedding: TopicEmbedding) = topicCache.getOrPut(embedding.key) { embedding }
+        })
+        private val store = object : TopicMaintenanceStore {
+            override fun readForMaintenance(topicIds: Collection<Int>) = emptyList<Topic>()
+            override fun relationsForMaintenance(topicIds: Collection<Int>) = emptySet<TopicRelation>()
+            override fun apply(batch: TopicWriteBatch): TopicWriteResult {
+                batches.add(batch)
+                return TopicWriteResult(batch.creations.mapIndexed { index, creation -> creation.creationKey to 100 + index }.toMap())
+            }
+        }
+        private val groupReader = object : GroupSnapshotReader {
+            override fun snapshot(): GroupSnapshot { order.add("refresh"); return groupSnapshot }
         }
         private val groupWriter = object : GroupChangeWriter {
             override fun apply(change: GroupChange): GroupWriteResult { groupWrites.add(change); return GroupWriteResult.Applied(listOf(3)) }
         }
-        private val settings = GroupPolicySettings(maxTopics = maxMembers)
 
         val service = OrganizePendingMemoriesService(
             object : PendingMemorySource {
                 override fun pending(limit: Int) = (1..3).take(limit).map { PendingMemory(it, "$it") }
             },
-            OrganizeMemory(object : TopicOrganizationSnapshotReader { override fun snapshot() = snapshot }, writer, PrepareMemoryEmbedding(memoryGenerator, memoryStore),
-                GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))),
-            DescribeOrganizedTopics(object : PendingTopicDescriptionSource {
-                override fun pendingDescriptions(limit: Int) = descriptionRequests
-            }, { describe(it) }, writer),
-            RefreshGroupedTopicEmbeddings(object : GroupSnapshotReader { override fun snapshot() = groupSnapshot }, groupWriter, PrepareTopicEmbedding(topicGenerator, topicStore)),
-            OrganizePendingTopics { groupRuns++; GroupOrganizationResult.Completed(emptyList()) },
+            AssignMemoryToTopics({ topics }, memoryEmbeddings, topicEmbeddings, { decide(it) }, store, candidateLimit),
+            RefreshGroupedTopicEmbeddings(groupReader, groupWriter, topicEmbeddings),
+            OrganizePendingTopics { order.add("groups"); GroupOrganizationResult.Completed(emptyList()) },
         )
     }
 }

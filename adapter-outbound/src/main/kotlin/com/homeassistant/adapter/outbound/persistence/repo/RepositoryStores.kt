@@ -19,11 +19,9 @@ data class RepositoryStores(
     val topicEmbeddings: TopicEmbeddingStore,
     val groupSnapshots: GroupSnapshotReader,
     val groupChanges: GroupChangeWriter,
+    val topicCatalog: TopicCatalog,
     val pendingMemories: PendingMemorySource,
     val memoryEmbeddings: MemoryEmbeddingStore,
-    val topicOrganizationSnapshots: TopicOrganizationSnapshotReader,
-    val topicOrganizationChanges: TopicOrganizationWriter,
-    val pendingTopicDescriptions: PendingTopicDescriptionSource,
     val memoryConversationSessions: MemoryConversationSessionStore,
     val users: UserStore,
 )

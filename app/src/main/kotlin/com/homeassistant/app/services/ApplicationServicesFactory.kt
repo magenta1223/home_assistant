@@ -24,7 +24,7 @@ import com.homeassistant.application.usecase.memory.conversation.MemoryConversat
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
 import com.homeassistant.adapter.outbound.embedding.topic.TopicEmbeddingAdapter
-import com.homeassistant.adapter.outbound.topicdescription.TopicDescriptionGeneratorFactory
+import com.homeassistant.adapter.outbound.topicassignment.TopicAssignmentGeneratorFactory
 import com.homeassistant.application.usecase.topic.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
@@ -39,7 +39,6 @@ object ApplicationServicesFactory {
         dbPath: String,
         httpUsers: Collection<UserId> = emptyList(),
         groupSettings: GroupPolicySettings = GroupPolicySettings(),
-        topicSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
         val repositories = RepositoryFactory.create(dbPath)
         val users = UserRegistryService(repositories.users)
@@ -59,16 +58,12 @@ object ApplicationServicesFactory {
         )
         val organizeMemories = OrganizePendingMemoriesService(
             repositories.pendingMemories,
-            OrganizeMemory(
-                repositories.topicOrganizationSnapshots,
-                repositories.topicOrganizationChanges,
+            AssignMemoryToTopics(
+                repositories.topicCatalog,
                 PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel), repositories.memoryEmbeddings),
-                GroupOrganizationPlanner(GroupPlacementPolicy(topicSettings), GroupSplitPolicy(topicSettings)),
-            ),
-            DescribeOrganizedTopics(
-                repositories.pendingTopicDescriptions,
-                TopicDescriptionGeneratorFactory.create(),
-                repositories.topicOrganizationChanges,
+                topicEmbeddings,
+                TopicAssignmentGeneratorFactory.create(),
+                repositories.topicMaintenance,
             ),
             RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
             organizeTopics,

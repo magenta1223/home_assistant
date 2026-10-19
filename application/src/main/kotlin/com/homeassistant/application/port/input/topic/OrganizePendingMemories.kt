@@ -2,40 +2,22 @@ package com.homeassistant.application.port.input.topic
 
 import com.homeassistant.application.port.input.group.GroupOrganizationResult
 import com.homeassistant.application.port.input.group.GroupRefreshOutcome
-import com.homeassistant.domain.group.GroupSplit
 
-/** Organizes unorganized Memories into Topics, describes changed Topics, then organizes Topics into Groups. */
+/** Assigns unassigned Memories to one or more Topics, then organizes Topics into Groups. */
 fun interface OrganizePendingMemories {
     fun execute(limit: Int): MemoryOrganizationResult
 }
 
-sealed interface MemoryOrganizationOutcome {
-    data class Organized(val topicIds: List<Int>, val split: GroupSplit) : MemoryOrganizationOutcome
-    data object AlreadyOrganized : MemoryOrganizationOutcome
-    data object ConflictExhausted : MemoryOrganizationOutcome
-    data class Failed(val reason: String) : MemoryOrganizationOutcome
+sealed interface MemoryAssignmentOutcome {
+    /** [joinedTopicIds] gained the memory and a revised description; [createdTopicIds] start with it. */
+    data class Assigned(val joinedTopicIds: List<Int>, val createdTopicIds: List<Int>) : MemoryAssignmentOutcome
+    data class Failed(val reason: String) : MemoryAssignmentOutcome
 }
 
-data class MemoryOrganizationEntry(val memoryId: Int, val outcome: MemoryOrganizationOutcome)
+data class MemoryAssignmentResult(val memoryId: Int, val outcome: MemoryAssignmentOutcome)
 
-sealed interface TopicDescriptionOutcome {
-    val topicId: Int
-    data class Described(override val topicId: Int) : TopicDescriptionOutcome
-    /** Membership changed after the summary was requested; the next run describes the new revision. */
-    data class Superseded(override val topicId: Int) : TopicDescriptionOutcome
-    data class Failed(override val topicId: Int, val reason: String) : TopicDescriptionOutcome
-}
-
-sealed interface MemoryOrganizationResult {
-    val memories: List<MemoryOrganizationEntry>
-
-    data class Completed(
-        override val memories: List<MemoryOrganizationEntry>,
-        val descriptions: List<TopicDescriptionOutcome>,
-        val groupRefreshes: List<GroupRefreshOutcome>,
-        val groups: GroupOrganizationResult,
-    ) : MemoryOrganizationResult
-
-    /** The memory vector model, input format or dimension changed; nothing after the memory stage ran. */
-    data class RebuildRequired(override val memories: List<MemoryOrganizationEntry>, val reason: String) : MemoryOrganizationResult
-}
+data class MemoryOrganizationResult(
+    val memories: List<MemoryAssignmentResult>,
+    val groupRefreshes: List<GroupRefreshOutcome>,
+    val groups: GroupOrganizationResult,
+)

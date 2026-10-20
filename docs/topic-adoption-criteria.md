@@ -23,11 +23,11 @@ Source는 저장 후 불변이다. Memory는 ACL만 변경하며 content·eviden
 
 | 번호 | 기준 | 의미 |
 |---|---|---|
-| 1 | Topic 그래프와 Group | Topic끼리 relatedTopics로 양방향 연결하며 순환을 허용한다. Topic 부모·자식은 강제하지 않는다. 별도 Group이 Topic을 묶고, 배치 완료된 Topic은 하나의 Group에 속한다. Memory끼리는 직접 연결하지 않는다. |
+| 1 | Topic과 Group | Topic끼리의 관련 관계는 현재 저장하지 않으며 연결은 후속 작업이다 (2026-10-20). Topic 부모·자식은 강제하지 않는다. 별도 Group이 Topic을 묶고, 배치 완료된 Topic은 하나의 Group에 속한다. Memory끼리는 직접 연결하지 않는다. |
 | 2 | 입력 기준의 접근 권한 | 입력에 ACL을 지정한다. 그 입력의 원문과 파생 Memory들은 같은 공유 범위를 가진다. Topic 소속으로 권한을 얻지는 않는다. |
 | 3 | 접근 권한 변경 가능 | 승진·역할 변경 등에 따라 기존 기록의 독자를 추가하거나 제거할 수 있다. 같은 입력의 원문과 Memory들의 공유 범위를 함께 변경한다. |
-| 4 | 추출과 Topic 구성 분리 | Memory 추출은 기존 분석 경로를 사용한다. Topic 소속과 설명은 임베딩으로 좁힌 후보 중에서 LM이 정하며 복수 소속을 허용한다 (2026-10-19). Agent에게 ACL 변경 권한을 자동 부여하지 않는다. |
-| 5 | Topic은 검색용 묶음 | 짧은 설명, 분류별 복수 Memory 참조, 관련 Topic을 가진다. 하나의 Memory가 여러 Topic에 속할 수 있다. |
+| 4 | 추출과 Topic 구성 분리 | Memory 추출은 기존 분석 경로를 사용한다. Topic 소속은 LM 없이 가장 가까운 Topic 중심 벡터와의 cosine 유사도로 정하며, Memory는 Topic 하나에만 속한다 (2026-10-20). Agent에게 ACL 변경 권한을 자동 부여하지 않는다. |
+| 5 | Topic은 검색용 묶음 | 중심 벡터와 ACL별 Memory 목록(slice)만 가진다. 설명·분류명은 두지 않는다. 검색은 Topic 단위이며 사용자가 읽을 수 있는 slice의 Memory만 쓴다. |
 | 6 | 원자적 Memory | 독립적으로 이해할 수 있는 사실을 저장한다. 필요한 조건·예외를 포함하며 content는 불변이고 ACL만 변경한다. |
 | 7 | 단순한 모델과 운영 | 사실, 검색 묶음, 원문 근거의 역할을 구분하고 불필요한 문서·권한·관계 모델을 늘리지 않는다. |
 | 8 | 불필요한 중복 최소화 | 사용자별 또는 ACL 조합별 Topic 사본을 기본 생성하지 않는다. 서로 다른 출처·권한·변경 이력을 무조건 합치지는 않는다. |
@@ -60,7 +60,7 @@ Memory·Topic 수, 권한 분포, 동시 요청 수, 응답 시간 및 처리 �
 - 근거 보존: 각 Memory에서 사실이 나온 불변 Source를 확인할 수 있어야 한다. 별도 Source 버전 모델을 만들지 않는다.
 - 맥락 회복: 원문이 조각으로 저장되어도 같은 입력과 주변 문맥으로 돌아갈 수 있어야 한다.
 - 정리와 원본의 분리: Topic 분할·병합·연결 변경으로 Memory의 ID·내용·근거·ACL이 소실되거나 자동 변경되지 않는다.
-- 권한에 맞는 Agent 입력: 비공개 내용뿐 아니라 그 내용을 드러내는 Topic 설명·분류명·연결도 무조건 전달하지 않는다.
+- 권한에 맞는 Agent 입력: 비공개 Memory의 내용·ID·개수를 전달하지 않는다. Topic은 설명·분류명을 두지 않으므로 읽을 수 있는 slice의 Memory만 전달한다.
 - 원본의 공유 단위 유지: 같은 입력의 Memory 하나를 읽을 수 있다면 같은 입력의 다른 Memory들과 원문도 읽을 수 있어야 한다.
 - 권한 변경의 경계: 살아 있는 session의 기존 문맥·답변은 계속 사용할 수 있다. ACL 변경만으로 session을 종료하거나 기존 정보를 차단하지 않는다. 새 조회에는 현재 ACL을 적용하고, 만료·종료된 session의 문맥을 새 session에 넘기지 않는다. 10분 idle lease를 유지하며 이미 전달된 정보는 소급 회수하지 않는다.
 
@@ -75,13 +75,12 @@ Memory·Topic 수, 권한 분포, 동시 요청 수, 응답 시간 및 처리 �
 
 - 입력별 ACL 변경을 누가 승인하며 기존 기록과 원문에 어떻게 일관되게 적용하는가?
 - 불변 Source를 수정하지 않으면서 원문과 파생 Memory의 열람 범위를 어떻게 일치시키는가?
-- 비공개 정보가 섞인 Topic의 설명·분류명·연결 중 무엇을 Agent에게 전달할 수 있는가?
 - Topic의 배치·분할·병합과 추가 탐색을 어떤 기준과 예산으로 수행하는가?
 - 서로 다른 입력의 사실을 통합할 필요가 생기면 출처와 권한을 어떻게 보존하는가?
 
 Topic 데이터 구조의 구현 이력은 [완료 기록](todolist/done/memory-topic-graph.md)에 있다.
-Topic 위의 Group 구성·분할은 명시적 내부 호출까지 구현했다 (2026-10-19). 검색·Memory 선택·conversation context 변경과
-화면·표시 API는 후속 범위다. 기존 DB migration이나 실제 데이터 초기화를 실행하지 않는다.
+Topic 위의 Group 구성·분할은 명시적 내부 호출까지 구현했다 (2026-10-19). 2026-10-20 대화 context를 Topic 검색과
+ACL slice 필터로 연결했다. 화면·표시 API는 후속 범위다. 기존 DB migration이나 실제 데이터 초기화를 실행하지 않는다.
 
 
 2026-10-10 사용자 요청으로 LM 기반 Topic 생성·자동 배치·worker를 제거했다.
@@ -96,6 +95,15 @@ Topic 모델과 명시적 저장 기능은 유지하며 대체 생성 알고리�
 - Group 소속은 ACL을 부여하지 않는다. 사용자 검색 경로에 연결하기 전 비공개 정보 투영을 별도로 설계한다.
 
 세부 계약과 검증 결과는 [Group 생성·분할 완료 기록](todolist/done/topic-group-construction.md)을 따른다.
+
+### 최신 작업 범위: Topic 중심 벡터와 ACL slice (2026-10-20)
+
+- Topic을 xMemory의 component로 본다. 완전한 1:1 대응은 아니다. Memory는 Topic 하나에만 속하며, 위의 복수 소속 유지를 대체한다.
+- Topic은 중심 벡터와 ACL slice만 가진다. slice는 같은 ACL(`PUBLIC` 또는 열람자 집합)의 소속 Memory 목록이며 조회 시 Memory의 현재 ACL로 계산한다.
+- 할당은 cosine 최근접 Topic이 임계값(시작값 0.6) 이상이면 join, 아니면 새 Topic이다. LM 할당과 TopicRelation은 제거했다.
+- 검색은 Topic 중심 벡터로 하고 읽을 수 있는 Memory가 없는 Topic은 제외한다.
+
+결정과 trade-off는 [Topic 중심 벡터·ACL slice와 Topic 검색](todolist/p1/topic-centroid-acl-search.md)을 따른다.
 
 ## 관련 문서
 

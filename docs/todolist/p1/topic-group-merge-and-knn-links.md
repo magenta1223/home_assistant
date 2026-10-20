@@ -7,7 +7,7 @@
 ## 문제
 
 xMemory는 구성원이 적거나 고립된 묶음을 이웃과 병합하고, 묶음·component 사이에 k=10 이웃 링크를 유지한다.
-현재 구현에는 둘 다 없다. 작은 Topic·Group이 계속 늘어나고 TopicRelation은 자동으로 채워지지 않는다.
+현재 구현에는 둘 다 없다. 작은 Topic·Group이 계속 늘어나고 Topic 사이 연결은 저장하지 않는다(TopicRelation은 2026-10-20 제거).
 
 ## 목표
 
@@ -16,5 +16,5 @@ xMemory는 구성원이 적거나 고립된 묶음을 이웃과 병합하고, �
 ## 참고
 
 - 저장 계약: Group 저장은 N→1 병합을 이미 수용한다. `TopicMaintenanceStore`는 Topic 삭제·소속 교체가 없으므로 Topic 병합 시 계약 변경이 필요하다.
-- Topic 자체 분할도 아직 없다. LM 배정으로 Topic이 커질 수 있다.
+- Topic 자체 분할도 아직 없다. 온라인 cosine 배정이라 먼저 들어온 Memory가 Topic 중심을 정하고 Topic이 커질 수 있다.
 - [xMemory v4](https://arxiv.org/html/2602.02007v4) Appendix A.2 merge trigger, kNN k=10.

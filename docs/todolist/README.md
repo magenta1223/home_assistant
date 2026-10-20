@@ -17,10 +17,10 @@
 
 ## 현재 상태
 
-- 최근 구현 완료: Memory → Topic(LM 복수 배정) → Group 정리 (명시적 내부 호출 `organizeMemories`, 2026-10-19)
+- 최근 구현 완료: [Topic 중심 벡터·ACL slice와 Topic 검색](p1/topic-centroid-acl-search.md) — cosine 단일 배정, 대화 context를 Topic 검색으로 구성 (2026-10-20, 실데이터 임계값 조정 남음)
 - 다음 후보: [Topic·Group 병합과 kNN 연결](p1/topic-group-merge-and-knn-links.md) — 방식 탐색 중
 - 별도 구현 후보: 최소 가족 Task 서비스 1개
-- Memory 구조 전환: Topic 모델·저장 유지, legacy tree·LM Topic 생성 제거. Group 구성·분할 구현; Topic 생성·자체 분할·자동 실행·검색·UI는 후속 범위
+- Memory 구조 전환: Topic은 중심 벡터와 ACL slice, Group 구성·분할 구현, Topic 검색 연결. Topic 자체 분할·병합·UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개

@@ -1,6 +1,8 @@
 # Topic 할당 outbox와 worker
 
 - 상태: VERIFY — 실제 서버에서 Memory 저장 후 Topic·Group 생성 확인 남음
+- 2026-10-20: LM 할당과 `TopicAssignmentGenerator`·`CompletionClient.isAvailable` readiness는 [Topic 중심 벡터·ACL slice](topic-centroid-acl-search.md)로
+  대체되었다. 할당 readiness는 Memory 임베딩만 확인한다.
 - 우선순위: P1
 - 선행 작업: Memory → Topic → Group 정리 (2026-10-19)
 

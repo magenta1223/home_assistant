@@ -1,6 +1,6 @@
 # Topic 중심 벡터·ACL slice와 Topic 검색
 
-- 상태: TODO
+- 상태: VERIFY — 실데이터로 임계값 조정과 실제 서버 확인 남음
 - 우선순위: P1 (검색 연결 시 프라이버시 영향)
 - 선행 작업: [Topic 할당 outbox와 worker](topic-assignment-outbox.md)
 
@@ -88,7 +88,7 @@ sequenceDiagram
 ## 결정할 것
 
 - 임계값: xMemory 0.6(OpenAI 임베딩 기준)에서 시작해 Ollama 임베딩·한국어 실데이터로 조정한다.
-- 검색 결과 Topic 수와 Topic당 Memory 수의 상한.
+- 검색 결과 Topic 수와 Topic당 Memory 수의 상한. 현재 Topic 3개, Topic당 상한 없이 context 8,000자에서 자른다.
 - Group 검색은 이번 범위에서 제외하고 후속으로 둔다.
 
 ## 완료 조건
@@ -97,3 +97,16 @@ sequenceDiagram
 - LM 할당 경로와 Topic 설명·분류명이 코드와 저장소에서 사라진다.
 - 다른 사용자의 비공개 Memory는 Topic 검색 결과와 대화 context에 포함되지 않는다(테스트로 확인).
 - 대화 context가 Topic 단위 결과로 구성되어 같은 주제 Memory가 상위를 독점하지 않는다.
+
+## 결과 (2026-10-20)
+
+| 커밋 | 내용 |
+|---|---|
+| `dc1ee01` | Group이 Topic 설명 대신 Topic id와 벡터 version만 받는다 |
+| `3656b59` | Topic 중심 벡터·ACL slice 저장, cosine 할당, LM 할당 경로와 `CompletionClient.isAvailable` 제거 |
+| `95ffdef` | 질문 `query:` 임베딩으로 Topic 검색, 읽을 수 있는 slice로 대화 context 구성 |
+
+- 다른 사용자의 비공개 Memory가 Topic 검색 결과와 대화 context에서 빠지는 것은 `TopicSearcherTest`와 Memory 저장소 통합 테스트로 확인했다.
+- Linux 전체 테스트에서 powershell을 쓰는 4건 외에는 통과했다. Windows 전체 테스트와 실제 서버 확인은 남았다.
+- 기존 Topic·Group 데이터는 이전하지 않는다. 실행 전 DB를 비우고 다시 할당한다.
+- `MemorySearcher`(Qdrant 검색)는 대화에 연결되지 않았고 색인 outbox는 그대로 돈다. 제거 여부는 따로 정한다.

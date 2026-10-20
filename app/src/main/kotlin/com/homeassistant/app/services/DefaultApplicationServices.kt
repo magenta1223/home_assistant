@@ -5,12 +5,14 @@ import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.topic.DescribeTopic
 import com.homeassistant.application.port.input.topic.OrganizePendingMemories
 
 internal class DefaultApplicationServices(
     override val memoryAnalysis: MemoryAnalysis,
     override val organizeTopics: OrganizePendingTopics,
     override val organizeMemories: OrganizePendingMemories,
+    override val describeTopic: DescribeTopic,
     override val memoryConversation: MemoryConversation? = null,
     override val users: UserRegistry = UserRegistry.NONE,
     private val embeddingRuntime: EmbeddingServerRuntime,

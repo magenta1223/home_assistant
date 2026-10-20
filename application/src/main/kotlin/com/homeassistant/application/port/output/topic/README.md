@@ -24,3 +24,5 @@ The Topic's memory count is also its vector version for Groups.
 | `TopicAssignmentOutbox` | Durable assignment queue written with each memory; claims fence stale workers, failed rows stop after the attempt limit, and already-assigned memories complete on claim |
 | `MemoryEmbeddingGenerator` / `MemoryEmbeddingStore` | Normalized memory vectors; immutable per memory, content hash, model and format |
 | `QueryEmbeddingGenerator` | Question vector from the memory embedding model with the `query: ` prefix, compared with centroids |
+| `TopicDescriptionGenerator` | Writes a short description from the given memory contents only (newest first); the caller passes just the viewer's readable memories |
+| `TopicDescriptionStore` | Regenerable description cache keyed by Topic and the set of slices a viewer reads; stores slice versions beside the text and replaces on save |

@@ -4,6 +4,7 @@ import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.topic.DescribeTopic
 import com.homeassistant.application.port.input.topic.OrganizePendingMemories
 
 /** Provides the application's top-level use cases and managed runtimes. */
@@ -22,6 +23,9 @@ interface ApplicationServices : AutoCloseable {
 
     /** Memory → Topic assignment from the outbox, then Topic → Group; the started worker runs it periodically. */
     val organizeMemories: OrganizePendingMemories
+
+    /** Describes a Topic per viewer on demand; nothing is generated ahead of a request. */
+    val describeTopic: DescribeTopic
 
     /** Reports whether required managed runtimes are available. */
     val isReady: Boolean

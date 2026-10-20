@@ -11,6 +11,7 @@ import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
+import com.homeassistant.adapter.outbound.topicdescription.TopicDescriptionGeneratorFactory
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
@@ -87,6 +88,13 @@ object ApplicationServicesFactory {
             memories = repositories.canonicalMemories,
             accessPolicy = accessPolicy,
         )
+        val describeTopic = TopicDescriber(
+            topics = repositories.topicMaintenance,
+            memories = repositories.canonicalMemories,
+            descriptions = repositories.topicDescriptions,
+            generator = TopicDescriptionGeneratorFactory.create(completionClient),
+            accessPolicy = accessPolicy,
+        )
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
@@ -123,6 +131,7 @@ object ApplicationServicesFactory {
             memoryAnalysis = memoryAnalysisService,
             organizeTopics = organizeTopics,
             organizeMemories = organizeMemories,
+            describeTopic = describeTopic,
             memoryConversation = memoryConversation,
             users = users,
             embeddingRuntime = managedEmbedding.runtime,

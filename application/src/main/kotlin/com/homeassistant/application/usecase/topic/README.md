@@ -82,4 +82,22 @@ sequenceDiagram
 - Topic 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Memory가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
 - 최소 점수는 아직 두지 않는다. Group 단위 검색은 하지 않는다.
 
+## Topic 설명
+
+`TopicDescriber`(`DescribeTopic`)는 사람이 읽는 Topic 설명을 조회자마다 만든다. 설명은 Topic에 저장하지 않는
+재생성 가능한 read model이다. Topic은 계속 중심 벡터와 ACL slice만 가진다.
+
+1. 사용자 인가를 확인하고 Topic을 읽는다. 없거나 읽을 수 있는 slice가 없으면 `Hidden`이다. 둘을 구분하지 않는다.
+2. 열람 범위(`TopicView`)는 PUBLIC slice와 조회자가 포함된 slice의 합이다. 같은 slice를 읽는 조회자는 같은 범위다.
+3. 캐시 key는 (Topic ID, 범위의 slice 집합)이다. 권한이 바뀌면 slice 집합이 달라져 이전 설명을 쓰지 않는다.
+4. 캐시에는 설명을 쓸 때의 slice별 Memory 수(slice 버전)를 함께 둔다. `TopicDescriptionRefreshPolicy`가 재생성을 정한다.
+   - 캐시가 없거나, 어떤 slice의 Memory가 줄었으면 재생성한다.
+   - 범위의 Memory가 설명을 쓴 시점보다 `growthThreshold`(기본 0.2, 20%) 이상 늘었으면 재생성한다.
+   - 그 밖에는 이전 설명을 그대로 보여준다.
+5. 재생성 입력은 범위의 Memory 중 `MemoryReader`가 조회자에게 보여주는 것뿐이며 최신순이다. LM 결과를 저장하고 돌려준다.
+
+- 미리 만들지 않는다. 설명이 필요한 요청이 올 때만 LM을 호출한다.
+- LM·저장 실패는 호출자에게 전파한다. 캐시가 없어지면 다음 요청이 다시 만든다.
+- 같은 범위를 동시에 처음 열면 LM이 두 번 불릴 수 있고 나중 결과가 남는다. 가족 규모라 잠금은 두지 않는다.
+
 검증은 fake port application 테스트와 임시 SQLite 통합 테스트를 사용한다. 실제 임베딩 서버는 호출하지 않는다.

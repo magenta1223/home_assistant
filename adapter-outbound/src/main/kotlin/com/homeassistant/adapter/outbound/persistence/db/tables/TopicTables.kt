@@ -17,6 +17,15 @@ internal object TopicMembershipTable : Table("topic_memberships") {
     override val primaryKey = PrimaryKey(memoryId)
 }
 
+/** Regenerable read model: one description per Topic and [view] (the set of slices a viewer reads). */
+internal object TopicDescriptionTable : Table("topic_descriptions") {
+    val topicId = integer("topic_id").references(TopicTable.id)
+    val view = text("view")
+    val sliceVersions = text("slice_versions")
+    val description = text("description")
+    override val primaryKey = PrimaryKey(topicId, view)
+}
+
 internal object MemoryEmbeddingTable : Table("memory_embeddings") {
     val key = text("cache_key")
     val memoryId = integer("memory_id").references(MemoryTable.id)

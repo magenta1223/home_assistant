@@ -7,6 +7,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.Me
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.MemoryEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicAssignmentOutboxRepository
+import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicDescriptionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.TopicEmbeddingRepository
@@ -22,6 +23,7 @@ object RepositoryFactory {
             canonicalMemoryBatchWriter = canonicalMemories,
             canonicalMemories = canonicalMemories,
             topicMaintenance = topics,
+            topicDescriptions = TopicDescriptionRepository(db),
             pendingTopics = groups,
             topicEmbeddings = TopicEmbeddingRepository(db),
             groupSnapshots = groups,

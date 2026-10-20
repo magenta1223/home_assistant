@@ -22,5 +22,8 @@ data class Topic(
     }
 
     /** Memories in the slices [requester] can read; empty means the Topic is hidden from them. */
-    fun memoryIdsReadableBy(requester: UserId): List<Int> = slices.filterKeys { it.isVisibleTo(requester) }.values.flatten()
+    fun memoryIdsReadableBy(requester: UserId): List<Int> = viewBy(requester).memoryIds
+
+    /** The slices [requester] can read: PUBLIC and those whose access lists them. */
+    fun viewBy(requester: UserId): TopicView = TopicView(id, slices.filterKeys { it.isVisibleTo(requester) })
 }

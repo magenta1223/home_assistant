@@ -13,6 +13,7 @@ data class RepositoryStores(
     val canonicalMemoryBatchWriter: CanonicalMemoryBatchWriter,
     val canonicalMemories: MemoryReader,
     val topicMaintenance: TopicMaintenanceStore,
+    val topicDescriptions: TopicDescriptionStore,
     val pendingTopics: PendingTopicSource,
     val topicEmbeddings: TopicEmbeddingStore,
     val groupSnapshots: GroupSnapshotReader,

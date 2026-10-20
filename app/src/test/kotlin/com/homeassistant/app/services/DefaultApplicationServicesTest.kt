@@ -4,6 +4,7 @@ import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntim
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.group.OrganizePendingTopics
+import com.homeassistant.application.port.input.topic.DescribeTopic
 import com.homeassistant.application.port.input.topic.OrganizePendingMemories
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -23,6 +24,7 @@ class DefaultApplicationServicesTest {
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
             organizeMemories = unusedOrganizeMemories(),
+            describeTopic = DescribeTopic { _, _ -> error("must only run on request") },
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             topicAssignmentWorker = assignment,
@@ -65,6 +67,7 @@ class DefaultApplicationServicesTest {
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
             organizeMemories = unusedOrganizeMemories(),
+            describeTopic = DescribeTopic { _, _ -> error("must only run on request") },
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,

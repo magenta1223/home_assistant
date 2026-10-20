@@ -145,6 +145,7 @@ object ApplicationServicesFactory {
             embeddingRuntime = managedEmbedding.runtime,
             indexingWorker = MemoryIndexingWorker(memoryIndexing),
             conversationExpiryWorker = conversationExpiryWorker,
+            topicAssignmentWorker = MemoryTopicAssignmentWorker(organizeMemories),
             conversationGateway = conversationGateway,
         )
     }

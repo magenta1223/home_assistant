@@ -18,6 +18,7 @@ internal class DefaultApplicationServices(
     private val embeddingRuntime: EmbeddingServerRuntime,
     private val indexingWorker: IndexingWorker = IndexingWorker.NONE,
     private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
+    private val topicAssignmentWorker: TopicAssignmentWorker = TopicAssignmentWorker.NONE,
     private val conversationGateway: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
@@ -27,6 +28,7 @@ internal class DefaultApplicationServices(
         vectorRuntime.start()
         embeddingRuntime.start()
         indexingWorker.start()
+        topicAssignmentWorker.start()
         conversationExpiryWorker.start()
     }
 
@@ -35,15 +37,19 @@ internal class DefaultApplicationServices(
             conversationExpiryWorker.close()
         } finally {
             try {
-                conversationGateway?.close()
+                topicAssignmentWorker.close()
             } finally {
                 try {
-                    indexingWorker.close()
+                    conversationGateway?.close()
                 } finally {
                     try {
-                        embeddingRuntime.close()
+                        indexingWorker.close()
                     } finally {
-                        vectorRuntime.close()
+                        try {
+                            embeddingRuntime.close()
+                        } finally {
+                            vectorRuntime.close()
+                        }
                     }
                 }
             }

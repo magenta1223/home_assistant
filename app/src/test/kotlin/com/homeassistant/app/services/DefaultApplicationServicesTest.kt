@@ -20,6 +20,7 @@ class DefaultApplicationServicesTest {
         val embedding = RecordingEmbeddingRuntime(events)
         val indexing = RecordingIndexingWorker(events)
         val expiry = RecordingConversationExpiryWorker(events)
+        val assignment = RecordingTopicAssignmentWorker(events)
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
@@ -29,6 +30,7 @@ class DefaultApplicationServicesTest {
             embeddingRuntime = embedding,
             indexingWorker = indexing,
             conversationExpiryWorker = expiry,
+            topicAssignmentWorker = assignment,
             conversationGateway = codex,
         )
 
@@ -42,8 +44,10 @@ class DefaultApplicationServicesTest {
                 "vector.start",
                 "embedding.start",
                 "indexing.start",
+                "assignment.start",
                 "expiry.start",
                 "expiry.close",
+                "assignment.close",
                 "codex.close",
                 "indexing.close",
                 "embedding.close",
@@ -98,6 +102,24 @@ class DefaultApplicationServicesTest {
         )
         assertFalse(embedding.isReady)
         assertFalse(vector.isReady)
+    }
+
+    private fun unusedOrganizeMemories() = object : OrganizePendingMemories {
+        override fun isReady() = error("must only run from the topic assignment worker")
+        override fun execute(limit: Int) = error("must only run from the topic assignment worker")
+        override fun enqueueUnassigned() = error("must only run from the topic assignment worker")
+    }
+
+    private class RecordingTopicAssignmentWorker(
+        private val events: MutableList<String>,
+    ) : TopicAssignmentWorker {
+        override fun start() {
+            events += "assignment.start"
+        }
+
+        override fun close() {
+            events += "assignment.close"
+        }
     }
 
     private fun unusedMemoryAnalysis() = object : MemoryAnalysis {
@@ -160,11 +182,5 @@ class DefaultApplicationServicesTest {
         override fun close() {
             events += "expiry.close"
         }
-    }
-
-    private fun unusedOrganizeMemories() = object : OrganizePendingMemories {
-        override fun isReady() = error("must only run on explicit invocation")
-        override fun execute(limit: Int) = error("must only run on explicit invocation")
-        override fun enqueueUnassigned() = error("must only run on explicit invocation")
     }
 }

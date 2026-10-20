@@ -74,28 +74,15 @@ internal class MemoryIndexingOutboxRepository(
     override fun enqueueAll(now: Long): Int = transaction(db) {
         val memoryIds = MemoryTable.select(MemoryTable.id).map { it[MemoryTable.id] }
         memoryIds.forEach { memoryId ->
-            val existing = IndexingOutboxTable.selectAll()
-                .where {
-                    (IndexingOutboxTable.targetType eq MEMORY_TARGET_TYPE) and
-                        (IndexingOutboxTable.targetId eq memoryId)
-                }
-                .singleOrNull()
-            if (existing == null) {
-                IndexingOutboxTable.insert {
-                    it[targetType] = MEMORY_TARGET_TYPE
-                    it[targetId] = memoryId
-                    it[status] = OUTBOX_PENDING
-                    it[attempts] = 0
-                    it[lastError] = null
-                    it[updatedAt] = now
-                }
-            } else {
-                IndexingOutboxTable.update({ IndexingOutboxTable.id eq existing[IndexingOutboxTable.id] }) {
-                    it[status] = OUTBOX_PENDING
-                    it[lastError] = null
-                    it[updatedAt] = now
-                }
+            val reset = IndexingOutboxTable.update({
+                (IndexingOutboxTable.targetType eq MEMORY_TARGET_TYPE) and
+                    (IndexingOutboxTable.targetId eq memoryId)
+            }) {
+                it[status] = OUTBOX_PENDING
+                it[lastError] = null
+                it[updatedAt] = now
             }
+            if (reset == 0) enqueue(memoryId, now)
         }
         memoryIds.size
     }
@@ -127,12 +114,24 @@ internal class MemoryIndexingOutboxRepository(
         )
     }
 
-    private companion object {
-        const val MEMORY_TARGET_TYPE = "CANONICAL_MEMORY"
-        const val OUTBOX_PENDING = "PENDING"
-        const val OUTBOX_PROCESSING = "PROCESSING"
-        const val OUTBOX_COMPLETED = "COMPLETED"
-        const val OUTBOX_FAILED = "FAILED"
-        const val MAX_ERROR_LENGTH = 2_000
+    companion object {
+        /** Adds the queue row for a memory inside the caller's transaction; an existing row is kept. */
+        internal fun enqueue(memoryId: Int, now: Long) {
+            IndexingOutboxTable.insertIgnore {
+                it[targetType] = MEMORY_TARGET_TYPE
+                it[targetId] = memoryId
+                it[status] = OUTBOX_PENDING
+                it[attempts] = 0
+                it[lastError] = null
+                it[updatedAt] = now
+            }
+        }
+
+        private const val MEMORY_TARGET_TYPE = "CANONICAL_MEMORY"
+        private const val OUTBOX_PENDING = "PENDING"
+        private const val OUTBOX_PROCESSING = "PROCESSING"
+        private const val OUTBOX_COMPLETED = "COMPLETED"
+        private const val OUTBOX_FAILED = "FAILED"
+        private const val MAX_ERROR_LENGTH = 2_000
     }
 }

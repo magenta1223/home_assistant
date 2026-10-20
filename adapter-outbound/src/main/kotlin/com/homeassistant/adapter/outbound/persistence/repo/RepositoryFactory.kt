@@ -7,6 +7,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexing
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.MemoryEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicAssignmentOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.TopicEmbeddingRepository
@@ -29,6 +30,7 @@ object RepositoryFactory {
             groupChanges = groups,
             topicCatalog = topics,
             pendingMemories = topics,
+            topicAssignmentOutbox = TopicAssignmentOutboxRepository(db),
             memoryEmbeddings = MemoryEmbeddingRepository(db),
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),

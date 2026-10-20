@@ -21,6 +21,7 @@ data class RepositoryStores(
     val groupChanges: GroupChangeWriter,
     val topicCatalog: TopicCatalog,
     val pendingMemories: PendingMemorySource,
+    val topicAssignmentOutbox: TopicAssignmentOutbox,
     val memoryEmbeddings: MemoryEmbeddingStore,
     val memoryConversationSessions: MemoryConversationSessionStore,
     val users: UserStore,

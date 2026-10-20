@@ -22,7 +22,7 @@ This port only persists an explicitly supplied batch. Automatic organization use
 
 | Port | Contract |
 |---|---|
-| `PendingMemorySource` | Memories without any Topic membership, limited and in ID order |
+| `TopicAssignmentOutbox` | Durable assignment queue written with each memory; claims fence stale workers, failed rows stop after the attempt limit, and already-assigned memories complete on claim |
 | `TopicCatalog` | Every Topic ID and description, for candidate search |
 | `MemoryEmbeddingGenerator` / `MemoryEmbeddingStore` | Normalized memory vectors; immutable per memory, content hash, model and format |
 | `TopicAssignmentGenerator` | Model decision: candidate Topics to join with category and revised description, or new Topics |

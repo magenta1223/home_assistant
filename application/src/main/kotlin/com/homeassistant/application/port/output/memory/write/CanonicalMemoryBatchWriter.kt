@@ -13,8 +13,8 @@ data class IdempotentMemoryProposal(
 /**
  * Atomically commits one completed source-analysis batch.
  *
- * Implementations must persist memories, evidence, indexing outbox entries, and the source-record
- * status change in one transaction. External indexing must not happen inside this call.
+ * Implementations must persist memories, evidence, indexing and Topic-assignment outbox entries, and the
+ * source-record status change in one transaction. External indexing must not happen inside this call.
  */
 fun interface CanonicalMemoryBatchWriter {
     fun commit(

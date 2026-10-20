@@ -1,6 +1,6 @@
 # Topic 할당 outbox와 worker
 
-- 상태: TODO
+- 상태: VERIFY — 실제 서버에서 Memory 저장 후 Topic·Group 생성 확인 남음
 - 우선순위: P1
 - 선행 작업: Memory → Topic → Group 정리 (2026-10-19)
 
@@ -41,9 +41,9 @@ TO-BE: Analysis → commit(memory + 색인 outbox + 할당 outbox) → 응답
 | application `port/output/topic/TopicAssignmentOutbox` | claim·완료·실패·미등록 Memory 등록 계약. `PendingMemorySource` 대체 |
 | application `OrganizePendingMemoriesService` | `pending(limit)` 대신 outbox claim, 결과에 따라 완료·실패 기록 |
 | application input `OrganizePendingMemories` | `isReady()`: 할당이 호출하는 서비스가 준비됐는지. `enqueueUnassigned()`: outbox 도입 전 Memory 백필 |
-| application `port/output/topic/TopicAssignmentReadiness` | 임베딩·모델 서비스 가용 여부. adapter-outbound가 Ollama runtime과 `CompletionClient`로 구현 |
+| application `MemoryEmbeddingGenerator`·`TopicAssignmentGenerator` | `isAvailable()`: 각 port가 자기 서비스의 가용 여부를 보고. adapter-outbound가 Ollama runtime과 `CompletionClient`로 구현 |
 | adapter-outbound `topic_assignment_outbox` 테이블·repository | 색인 outbox와 같은 상태 모델(PENDING/PROCESSING/COMPLETED/FAILED) + 최대 시도 |
-| adapter-outbound `MemoryRepository.commit` | 같은 transaction에 할당 outbox 행 추가 |
+| adapter-outbound `MemoryRepository.commit` | 같은 transaction에 할당 outbox 행 추가. 색인 outbox도 같은 `enqueue` 방식으로 정리 |
 | integration-llm `CompletionClient.isAvailable` | 각 backend 구현이 CLI `--version` probe. 로그인은 확인하지 않음 |
 | app `TopicAssignmentWorker` | 시작 시 백필 1회, 이후 주기마다 `isReady()`가 참일 때만 `execute()`. 외부 시스템을 직접 알지 않음 |
 
@@ -79,3 +79,19 @@ TO-BE: Analysis → commit(memory + 색인 outbox + 할당 outbox) → 응답
 - 저장 직후 worker를 즉시 깨우는 신호(주기 polling으로 대신)
 - Topic·Group 병합, 검색 연결
 
+## 구현 결과 (2026-10-20)
+
+- `topic_assignment_outbox` 테이블과 `TopicAssignmentOutboxRepository`를 추가했다. `MemoryRepository.commit`이
+  색인 outbox와 같은 transaction에서 할당 outbox 행을 등록한다(이미 있으면 유지). 두 outbox 모두 각 저장소의
+  `enqueue`로 행을 추가하고, `MemoryRepository`는 outbox 테이블을 직접 다루지 않는다.
+- `PendingMemorySource`와 `TopicRepository.pending`을 제거하고 `OrganizePendingMemoriesService`가 outbox를 claim한다.
+  성공은 `markCompleted`, 실패는 `markFailed`(오류 2,000자까지)로 기록한다.
+- claim 시점에 이미 Topic 소속이 있는 Memory는 배정 없이 완료한다. Topic 저장과 완료 기록은 별도 transaction이다.
+- 준비 여부는 별도 port 없이 기존 출력 port가 보고한다. `MemoryEmbeddingGenerator.isAvailable()`(Ollama runtime)과
+  `TopicAssignmentGenerator.isAvailable()`(`CompletionClient.isAvailable()`, CLI 실행 확인)을
+  `AssignMemoryToTopics.isReady()`가 묶고, `OrganizePendingMemories.isReady()`로 노출한다.
+- app에 `MemoryTopicAssignmentWorker`를 추가해 시작 시 백필(`enqueueUnassigned`) 1회, 이후 30초마다 `isReady()`가 참이면
+  batch 20을 처리한다. readiness 확인을 포함한 모든 실패를 회차 안에서 잡아 다음 회차가 계속 실행된다.
+- 사전 확인으로 놓치는 경우(확인 직후 장애, 로그인 안 된 CLI)는 [외부 서비스 장애 처리 표준화](../p2/external-service-failure-handling.md)로 남겼다.
+- 검증: Linux 사본에서 `./gradlew test --continue` 실행, 235개 중 231개 통과. 실패 4개는 `powershell.exe`가 필요한
+  `OllamaServerRuntimeTest`·`QdrantServerRuntimeTest`로 Linux 환경 제약이다. Windows 전체 테스트와 실제 서버 확인은 남아 있다.

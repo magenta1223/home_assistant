@@ -19,7 +19,7 @@ sequenceDiagram
     end
     Persister->>Persister: 같은 key 중복 제거
     Persister->>Writer: commit(userId, idempotent proposals, recordIds)
-    Note over Writer: memory, evidence, source 분석 상태와<br/>indexing outbox를 한 transaction으로 저장
+    Note over Writer: memory, evidence, source 분석 상태와<br/>indexing·Topic 할당 outbox를 한 transaction으로 저장
     Writer-->>Persister: canonical memories
     Persister-->>Analysis: canonical memories
 ```

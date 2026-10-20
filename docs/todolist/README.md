@@ -52,6 +52,7 @@
 | 문서 | 목적 |
 |---|---|
 | [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application의 serialization 결합과 library 모듈의 concrete logging binding을 정리 |
+| [external-service-failure-handling.md](p2/external-service-failure-handling.md) | 외부 서비스 장애를 실패 분류·circuit breaker·재시도 상한으로 다루는 표준 절차를 outbox worker에 적용 |
 | [memory-analysis-outbox-pipeline.md](p2/memory-analysis-outbox-pipeline.md) | 첨부 해석·Memory 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |

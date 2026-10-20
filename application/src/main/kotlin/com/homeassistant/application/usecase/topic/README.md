@@ -1,8 +1,10 @@
 # Memory → Topic assignment
 
-아직 어떤 Topic에도 속하지 않은 Memory를 하나 이상의 Topic에 배정하고, 이어서 Topic을 Group으로 정리한다.
+Topic 할당 outbox에 쌓인 Memory를 하나 이상의 Topic에 배정하고, 이어서 Topic을 Group으로 정리한다.
 내부 input port는 `OrganizePendingMemories.execute(limit)`이며 앱의 `organizeMemories`로 제공된다.
-HTTP·worker·Memory 분석 경로에서는 호출하지 않는다. 앱 시작만으로 실행되지 않는다.
+outbox 행은 Memory 저장 transaction에서 함께 생긴다. 앱의 Topic 할당 worker가 주기마다 임베딩 runtime과
+agent backend CLI가 준비됐는지 확인한 뒤에만 호출한다. 준비되지 않은 회차는 claim하지 않는다.
+worker는 시작 시 `enqueueUnassigned()`로 outbox 도입 전 저장된 미할당 Memory를 한 번 등록한다.
 
 xMemory 대응은 Source가 segment, Memory가 component, Group이 group이다. Topic은 xMemory에 없는 층으로,
 한 Memory가 여러 묶음에 속하는 복수 소속을 담는다. Group의 xMemory 분할은 한 원소가 한 group에만
@@ -20,7 +22,7 @@ sequenceDiagram
     participant Store as Topic DB
     participant Groups as Group 정리
     Caller->>Batch: 1. organizeMemories(limit)
-    Batch->>Store: 2. Topic 소속이 없는 Memory 조회
+    Batch->>Store: 2. 할당 outbox claim (시도 횟수 증가)
     loop Memory마다
         Batch->>Assign: 3. 배정 요청
         Assign->>Store: 4. 전체 Topic 목록(설명)
@@ -44,12 +46,15 @@ sequenceDiagram
   전체 소속을 다시 읽지 않고 기존 설명과 새 Memory로 갱신하므로 Topic 크기와 무관하게 호출이 한 번이다.
 - 분류명은 모델이 Topic 안에서 정한다. 새 Topic의 creation key는 `memory:{memoryId}:{순번}`이다.
 - Memory 벡터는 `memory-content:passage:v1`, Topic 벡터는 `topic-description:passage:v1` 규약이며 같은 모델을 쓴다.
-- 배정 대기는 "Topic 소속이 하나도 없음"으로 판단한다. 수동으로 소속을 추가한 Memory도 배정된 것으로 본다.
+- 배정 대기는 outbox 행 상태로 판단한다. claim 시점에 이미 Topic 소속이 있는 Memory는 배정하지 않고 완료 처리한다.
+  그래서 Topic 저장 직후 완료 기록 전에 중단돼도 같은 Memory가 두 번 배정되지 않는다.
 
 ## 실패·복구와 신뢰 경계
 
 - 임베딩·모델 호출은 DB transaction 밖에서 수행한다. 저장은 `TopicMaintenanceStore`의 원자 batch다.
-- 개별 Memory 실패는 `Failed`이며 다음 Memory를 계속 처리한다. 저장이 실패하면 Memory가 대기 상태로 남아 다음 호출이 다시 배정한다.
+- 개별 Memory 실패는 `Failed`이며 outbox에 시도 횟수와 오류를 남기고 다음 Memory를 계속 처리한다.
+  실패한 Memory는 재시도 지연(기본 60초) 뒤 다시 claim되며, 최대 시도(기본 5회)를 넘으면 그 Memory만 멈춘다.
+  처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 재임베딩·배치 단계의 임베딩 장애는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
 - 모델은 ACL이 다른 Memory로 만든 Topic 설명을 후보로 읽는다. Topic 설명은 trusted internal 메타데이터이며
   사용자 검색·응답에 아직 연결하지 않는다.

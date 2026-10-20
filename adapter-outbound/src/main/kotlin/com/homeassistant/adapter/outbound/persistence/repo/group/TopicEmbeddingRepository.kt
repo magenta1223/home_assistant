@@ -30,8 +30,8 @@ internal class TopicEmbeddingRepository(private val db: Database) : TopicEmbeddi
             .singleOrNull()?.let { decode(it) }
 
     companion object {
-        /** The current vector version of a Topic row. */
-        fun version(topic: ResultRow): String = descriptionFingerprint(topic[TopicTable.description])
+        /** The current vector version of a Topic row; memberships are only added, so the count identifies the centroid. */
+        fun version(topic: ResultRow): String = topic[TopicTable.memoryCount].toString()
 
         fun decode(row: ResultRow): TopicEmbedding = TopicEmbedding(
             TopicEmbeddingKey(row[TopicEmbeddingTable.topicId], row[TopicEmbeddingTable.version],

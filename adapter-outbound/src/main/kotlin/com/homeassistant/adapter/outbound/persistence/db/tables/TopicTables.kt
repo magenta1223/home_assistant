@@ -2,28 +2,19 @@ package com.homeassistant.adapter.outbound.persistence.db.tables
 
 import org.jetbrains.exposed.sql.Table
 
+/** [vectorSum] is the unnormalized sum of member memory vectors; [memoryCount] counts them and only grows. */
 internal object TopicTable : Table("topics") {
     val id = integer("id").autoIncrement()
-    val creationKey = text("creation_key").uniqueIndex()
-    val description = text("description")
+    val vectorSum = text("vector_sum")
+    val memoryCount = integer("memory_count")
     override val primaryKey = PrimaryKey(id)
 }
 
+/** A memory belongs to at most one Topic. Its slice is read from the memory's current access. */
 internal object TopicMembershipTable : Table("topic_memberships") {
-    val topicId = integer("topic_id").references(TopicTable.id)
-    val category = text("category")
+    val topicId = integer("topic_id").references(TopicTable.id).index()
     val memoryId = integer("memory_id").references(MemoryTable.id)
-    override val primaryKey = PrimaryKey(topicId, category, memoryId)
-}
-
-internal object TopicRelationTable : Table("topic_relations") {
-    val firstTopicId = integer("first_topic_id").references(TopicTable.id)
-    val secondTopicId = integer("second_topic_id").references(TopicTable.id)
-    override val primaryKey = PrimaryKey(firstTopicId, secondTopicId)
-
-    init {
-        check { firstTopicId less secondTopicId }
-    }
+    override val primaryKey = PrimaryKey(memoryId)
 }
 
 internal object MemoryEmbeddingTable : Table("memory_embeddings") {

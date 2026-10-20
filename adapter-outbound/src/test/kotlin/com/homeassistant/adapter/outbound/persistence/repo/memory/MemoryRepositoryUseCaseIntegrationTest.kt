@@ -8,8 +8,8 @@ import com.homeassistant.application.port.output.memory.search.MemoryIndexSearch
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
-import com.homeassistant.application.port.output.topic.*
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
+import com.homeassistant.domain.group.TopicVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
@@ -17,6 +17,7 @@ import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.topic.TopicCentroid
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -68,17 +69,13 @@ class MemoryRepositoryUseCaseIntegrationTest {
     }
 
     @Test
-    fun `explicit topic storage preserves memory content and audience`() {
+    fun `topic storage preserves memory content and audience`() {
         withRepositories("topic-placement-integration") { stores ->
-            val memory = stores.saveMemory(member, "incoming", MemoryAccess.restricted(listOf(UserId("other"))))
+            val access = MemoryAccess.restricted(listOf(UserId("other")))
+            val memory = stores.saveMemory(member, "incoming", access)
             val before = stores.canonicalMemories.getMemories(UserId("other"))
-            val result = stores.topicMaintenance.apply(
-                TopicWriteBatch(
-                    creations = listOf(TopicCreation("new", "Topic")),
-                    memberships = listOf(TopicMembershipAddition(TopicReference.Created("new"), "Facts", listOf(memory.id))),
-                )
-            )
-            assertEquals("Topic", stores.topicMaintenance.readForMaintenance(result.createdTopicIds.values).single().description)
+            val topicId = stores.topicMaintenance.create(memory.id, TopicCentroid.of(TopicVector.normalized(listOf(1.0, 0.0))))
+            assertEquals(mapOf(access to listOf(memory.id)), stores.topicMaintenance.readForMaintenance(listOf(topicId)).single().slices)
             assertEquals(before, stores.canonicalMemories.getMemories(UserId("other")))
         }
     }

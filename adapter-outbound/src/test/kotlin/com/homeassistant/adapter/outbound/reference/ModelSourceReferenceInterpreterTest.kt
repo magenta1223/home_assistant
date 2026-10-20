@@ -59,8 +59,6 @@ class ModelSourceReferenceInterpreterTest {
         val imageCounts = mutableListOf<Int>()
         val images = mutableListOf<List<CompletionImage>>()
 
-        override fun isAvailable() = true
-
         override suspend fun complete(
             system: String,
             userMessage: String,

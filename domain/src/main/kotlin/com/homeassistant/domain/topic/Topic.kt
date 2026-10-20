@@ -1,19 +1,22 @@
 package com.homeassistant.domain.topic
 
-/** A search grouping of existing memories; membership never changes a memory or its access. */
+import com.homeassistant.domain.memory.MemoryAccess
+
+/**
+ * xMemory component: one centroid over its memories, which it lists by each memory's access.
+ * Membership never changes a memory or its access.
+ */
 data class Topic(
     val id: Int,
-    val description: String,
-    val memories: Map<String, List<Int>>,
+    val centroid: TopicCentroid,
+    val slices: Map<MemoryAccess, List<Int>>,
 ) {
     init {
         require(id > 0) { "topic id must be positive" }
-        require(description.isNotBlank()) { "topic description is required" }
-        memories.forEach { (category, memoryIds) ->
-            require(category.isNotBlank()) { "topic category is required" }
-            require(memoryIds.isNotEmpty()) { "topic category must contain memories" }
-            require(memoryIds.all { it > 0 }) { "memory ids must be positive" }
-            require(memoryIds.distinct().size == memoryIds.size) { "category memory references must be unique" }
-        }
+        val memoryIds = slices.values.flatten()
+        require(slices.values.all { it.isNotEmpty() }) { "topic slice must contain memories" }
+        require(memoryIds.all { it > 0 }) { "memory ids must be positive" }
+        require(memoryIds.distinct().size == memoryIds.size) { "a memory belongs to one slice" }
+        require(memoryIds.size == centroid.count) { "centroid must cover every memory" }
     }
 }

@@ -1,24 +1,25 @@
 package com.homeassistant.application.port.output.topic
 
 import com.homeassistant.domain.topic.Topic
-import com.homeassistant.domain.topic.TopicRelation
+import com.homeassistant.domain.topic.TopicCentroid
 
 /**
- * Trusted ingestion/maintenance only. Reads include mixed-access metadata and must never be used
- * as user-facing projections or answer context. This port does not grant end users mutation access.
+ * Trusted ingestion/maintenance only. Centroids and slices cover memories of every access, so reads
+ * must never be used as user-facing projections or answer context. This port does not grant end users mutation access.
  */
 interface TopicMaintenanceStore {
+    /** Every Topic's centroid, for placing a new memory. */
+    fun centroids(): Map<Int, TopicCentroid>
+
+    /** Slices group members by each memory's current access. */
     fun readForMaintenance(topicIds: Collection<Int>): List<Topic>
 
-    /** Returns relations incident to either endpoint in topicIds. */
-    fun relationsForMaintenance(topicIds: Collection<Int>): Set<TopicRelation>
-
     /**
-     * Atomically creates topics, adds references/relations and replaces the listed descriptions,
-     * without replacing existing membership.
-     * Stable creation keys reuse the same topic; conflicting descriptions are rejected.
-     * Repeated memberships and reverse relations are harmless. Missing references fail the batch.
-     * Implementations own the transaction and must not call a model or modify Memory/Source state.
+     * Adds the memory and replaces the centroid with [updated], only while the Topic still has
+     * [expected]'s memory count. Returns false when another join changed the Topic first.
      */
-    fun apply(batch: TopicWriteBatch): TopicWriteResult
+    fun join(topicId: Int, memoryId: Int, expected: TopicCentroid, updated: TopicCentroid): Boolean
+
+    /** Creates a Topic whose only member is [memoryId]; returns its id. */
+    fun create(memoryId: Int, centroid: TopicCentroid): Int
 }

@@ -3,7 +3,7 @@ package com.homeassistant.application.port.input.topic
 import com.homeassistant.application.port.input.group.GroupOrganizationResult
 import com.homeassistant.application.port.input.group.GroupRefreshOutcome
 
-/** Assigns queued Memories to one or more Topics, then organizes Topics into Groups. */
+/** Assigns each queued Memory to one Topic, then organizes Topics into Groups. */
 interface OrganizePendingMemories {
     /** True when the services assignment calls are available; a caller skips [execute] otherwise. */
     fun isReady(): Boolean
@@ -16,8 +16,8 @@ interface OrganizePendingMemories {
 }
 
 sealed interface MemoryAssignmentOutcome {
-    /** [joinedTopicIds] gained the memory and a revised description; [createdTopicIds] start with it. */
-    data class Assigned(val joinedTopicIds: List<Int>, val createdTopicIds: List<Int>) : MemoryAssignmentOutcome
+    /** The memory joined [topicId], which it [created] when no Topic was near enough. */
+    data class Assigned(val topicId: Int, val created: Boolean) : MemoryAssignmentOutcome
     data class Failed(val reason: String) : MemoryAssignmentOutcome
 }
 

@@ -6,11 +6,13 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryReposito
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.port.output.topic.*
+import com.homeassistant.domain.group.TopicVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.topic.TopicCentroid
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
@@ -53,10 +55,7 @@ class TopicAssignmentOutboxRepositoryTest {
 
     @Test fun `a memory assigned before its outbox completed is completed on claim`() = withDatabase { db ->
         val (memory) = seedMemories(db, "first", "a")
-        TopicRepository(db).apply(TopicWriteBatch(
-            creations = listOf(TopicCreation("k", "d")),
-            memberships = listOf(TopicMembershipAddition(TopicReference.Created("k"), "c", listOf(memory))),
-        ))
+        TopicRepository(db).create(memory, TopicCentroid.of(TopicVector.normalized(listOf(1.0, 0.0))))
         assertTrue(TopicAssignmentOutboxRepository(db).claimReady(10, now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5).isEmpty())
         assertEquals(OutboxRow("COMPLETED", 0, null), outboxRow(db, memory))
     }

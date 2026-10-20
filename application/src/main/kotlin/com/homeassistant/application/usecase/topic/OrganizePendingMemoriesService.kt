@@ -34,7 +34,7 @@ class OrganizePendingMemoriesService(
         val now = clock.millis()
         val tasks = outbox.claimReady(limit, now, now - retryDelayMillis, now - processingLeaseMillis, maxAttempts)
         val memories = tasks.map { MemoryAssignmentResult(it.memory.id, assign(it)) }
-        // Joined Topics have revised descriptions, so their Group vectors are refreshed before new Topics are placed.
+        // Joined Topics have moved centroids, so their Group vectors are refreshed before new Topics are placed.
         val refreshed = try {
             groupRefresh.execute()
         } catch (rebuild: GroupRebuildRequired) {

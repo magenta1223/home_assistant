@@ -1,121 +1,87 @@
 package com.homeassistant.adapter.outbound.persistence.repo.topic
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryViewerTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicMembershipTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.TopicRelationTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicTable
-import com.homeassistant.application.port.output.topic.*
+import com.homeassistant.application.port.output.topic.TopicMaintenanceStore
+import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.topic.Topic
-import com.homeassistant.domain.topic.TopicRelation
+import com.homeassistant.domain.topic.TopicCentroid
+import kotlinx.serialization.json.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class TopicRepository(private val db: Database) : TopicMaintenanceStore, TopicCatalog {
-    override fun topics(): List<TopicCandidate> = transaction(db) {
-        TopicTable.selectAll().orderBy(TopicTable.id).map { TopicCandidate(it[TopicTable.id], it[TopicTable.description]) }
+internal class TopicRepository(private val db: Database) : TopicMaintenanceStore {
+    override fun centroids(): Map<Int, TopicCentroid> = transaction(db) {
+        TopicTable.selectAll().orderBy(TopicTable.id).associate { it[TopicTable.id] to centroid(it) }
     }
 
     override fun readForMaintenance(topicIds: Collection<Int>): List<Topic> = transaction(db) {
         if (topicIds.isEmpty()) return@transaction emptyList()
-        val memberships = TopicMembershipTable.selectAll()
+        val members = TopicMembershipTable.selectAll()
             .where { TopicMembershipTable.topicId inList topicIds }
             .orderBy(TopicMembershipTable.memoryId)
-            .groupBy { it[TopicMembershipTable.topicId] }
+            .map { it[TopicMembershipTable.topicId] to it[TopicMembershipTable.memoryId] }
+        val access = accessOf(members.map { it.second })
+        val slices = members.groupBy({ it.first }, { it.second })
         TopicTable.selectAll().where { TopicTable.id inList topicIds }.orderBy(TopicTable.id).map { row ->
             val id = row[TopicTable.id]
-            Topic(id, row[TopicTable.description], memberships[id].orEmpty().groupBy(
-                keySelector = { it[TopicMembershipTable.category] },
-                valueTransform = { it[TopicMembershipTable.memoryId] },
-            ))
+            Topic(id, centroid(row), slices[id].orEmpty().groupBy { access.getValue(it) })
         }
     }
 
-    override fun relationsForMaintenance(topicIds: Collection<Int>): Set<TopicRelation> = transaction(db) {
-        if (topicIds.isEmpty()) return@transaction emptySet()
-        TopicRelationTable.selectAll().where {
-            (TopicRelationTable.firstTopicId inList topicIds) or (TopicRelationTable.secondTopicId inList topicIds)
-        }.mapTo(linkedSetOf()) { TopicRelation(it[TopicRelationTable.firstTopicId], it[TopicRelationTable.secondTopicId]) }
-    }
-
-    override fun apply(batch: TopicWriteBatch): TopicWriteResult = transaction(db) { applyBatch(batch) }
-
-    private fun applyBatch(batch: TopicWriteBatch): TopicWriteResult {
-        val createdIds = createTopics(batch.creations)
-        val memberships = resolveMemberships(batch.memberships, createdIds)
-        val relations = resolveRelations(batch.relations, createdIds)
-        verifyTargets(memberships, relations, batch.descriptionUpdates)
-        addMemberships(memberships)
-        addRelations(relations)
-        replaceDescriptions(batch.descriptionUpdates)
-        return TopicWriteResult(createdIds)
-    }
-
-    private fun createTopics(creations: List<TopicCreation>): Map<String, Int> = creations.associate { creation ->
-        val existing = TopicTable.selectAll().where { TopicTable.creationKey eq creation.creationKey }.singleOrNull()
-        val id = if (existing != null) {
-            require(existing[TopicTable.description] == creation.description) { "topic creation key conflicts with its existing description" }
-            existing[TopicTable.id]
-        } else {
-            TopicTable.insert {
-                it[creationKey] = creation.creationKey
-                it[description] = creation.description
-            }[TopicTable.id]
+    override fun join(topicId: Int, memoryId: Int, expected: TopicCentroid, updated: TopicCentroid): Boolean = transaction(db) {
+        require(updated.count == expected.count + 1) { "a join adds one memory" }
+        requireMemory(memoryId)
+        val changed = TopicTable.update({ (TopicTable.id eq topicId) and (TopicTable.memoryCount eq expected.count) }) {
+            it[vectorSum] = encode(updated.sum)
+            it[memoryCount] = updated.count
         }
-        creation.creationKey to id
+        if (changed == 0) return@transaction false
+        addMembership(topicId, memoryId)
+        true
     }
 
-    private fun resolveMemberships(additions: List<TopicMembershipAddition>, createdIds: Map<String, Int>): List<Membership> =
-        additions.flatMap { addition ->
-            val id = resolve(addition.topic, createdIds)
-            addition.memoryIds.map { Membership(id, addition.category, it) }
-        }.distinct()
-
-    private fun resolveRelations(additions: List<TopicRelationAddition>, createdIds: Map<String, Int>): Set<TopicRelation> =
-        additions.mapTo(linkedSetOf()) { TopicRelation.between(resolve(it.first, createdIds), resolve(it.second, createdIds)) }
-
-    private fun resolve(reference: TopicReference, createdIds: Map<String, Int>): Int = when (reference) {
-        is TopicReference.Existing -> reference.topicId
-        is TopicReference.Created -> requireNotNull(createdIds[reference.creationKey]) { "topic creation reference is not declared in this batch" }
+    override fun create(memoryId: Int, centroid: TopicCentroid): Int = transaction(db) {
+        require(centroid.count == 1) { "a new topic starts with one memory" }
+        requireMemory(memoryId)
+        val id = TopicTable.insert {
+            it[vectorSum] = encode(centroid.sum)
+            it[memoryCount] = centroid.count
+        }[TopicTable.id]
+        addMembership(id, memoryId)
+        id
     }
 
-    private fun verifyTargets(memberships: List<Membership>, relations: Set<TopicRelation>, updates: List<TopicDescriptionUpdate>) {
-        val topicIds = memberships.map { it.topicId }.toSet() + relations.flatMap { listOf(it.firstTopicId, it.secondTopicId) } +
-            updates.map { it.topicId }
-        if (topicIds.isNotEmpty()) {
-            val existing = TopicTable.select(TopicTable.id).where { TopicTable.id inList topicIds }.map { it[TopicTable.id] }.toSet()
-            require(existing == topicIds) { "topic reference does not exist" }
-        }
-        val memoryIds = memberships.map { it.memoryId }.toSet()
-        if (memoryIds.isNotEmpty()) {
-            val existing = MemoryTable.select(MemoryTable.id).where { MemoryTable.id inList memoryIds }.map { it[MemoryTable.id] }.toSet()
-            require(existing == memoryIds) { "memory reference does not exist" }
+    private fun requireMemory(memoryId: Int) {
+        require(MemoryTable.select(MemoryTable.id).where { MemoryTable.id eq memoryId }.any()) { "memory reference does not exist" }
+    }
+
+    /** A memory already in a Topic violates the membership key and rolls back the whole write. */
+    private fun addMembership(topicId: Int, memoryId: Int) {
+        TopicMembershipTable.insert {
+            it[TopicMembershipTable.topicId] = topicId
+            it[TopicMembershipTable.memoryId] = memoryId
         }
     }
 
-    private fun addMemberships(memberships: List<Membership>) {
-        memberships.forEach { membership ->
-            TopicMembershipTable.insertIgnore {
-                it[topicId] = membership.topicId
-                it[category] = membership.category
-                it[memoryId] = membership.memoryId
-            }
+    private fun accessOf(memoryIds: List<Int>): Map<Int, MemoryAccess> {
+        if (memoryIds.isEmpty()) return emptyMap()
+        val viewers = MemoryViewerTable.selectAll().where { MemoryViewerTable.memoryId inList memoryIds }
+            .groupBy({ it[MemoryViewerTable.memoryId] }, { it[MemoryViewerTable.userId] })
+        return MemoryTable.select(MemoryTable.id, MemoryTable.visibility).where { MemoryTable.id inList memoryIds }.associate { row ->
+            val id = row[MemoryTable.id]
+            val visibility = MemoryVisibility.valueOf(row[MemoryTable.visibility])
+            id to MemoryAccess(visibility, if (visibility == MemoryVisibility.PUBLIC) emptySet() else viewers[id].orEmpty().toSet())
         }
     }
 
-    private fun addRelations(relations: Set<TopicRelation>) {
-        relations.forEach { relation ->
-            TopicRelationTable.insertIgnore {
-                it[firstTopicId] = relation.firstTopicId
-                it[secondTopicId] = relation.secondTopicId
-            }
-        }
-    }
+    private fun centroid(row: ResultRow) = TopicCentroid(
+        Json.parseToJsonElement(row[TopicTable.vectorSum]).jsonArray.map { it.jsonPrimitive.double },
+        row[TopicTable.memoryCount],
+    )
 
-    private fun replaceDescriptions(updates: List<TopicDescriptionUpdate>) {
-        updates.forEach { update ->
-            TopicTable.update({ TopicTable.id eq update.topicId }) { it[description] = update.description }
-        }
-    }
-
-    private data class Membership(val topicId: Int, val category: String, val memoryId: Int)
+    private fun encode(sum: List<Double>): String = JsonArray(sum.map(::JsonPrimitive)).toString()
 }

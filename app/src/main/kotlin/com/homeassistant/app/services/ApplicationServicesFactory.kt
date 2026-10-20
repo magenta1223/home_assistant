@@ -22,8 +22,6 @@ import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemor
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
-import com.homeassistant.adapter.outbound.embedding.topic.TopicEmbeddingAdapter
-import com.homeassistant.adapter.outbound.topicassignment.TopicAssignmentGeneratorFactory
 import com.homeassistant.application.usecase.topic.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
@@ -49,8 +47,12 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
+        val memoryEmbeddings = PrepareMemoryEmbedding(
+            MemoryEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime),
+            repositories.memoryEmbeddings,
+        )
         val topicEmbeddings = PrepareTopicEmbedding(
-            TopicEmbeddingAdapter(textEmbedder, embeddingModel, repositories.topicCatalog),
+            TopicCentroidVectors(repositories.topicMaintenance, memoryEmbeddings.space),
             repositories.topicEmbeddings,
         )
         val organizeTopics = OrganizePendingTopicsService(
@@ -64,13 +66,7 @@ object ApplicationServicesFactory {
         )
         val organizeMemories = OrganizePendingMemoriesService(
             repositories.topicAssignmentOutbox,
-            AssignMemoryToTopics(
-                repositories.topicCatalog,
-                PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime), repositories.memoryEmbeddings),
-                topicEmbeddings,
-                TopicAssignmentGeneratorFactory.create(completionClient),
-                repositories.topicMaintenance,
-            ),
+            AssignMemoryToTopics(repositories.topicMaintenance, memoryEmbeddings),
             RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
             organizeTopics,
         )

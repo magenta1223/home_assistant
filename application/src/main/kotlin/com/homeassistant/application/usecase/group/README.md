@@ -53,8 +53,8 @@ sequenceDiagram
 
 ## 정책
 
-- 현재 구현은 Topic 설명을 `passage: ` 입력 규약으로 임베딩하고, 설명 SHA-256을 벡터 버전으로 쓴다.
-  Topic 크기는 적절하다고 가정한다.
+- Topic 벡터는 `TopicCentroidVectors`가 주는 Topic 중심 벡터의 방향이며 Memory 벡터와 같은 공간이다.
+  벡터 버전은 Topic의 Memory 수다. Topic 크기는 적절하다고 가정한다.
 - cosine이 attach threshold를 **초과**하면 가장 가까운 Group에 배치한다. 동점은 작은 Group ID다.
 - 상한 초과 시 연결 성분과 결정적 이분할로 최대 두 종류의 partition 후보를 만든다.
 - 각 후보를 동일 Topic 집합과 동일한 주변 Group snapshot에서 평가한다.

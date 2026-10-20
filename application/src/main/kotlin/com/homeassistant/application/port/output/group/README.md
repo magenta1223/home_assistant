@@ -5,7 +5,7 @@
 | Port | 계약 |
 |---|---|
 | `PendingTopicSource` | Group 미소속 Topic ID·벡터 버전을 ID 순서로 제한 조회 |
-| `TopicEmbeddingGenerator` | Topic의 현재 버전 벡터를 고정 모델·입력 규약으로 생성; 버전이 지났으면 실패 |
+| `TopicEmbeddingGenerator` | Topic의 현재 벡터 제공; 요청 버전이 지난 벡터는 `TopicEmbeddingStore`가 거절 |
 | `TopicEmbeddingStore` | key별 불변 벡터 저장; 경쟁 생성 시 먼저 저장한 벡터 반환 |
 | `GroupSnapshotReader` | 같은 DB snapshot의 Group 소속·revision·centroid·사용된 Topic 벡터 조회 |
 | `GroupChangeWriter` | 기존 Group 집합을 결과 Group 집합으로 원자 교체 |

@@ -29,7 +29,7 @@ interface PendingTopicSource {
 
 interface TopicEmbeddingGenerator {
     val space: EmbeddingSpace
-    /** Fails when [PendingTopic.version] is no longer the Topic's current version. */
+    /** The vector of [topic]; the store rejects it if the Topic is no longer at [PendingTopic.version]. */
     fun generate(topic: PendingTopic): TopicVector
 }
 

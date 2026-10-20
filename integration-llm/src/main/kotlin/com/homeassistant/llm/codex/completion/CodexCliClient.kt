@@ -1,7 +1,5 @@
 package com.homeassistant.llm.codex.completion
 
-import com.homeassistant.llm.codex.conversation.CodexConversationConfig
-import com.homeassistant.llm.codex.conversation.probeCodexVersion
 import com.homeassistant.llm.codex.transport.CodexAppServerTransport
 import com.homeassistant.llm.codex.transport.DefaultCodexAppServerTransport
 import com.homeassistant.llm.codex.transport.process.StdioProcessTransport
@@ -17,7 +15,6 @@ import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
 import java.nio.file.Path
-import java.time.Duration
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.writeBytes
@@ -28,9 +25,6 @@ internal class CodexCliClient(
     private val transportFactory: (List<String>, Path) -> CodexAppServerTransport =
         { command, workDir -> DefaultCodexAppServerTransport(StdioProcessTransport(command, workDir)) },
 ) : CompletionClient {
-    override fun isAvailable(): Boolean =
-        CodexConversationConfig.local(Duration.ofMillis(timeoutMillis), executable)?.let(::probeCodexVersion) ?: false
-
     override suspend fun complete(
         system: String,
         userMessage: String,

@@ -14,6 +14,7 @@ import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryProposal
+import com.homeassistant.domain.topic.TopicCentroid
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.*
@@ -35,15 +36,11 @@ class GroupRepositoryTest {
         val user = UserId("owner")
         val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), MemoryAccess.restricted(listOf(user)))
             .recordsToAnalyze.single()
-        val memory = memories.commit(user, listOf(IdempotentMemoryProposal("m", MemoryProposal("fact", listOf(record.id)))), listOf(record.id)).single()
+        val committed = memories.commit(user, (1..5).map { IdempotentMemoryProposal("m$it", MemoryProposal("fact $it", listOf(record.id))) },
+            listOf(record.id))
         val topics = TopicRepository(db)
-        val ids = topics.apply(TopicWriteBatch(
-            creations = (1..5).map { TopicCreation("$it", "description $it") },
-            memberships = (1..5).map { TopicMembershipAddition(TopicReference.Created("$it"), "Facts", listOf(memory.id)) },
-            relations = listOf(TopicRelationAddition(TopicReference.Created("1"), TopicReference.Created("2"))),
-        )).createdTopicIds.values.toSet()
+        val ids = committed.map { topics.create(it.id, TopicCentroid.of(vector)) }.toSet()
         val beforeTopics = topics.readForMaintenance(ids)
-        val beforeRelations = topics.relationsForMaintenance(ids)
         val beforeMemories = memories.getMemories(user)
         val beforeSources = sources.findBySource(source)
         val first = service(db, 2).execute(3)
@@ -60,7 +57,6 @@ class GroupRepositoryTest {
         assertEquals(ids.size, snapshot.groups.sumOf { it.group.topicIds.size })
         assertTrue(snapshot.groups.all { it.group.topicIds.size <= 2 })
         assertEquals(beforeTopics, topics.readForMaintenance(ids))
-        assertEquals(beforeRelations, topics.relationsForMaintenance(ids))
         assertEquals(beforeMemories, memories.getMemories(user))
         assertEquals(beforeSources, sources.findBySource(source))
     }
@@ -113,7 +109,7 @@ class GroupRepositoryTest {
                 it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = TopicVector.normalized(listOf(0.0, 1.0))) })
             },
             change("missing", incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
-                mapOf(999 to TopicEmbedding(PendingTopic(999, "v").embeddingKey(space), vector))),
+                mapOf(999 to TopicEmbedding(PendingTopic(999, "1").embeddingKey(space), vector))),
         )
         invalid.forEach { assertFailsWith<IllegalArgumentException> { repository.apply(it) } }
         assertEquals(setOf(1), repository.snapshot().groups.single().group.topicIds)
@@ -168,11 +164,16 @@ class GroupRepositoryTest {
     }
 
     private fun seed(db: Database, count: Int): Map<Int, TopicEmbedding> {
+        val user = UserId("owner")
+        val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", "seed"), listOf(SourceRecordDraft("seed", "seed")),
+            MemoryAccess.restricted(listOf(user))).recordsToAnalyze.single()
+        val memories = MemoryRepository(db).commit(user, (1..count).map { IdempotentMemoryProposal("seed-$it", MemoryProposal("fact $it", listOf(record.id))) },
+            listOf(record.id))
         val topics = TopicRepository(db)
-        val ids = topics.apply(TopicWriteBatch(creations = (1..count).map { TopicCreation("$it", "description $it") })).createdTopicIds.values
         val store = TopicEmbeddingRepository(db)
-        return topics.readForMaintenance(ids).associate { topic ->
-            topic.id to store.save(TopicEmbedding(PendingTopic(topic.id, descriptionFingerprint(topic.description)).embeddingKey(space), vector))
+        return memories.associate { memory ->
+            val id = topics.create(memory.id, TopicCentroid.of(vector))
+            id to store.save(TopicEmbedding(PendingTopic(id, "1").embeddingKey(space), vector))
         }
     }
 

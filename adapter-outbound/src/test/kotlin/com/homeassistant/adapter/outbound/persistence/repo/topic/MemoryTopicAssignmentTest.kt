@@ -18,6 +18,7 @@ import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.topic.TopicCentroid
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -27,66 +28,48 @@ import kotlin.test.*
 class MemoryTopicAssignmentTest {
     private val space = EmbeddingSpace("test", "passage:v1")
     private val east = TopicVector.normalized(listOf(1.0, 0.0))
+    private val north = TopicVector.normalized(listOf(0.0, 1.0))
+    private val nearEast = TopicVector.normalized(listOf(1.0, 0.2))
     private val user = UserId("owner")
 
-    @Test fun `a memory joins several topics, revises their descriptions and groups follow`() = withDatabase { db, path ->
+    @Test fun `near memories share a topic, a far one starts another and groups follow`() = withDatabase { db, path ->
         val (boiler, rent) = seedMemories(db, "first", "보일러 점검 예약", "월세 이체일은 25일")
-        val decisions = ArrayDeque(listOf(
-            TopicAssignmentDecision(emptyList(), listOf(NewTopic("보일러 관리", "점검"))),
-            TopicAssignmentDecision(emptyList(), listOf(NewTopic("주거비", "월세"))),
-        ))
-        val first = service(db) { decisions.removeFirst() }.execute(10)
-        assertTrue(first.memories.all { it.outcome is MemoryAssignmentOutcome.Assigned })
+        val vectors = mutableMapOf("보일러 점검 예약" to east, "월세 이체일은 25일" to north)
+        val first = service(db, vectors).execute(10)
+        assertEquals(listOf(true, true), first.memories.map { (it.outcome as MemoryAssignmentOutcome.Assigned).created })
         val topics = TopicRepository(db)
-        val (boilerTopic, housingTopic) = topics.topics().map { it.topicId }
+        val (boilerTopic, housingTopic) = topics.centroids().keys.toList()
         assertEquals(setOf(boilerTopic, housingTopic), GroupRepository(db).snapshot().groups.flatMap { it.group.topicIds }.toSet())
 
         val (repair) = seedMemories(db, "second", "보일러 수리비 12만 원")
-        val result = service(db) { request ->
-            assertEquals(setOf(boilerTopic, housingTopic), request.candidates.map { it.topicId }.toSet())
-            TopicAssignmentDecision(listOf(
-                TopicJoin(boilerTopic, "수리", "보일러 점검과 수리 기록"),
-                TopicJoin(housingTopic, "비정기 지출", "월세와 수리비 같은 주거 지출"),
-            ), emptyList())
-        }.execute(10)
+        vectors["보일러 수리비 12만 원"] = nearEast
+        val result = service(db, vectors).execute(10)
 
-        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(boilerTopic, housingTopic), emptyList()), result.memories.single().outcome)
+        assertEquals(MemoryAssignmentOutcome.Assigned(boilerTopic, created = false), result.memories.single().outcome)
         val stored = topics.readForMaintenance(listOf(boilerTopic, housingTopic)).associateBy { it.id }
-        assertEquals(mapOf("점검" to listOf(boiler), "수리" to listOf(repair)), stored.getValue(boilerTopic).memories)
-        assertEquals(mapOf("월세" to listOf(rent), "비정기 지출" to listOf(repair)), stored.getValue(housingTopic).memories)
-        assertEquals("보일러 점검과 수리 기록", stored.getValue(boilerTopic).description)
+        val access = MemoryAccess.restricted(listOf(user))
+        assertEquals(mapOf(access to listOf(boiler, repair)), stored.getValue(boilerTopic).slices)
+        assertEquals(mapOf(access to listOf(rent)), stored.getValue(housingTopic).slices)
+        assertEquals(TopicCentroid.of(east) + nearEast, stored.getValue(boilerTopic).centroid)
         assertTrue(result.groupRefreshes.isNotEmpty())
         assertTrue(GroupRepository(db).snapshot().staleTopics.isEmpty())
 
         val restarted = DatabaseFactory.init(path)
-        assertTrue(service(restarted) { error("nothing is queued") }.execute(10).memories.isEmpty())
+        assertTrue(service(restarted, vectors).execute(10).memories.isEmpty())
     }
 
     @Test fun `a failed write records the attempt and the retry creates the topic once`() = withDatabase { db, _ ->
         val (memory) = seedMemories(db, "first", "화분 물주기")
-        val decision = TopicAssignmentDecision(emptyList(), listOf(NewTopic("식물 관리", "물주기")))
-        val failing = service(db, store = object : TopicMaintenanceStore by TopicRepository(db) {
-            override fun apply(batch: TopicWriteBatch): TopicWriteResult = error("disk full")
-        }) { decision }
+        val vectors = mapOf("화분 물주기" to east)
+        val failing = service(db, vectors, store = object : TopicMaintenanceStore by TopicRepository(db) {
+            override fun create(memoryId: Int, centroid: TopicCentroid): Int = error("disk full")
+        })
         assertIs<MemoryAssignmentOutcome.Failed>(failing.execute(10).memories.single().outcome)
         assertEquals(OutboxRow("FAILED", 1, "disk full"), outboxRow(db, memory))
 
-        service(db) { decision }.execute(10)
-        assertEquals(listOf("식물 관리"), TopicRepository(db).topics().map { it.description })
+        service(db, vectors).execute(10)
+        assertEquals(1, TopicRepository(db).centroids().size)
         assertEquals(OutboxRow("COMPLETED", 2, null), outboxRow(db, memory))
-    }
-
-    @Test fun `description update for a missing topic rolls back the whole batch`() = withDatabase { db, _ ->
-        val (memory) = seedMemories(db, "first", "a")
-        val topics = TopicRepository(db)
-        assertFailsWith<IllegalArgumentException> {
-            topics.apply(TopicWriteBatch(
-                creations = listOf(TopicCreation("k", "d")),
-                memberships = listOf(TopicMembershipAddition(TopicReference.Created("k"), "c", listOf(memory))),
-                descriptionUpdates = listOf(TopicDescriptionUpdate(999, "x")),
-            ))
-        }
-        assertTrue(topics.topics().isEmpty())
     }
 
     private fun seedMemories(db: Database, key: String, vararg contents: String): List<Int> {
@@ -99,27 +82,20 @@ class MemoryTopicAssignmentTest {
 
     private fun service(
         db: Database,
+        vectors: Map<String, TopicVector>,
         store: TopicMaintenanceStore = TopicRepository(db),
-        decide: (TopicAssignmentRequest) -> TopicAssignmentDecision,
     ): OrganizePendingMemoriesService {
-        val topics = TopicRepository(db)
         val groups = GroupRepository(db)
         val memoryEmbeddings = PrepareMemoryEmbedding(object : MemoryEmbeddingGenerator {
             override val space = this@MemoryTopicAssignmentTest.space
             override fun isAvailable() = true
-            override fun generate(content: String) = east
+            override fun generate(content: String) = vectors.getValue(content)
         }, MemoryEmbeddingRepository(db))
-        val topicEmbeddings = PrepareTopicEmbedding(object : TopicEmbeddingGenerator {
-            override val space = this@MemoryTopicAssignmentTest.space
-            override fun generate(topic: PendingTopic) = east
-        }, TopicEmbeddingRepository(db))
+        val topicEmbeddings = PrepareTopicEmbedding(TopicCentroidVectors(TopicRepository(db), space), TopicEmbeddingRepository(db))
         val settings = GroupPolicySettings()
         return OrganizePendingMemoriesService(
             TopicAssignmentOutboxRepository(db),
-            AssignMemoryToTopics(topics, memoryEmbeddings, topicEmbeddings, object : TopicAssignmentGenerator {
-                override fun isAvailable() = true
-                override fun assign(request: TopicAssignmentRequest) = decide(request)
-            }, store),
+            AssignMemoryToTopics(store, memoryEmbeddings),
             RefreshGroupedTopicEmbeddings(groups, groups, topicEmbeddings),
             OrganizePendingTopicsService(groups, OrganizeTopic(groups, groups, topicEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)))),

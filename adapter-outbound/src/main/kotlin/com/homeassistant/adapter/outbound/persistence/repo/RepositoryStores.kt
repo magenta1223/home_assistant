@@ -19,7 +19,6 @@ data class RepositoryStores(
     val topicEmbeddings: TopicEmbeddingStore,
     val groupSnapshots: GroupSnapshotReader,
     val groupChanges: GroupChangeWriter,
-    val topicCatalog: TopicCatalog,
     val topicAssignmentOutbox: TopicAssignmentOutbox,
     val memoryEmbeddings: MemoryEmbeddingStore,
     val memoryConversationSessions: MemoryConversationSessionStore,

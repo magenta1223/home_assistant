@@ -8,7 +8,7 @@ data class StoredGroup(val group: Group, val revision: Long, val centroid: Topic
     init { require(revision > 0) }
 }
 
-/** [staleTopics] are grouped topics whose current description no longer matches their membership vector. */
+/** [staleTopics] are grouped topics whose current vector version no longer matches their membership vector. */
 data class GroupSnapshot(
     val groups: List<StoredGroup>,
     val embeddings: Map<Int, TopicEmbedding>,

@@ -113,7 +113,7 @@ class GroupRepositoryTest {
                 it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = TopicVector.normalized(listOf(0.0, 1.0))) })
             },
             change("missing", incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
-                mapOf(999 to TopicEmbedding(PendingTopic(999, "missing").embeddingKey(space), vector))),
+                mapOf(999 to TopicEmbedding(PendingTopic(999, "v").embeddingKey(space), vector))),
         )
         invalid.forEach { assertFailsWith<IllegalArgumentException> { repository.apply(it) } }
         assertEquals(setOf(1), repository.snapshot().groups.single().group.topicIds)
@@ -172,7 +172,7 @@ class GroupRepositoryTest {
         val ids = topics.apply(TopicWriteBatch(creations = (1..count).map { TopicCreation("$it", "description $it") })).createdTopicIds.values
         val store = TopicEmbeddingRepository(db)
         return topics.readForMaintenance(ids).associate { topic ->
-            topic.id to store.save(TopicEmbedding(PendingTopic(topic.id, topic.description).embeddingKey(space), vector))
+            topic.id to store.save(TopicEmbedding(PendingTopic(topic.id, descriptionFingerprint(topic.description)).embeddingKey(space), vector))
         }
     }
 
@@ -192,7 +192,7 @@ class GroupRepositoryTest {
         val repository = GroupRepository(db)
         val generator = object : TopicEmbeddingGenerator {
             override val space = this@GroupRepositoryTest.space
-            override fun generate(description: String) = vector
+            override fun generate(topic: PendingTopic) = vector
         }
         val settings = GroupPolicySettings(maxTopics = maxTopics)
         return OrganizePendingTopicsService(repository, OrganizeTopic(repository, repository,

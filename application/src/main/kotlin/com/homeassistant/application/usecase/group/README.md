@@ -8,7 +8,8 @@ HTTP·worker·Memory 분석 경로에서는 호출하지 않는다. 앱 시작�
 ## 책임과 정상 흐름
 
 `OrganizePendingTopicsService`는 batch 제한과 결과 집계, `OrganizeTopic`은 한 Topic의 실행과
-충돌 재시도, `PrepareTopicEmbedding`은 설명과 규약에 맞는 벡터 재사용·생성을 담당한다.
+충돌 재시도, `PrepareTopicEmbedding`은 Topic 벡터 버전과 규약에 맞는 벡터 재사용·생성을 담당한다.
+Group은 Topic ID와 벡터 버전만 받는다. 벡터를 무엇으로 만드는지는 `TopicEmbeddingGenerator` 구현이 정한다.
 배치·분할 판단은 `domain/group/GroupOrganizationPlanner`가 순수 정책을 조합한다.
 Application은 provider·DB 타입을 참조하지 않고 output port를 호출한다.
 
@@ -33,7 +34,7 @@ sequenceDiagram
         One->>Embedding: prepare(topic)
         Embedding->>Cache: find(key)
         opt 캐시 없음
-            Embedding->>Generator: generate(description)
+            Embedding->>Generator: generate(topic)
             Embedding->>Cache: save(embedding)
         end
         One->>Policy: plan(topic, groups, vectors)
@@ -52,7 +53,8 @@ sequenceDiagram
 
 ## 정책
 
-- Topic 설명을 `passage: ` 입력 규약으로 임베딩한다. Topic 크기는 적절하다고 가정한다.
+- 현재 구현은 Topic 설명을 `passage: ` 입력 규약으로 임베딩하고, 설명 SHA-256을 벡터 버전으로 쓴다.
+  Topic 크기는 적절하다고 가정한다.
 - cosine이 attach threshold를 **초과**하면 가장 가까운 Group에 배치한다. 동점은 작은 Group ID다.
 - 상한 초과 시 연결 성분과 결정적 이분할로 최대 두 종류의 partition 후보를 만든다.
 - 각 후보를 동일 Topic 집합과 동일한 주변 Group snapshot에서 평가한다.
@@ -70,11 +72,11 @@ Group 요약·자동 병합·kNN 검색·entropy 기반 원문 확장은 구현�
 ## 실패·복구와 신뢰 경계
 
 - 임베딩과 모든 정책 계산은 DB transaction 밖에서 수행한다.
-- 캐시는 Topic ID·설명 SHA-256·모델·입력 규약으로 구분한다. 같은 key는 첫 저장 벡터를 재사용한다.
+- 캐시는 Topic ID·벡터 버전·모델·입력 규약으로 구분한다. 같은 key는 첫 저장 벡터를 재사용한다.
 - 유한하지 않은 값·영벡터·차원 불일치·계산 불가능한 centroid는 성공으로 처리하지 않는다.
 - Group 소속·centroid·revision·receipt는 한 transaction으로 확정한다. 실패 시 모두 롤백한다.
-- 모델·규약·차원 또는 이미 배치된 Topic 설명이 바뀌면 `RebuildRequired`로 실행을 중단한다.
-  `organizeMemories`는 이 단계 전에 `RefreshGroupedTopicEmbeddings`로 설명이 바뀐 Topic을 재임베딩하고
+- 모델·규약·차원 또는 이미 배치된 Topic의 벡터 버전이 바뀌면 `RebuildRequired`로 실행을 중단한다.
+  `organizeMemories`는 이 단계 전에 `RefreshGroupedTopicEmbeddings`로 버전이 바뀐 Topic의 벡터를 다시 준비하고
   그 Group의 벡터·centroid만 교체한다. Group 소속은 옮기지 않는다.
   모델 이름이 같아도 실제 가중치를 교체했다면 식별자를 변경해야 한다. 자동 재구성은 후속 작업이다.
 - 개별 Topic 실패는 `Failed`, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Topic은 계속 처리한다.

@@ -84,16 +84,17 @@ class OrganizePendingMemoriesTest {
 
     @Test fun `revised descriptions refresh group vectors before new topics are grouped`() {
         val fixture = Fixture()
-        val old = TopicEmbedding(PendingTopic(7, "old").embeddingKey(space), east)
+        val old = TopicEmbedding(PendingTopic(7, descriptionFingerprint("old")).embeddingKey(space), east)
         fixture.groupSnapshot = GroupSnapshot(listOf(StoredGroup(Group(3, setOf(7)), 5, east)), mapOf(7 to old),
-            listOf(PendingTopic(7, "new")))
+            listOf(PendingTopic(7, descriptionFingerprint("new"))))
+        fixture.topics = listOf(TopicCandidate(7, "new"))
         fixture.vectors = mapOf("new" to north)
         val result = fixture.service.execute(1)
         assertEquals(1, result.groupRefreshes.size)
         val change = fixture.groupWrites.single()
         assertEquals(mapOf(3 to 5L), change.expectedGroups)
         assertTrue(change.incomingTopicIds.isEmpty())
-        assertEquals(PendingTopic(7, "new").embeddingKey(space), change.embeddings.getValue(7).key)
+        assertEquals(PendingTopic(7, descriptionFingerprint("new")).embeddingKey(space), change.embeddings.getValue(7).key)
         assertEquals("groups", fixture.order.last())
     }
 
@@ -124,7 +125,7 @@ class OrganizePendingMemoriesTest {
         private val topicCache = mutableMapOf<TopicEmbeddingKey, TopicEmbedding>()
         private val topicEmbeddings = PrepareTopicEmbedding(object : TopicEmbeddingGenerator {
             override val space = this@OrganizePendingMemoriesTest.space
-            override fun generate(description: String) = embed(description)
+            override fun generate(topic: PendingTopic) = embed(topics.single { it.topicId == topic.id }.description)
         }, object : TopicEmbeddingStore {
             override fun find(key: TopicEmbeddingKey) = topicCache[key]
             override fun save(embedding: TopicEmbedding) = topicCache.getOrPut(embedding.key) { embedding }

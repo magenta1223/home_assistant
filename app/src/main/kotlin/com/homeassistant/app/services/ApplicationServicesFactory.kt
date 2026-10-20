@@ -49,7 +49,10 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
-        val topicEmbeddings = PrepareTopicEmbedding(TopicEmbeddingAdapter(textEmbedder, embeddingModel), repositories.topicEmbeddings)
+        val topicEmbeddings = PrepareTopicEmbedding(
+            TopicEmbeddingAdapter(textEmbedder, embeddingModel, repositories.topicCatalog),
+            repositories.topicEmbeddings,
+        )
         val organizeTopics = OrganizePendingTopicsService(
             repositories.pendingTopics,
             OrganizeTopic(

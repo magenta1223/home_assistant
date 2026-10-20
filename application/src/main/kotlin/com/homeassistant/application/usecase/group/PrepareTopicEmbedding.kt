@@ -10,6 +10,6 @@ class PrepareTopicEmbedding(
 
     fun prepare(topic: PendingTopic): TopicEmbedding {
         val key = topic.embeddingKey(space)
-        return store.find(key) ?: store.save(TopicEmbedding(key, generator.generate(topic.description)))
+        return store.find(key) ?: store.save(TopicEmbedding(key, generator.generate(topic)))
     }
 }

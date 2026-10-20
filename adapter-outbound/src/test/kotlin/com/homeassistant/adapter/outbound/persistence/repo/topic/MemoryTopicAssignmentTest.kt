@@ -111,7 +111,7 @@ class MemoryTopicAssignmentTest {
         }, MemoryEmbeddingRepository(db))
         val topicEmbeddings = PrepareTopicEmbedding(object : TopicEmbeddingGenerator {
             override val space = this@MemoryTopicAssignmentTest.space
-            override fun generate(description: String) = east
+            override fun generate(topic: PendingTopic) = east
         }, TopicEmbeddingRepository(db))
         val settings = GroupPolicySettings()
         return OrganizePendingMemoriesService(

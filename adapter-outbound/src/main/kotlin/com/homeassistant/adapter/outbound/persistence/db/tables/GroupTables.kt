@@ -5,7 +5,7 @@ import org.jetbrains.exposed.sql.Table
 internal object TopicEmbeddingTable : Table("topic_embeddings") {
     val key = text("cache_key")
     val topicId = integer("topic_id").references(TopicTable.id)
-    val descriptionHash = text("description_hash")
+    val version = text("version")
     val model = text("model")
     val inputFormat = text("input_format")
     val vector = text("vector")

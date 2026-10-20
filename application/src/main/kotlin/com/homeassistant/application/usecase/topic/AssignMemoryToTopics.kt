@@ -2,6 +2,7 @@ package com.homeassistant.application.usecase.topic
 
 import com.homeassistant.application.port.input.topic.MemoryAssignmentOutcome
 import com.homeassistant.application.port.output.group.PendingTopic
+import com.homeassistant.application.port.output.group.descriptionFingerprint
 import com.homeassistant.application.port.output.topic.*
 import com.homeassistant.application.usecase.group.PrepareTopicEmbedding
 import com.homeassistant.domain.group.GroupGeometry
@@ -38,7 +39,7 @@ class AssignMemoryToTopics(
         if (topics.isEmpty()) return emptyList()
         val vector = memoryEmbeddings.prepare(memory).vector
         return topics.associateWith { topic ->
-            GroupGeometry.cosine(vector, topicEmbeddings.prepare(PendingTopic(topic.topicId, topic.description)).vector)
+            GroupGeometry.cosine(vector, topicEmbeddings.prepare(PendingTopic(topic.topicId, descriptionFingerprint(topic.description))).vector)
         }.entries.sortedByDescending { it.value }.take(candidateLimit).map { it.key }
     }
 

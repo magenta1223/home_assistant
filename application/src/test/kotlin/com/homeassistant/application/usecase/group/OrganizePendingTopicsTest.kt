@@ -92,7 +92,7 @@ class OrganizePendingTopicsTest {
         var write: (GroupChange) -> GroupWriteResult = { GroupWriteResult.Applied(listOf(10)) }
         private val generator = object : TopicEmbeddingGenerator {
             override val space = this@OrganizePendingTopicsTest.space
-            override fun generate(description: String): TopicVector { generated++; return generate.invoke(description) }
+            override fun generate(topic: PendingTopic): TopicVector { generated++; return generate.invoke(topic.version) }
         }
         private val store = object : TopicEmbeddingStore {
             override fun find(key: TopicEmbeddingKey) = cache[key]

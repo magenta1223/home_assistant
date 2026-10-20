@@ -44,6 +44,7 @@
 | 문서 | 목적 |
 |---|---|
 | [topic-assignment-outbox.md](p1/topic-assignment-outbox.md) | Memory 저장 시 Topic 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
+| [topic-centroid-acl-search.md](p1/topic-centroid-acl-search.md) | Topic을 중심 벡터와 ACL별 Memory 목록으로 바꾸고 cosine 할당과 ACL 필터 Topic 검색을 연결 |
 | [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | HOLD: ONNX 전환 재개 시 integration 경계를 함께 재평가 |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 

@@ -9,6 +9,7 @@ import com.homeassistant.llm.completion.CompletionImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import java.nio.file.Files
 import java.time.Duration
 import kotlin.io.path.writeText
@@ -27,7 +28,7 @@ internal class ClaudeCliCompletionClient(
         outputSchema: String,
         images: List<CompletionImage>,
     ): String = runInterruptible(Dispatchers.IO) {
-        val schema = Json.parseToJsonElement(outputSchema).toString()
+        val schema = cliSchema(outputSchema)
         val workingDirectory = Files.createTempDirectory("homeassistant-claude-")
         try {
             val systemPromptFile = workingDirectory.resolve("system-prompt.txt").apply { writeText(system) }
@@ -46,6 +47,12 @@ internal class ClaudeCliCompletionClient(
                 paths.sorted(Comparator.reverseOrder()).forEach(Files::deleteIfExists)
             }
         }
+    }
+
+    /** The CLI's validator cannot resolve the 2020-12 meta-schema, so the dialect declaration is dropped. */
+    private fun cliSchema(outputSchema: String): String {
+        val schema = Json.parseToJsonElement(outputSchema)
+        return (if (schema is JsonObject) JsonObject(schema - "\$schema") else schema).toString()
     }
 
     private companion object {

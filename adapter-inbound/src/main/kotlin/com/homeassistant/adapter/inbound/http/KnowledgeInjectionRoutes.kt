@@ -8,12 +8,15 @@ import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAud
 import com.homeassistant.application.port.input.memory.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.memory.MemoryProposal
+import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -110,7 +113,7 @@ internal fun Route.knowledgeInjectionRoutes(
                         source = source,
                         access = access,
                     ),
-                ),
+                ).toResponse(),
             )
         } catch (error: DuplicateSourceRecordsException) {
             call.respond(
@@ -193,4 +196,40 @@ private data class KnowledgeUsersResponse(val users: List<KnowledgeUserResponse>
 private data class KnowledgeUserResponse(
     val userId: String,
     val name: String,
+)
+
+@Serializable
+private data class KnowledgeImportResponse(
+    val sourceType: String,
+    val sourceName: String,
+    val importedRecordCount: Int,
+    val retriedRecordCount: Int,
+    val alreadyAnalyzedRecordCount: Int,
+    val visibility: MemoryVisibility,
+    val allowedUserIds: Set<String>,
+    val memoryCount: Int,
+    val memories: List<KnowledgeMemoryResponse>,
+)
+
+@Serializable
+private data class KnowledgeMemoryResponse(
+    val text: String,
+    val evidenceRefs: List<Int>,
+)
+
+private fun MemoryAnalysisResult.toResponse() = KnowledgeImportResponse(
+    sourceType = sourceType,
+    sourceName = sourceName,
+    importedRecordCount = importedRecordCount,
+    retriedRecordCount = retriedRecordCount,
+    alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
+    visibility = visibility,
+    allowedUserIds = allowedUserIds,
+    memoryCount = memoryCount,
+    memories = memories.map { it.toResponse() },
+)
+
+private fun MemoryProposal.toResponse() = KnowledgeMemoryResponse(
+    text = content,
+    evidenceRefs = evidenceIds,
 )

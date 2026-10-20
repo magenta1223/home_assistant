@@ -22,6 +22,7 @@ import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.testing.testApplication
+import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -96,6 +97,49 @@ class KnowledgeInjectionRoutesTest {
         assertEquals(MemoryVisibility.RESTRICTED, captured.access.visibility)
         assertEquals(setOf("member-1", "member-2"), captured.access.allowedUserIds)
         assertEquals("text", captured.source.source.type)
+    }
+
+    @Test
+    fun `import response keeps its JSON field names`() = testApplication {
+        application {
+            install(ContentNegotiation) { json(JsonSerializer.json) }
+            configureRoutes(
+                memoryAnalysis = RecordingMemoryAnalysis(),
+                httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
+                users = operatorRegistry(),
+            )
+        }
+
+        val response = client.post(AppConfig.ROUTE_KNOWLEDGE_IMPORT_ANALYZE) {
+            bearerAuth(API_TOKEN)
+            contentType(ContentType.Application.Json)
+            setBody(
+                """{
+                  "sourceType":"TEXT",
+                  "sourceName":"직접 입력",
+                  "isPublic":true,
+                  "text":"현관 비밀번호는 매달 바뀐다"
+                }""".trimIndent(),
+            )
+        }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            Json.parseToJsonElement(
+                """{
+                  "sourceType":"text",
+                  "sourceName":"직접 입력",
+                  "importedRecordCount":1,
+                  "retriedRecordCount":0,
+                  "alreadyAnalyzedRecordCount":0,
+                  "visibility":"PUBLIC",
+                  "allowedUserIds":[],
+                  "memoryCount":1,
+                  "memories":[{"text":"memory","evidenceRefs":[1]}]
+                }""",
+            ),
+            Json.parseToJsonElement(response.bodyAsText()),
+        )
     }
 
     @Test

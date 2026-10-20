@@ -4,7 +4,6 @@ import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryVisibility
 import com.homeassistant.domain.source.SourceDocumentDraft
-import kotlinx.serialization.Serializable
 
 data class MemoryAnalysisRequest(
     val userId: String,
@@ -12,7 +11,6 @@ data class MemoryAnalysisRequest(
     val access: MemoryAccess = MemoryAccess.PUBLIC,
 )
 
-@Serializable
 data class MemoryAnalysisResult(
     val sourceType: String,
     val sourceName: String,

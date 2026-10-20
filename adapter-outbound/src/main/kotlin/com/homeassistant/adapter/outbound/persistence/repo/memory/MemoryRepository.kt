@@ -97,7 +97,6 @@ internal class MemoryRepository(
     }
 
     private fun ensureOutbox(memoryId: Int, now: Long) {
-        MemoryIndexingOutboxRepository.enqueue(memoryId, now)
         TopicAssignmentOutboxRepository.enqueue(memoryId, now)
     }
 

@@ -1,6 +1,6 @@
 # Semantic index integration 모듈 분리
 
-- 상태: HOLD — ONNX 전환 재개 시 함께 재평가
+- 상태: DROPPED — 분리 대상인 Qdrant semantic index를 제거했다 (2026-10-20)
 - 우선순위: P1
 - 선행 작업: [onnx-embedding-runtime-migration.md](../p2/onnx-embedding-runtime-migration.md)
 

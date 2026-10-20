@@ -109,4 +109,4 @@ sequenceDiagram
 - 다른 사용자의 비공개 Memory가 Topic 검색 결과와 대화 context에서 빠지는 것은 `TopicSearcherTest`와 Memory 저장소 통합 테스트로 확인했다.
 - Linux 전체 테스트에서 powershell을 쓰는 4건 외에는 통과했다. Windows 전체 테스트와 실제 서버 확인은 남았다.
 - 기존 Topic·Group 데이터는 이전하지 않는다. 실행 전 DB를 비우고 다시 할당한다.
-- `MemorySearcher`(Qdrant 검색)는 대화에 연결되지 않았고 색인 outbox는 그대로 돈다. 제거 여부는 따로 정한다.
+- 대화에 쓰지 않게 된 `MemorySearcher`, Qdrant 색인·검색·runtime은 후속 커밋에서 제거했다. Topic 검색은 SQLite와 앱 내 전수 cosine이다.

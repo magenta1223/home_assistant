@@ -1,7 +1,6 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
-import com.homeassistant.adapter.outbound.vector.qdrant.VectorServerRuntime
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
 import com.homeassistant.application.port.input.group.OrganizePendingTopics
@@ -16,9 +15,7 @@ class DefaultApplicationServicesTest {
     @Test
     fun `starts and closes only managed HTTP application resources`() {
         val events = mutableListOf<String>()
-        val vector = RecordingVectorRuntime(events)
         val embedding = RecordingEmbeddingRuntime(events)
-        val indexing = RecordingIndexingWorker(events)
         val expiry = RecordingConversationExpiryWorker(events)
         val assignment = RecordingTopicAssignmentWorker(events)
         val codex = AutoCloseable { events += "codex.close" }
@@ -26,9 +23,7 @@ class DefaultApplicationServicesTest {
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
             organizeMemories = unusedOrganizeMemories(),
-            vectorRuntime = vector,
             embeddingRuntime = embedding,
-            indexingWorker = indexing,
             conversationExpiryWorker = expiry,
             topicAssignmentWorker = assignment,
             conversationGateway = codex,
@@ -41,17 +36,13 @@ class DefaultApplicationServicesTest {
 
         assertEquals(
             listOf(
-                "vector.start",
                 "embedding.start",
-                "indexing.start",
                 "assignment.start",
                 "expiry.start",
                 "expiry.close",
                 "assignment.close",
                 "codex.close",
-                "indexing.close",
                 "embedding.close",
-                "vector.close",
             ),
             events,
         )
@@ -61,9 +52,7 @@ class DefaultApplicationServicesTest {
     @Test
     fun `closes remaining resources when conversation expiry close fails`() {
         val events = mutableListOf<String>()
-        val vector = RecordingVectorRuntime(events)
         val embedding = RecordingEmbeddingRuntime(events)
-        val indexing = RecordingIndexingWorker(events)
         val expiry = object : ConversationExpiryWorker {
             override fun start() { events += "expiry.start" }
             override fun close() {
@@ -76,9 +65,7 @@ class DefaultApplicationServicesTest {
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
             organizeMemories = unusedOrganizeMemories(),
-            vectorRuntime = vector,
             embeddingRuntime = embedding,
-            indexingWorker = indexing,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,
         )
@@ -88,20 +75,15 @@ class DefaultApplicationServicesTest {
 
         assertEquals(
             listOf(
-                "vector.start",
                 "embedding.start",
-                "indexing.start",
                 "expiry.start",
                 "expiry.close",
                 "codex.close",
-                "indexing.close",
                 "embedding.close",
-                "vector.close",
             ),
             events,
         )
         assertFalse(embedding.isReady)
-        assertFalse(vector.isReady)
     }
 
     private fun unusedOrganizeMemories() = object : OrganizePendingMemories {
@@ -140,35 +122,6 @@ class DefaultApplicationServicesTest {
         override fun close() {
             events += "embedding.close"
             isReady = false
-        }
-    }
-
-    private class RecordingVectorRuntime(
-        private val events: MutableList<String>,
-    ) : VectorServerRuntime {
-        override var isReady: Boolean = false
-            private set
-
-        override fun start() {
-            events += "vector.start"
-            isReady = true
-        }
-
-        override fun close() {
-            events += "vector.close"
-            isReady = false
-        }
-    }
-
-    private class RecordingIndexingWorker(
-        private val events: MutableList<String>,
-    ) : IndexingWorker {
-        override fun start() {
-            events += "indexing.start"
-        }
-
-        override fun close() {
-            events += "indexing.close"
         }
     }
 

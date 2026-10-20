@@ -3,7 +3,6 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
-import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryIndexingOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.MemoryEmbeddingRepository
@@ -21,7 +20,6 @@ object RepositoryFactory {
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             canonicalMemoryBatchWriter = canonicalMemories,
-            memoryIndexingOutbox = MemoryIndexingOutboxRepository(db),
             canonicalMemories = canonicalMemories,
             topicMaintenance = topics,
             pendingTopics = groups,

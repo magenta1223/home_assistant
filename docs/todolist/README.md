@@ -45,7 +45,7 @@
 |---|---|
 | [topic-assignment-outbox.md](p1/topic-assignment-outbox.md) | Memory 저장 시 Topic 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
 | [topic-centroid-acl-search.md](p1/topic-centroid-acl-search.md) | Topic을 중심 벡터와 ACL별 Memory 목록으로 바꾸고 cosine 할당과 ACL 필터 Topic 검색을 연결 |
-| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | HOLD: ONNX 전환 재개 시 integration 경계를 함께 재평가 |
+| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | DROPPED: Qdrant semantic index 제거 (2026-10-20) |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 
 ### P2
@@ -58,6 +58,7 @@
 | [memory-analysis-outbox-pipeline.md](p2/memory-analysis-outbox-pipeline.md) | 첨부 해석·Memory 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
+| [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Topic이 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
 
 ## 제품 기능 계획
 

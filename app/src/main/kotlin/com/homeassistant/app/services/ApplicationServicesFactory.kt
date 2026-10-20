@@ -3,18 +3,15 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserAccessPolicies
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
-import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
@@ -70,16 +67,6 @@ object ApplicationServicesFactory {
             organizeTopics,
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-        val managedVectorStore = ManagedQdrantVectorStoreFactory.create(
-            baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
-            collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
-        )
-        val vectorStore = managedVectorStore.store
-        val memoryIndexWriter = SemanticMemoryIndexWriterFactory.create(textEmbedder, vectorStore)
-        val memoryIndexing = MemoryIndexingOutboxProcessor(
-            outbox = repositories.memoryIndexingOutbox,
-            indexWriter = memoryIndexWriter,
-        )
         val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)
         val accessPolicy = UserAccessPolicy { userId ->
             users.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
@@ -92,7 +79,6 @@ object ApplicationServicesFactory {
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
             accessPolicy = accessPolicy,
-            memoryIndexing = memoryIndexing,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
         val topicSearch = TopicSearcher(
@@ -139,9 +125,7 @@ object ApplicationServicesFactory {
             organizeMemories = organizeMemories,
             memoryConversation = memoryConversation,
             users = users,
-            vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,
-            indexingWorker = MemoryIndexingWorker(memoryIndexing),
             conversationExpiryWorker = conversationExpiryWorker,
             topicAssignmentWorker = MemoryTopicAssignmentWorker(organizeMemories),
             conversationGateway = conversationGateway,

@@ -1,6 +1,7 @@
 # Runtime distribution 모듈 분리
 
 - 상태: HOLD — ONNX 전환 재개 시 두 번째 실제 consumer 기준으로 재평가
+- 2026-10-20: Qdrant 색인·검색·runtime과 `setupQdrant`·`reindexMemories`를 제거했다. 아래의 Qdrant 관련 내용은 더 이상 대상이 없다.
 - 우선순위: P1
 - 선행 작업: [onnx-embedding-runtime-migration.md](../p2/onnx-embedding-runtime-migration.md)
 

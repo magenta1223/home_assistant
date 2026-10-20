@@ -1,6 +1,7 @@
 # ONNX Runtime 기반 임베딩 전환
 
 - 상태: HOLD — 실제 운영 장애 또는 측정된 비용이 생길 때 재평가
+- 2026-10-20: Qdrant 색인·검색·runtime과 `setupQdrant`·`reindexMemories`를 제거했다. 아래의 Qdrant 관련 내용은 더 이상 대상이 없다.
 - 우선순위: P2
 - 선행 작업: [managed-embedding-server.md](../done/managed-embedding-server.md)
 

@@ -23,7 +23,6 @@ internal object DatabaseFactory {
                 SourceReferenceTable,
                 SourceRecordTable,
                 SourceRecordViewerTable,
-                IndexingOutboxTable,
                 TopicAssignmentOutboxTable,
                 MemoryConversationSessionTable,
                 MemoryConversationActiveSessionTable,

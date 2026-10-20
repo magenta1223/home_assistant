@@ -1,28 +1,22 @@
 package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
-import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
-import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.Database
-import org.jetbrains.exposed.sql.deleteAll
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
-import java.time.Clock
-import java.time.Instant
-import java.time.ZoneId
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFails
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class CanonicalMemoryBatchRepositoryTest {
@@ -54,7 +48,7 @@ class CanonicalMemoryBatchRepositoryTest {
         }
 
         assertTrue(repository.getMemories(USER).isEmpty())
-        assertEquals(0L, transaction(db) { IndexingOutboxTable.selectAll().count() })
+        assertEquals(0L, transaction(db) { TopicAssignmentOutboxTable.selectAll().count() })
         assertTrue(sourceRecords.findBySource(SOURCE).all {
             it.analysisStatus == SourceRecordAnalysisStatus.PENDING
         })
@@ -85,124 +79,10 @@ class CanonicalMemoryBatchRepositoryTest {
             assertEquals(first.single().id, retried.single().id)
             assertEquals(3, repository.getMemories(USER).size)
             assertEquals(2, variants.size)
-            assertEquals(3L, transaction(db) { IndexingOutboxTable.selectAll().count() })
+            assertEquals(3L, transaction(db) { TopicAssignmentOutboxTable.selectAll().count() })
             assertTrue(sourceRecords.findBySource(SOURCE).all {
                 it.analysisStatus == SourceRecordAnalysisStatus.ANALYZED
             })
-        }
-
-    @Test
-    fun `failed indexing is durable and retried after the retry delay`() = withDatabase("outbox-retry") { db ->
-        val sourceRecords = SourceRecordRepositoryImpl(db)
-        val record = sourceRecords.saveAll(SOURCE, listOf(draft("one"))).recordsToAnalyze.single()
-        val repository = MemoryRepository(db)
-        val memory = repository.commit(
-            USER,
-            listOf(item("stable-key", proposal("memory", record.id))),
-            listOf(record.id),
-        ).single()
-        val clock = MutableClock(1_000L)
-        var shouldFail = true
-        val indexed = mutableListOf<Int>()
-        val processor = MemoryIndexingOutboxProcessor(
-            outbox = MemoryIndexingOutboxRepository(db),
-            indexWriter = { candidate ->
-                if (shouldFail) false else true.also { indexed += candidate.id }
-            },
-            clock = clock,
-            retryDelayMillis = 100,
-        )
-
-        assertEquals(1, processor.processAvailable().failed)
-        assertEquals(0, processor.processAvailable().completed)
-        shouldFail = false
-        clock.millis = 1_101L
-
-        assertEquals(1, processor.processAvailable().completed)
-        assertEquals(listOf(memory.id), indexed)
-        transaction(db) {
-            val row = IndexingOutboxTable.selectAll().single()
-            assertEquals("COMPLETED", row[IndexingOutboxTable.status])
-            assertEquals(2, row[IndexingOutboxTable.attempts])
-            assertEquals(null, row[IndexingOutboxTable.lastError])
-        }
-    }
-
-    @Test
-    fun `stale worker results cannot overwrite reclaimed or reindexed attempts`() =
-        withDatabase("outbox-attempt-fencing") { db ->
-            val sourceRecords = SourceRecordRepositoryImpl(db)
-            val record = sourceRecords.saveAll(SOURCE, listOf(draft("one"))).recordsToAnalyze.single()
-            MemoryRepository(db).commit(
-                USER,
-                listOf(item("stable-key", proposal("memory", record.id))),
-                listOf(record.id),
-            )
-            val outbox = MemoryIndexingOutboxRepository(db)
-            val first = outbox.claimReady(1, now = 100, retryBefore = 100, staleProcessingBefore = 0).single()
-            val reclaimed = outbox.claimReady(
-                1,
-                now = 1_000,
-                retryBefore = 1_000,
-                staleProcessingBefore = 500,
-            ).single()
-            assertEquals(1, first.attempt)
-            assertEquals(2, reclaimed.attempt)
-
-            assertFalse(outbox.markCompleted(first.outboxId, first.attempt, now = 1_001))
-            assertFalse(outbox.markFailed(first.outboxId, first.attempt, "stale failure", now = 1_002))
-            assertOutboxState(db, "PROCESSING", attempts = 2, lastError = null)
-
-            assertTrue(outbox.markCompleted(reclaimed.outboxId, reclaimed.attempt, now = 1_003))
-            assertOutboxState(db, "COMPLETED", attempts = 2, lastError = null)
-
-            outbox.enqueueAll(now = 2_000)
-            assertOutboxState(db, "PENDING", attempts = 2, lastError = null)
-            assertFalse(outbox.markFailed(reclaimed.outboxId, reclaimed.attempt, "pre-reindex failure", now = 2_001))
-            assertOutboxState(db, "PENDING", attempts = 2, lastError = null)
-
-            val reindexed = outbox.claimReady(
-                1,
-                now = 2_002,
-                retryBefore = 2_002,
-                staleProcessingBefore = 1_000,
-            ).single()
-            assertEquals(3, reindexed.attempt)
-            assertFalse(outbox.markCompleted(reclaimed.outboxId, reclaimed.attempt, now = 2_003))
-            assertOutboxState(db, "PROCESSING", attempts = 3, lastError = null)
-            assertTrue(outbox.markCompleted(reindexed.outboxId, reindexed.attempt, now = 2_004))
-            assertOutboxState(db, "COMPLETED", attempts = 3, lastError = null)
-        }
-
-    @Test
-    fun `full reindex recreates missing outbox rows and visits every canonical memory`() =
-        withDatabase("outbox-reindex") { db ->
-            val sourceRecords = SourceRecordRepositoryImpl(db)
-            val records = sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).recordsToAnalyze
-            val repository = MemoryRepository(db)
-            val memories = repository.commit(
-                USER,
-                listOf(
-                    item("key-1", proposal("one", records[0].id)),
-                    item("key-2", proposal("two", records[1].id)),
-                ),
-                records.map { it.id },
-            )
-            transaction(db) { IndexingOutboxTable.deleteAll() }
-            val indexed = mutableListOf<Int>()
-            val processor = MemoryIndexingOutboxProcessor(
-                outbox = MemoryIndexingOutboxRepository(db),
-                indexWriter = { memory -> true.also { indexed += memory.id } },
-                clock = MutableClock(2_000L),
-                retryDelayMillis = 0,
-            )
-
-            val result = processor.reindexAll()
-
-            assertEquals(2, result.completed)
-            assertEquals(0, result.failed)
-            assertEquals(memories.map { it.id }, indexed)
-            assertEquals(2L, transaction(db) { IndexingOutboxTable.selectAll().count() })
         }
 
     private fun item(key: String, proposal: MemoryProposal) = IdempotentMemoryProposal(key, proposal)
@@ -214,18 +94,6 @@ class CanonicalMemoryBatchRepositoryTest {
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
-    private fun assertOutboxState(
-        db: Database,
-        status: String,
-        attempts: Int,
-        lastError: String?,
-    ) = transaction(db) {
-        val row = IndexingOutboxTable.selectAll().single()
-        assertEquals(status, row[IndexingOutboxTable.status])
-        assertEquals(attempts, row[IndexingOutboxTable.attempts])
-        assertEquals(lastError, row[IndexingOutboxTable.lastError])
-    }
-
     private inline fun withDatabase(prefix: String, block: (Database) -> Unit) {
         val path = Files.createTempFile(prefix, ".db")
         try {
@@ -233,13 +101,6 @@ class CanonicalMemoryBatchRepositoryTest {
         } finally {
             Files.deleteIfExists(path)
         }
-    }
-
-    private class MutableClock(var millis: Long) : Clock() {
-        override fun getZone(): ZoneId = ZoneId.of("UTC")
-        override fun withZone(zone: ZoneId): Clock = this
-        override fun instant(): Instant = Instant.ofEpochMilli(millis)
-        override fun millis(): Long = millis
     }
 
     private companion object {

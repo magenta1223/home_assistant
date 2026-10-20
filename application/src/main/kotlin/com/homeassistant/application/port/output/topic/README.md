@@ -1,8 +1,9 @@
 # Topic maintenance storage contract
 
-`TopicMaintenanceStore` is a trusted internal ingestion/maintenance port. A Topic's centroid and slices
-cover memories of every access, so its reads must not be used for user-facing retrieval, answer context,
-or an external mutation API. Importing a restricted source may legitimately exclude the importing user
+`TopicReader` reads centroids and slices; `TopicMaintenanceStore` adds the trusted ingestion writes.
+A Topic's centroid and slices cover memories of every access, so a user-facing caller (Topic search) must
+keep only the slices the requester can read before anything leaves the use case. Writes are never an
+external mutation API. Importing a restricted source may legitimately exclude the importing user
 from its audience; this internal boundary does not infer authorization from that user.
 
 A Topic stores the unnormalized sum of its memory vectors and their count. Its direction is the
@@ -22,3 +23,4 @@ The Topic's memory count is also its vector version for Groups.
 |---|---|
 | `TopicAssignmentOutbox` | Durable assignment queue written with each memory; claims fence stale workers, failed rows stop after the attempt limit, and already-assigned memories complete on claim |
 | `MemoryEmbeddingGenerator` / `MemoryEmbeddingStore` | Normalized memory vectors; immutable per memory, content hash, model and format |
+| `QueryEmbeddingGenerator` | Question vector from the memory embedding model with the `query: ` prefix, compared with centroids |

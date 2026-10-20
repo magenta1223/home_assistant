@@ -40,7 +40,7 @@ class GroupRepositoryTest {
             listOf(record.id))
         val topics = TopicRepository(db)
         val ids = committed.map { topics.create(it.id, TopicCentroid.of(vector)) }.toSet()
-        val beforeTopics = topics.readForMaintenance(ids)
+        val beforeTopics = topics.read(ids)
         val beforeMemories = memories.getMemories(user)
         val beforeSources = sources.findBySource(source)
         val first = service(db, 2).execute(3)
@@ -56,7 +56,7 @@ class GroupRepositoryTest {
         assertEquals(ids, snapshot.groups.flatMap { it.group.topicIds }.toSet())
         assertEquals(ids.size, snapshot.groups.sumOf { it.group.topicIds.size })
         assertTrue(snapshot.groups.all { it.group.topicIds.size <= 2 })
-        assertEquals(beforeTopics, topics.readForMaintenance(ids))
+        assertEquals(beforeTopics, topics.read(ids))
         assertEquals(beforeMemories, memories.getMemories(user))
         assertEquals(beforeSources, sources.findBySource(source))
     }

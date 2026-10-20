@@ -46,7 +46,7 @@ class MemoryTopicAssignmentTest {
         val result = service(db, vectors).execute(10)
 
         assertEquals(MemoryAssignmentOutcome.Assigned(boilerTopic, created = false), result.memories.single().outcome)
-        val stored = topics.readForMaintenance(listOf(boilerTopic, housingTopic)).associateBy { it.id }
+        val stored = topics.read(listOf(boilerTopic, housingTopic)).associateBy { it.id }
         val access = MemoryAccess.restricted(listOf(user))
         assertEquals(mapOf(access to listOf(boiler, repair)), stored.getValue(boilerTopic).slices)
         assertEquals(mapOf(access to listOf(rent)), stored.getValue(housingTopic).slices)

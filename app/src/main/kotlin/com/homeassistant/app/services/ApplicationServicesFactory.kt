@@ -10,11 +10,9 @@ import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserAccessPolicies
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexSearcherFactory
 import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
-import com.homeassistant.application.usecase.memory.search.MemorySearcher
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
 import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
@@ -22,6 +20,7 @@ import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemor
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
+import com.homeassistant.adapter.outbound.embedding.memory.QueryEmbeddingAdapter
 import com.homeassistant.application.usecase.topic.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
@@ -81,7 +80,6 @@ object ApplicationServicesFactory {
             outbox = repositories.memoryIndexingOutbox,
             indexWriter = memoryIndexWriter,
         )
-        val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)
         val accessPolicy = UserAccessPolicy { userId ->
             users.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
@@ -97,10 +95,11 @@ object ApplicationServicesFactory {
             memoryIndexing = memoryIndexing,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
-        val memorySearcherImpl = MemorySearcher(
+        val topicSearch = TopicSearcher(
+            topics = repositories.topicMaintenance,
+            queries = QueryEmbeddingAdapter(textEmbedder),
             memories = repositories.canonicalMemories,
             accessPolicy = accessPolicy,
-            searcher = semanticMemoryIndexSearcher,
         )
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
@@ -122,7 +121,7 @@ object ApplicationServicesFactory {
             )
             HandleMemoryConversation(
                 sessions = repositories.memoryConversationSessions,
-                contextProvider = MemoryConversationContextProvider(memorySearcherImpl),
+                contextProvider = MemoryConversationContextProvider(topicSearch),
                 conversationGateway = it,
             )
         }

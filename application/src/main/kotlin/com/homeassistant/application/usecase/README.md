@@ -10,10 +10,10 @@ payload 형식은 여기에서 직접 다루지 않는다.
 |---|---|---|
 | `identity` | 등록된 application user 목록을 제공하고 인가한다. | [identity](identity/README.md) |
 | `group` | 저장된 Topic을 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](group/README.md) |
-| `topic` | Memory를 LM 판단으로 하나 이상의 Topic에 배정한 뒤 Group 정리까지 이어간다. 명시적 내부 호출 전용이다. | [topic](topic/README.md) |
+| `topic` | Memory를 cosine으로 Topic 하나에 배정한 뒤 Group 정리까지 이어가고, 대화용 Topic 검색을 ACL slice로 거른다. | [topic](topic/README.md) |
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
 | `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |
-| `memory/search` | 사용자에게 보이는 memory만 semantic search한다. | [search](memory/search/README.md) |
+| `memory/search` | 사용자에게 보이는 memory만 semantic search한다. 지금은 앱에서 연결하지 않는다. | [search](memory/search/README.md) |
 | `memory/write` | proposal을 원자적으로 저장하고 indexing outbox를 처리한다. | [write](memory/write/README.md) |
 
 ## 전체 memory 쓰기 흐름

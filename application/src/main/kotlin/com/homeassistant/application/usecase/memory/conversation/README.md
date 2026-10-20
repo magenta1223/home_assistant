@@ -27,7 +27,7 @@ sequenceDiagram
             Conversation->>Gateway: end(conversationId)
         end
         Conversation->>Context: context(userId, question)
-        alt direct memory match 없음
+        alt 읽을 수 있는 Topic 없음
             Conversation->>Sessions: markAnswerReady(고정 no-match 답변)
             Conversation-->>HTTP: AnswerReady
         else context 존재
@@ -75,7 +75,8 @@ sequenceDiagram
 - 10분 idle lease가 지난 conversation은 즉시 비활성화하고 provider 자원을 해제하며 다시 재개하지 않는다.
 - 같은 request key는 다시 conversation provider에 보내지 않는다.
 - HTTP answer를 `ANSWER_READY`로 저장하고 동일 request 재처리 시 기존 answer를 반환한다. 전송 완료 callback은 없다.
-- memory match가 없으면 conversation provider를 호출하지 않고 고정된 no-match 답변을 반환한다.
+- context는 `SearchTopics`로 찾은 Topic마다 한 블록이며, 사용자가 읽을 수 있는 Memory만 담는다(최대 8,000자).
+- 읽을 수 있는 Topic이 없으면 conversation provider를 호출하지 않고 고정된 no-match 답변을 반환한다.
 - prompt의 memory reference는 신뢰하지 않는 데이터로 감싸며 그 안의 지시를 실행하지 않는다.
 - memory conversation use case는 session 상태에 따라 conversation 생성·재사용·종료 시점을 결정한다.
 - `ConversationGateway.begin()`은 prompt 없이 ID를 만들고, 질문 prompt는

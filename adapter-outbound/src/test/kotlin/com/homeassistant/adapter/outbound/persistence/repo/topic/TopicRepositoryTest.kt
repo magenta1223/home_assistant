@@ -44,7 +44,7 @@ class TopicRepositoryTest {
         assertTrue(repository.join(id, other, second, second + east))
 
         val restarted = TopicRepository(DatabaseFactory.init(path))
-        val topic = restarted.readForMaintenance(listOf(id)).single()
+        val topic = restarted.read(listOf(id)).single()
         assertEquals(mapOf(MemoryAccess.PUBLIC to listOf(public), ab to listOf(shared, other)), topic.slices)
         assertEquals(second + east, topic.centroid)
         assertEquals(mapOf(id to second + east), restarted.centroids())
@@ -76,7 +76,7 @@ class TopicRepositoryTest {
         assertFailsWith<IllegalArgumentException> { repository.create(999, TopicCentroid.of(north)) }
         assertEquals(mapOf(id to start), repository.centroids())
         assertEquals(1L, transaction(db) { TopicTable.selectAll().count() })
-        assertTrue(repository.readForMaintenance(emptyList()).isEmpty())
+        assertTrue(repository.read(emptyList()).isEmpty())
     }
 
     private fun createMemory(db: Database, name: String, access: MemoryAccess = MemoryAccess.PUBLIC): Int {

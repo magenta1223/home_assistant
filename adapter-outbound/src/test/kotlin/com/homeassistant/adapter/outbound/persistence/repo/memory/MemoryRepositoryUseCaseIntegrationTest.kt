@@ -8,6 +8,7 @@ import com.homeassistant.application.port.output.memory.search.MemoryIndexSearch
 import com.homeassistant.application.port.output.memory.search.SemanticMemoryIndexSearcher
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
 import com.homeassistant.application.usecase.memory.search.MemorySearcher
+import com.homeassistant.application.usecase.topic.TopicSearcher
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.domain.group.TopicVector
 import com.homeassistant.domain.identity.UserAccessPolicy
@@ -57,14 +58,33 @@ class MemoryRepositoryUseCaseIntegrationTest {
                 searchResult.matches.map { it.memoryId },
             )
             assertFalse(otherRestrictedMemory.id in index.lastScope.allowedMemoryIds.orEmpty())
+        }
+    }
 
-            val conversationContext = MemoryConversationContextProvider(searcher).context(
-                member,
-                "question",
+    @Test
+    fun `conversation context reads only the topic slices the user can see`() {
+        withRepositories("topic-search-integration") { stores ->
+            val east = TopicVector.normalized(listOf(1.0, 0.0))
+            val publicMemory = stores.saveMemory(member, "public", MemoryAccess.PUBLIC)
+            val otherRestrictedMemory = stores.saveMemory(
+                UserId("member-2"),
+                "other-restricted",
+                MemoryAccess.restricted(listOf(UserId("member-2"))),
             )
+            val hiddenMemory = stores.saveMemory(UserId("member-2"), "hidden", MemoryAccess.restricted(listOf(UserId("member-2"))))
+            val first = TopicCentroid.of(east)
+            val mixed = stores.topicMaintenance.create(publicMemory.id, first)
+            assertTrue(stores.topicMaintenance.join(mixed, otherRestrictedMemory.id, first, first + east))
+            stores.topicMaintenance.create(hiddenMemory.id, TopicCentroid.of(east))
+            val search = TopicSearcher(stores.topicMaintenance, { east }, stores.canonicalMemories, UserAccessPolicy { it == member })
+
+            val conversationContext = MemoryConversationContextProvider(search).context(member, "question")
 
             assertTrue(conversationContext.hasMatches)
             assertTrue(conversationContext.reference.contains(publicMemory.content))
+            assertFalse(conversationContext.reference.contains(otherRestrictedMemory.content))
+            assertFalse(conversationContext.reference.contains(hiddenMemory.content))
+            assertEquals(1, conversationContext.reference.lines().count { it.startsWith("## Topic") })
         }
     }
 
@@ -75,7 +95,7 @@ class MemoryRepositoryUseCaseIntegrationTest {
             val memory = stores.saveMemory(member, "incoming", access)
             val before = stores.canonicalMemories.getMemories(UserId("other"))
             val topicId = stores.topicMaintenance.create(memory.id, TopicCentroid.of(TopicVector.normalized(listOf(1.0, 0.0))))
-            assertEquals(mapOf(access to listOf(memory.id)), stores.topicMaintenance.readForMaintenance(listOf(topicId)).single().slices)
+            assertEquals(mapOf(access to listOf(memory.id)), stores.topicMaintenance.read(listOf(topicId)).single().slices)
             assertEquals(before, stores.canonicalMemories.getMemories(UserId("other")))
         }
     }

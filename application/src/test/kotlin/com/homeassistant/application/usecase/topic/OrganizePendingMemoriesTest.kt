@@ -124,7 +124,7 @@ class OrganizePendingMemoriesTest {
         })
         private val store = object : TopicMaintenanceStore {
             override fun centroids() = centroids.toMap()
-            override fun readForMaintenance(topicIds: Collection<Int>) = topicIds.filter { it in centroids }
+            override fun read(topicIds: Collection<Int>) = topicIds.filter { it in centroids }
                 .map { Topic(it, centroids.getValue(it), mapOf(MemoryAccess.PUBLIC to members.getValue(it).toList())) }
             override fun join(topicId: Int, memoryId: Int, expected: TopicCentroid, updated: TopicCentroid): Boolean {
                 if (memoryId in losesJoin || centroids[topicId] != expected) return false

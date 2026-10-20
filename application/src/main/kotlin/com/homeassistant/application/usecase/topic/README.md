@@ -52,8 +52,34 @@ sequenceDiagram
   실패한 Memory는 재시도 지연(기본 60초) 뒤 다시 claim되며, 최대 시도(기본 5회)를 넘으면 그 Memory만 멈춘다.
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 벡터 준비·배치 단계의 오류는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
-- Topic 중심은 ACL이 다른 Memory를 함께 담는 trusted internal 메타데이터이며 사용자 검색·응답에 아직 연결하지 않는다.
+- Topic 중심은 ACL이 다른 Memory를 함께 담는다. 검색은 중심으로 순위만 정하고, 사용자에게는 읽을 수 있는 slice의 Memory만 넘긴다.
 - 할당은 매번 전체 Topic 중심을 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Topic 분할, Topic·Group 병합과 kNN 링크는 [후속 작업](../../../../../../../../../docs/todolist/p1/topic-group-merge-and-knn-links.md)이다.
+
+## Topic 검색
+
+`TopicSearcher`(`SearchTopics`)는 대화 context가 쓰는 검색이다. 검색 단위는 Memory가 아니라 Topic이다.
+
+```mermaid
+sequenceDiagram
+    actor Caller as 대화 context
+    participant Search as TopicSearcher
+    participant Query as QueryEmbeddingGenerator
+    participant Topics as TopicReader
+    participant Memories as MemoryReader
+    Caller->>Search: 1. search(userId, question)
+    Search->>Search: 2. 사용자 인가 확인
+    Search->>Topics: 3. 모든 Topic 중심
+    Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
+    Search->>Memories: 5. 사용자가 읽을 수 있는 Memory
+    loop cosine 높은 순, Topic 3개가 찰 때까지
+        Search->>Topics: 6. Topic의 slice
+        Search->>Search: 7. 읽을 수 있는 slice ∩ 5의 Memory, 비면 건너뜀
+    end
+    Search-->>Caller: 8. Topic별 Memory(최신순)
+```
+
+- Topic 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Memory가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+- 최소 점수는 아직 두지 않는다. Group 단위 검색은 하지 않는다.
 
 검증은 fake port application 테스트와 임시 SQLite 통합 테스트를 사용한다. 실제 임베딩 서버는 호출하지 않는다.

@@ -18,7 +18,7 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
         TopicTable.selectAll().orderBy(TopicTable.id).associate { it[TopicTable.id] to centroid(it) }
     }
 
-    override fun readForMaintenance(topicIds: Collection<Int>): List<Topic> = transaction(db) {
+    override fun read(topicIds: Collection<Int>): List<Topic> = transaction(db) {
         if (topicIds.isEmpty()) return@transaction emptyList()
         val members = TopicMembershipTable.selectAll()
             .where { TopicMembershipTable.topicId inList topicIds }

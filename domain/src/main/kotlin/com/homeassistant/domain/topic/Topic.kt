@@ -1,5 +1,6 @@
 package com.homeassistant.domain.topic
 
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
 
 /**
@@ -19,4 +20,7 @@ data class Topic(
         require(memoryIds.distinct().size == memoryIds.size) { "a memory belongs to one slice" }
         require(memoryIds.size == centroid.count) { "centroid must cover every memory" }
     }
+
+    /** Memories in the slices [requester] can read; empty means the Topic is hidden from them. */
+    fun memoryIdsReadableBy(requester: UserId): List<Int> = slices.filterKeys { it.isVisibleTo(requester) }.values.flatten()
 }

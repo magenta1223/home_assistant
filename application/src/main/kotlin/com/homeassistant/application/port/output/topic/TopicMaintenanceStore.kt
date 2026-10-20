@@ -4,16 +4,19 @@ import com.homeassistant.domain.topic.Topic
 import com.homeassistant.domain.topic.TopicCentroid
 
 /**
- * Trusted ingestion/maintenance only. Centroids and slices cover memories of every access, so reads
- * must never be used as user-facing projections or answer context. This port does not grant end users mutation access.
+ * Centroids and slices cover memories of every access. A user-facing caller must keep only the
+ * slices the requester can read before anything leaves the use case.
  */
-interface TopicMaintenanceStore {
-    /** Every Topic's centroid, for placing a new memory. */
+interface TopicReader {
+    /** Every Topic's centroid. */
     fun centroids(): Map<Int, TopicCentroid>
 
     /** Slices group members by each memory's current access. */
-    fun readForMaintenance(topicIds: Collection<Int>): List<Topic>
+    fun read(topicIds: Collection<Int>): List<Topic>
+}
 
+/** Trusted ingestion/maintenance writes. This port does not grant end users mutation access. */
+interface TopicMaintenanceStore : TopicReader {
     /**
      * Adds the memory and replaces the centroid with [updated], only while the Topic still has
      * [expected]'s memory count. Returns false when another join changed the Topic first.

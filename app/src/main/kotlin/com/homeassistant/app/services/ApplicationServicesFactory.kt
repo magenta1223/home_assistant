@@ -63,7 +63,7 @@ object ApplicationServicesFactory {
             repositories.topicAssignmentOutbox,
             AssignMemoryToTopics(
                 repositories.topicCatalog,
-                PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel), repositories.memoryEmbeddings),
+                PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime), repositories.memoryEmbeddings),
                 topicEmbeddings,
                 TopicAssignmentGeneratorFactory.create(completionClient),
                 repositories.topicMaintenance,

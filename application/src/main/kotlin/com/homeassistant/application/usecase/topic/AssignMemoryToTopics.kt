@@ -20,6 +20,9 @@ class AssignMemoryToTopics(
 ) {
     init { require(candidateLimit > 0) }
 
+    /** True when both the memory embedding and the assignment model can be called now. */
+    fun isReady(): Boolean = memoryEmbeddings.isAvailable() && generator.isAvailable()
+
     fun execute(memory: PendingMemory): MemoryAssignmentOutcome.Assigned {
         val candidates = nearestTopics(memory)
         val decision = generator.assign(TopicAssignmentRequest(memory, candidates))

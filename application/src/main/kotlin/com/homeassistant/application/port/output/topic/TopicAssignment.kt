@@ -30,6 +30,8 @@ data class TopicAssignmentDecision(val joins: List<TopicJoin>, val creations: Li
 }
 
 /** Decides which candidate Topics a memory belongs to and which new Topics it needs. */
-fun interface TopicAssignmentGenerator {
+interface TopicAssignmentGenerator {
+    /** True when [assign] can reach the model backend now. */
+    fun isAvailable(): Boolean
     fun assign(request: TopicAssignmentRequest): TopicAssignmentDecision
 }

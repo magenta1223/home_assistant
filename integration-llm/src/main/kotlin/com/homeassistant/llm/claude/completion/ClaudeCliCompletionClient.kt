@@ -1,5 +1,6 @@
 package com.homeassistant.llm.claude.completion
 
+import com.homeassistant.llm.claude.cli.ClaudeAvailability
 import com.homeassistant.llm.claude.cli.ClaudeCommandLine
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
 import com.homeassistant.llm.claude.cli.ClaudeStreamJson
@@ -22,6 +23,8 @@ internal class ClaudeCliCompletionClient(
     private val timeout: Duration = DEFAULT_TIMEOUT,
     private val runner: ClaudeProcessRunner = SystemClaudeProcessRunner,
 ) : CompletionClient {
+    override fun isAvailable(): Boolean = ClaudeAvailability.probe(executable)
+
     override suspend fun complete(
         system: String,
         userMessage: String,

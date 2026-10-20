@@ -67,6 +67,16 @@ class OrganizePendingMemoriesTest {
         assertEquals(Claim(2, 1_000_000L - 60_000L, 1_000_000L - 600_000L, 5), fixture.claims.single())
     }
 
+    @Test fun `readiness comes from the assignment services`() {
+        val fixture = Fixture()
+        assertTrue(fixture.service.isReady())
+        fixture.modelReady = false
+        assertFalse(fixture.service.isReady())
+        fixture.modelReady = true
+        fixture.embeddingReady = false
+        assertFalse(fixture.service.isReady())
+    }
+
     @Test fun `queuing unassigned memories is delegated to the outbox`() {
         val fixture = Fixture()
         assertEquals(3, fixture.service.enqueueUnassigned())
@@ -98,11 +108,14 @@ class OrganizePendingMemoriesTest {
         var embedded = 0
         val outboxMarks = mutableListOf<String>()
         val claims = mutableListOf<Claim>()
+        var embeddingReady = true
+        var modelReady = true
 
         private fun embed(text: String): TopicVector { embedded++; return vectors[text] ?: east }
         private val memoryCache = mutableMapOf<MemoryEmbeddingKey, MemoryEmbedding>()
         private val memoryEmbeddings = PrepareMemoryEmbedding(object : MemoryEmbeddingGenerator {
             override val space = this@OrganizePendingMemoriesTest.space
+            override fun isAvailable() = embeddingReady
             override fun generate(content: String) = embed(content)
         }, object : MemoryEmbeddingStore {
             override fun find(key: MemoryEmbeddingKey) = memoryCache[key]
@@ -144,7 +157,10 @@ class OrganizePendingMemoriesTest {
                     outboxMarks.add("failed:$outboxId:$expectedAttempt")
                 override fun enqueueUnassigned(now: Long) = 3
             },
-            AssignMemoryToTopics({ topics }, memoryEmbeddings, topicEmbeddings, { decide(it) }, store, candidateLimit),
+            AssignMemoryToTopics({ topics }, memoryEmbeddings, topicEmbeddings, object : TopicAssignmentGenerator {
+                override fun isAvailable() = modelReady
+                override fun assign(request: TopicAssignmentRequest) = decide(request)
+            }, store, candidateLimit),
             RefreshGroupedTopicEmbeddings(groupReader, groupWriter, topicEmbeddings),
             OrganizePendingTopics { order.add("groups"); GroupOrganizationResult.Completed(emptyList()) },
             Clock.fixed(Instant.ofEpochMilli(1_000_000L), ZoneOffset.UTC),

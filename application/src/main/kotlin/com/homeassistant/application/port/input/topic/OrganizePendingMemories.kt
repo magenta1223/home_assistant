@@ -5,6 +5,9 @@ import com.homeassistant.application.port.input.group.GroupRefreshOutcome
 
 /** Assigns queued Memories to one or more Topics, then organizes Topics into Groups. */
 interface OrganizePendingMemories {
+    /** True when the services assignment calls are available; a caller skips [execute] otherwise. */
+    fun isReady(): Boolean
+
     /** Processes up to [limit] ready Topic-assignment work items, then organizes Groups. */
     fun execute(limit: Int): MemoryOrganizationResult
 

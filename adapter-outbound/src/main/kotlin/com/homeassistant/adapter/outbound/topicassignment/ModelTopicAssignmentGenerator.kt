@@ -12,6 +12,8 @@ import kotlinx.serialization.decodeFromString
  * maintenance call, so the single completion runs to the end on the caller's thread.
  */
 internal class ModelTopicAssignmentGenerator(private val client: CompletionClient) : TopicAssignmentGenerator {
+    override fun isAvailable(): Boolean = client.isAvailable()
+
     override fun assign(request: TopicAssignmentRequest): TopicAssignmentDecision = runBlocking {
         val response = client.complete(SYSTEM_PROMPT, render(request), OUTPUT_SCHEMA)
         JsonSerializer.json.decodeFromString<AssignmentResponse>(response).toDecision()

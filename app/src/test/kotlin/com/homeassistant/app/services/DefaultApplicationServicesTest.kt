@@ -163,6 +163,7 @@ class DefaultApplicationServicesTest {
     }
 
     private fun unusedOrganizeMemories() = object : OrganizePendingMemories {
+        override fun isReady() = error("must only run on explicit invocation")
         override fun execute(limit: Int) = error("must only run on explicit invocation")
         override fun enqueueUnassigned() = error("must only run on explicit invocation")
     }

@@ -27,6 +27,8 @@ class OrganizePendingMemoriesService(
         require(maxAttempts > 0) { "maxAttempts must be positive" }
     }
 
+    override fun isReady(): Boolean = assigner.isReady()
+
     override fun execute(limit: Int): MemoryOrganizationResult {
         require(limit > 0) { "limit must be positive" }
         val now = clock.millis()

@@ -220,6 +220,8 @@ class MemoryExtractorTest {
     ) : CompletionClient {
         val calls = mutableListOf<Call>()
 
+        override fun isAvailable() = true
+
         override suspend fun complete(
             system: String,
             userMessage: String,
@@ -240,6 +242,8 @@ class MemoryExtractorTest {
         private val block: suspend (String, String, String) -> String,
     ) : CompletionClient {
         val calls = mutableListOf<Call>()
+
+        override fun isAvailable() = true
 
         override suspend fun complete(
             system: String,

@@ -18,6 +18,8 @@ data class MemoryEmbedding(val key: MemoryEmbeddingKey, val vector: TopicVector)
 
 interface MemoryEmbeddingGenerator {
     val space: EmbeddingSpace
+    /** True when [generate] can reach the embedding service now. */
+    fun isAvailable(): Boolean
     fun generate(content: String): TopicVector
 }
 

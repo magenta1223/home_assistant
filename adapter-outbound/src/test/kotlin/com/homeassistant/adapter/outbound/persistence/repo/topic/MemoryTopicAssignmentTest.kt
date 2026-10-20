@@ -106,6 +106,7 @@ class MemoryTopicAssignmentTest {
         val groups = GroupRepository(db)
         val memoryEmbeddings = PrepareMemoryEmbedding(object : MemoryEmbeddingGenerator {
             override val space = this@MemoryTopicAssignmentTest.space
+            override fun isAvailable() = true
             override fun generate(content: String) = east
         }, MemoryEmbeddingRepository(db))
         val topicEmbeddings = PrepareTopicEmbedding(object : TopicEmbeddingGenerator {
@@ -115,7 +116,10 @@ class MemoryTopicAssignmentTest {
         val settings = GroupPolicySettings()
         return OrganizePendingMemoriesService(
             TopicAssignmentOutboxRepository(db),
-            AssignMemoryToTopics(topics, memoryEmbeddings, topicEmbeddings, decide, store),
+            AssignMemoryToTopics(topics, memoryEmbeddings, topicEmbeddings, object : TopicAssignmentGenerator {
+                override fun isAvailable() = true
+                override fun assign(request: TopicAssignmentRequest) = decide(request)
+            }, store),
             RefreshGroupedTopicEmbeddings(groups, groups, topicEmbeddings),
             OrganizePendingTopicsService(groups, OrganizeTopic(groups, groups, topicEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)))),

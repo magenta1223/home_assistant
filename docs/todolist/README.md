@@ -43,6 +43,7 @@
 
 | 문서 | 목적 |
 |---|---|
+| [topic-assignment-outbox.md](p1/topic-assignment-outbox.md) | Memory 저장 시 Topic 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
 | [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | HOLD: ONNX 전환 재개 시 integration 경계를 함께 재평가 |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 
@@ -51,6 +52,7 @@
 | 문서 | 목적 |
 |---|---|
 | [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application의 serialization 결합과 library 모듈의 concrete logging binding을 정리 |
+| [memory-analysis-outbox-pipeline.md](p2/memory-analysis-outbox-pipeline.md) | 첨부 해석·Memory 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
 

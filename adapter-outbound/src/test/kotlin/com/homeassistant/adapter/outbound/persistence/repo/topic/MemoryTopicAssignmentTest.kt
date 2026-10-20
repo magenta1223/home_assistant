@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.topic
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
+import com.homeassistant.adapter.outbound.persistence.db.tables.TopicAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.TopicEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
@@ -18,6 +19,8 @@ import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.Database
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import kotlin.test.*
 
@@ -56,21 +59,21 @@ class MemoryTopicAssignmentTest {
         assertTrue(GroupRepository(db).snapshot().staleTopics.isEmpty())
 
         val restarted = DatabaseFactory.init(path)
-        assertTrue(TopicRepository(restarted).pending(10).isEmpty())
+        assertTrue(service(restarted) { error("nothing is queued") }.execute(10).memories.isEmpty())
     }
 
-    @Test fun `a failed write leaves the memory pending and the retry creates the topic once`() = withDatabase { db, _ ->
-        seedMemories(db, "first", "화분 물주기")
+    @Test fun `a failed write records the attempt and the retry creates the topic once`() = withDatabase { db, _ ->
+        val (memory) = seedMemories(db, "first", "화분 물주기")
         val decision = TopicAssignmentDecision(emptyList(), listOf(NewTopic("식물 관리", "물주기")))
         val failing = service(db, store = object : TopicMaintenanceStore by TopicRepository(db) {
             override fun apply(batch: TopicWriteBatch): TopicWriteResult = error("disk full")
         }) { decision }
         assertIs<MemoryAssignmentOutcome.Failed>(failing.execute(10).memories.single().outcome)
-        assertEquals(1, TopicRepository(db).pending(10).size)
+        assertEquals(OutboxRow("FAILED", 1, "disk full"), outboxRow(db, memory))
 
         service(db) { decision }.execute(10)
         assertEquals(listOf("식물 관리"), TopicRepository(db).topics().map { it.description })
-        assertTrue(TopicRepository(db).pending(10).isEmpty())
+        assertEquals(OutboxRow("COMPLETED", 2, null), outboxRow(db, memory))
     }
 
     @Test fun `description update for a missing topic rolls back the whole batch`() = withDatabase { db, _ ->
@@ -111,12 +114,21 @@ class MemoryTopicAssignmentTest {
         }, TopicEmbeddingRepository(db))
         val settings = GroupPolicySettings()
         return OrganizePendingMemoriesService(
-            topics,
+            TopicAssignmentOutboxRepository(db),
             AssignMemoryToTopics(topics, memoryEmbeddings, topicEmbeddings, decide, store),
             RefreshGroupedTopicEmbeddings(groups, groups, topicEmbeddings),
             OrganizePendingTopicsService(groups, OrganizeTopic(groups, groups, topicEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)))),
+            retryDelayMillis = 0,
         )
+    }
+
+    private data class OutboxRow(val status: String, val attempts: Int, val lastError: String?)
+
+    private fun outboxRow(db: Database, memoryId: Int): OutboxRow? = transaction(db) {
+        TopicAssignmentOutboxTable.selectAll().where { TopicAssignmentOutboxTable.memoryId eq memoryId }.singleOrNull()?.let {
+            OutboxRow(it[TopicAssignmentOutboxTable.status], it[TopicAssignmentOutboxTable.attempts], it[TopicAssignmentOutboxTable.lastError])
+        }
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

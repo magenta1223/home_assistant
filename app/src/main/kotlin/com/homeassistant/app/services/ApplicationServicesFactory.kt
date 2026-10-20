@@ -60,7 +60,7 @@ object ApplicationServicesFactory {
             ),
         )
         val organizeMemories = OrganizePendingMemoriesService(
-            repositories.pendingMemories,
+            repositories.topicAssignmentOutbox,
             AssignMemoryToTopics(
                 repositories.topicCatalog,
                 PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel), repositories.memoryEmbeddings),

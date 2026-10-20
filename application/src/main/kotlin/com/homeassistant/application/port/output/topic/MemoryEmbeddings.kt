@@ -16,10 +16,6 @@ data class MemoryEmbeddingKey(val memoryId: Int, val contentHash: String, val sp
 
 data class MemoryEmbedding(val key: MemoryEmbeddingKey, val vector: TopicVector)
 
-interface PendingMemorySource {
-    fun pending(limit: Int): List<PendingMemory>
-}
-
 interface MemoryEmbeddingGenerator {
     val space: EmbeddingSpace
     fun generate(content: String): TopicVector

@@ -29,7 +29,6 @@ object RepositoryFactory {
             groupSnapshots = groups,
             groupChanges = groups,
             topicCatalog = topics,
-            pendingMemories = topics,
             topicAssignmentOutbox = TopicAssignmentOutboxRepository(db),
             memoryEmbeddings = MemoryEmbeddingRepository(db),
             memoryConversationSessions = MemoryConversationSessionRepository(db),

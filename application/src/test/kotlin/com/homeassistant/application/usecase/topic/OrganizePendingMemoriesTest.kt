@@ -10,6 +10,9 @@ import com.homeassistant.application.usecase.group.RefreshGroupedTopicEmbeddings
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.topic.Topic
 import com.homeassistant.domain.topic.TopicRelation
+import java.time.Clock
+import java.time.Instant
+import java.time.ZoneOffset
 import kotlin.test.*
 
 class OrganizePendingMemoriesTest {
@@ -55,6 +58,18 @@ class OrganizePendingMemoriesTest {
         assertIs<MemoryAssignmentOutcome.Failed>(result.memories.first().outcome)
         assertIs<MemoryAssignmentOutcome.Assigned>(result.memories.last().outcome)
         assertEquals(1, fixture.batches.size)
+        assertEquals(listOf("failed:1:1", "completed:2:1"), fixture.outboxMarks)
+    }
+
+    @Test fun `claims use the retry delay, processing lease and attempt limit`() {
+        val fixture = Fixture()
+        fixture.service.execute(2)
+        assertEquals(Claim(2, 1_000_000L - 60_000L, 1_000_000L - 600_000L, 5), fixture.claims.single())
+    }
+
+    @Test fun `queuing unassigned memories is delegated to the outbox`() {
+        val fixture = Fixture()
+        assertEquals(3, fixture.service.enqueueUnassigned())
     }
 
     @Test fun `revised descriptions refresh group vectors before new topics are grouped`() {
@@ -81,6 +96,8 @@ class OrganizePendingMemoriesTest {
         val groupWrites = mutableListOf<GroupChange>()
         val order = mutableListOf<String>()
         var embedded = 0
+        val outboxMarks = mutableListOf<String>()
+        val claims = mutableListOf<Claim>()
 
         private fun embed(text: String): TopicVector { embedded++; return vectors[text] ?: east }
         private val memoryCache = mutableMapOf<MemoryEmbeddingKey, MemoryEmbedding>()
@@ -115,12 +132,24 @@ class OrganizePendingMemoriesTest {
         }
 
         val service = OrganizePendingMemoriesService(
-            object : PendingMemorySource {
-                override fun pending(limit: Int) = (1..3).take(limit).map { PendingMemory(it, "$it") }
+            object : TopicAssignmentOutbox {
+                override fun claimReady(limit: Int, now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int):
+                    List<TopicAssignmentTask> {
+                    claims.add(Claim(limit, retryBefore, staleProcessingBefore, maxAttempts))
+                    return (1..3).take(limit).map { TopicAssignmentTask(it, 1, PendingMemory(it, "$it")) }
+                }
+                override fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long) =
+                    outboxMarks.add("completed:$outboxId:$expectedAttempt")
+                override fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long) =
+                    outboxMarks.add("failed:$outboxId:$expectedAttempt")
+                override fun enqueueUnassigned(now: Long) = 3
             },
             AssignMemoryToTopics({ topics }, memoryEmbeddings, topicEmbeddings, { decide(it) }, store, candidateLimit),
             RefreshGroupedTopicEmbeddings(groupReader, groupWriter, topicEmbeddings),
             OrganizePendingTopics { order.add("groups"); GroupOrganizationResult.Completed(emptyList()) },
+            Clock.fixed(Instant.ofEpochMilli(1_000_000L), ZoneOffset.UTC),
         )
     }
+
+    private data class Claim(val limit: Int, val retryBefore: Long, val staleBefore: Long, val maxAttempts: Int)
 }

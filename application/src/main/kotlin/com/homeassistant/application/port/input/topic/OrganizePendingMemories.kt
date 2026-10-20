@@ -3,9 +3,13 @@ package com.homeassistant.application.port.input.topic
 import com.homeassistant.application.port.input.group.GroupOrganizationResult
 import com.homeassistant.application.port.input.group.GroupRefreshOutcome
 
-/** Assigns unassigned Memories to one or more Topics, then organizes Topics into Groups. */
-fun interface OrganizePendingMemories {
+/** Assigns queued Memories to one or more Topics, then organizes Topics into Groups. */
+interface OrganizePendingMemories {
+    /** Processes up to [limit] ready Topic-assignment work items, then organizes Groups. */
     fun execute(limit: Int): MemoryOrganizationResult
+
+    /** Queues Memories that belong to no Topic and were never queued; returns how many were queued. */
+    fun enqueueUnassigned(): Int
 }
 
 sealed interface MemoryAssignmentOutcome {

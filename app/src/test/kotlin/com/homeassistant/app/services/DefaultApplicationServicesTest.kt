@@ -24,7 +24,7 @@ class DefaultApplicationServicesTest {
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
-            organizeMemories = OrganizePendingMemories { error("must only run on explicit invocation") },
+            organizeMemories = unusedOrganizeMemories(),
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
@@ -71,7 +71,7 @@ class DefaultApplicationServicesTest {
         val services = DefaultApplicationServices(
             memoryAnalysis = unusedMemoryAnalysis(),
             organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
-            organizeMemories = OrganizePendingMemories { error("must only run on explicit invocation") },
+            organizeMemories = unusedOrganizeMemories(),
             vectorRuntime = vector,
             embeddingRuntime = embedding,
             indexingWorker = indexing,
@@ -160,5 +160,10 @@ class DefaultApplicationServicesTest {
         override fun close() {
             events += "expiry.close"
         }
+    }
+
+    private fun unusedOrganizeMemories() = object : OrganizePendingMemories {
+        override fun execute(limit: Int) = error("must only run on explicit invocation")
+        override fun enqueueUnassigned() = error("must only run on explicit invocation")
     }
 }

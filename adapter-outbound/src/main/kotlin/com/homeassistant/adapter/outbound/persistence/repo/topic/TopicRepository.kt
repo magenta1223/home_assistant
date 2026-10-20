@@ -10,17 +10,9 @@ import com.homeassistant.domain.topic.TopicRelation
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class TopicRepository(private val db: Database) : TopicMaintenanceStore, TopicCatalog, PendingMemorySource {
+internal class TopicRepository(private val db: Database) : TopicMaintenanceStore, TopicCatalog {
     override fun topics(): List<TopicCandidate> = transaction(db) {
         TopicTable.selectAll().orderBy(TopicTable.id).map { TopicCandidate(it[TopicTable.id], it[TopicTable.description]) }
-    }
-
-    /** Memories that belong to no Topic, in ID order. Assignment always adds at least one membership. */
-    override fun pending(limit: Int): List<PendingMemory> = transaction(db) {
-        require(limit > 0)
-        MemoryTable.selectAll().where {
-            notExists(TopicMembershipTable.selectAll().where { TopicMembershipTable.memoryId eq MemoryTable.id })
-        }.orderBy(MemoryTable.id).limit(limit).map { PendingMemory(it[MemoryTable.id], it[MemoryTable.content]) }
     }
 
     override fun readForMaintenance(topicIds: Collection<Int>): List<Topic> = transaction(db) {

@@ -3,9 +3,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryViewerTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.IndexingOutboxTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
+import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicAssignmentOutboxRepository
 import com.homeassistant.application.port.output.memory.read.MemoryReader
 import com.homeassistant.application.port.output.memory.write.CanonicalMemoryBatchWriter
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
@@ -97,23 +97,7 @@ internal class MemoryRepository(
     }
 
     private fun ensureOutbox(memoryId: Int, now: Long) {
-        val exists = IndexingOutboxTable.select(IndexingOutboxTable.id)
-            .where {
-                (IndexingOutboxTable.targetType eq MEMORY_TARGET_TYPE) and
-                    (IndexingOutboxTable.targetId eq memoryId)
-            }
-            .limit(1)
-            .any()
-        if (!exists) {
-            IndexingOutboxTable.insert {
-                it[targetType] = MEMORY_TARGET_TYPE
-                it[targetId] = memoryId
-                it[status] = OUTBOX_PENDING
-                it[attempts] = 0
-                it[lastError] = null
-                it[updatedAt] = now
-            }
-        }
+        TopicAssignmentOutboxRepository.enqueue(memoryId, now)
     }
 
     internal fun ResultRow.toMemory(): Memory {
@@ -162,10 +146,5 @@ internal class MemoryRepository(
                 .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
         }
         return MemoryAccess(visibility, viewers)
-    }
-
-    private companion object {
-        const val MEMORY_TARGET_TYPE = "CANONICAL_MEMORY"
-        const val OUTBOX_PENDING = "PENDING"
     }
 }

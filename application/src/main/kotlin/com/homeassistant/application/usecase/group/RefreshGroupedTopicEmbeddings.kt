@@ -6,7 +6,7 @@ import com.homeassistant.domain.group.GroupGeometry
 import java.util.UUID
 
 /**
- * Re-embeds grouped topics whose description changed and replaces only the vectors and centroid of
+ * Re-prepares grouped topics whose vector version changed and replaces only the vectors and centroid of
  * their Group. Membership never moves; placement remains the job of [OrganizeTopic].
  */
 class RefreshGroupedTopicEmbeddings(

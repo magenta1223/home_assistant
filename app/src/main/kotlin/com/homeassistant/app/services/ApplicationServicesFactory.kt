@@ -3,27 +3,22 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.adapter.outbound.vector.qdrant.ManagedQdrantVectorStoreFactory
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserAccessPolicies
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexSearcherFactory
-import com.homeassistant.adapter.outbound.vector.memory.SemanticMemoryIndexWriterFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
-import com.homeassistant.application.usecase.memory.search.MemorySearcher
+import com.homeassistant.adapter.outbound.topicdescription.TopicDescriptionGeneratorFactory
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
-import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
-import com.homeassistant.adapter.outbound.embedding.topic.TopicEmbeddingAdapter
-import com.homeassistant.adapter.outbound.topicassignment.TopicAssignmentGeneratorFactory
+import com.homeassistant.adapter.outbound.embedding.memory.QueryEmbeddingAdapter
 import com.homeassistant.application.usecase.topic.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
@@ -49,7 +44,14 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
-        val topicEmbeddings = PrepareTopicEmbedding(TopicEmbeddingAdapter(textEmbedder, embeddingModel), repositories.topicEmbeddings)
+        val memoryEmbeddings = PrepareMemoryEmbedding(
+            MemoryEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime),
+            repositories.memoryEmbeddings,
+        )
+        val topicEmbeddings = PrepareTopicEmbedding(
+            TopicCentroidVectors(repositories.topicMaintenance, memoryEmbeddings.space),
+            repositories.topicEmbeddings,
+        )
         val organizeTopics = OrganizePendingTopicsService(
             repositories.pendingTopics,
             OrganizeTopic(
@@ -60,29 +62,12 @@ object ApplicationServicesFactory {
             ),
         )
         val organizeMemories = OrganizePendingMemoriesService(
-            repositories.pendingMemories,
-            AssignMemoryToTopics(
-                repositories.topicCatalog,
-                PrepareMemoryEmbedding(MemoryEmbeddingAdapter(textEmbedder, embeddingModel), repositories.memoryEmbeddings),
-                topicEmbeddings,
-                TopicAssignmentGeneratorFactory.create(completionClient),
-                repositories.topicMaintenance,
-            ),
+            repositories.topicAssignmentOutbox,
+            AssignMemoryToTopics(repositories.topicMaintenance, memoryEmbeddings),
             RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
             organizeTopics,
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-        val managedVectorStore = ManagedQdrantVectorStoreFactory.create(
-            baseUrl = Env[AppConfig.ENV_VAR_QDRANT_URL] ?: AppConfig.DEFAULT_QDRANT_URL,
-            collection = Env[AppConfig.ENV_VAR_QDRANT_COLLECTION] ?: AppConfig.DEFAULT_QDRANT_COLLECTION,
-        )
-        val vectorStore = managedVectorStore.store
-        val memoryIndexWriter = SemanticMemoryIndexWriterFactory.create(textEmbedder, vectorStore)
-        val memoryIndexing = MemoryIndexingOutboxProcessor(
-            outbox = repositories.memoryIndexingOutbox,
-            indexWriter = memoryIndexWriter,
-        )
-        val semanticMemoryIndexSearcher = SemanticMemoryIndexSearcherFactory.create(textEmbedder, vectorStore)
         val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)
         val accessPolicy = UserAccessPolicy { userId ->
             users.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
@@ -95,13 +80,20 @@ object ApplicationServicesFactory {
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
             accessPolicy = accessPolicy,
-            memoryIndexing = memoryIndexing,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
-        val memorySearcherImpl = MemorySearcher(
+        val topicSearch = TopicSearcher(
+            topics = repositories.topicMaintenance,
+            queries = QueryEmbeddingAdapter(textEmbedder),
             memories = repositories.canonicalMemories,
             accessPolicy = accessPolicy,
-            searcher = semanticMemoryIndexSearcher,
+        )
+        val describeTopic = TopicDescriber(
+            topics = repositories.topicMaintenance,
+            memories = repositories.canonicalMemories,
+            descriptions = repositories.topicDescriptions,
+            generator = TopicDescriptionGeneratorFactory.create(completionClient),
+            accessPolicy = accessPolicy,
         )
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
@@ -123,7 +115,7 @@ object ApplicationServicesFactory {
             )
             HandleMemoryConversation(
                 sessions = repositories.memoryConversationSessions,
-                contextProvider = MemoryConversationContextProvider(memorySearcherImpl),
+                contextProvider = MemoryConversationContextProvider(topicSearch),
                 conversationGateway = it,
             )
         }
@@ -139,12 +131,12 @@ object ApplicationServicesFactory {
             memoryAnalysis = memoryAnalysisService,
             organizeTopics = organizeTopics,
             organizeMemories = organizeMemories,
+            describeTopic = describeTopic,
             memoryConversation = memoryConversation,
             users = users,
-            vectorRuntime = managedVectorStore.runtime,
             embeddingRuntime = managedEmbedding.runtime,
-            indexingWorker = MemoryIndexingWorker(memoryIndexing),
             conversationExpiryWorker = conversationExpiryWorker,
+            topicAssignmentWorker = MemoryTopicAssignmentWorker(organizeMemories),
             conversationGateway = conversationGateway,
         )
     }

@@ -13,7 +13,7 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
         require(limit > 0)
         TopicTable.selectAll().where {
             notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.topicId eq TopicTable.id })
-        }.orderBy(TopicTable.id).limit(limit).map { PendingTopic(it[TopicTable.id], it[TopicTable.description]) }
+        }.orderBy(TopicTable.id).limit(limit).map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
     }
 
     override fun snapshot(): GroupSnapshot = transaction(db) {
@@ -28,8 +28,8 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
                 GroupStorageCodec.vector(row[GroupTable.centroid]))
         }
         val stale = TopicTable.selectAll().where { TopicTable.id inList embeddings.keys }.orderBy(TopicTable.id)
-            .map { PendingTopic(it[TopicTable.id], it[TopicTable.description]) }
-            .filter { descriptionFingerprint(it.description) != embeddings.getValue(it.id).key.descriptionHash }
+            .map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
+            .filter { it.version != embeddings.getValue(it.id).key.version }
         check(memberships.size == embeddings.size) { "group embedding missing" }
         GroupSnapshot(groups, embeddings, stale)
     }
@@ -83,9 +83,9 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
             TopicEmbeddingTable.key inList change.embeddings.values.map { GroupStorageCodec.key(it.key) }
         }.map { TopicEmbeddingRepository.decode(it) }.associateBy { it.key.topicId }
         require(stored == change.embeddings) { "expected immutable vectors are missing or changed" }
-        val descriptions = TopicTable.selectAll().where { TopicTable.id inList stored.keys }
-            .associate { it[TopicTable.id] to descriptionFingerprint(it[TopicTable.description]) }
-        if (stored.values.any { descriptions[it.key.topicId] != it.key.descriptionHash }) throw StaleGroupChange()
+        val versions = TopicTable.selectAll().where { TopicTable.id inList stored.keys }
+            .associate { it[TopicTable.id] to TopicEmbeddingRepository.version(it) }
+        if (stored.values.any { versions[it.key.topicId] != it.key.version }) throw StaleGroupChange()
         val activeKeys = GroupMembershipTable.selectAll().map { it[GroupMembershipTable.embeddingKey] }
         val active = TopicEmbeddingTable.selectAll().where { TopicEmbeddingTable.key inList activeKeys }
             .map { TopicEmbeddingRepository.decode(it) }

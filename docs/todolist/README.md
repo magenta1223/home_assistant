@@ -17,10 +17,10 @@
 
 ## 현재 상태
 
-- 최근 구현 완료: Memory → Topic(LM 복수 배정) → Group 정리 (명시적 내부 호출 `organizeMemories`, 2026-10-19)
+- 최근 구현 완료: [Topic 중심 벡터·ACL slice와 Topic 검색](p1/topic-centroid-acl-search.md) — cosine 단일 배정, 대화 context를 Topic 검색으로 구성 (2026-10-20, 실데이터 임계값 조정 남음)
 - 다음 후보: [Topic·Group 병합과 kNN 연결](p1/topic-group-merge-and-knn-links.md) — 방식 탐색 중
 - 별도 구현 후보: 최소 가족 Task 서비스 1개
-- Memory 구조 전환: Topic 모델·저장 유지, legacy tree·LM Topic 생성 제거. Group 구성·분할 구현; Topic 생성·자체 분할·자동 실행·검색·UI는 후속 범위
+- Memory 구조 전환: Topic은 중심 벡터와 ACL slice, Group 구성·분할 구현, Topic 검색 연결. Topic 자체 분할·병합·UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
@@ -43,7 +43,9 @@
 
 | 문서 | 목적 |
 |---|---|
-| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | HOLD: ONNX 전환 재개 시 integration 경계를 함께 재평가 |
+| [topic-assignment-outbox.md](p1/topic-assignment-outbox.md) | Memory 저장 시 Topic 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
+| [topic-centroid-acl-search.md](p1/topic-centroid-acl-search.md) | Topic을 중심 벡터와 ACL별 Memory 목록으로 바꾸고 cosine 할당과 ACL 필터 Topic 검색을 연결 |
+| [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | DROPPED: Qdrant semantic index 제거 (2026-10-20) |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 
 ### P2
@@ -51,8 +53,12 @@
 | 문서 | 목적 |
 |---|---|
 | [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application의 serialization 결합과 library 모듈의 concrete logging binding을 정리 |
+| [entropy-based-group-saturation.md](p2/entropy-based-group-saturation.md) | Topic·Group 배정 이후, 크기 상한 대신 entropy로 Group 분할 검토 시점을 판단 |
+| [external-service-failure-handling.md](p2/external-service-failure-handling.md) | 외부 서비스 장애를 실패 분류·circuit breaker·재시도 상한으로 다루는 표준 절차를 outbox worker에 적용 |
+| [memory-analysis-outbox-pipeline.md](p2/memory-analysis-outbox-pipeline.md) | 첨부 해석·Memory 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
 | [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
+| [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Topic이 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
 
 ## 제품 기능 계획
 

@@ -5,7 +5,7 @@ param(
     [string]$RepositoryPath,
     [string]$RuntimeTaskName = "HomeSecondBrain",
     [string]$HealthUrl = "http://127.0.0.1:8080/health",
-    [int[]]$RuntimePorts = @(8080, 6333, 11435),
+    [int[]]$RuntimePorts = @(8080, 11435),
     [ValidateRange(10, 600)][int]$HealthTimeoutSeconds = 180
 )
 

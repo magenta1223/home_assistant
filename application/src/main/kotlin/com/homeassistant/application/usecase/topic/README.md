@@ -1,12 +1,14 @@
 # Memory → Topic assignment
 
-아직 어떤 Topic에도 속하지 않은 Memory를 하나 이상의 Topic에 배정하고, 이어서 Topic을 Group으로 정리한다.
+Topic 할당 outbox에 쌓인 Memory를 Topic 하나에 배정하고, 이어서 Topic을 Group으로 정리한다.
 내부 input port는 `OrganizePendingMemories.execute(limit)`이며 앱의 `organizeMemories`로 제공된다.
-HTTP·worker·Memory 분석 경로에서는 호출하지 않는다. 앱 시작만으로 실행되지 않는다.
+outbox 행은 Memory 저장 transaction에서 함께 생긴다. 앱의 Topic 할당 worker가 주기마다 임베딩 runtime이
+준비됐는지 확인한 뒤에만 호출한다. 준비되지 않은 회차는 claim하지 않는다.
+worker는 시작 시 `enqueueUnassigned()`로 outbox 도입 전 저장된 미할당 Memory를 한 번 등록한다.
 
-xMemory 대응은 Source가 segment, Memory가 component, Group이 group이다. Topic은 xMemory에 없는 층으로,
-한 Memory가 여러 묶음에 속하는 복수 소속을 담는다. Group의 xMemory 분할은 한 원소가 한 group에만
-속한다고 가정하므로, 겹침은 Topic이 맡고 분할은 Topic 위의 Group이 맡는다.
+Topic은 xMemory의 component에 해당한다. xMemory가 segment를 component 중심과의 cosine으로 붙이거나
+새 component를 만들듯, Memory는 가장 가까운 Topic 중심과의 cosine으로 Topic에 합류하거나 새 Topic을 만든다.
+Topic 위의 Group은 xMemory의 group이다. 대응이 1:1은 아니다.
 
 ## 정상 흐름
 
@@ -15,46 +17,87 @@ sequenceDiagram
     actor Caller as 호출자
     participant Batch as OrganizePendingMemoriesService
     participant Assign as AssignMemoryToTopics
-    participant Embed as 임베딩 캐시
-    participant Model as TopicAssignmentGenerator (LM)
+    participant Embed as Memory 임베딩 캐시
     participant Store as Topic DB
     participant Groups as Group 정리
     Caller->>Batch: 1. organizeMemories(limit)
-    Batch->>Store: 2. Topic 소속이 없는 Memory 조회
+    Batch->>Store: 2. 할당 outbox claim (시도 횟수 증가)
     loop Memory마다
         Batch->>Assign: 3. 배정 요청
-        Assign->>Store: 4. 전체 Topic 목록(설명)
-        Assign->>Embed: 5. Memory·Topic 설명 벡터
-        Assign->>Assign: 6. cosine 상위 5개 = 후보
-        Assign->>Model: 7. Memory + 후보 Topic
-        Model-->>Assign: 8. 참여 Topic 여러 개(분류·수정 설명) 또는 새 Topic
-        Assign->>Store: 9. 새 Topic·소속 추가·설명 교체를 한 transaction으로
-        Assign-->>Batch: 10. 결과(참여·생성 Topic ID)
+        Assign->>Embed: 4. Memory 벡터
+        Assign->>Store: 5. 모든 Topic 중심
+        Assign->>Assign: 6. 가장 가까운 Topic과 cosine ≥ 임계값이면 join, 아니면 생성
+        Assign->>Store: 7. 소속 추가와 중심 갱신을 한 transaction으로
+        Assign-->>Batch: 8. 결과(Topic ID, 생성 여부)
     end
-    Batch->>Groups: 11. 설명 바뀐 Topic 재임베딩 → 그 Group 중심만 갱신
-    Batch->>Groups: 12. 새 Topic을 xMemory 방식으로 Group 배치·분할
-    Batch-->>Caller: 13. Memory별 결과 + Group 결과
+    Batch->>Groups: 9. 중심이 바뀐 Topic의 벡터를 다시 준비 → 그 Group 중심만 갱신
+    Batch->>Groups: 10. 새 Topic을 xMemory 방식으로 Group 배치·분할
+    Batch-->>Caller: 11. Memory별 결과 + Group 결과
 ```
 
 ## 정책
 
-- 한 Memory는 여러 Topic에 속할 수 있다. 모델은 후보 중 해당하는 Topic을 모두 고르고, 없으면 새 Topic을 만든다.
-  최소 한 Topic에는 배정한다. 후보가 아닌 Topic ID를 고르면 그 Memory는 `Failed`다.
-- Memory가 참여한 Topic은 소속이 바뀌었으므로 모델이 낸 수정 설명으로 같은 batch에서 교체한다.
-  전체 소속을 다시 읽지 않고 기존 설명과 새 Memory로 갱신하므로 Topic 크기와 무관하게 호출이 한 번이다.
-- 분류명은 모델이 Topic 안에서 정한다. 새 Topic의 creation key는 `memory:{memoryId}:{순번}`이다.
-- Memory 벡터는 `memory-content:passage:v1`, Topic 벡터는 `topic-description:passage:v1` 규약이며 같은 모델을 쓴다.
-- 배정 대기는 "Topic 소속이 하나도 없음"으로 판단한다. 수동으로 소속을 추가한 Memory도 배정된 것으로 본다.
+- 한 Memory는 Topic 하나에만 속한다. 임계값은 `TopicPlacementPolicy(joinThreshold=0.6)`이며 동점은 작은 Topic ID다.
+- 중심은 소속 Memory 벡터의 합으로 저장하므로 join은 벡터 하나를 더하면 되고 전체 소속을 다시 읽지 않는다.
+- join은 읽은 시점의 Memory 수를 조건으로 쓴다. 그사이 다른 join이 있었다면 그 Memory는 `Failed`가 되고
+  outbox가 다시 시도한다.
+- Topic에는 설명·분류명이 없다. ACL별 slice는 Memory의 현재 접근 범위로 읽을 때 나눈다.
+- 배정 대기는 outbox 행 상태로 판단한다. claim 시점에 이미 Topic 소속이 있는 Memory는 배정하지 않고 완료 처리한다.
+  그래서 Topic 저장 직후 완료 기록 전에 중단돼도 같은 Memory가 두 번 배정되지 않는다.
 
 ## 실패·복구와 신뢰 경계
 
-- 임베딩·모델 호출은 DB transaction 밖에서 수행한다. 저장은 `TopicMaintenanceStore`의 원자 batch다.
-- 개별 Memory 실패는 `Failed`이며 다음 Memory를 계속 처리한다. 저장이 실패하면 Memory가 대기 상태로 남아 다음 호출이 다시 배정한다.
-- Group 재임베딩·배치 단계의 임베딩 장애는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
-- 모델은 ACL이 다른 Memory로 만든 Topic 설명을 후보로 읽는다. Topic 설명은 trusted internal 메타데이터이며
-  사용자 검색·응답에 아직 연결하지 않는다.
-- 후보 검색은 매번 전체 Topic 벡터를 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
+- 임베딩은 DB transaction 밖에서 수행한다. 저장은 `TopicMaintenanceStore`의 원자 write다.
+- 개별 Memory 실패는 `Failed`이며 outbox에 시도 횟수와 오류를 남기고 다음 Memory를 계속 처리한다.
+  실패한 Memory는 재시도 지연(기본 60초) 뒤 다시 claim되며, 최대 시도(기본 5회)를 넘으면 그 Memory만 멈춘다.
+  처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
+- Group 벡터 준비·배치 단계의 오류는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
+- Topic 중심은 ACL이 다른 Memory를 함께 담는다. 검색은 중심으로 순위만 정하고, 사용자에게는 읽을 수 있는 slice의 Memory만 넘긴다.
+- 할당은 매번 전체 Topic 중심을 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Topic 분할, Topic·Group 병합과 kNN 링크는 [후속 작업](../../../../../../../../../docs/todolist/p1/topic-group-merge-and-knn-links.md)이다.
-  검색 연결과 한국어 품질 검증도 구현하지 않았다.
 
-검증은 fake port application 테스트와 임시 SQLite 통합 테스트를 사용한다. 실제 LM·임베딩 서버는 호출하지 않는다.
+## Topic 검색
+
+`TopicSearcher`(`SearchTopics`)는 대화 context가 쓰는 검색이다. 검색 단위는 Memory가 아니라 Topic이다.
+
+```mermaid
+sequenceDiagram
+    actor Caller as 대화 context
+    participant Search as TopicSearcher
+    participant Query as QueryEmbeddingGenerator
+    participant Topics as TopicReader
+    participant Memories as MemoryReader
+    Caller->>Search: 1. search(userId, question)
+    Search->>Search: 2. 사용자 인가 확인
+    Search->>Topics: 3. 모든 Topic 중심
+    Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
+    Search->>Memories: 5. 사용자가 읽을 수 있는 Memory
+    loop cosine 높은 순, Topic 3개가 찰 때까지
+        Search->>Topics: 6. Topic의 slice
+        Search->>Search: 7. 읽을 수 있는 slice ∩ 5의 Memory, 비면 건너뜀
+    end
+    Search-->>Caller: 8. Topic별 Memory(최신순)
+```
+
+- Topic 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Memory가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+- 최소 점수는 아직 두지 않는다. Group 단위 검색은 하지 않는다.
+
+## Topic 설명
+
+`TopicDescriber`(`DescribeTopic`)는 사람이 읽는 Topic 설명을 조회자마다 만든다. 설명은 Topic에 저장하지 않는
+재생성 가능한 read model이다. Topic은 계속 중심 벡터와 ACL slice만 가진다.
+
+1. 사용자 인가를 확인하고 Topic을 읽는다. 없거나 읽을 수 있는 slice가 없으면 `Hidden`이다. 둘을 구분하지 않는다.
+2. 열람 범위(`TopicView`)는 PUBLIC slice와 조회자가 포함된 slice의 합이다. 같은 slice를 읽는 조회자는 같은 범위다.
+3. 캐시 key는 (Topic ID, 범위의 slice 집합)이다. 권한이 바뀌면 slice 집합이 달라져 이전 설명을 쓰지 않는다.
+4. 캐시에는 설명을 쓸 때의 slice별 Memory 수(slice 버전)를 함께 둔다. `TopicDescriptionRefreshPolicy`가 재생성을 정한다.
+   - 캐시가 없거나, 어떤 slice의 Memory가 줄었으면 재생성한다.
+   - 범위의 Memory가 설명을 쓴 시점보다 `growthThreshold`(기본 0.2, 20%) 이상 늘었으면 재생성한다.
+   - 그 밖에는 이전 설명을 그대로 보여준다.
+5. 재생성 입력은 범위의 Memory 중 `MemoryReader`가 조회자에게 보여주는 것뿐이며 최신순이다. LM 결과를 저장하고 돌려준다.
+
+- 미리 만들지 않는다. 설명이 필요한 요청이 올 때만 LM을 호출한다.
+- LM·저장 실패는 호출자에게 전파한다. 캐시가 없어지면 다음 요청이 다시 만든다.
+- 같은 범위를 동시에 처음 열면 LM이 두 번 불릴 수 있고 나중 결과가 남는다. 가족 규모라 잠금은 두지 않는다.
+
+검증은 fake port application 테스트와 임시 SQLite 통합 테스트를 사용한다. 실제 임베딩 서버는 호출하지 않는다.

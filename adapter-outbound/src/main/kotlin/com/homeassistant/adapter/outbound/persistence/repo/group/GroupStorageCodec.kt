@@ -12,7 +12,7 @@ internal object GroupStorageCodec {
     fun ids(value: String): List<Int> = Json.parseToJsonElement(value).jsonArray.map { it.jsonPrimitive.int }
 
     fun key(value: TopicEmbeddingKey): String = buildJsonArray {
-        add(value.topicId); add(value.descriptionHash); add(value.space.model); add(value.space.inputFormat)
+        add(value.topicId); add(value.version); add(value.space.model); add(value.space.inputFormat)
     }.toString()
 
     fun request(change: GroupChange): String = buildJsonObject {

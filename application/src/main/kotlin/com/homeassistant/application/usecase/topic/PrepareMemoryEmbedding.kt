@@ -9,6 +9,8 @@ class PrepareMemoryEmbedding(
 ) {
     val space: EmbeddingSpace get() = generator.space
 
+    fun isAvailable(): Boolean = generator.isAvailable()
+
     fun prepare(memory: PendingMemory): MemoryEmbedding {
         val key = memory.embeddingKey(space)
         return store.find(key) ?: store.save(MemoryEmbedding(key, generator.generate(memory.content)))

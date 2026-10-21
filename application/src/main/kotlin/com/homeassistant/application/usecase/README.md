@@ -1,7 +1,7 @@
 # Application use cases
 
 이 디렉터리는 input port를 구현하고 domain 규칙과 output port를 조합하는 기술 중립적인
-application orchestration을 담는다. HTTP, SQLite, Codex, Qdrant 같은 기술 이름과
+application orchestration을 담는다. HTTP, SQLite, Codex, Ollama 같은 기술 이름과
 payload 형식은 여기에서 직접 다루지 않는다.
 
 ## 패키지 지도
@@ -10,11 +10,10 @@ payload 형식은 여기에서 직접 다루지 않는다.
 |---|---|---|
 | `identity` | 등록된 application user 목록을 제공하고 인가한다. | [identity](identity/README.md) |
 | `group` | 저장된 Topic을 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](group/README.md) |
-| `topic` | Memory를 LM 판단으로 하나 이상의 Topic에 배정한 뒤 Group 정리까지 이어간다. 명시적 내부 호출 전용이다. | [topic](topic/README.md) |
+| `topic` | Memory를 cosine으로 Topic 하나에 배정한 뒤 Group 정리까지 이어가고, 대화용 Topic 검색을 ACL slice로 거른다. | [topic](topic/README.md) |
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
 | `memory/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](memory/conversation/README.md) |
-| `memory/search` | 사용자에게 보이는 memory만 semantic search한다. | [search](memory/search/README.md) |
-| `memory/write` | proposal을 원자적으로 저장하고 indexing outbox를 처리한다. | [write](memory/write/README.md) |
+| `memory/write` | proposal을 원자적으로 저장하고 Topic 할당 outbox를 같은 transaction으로 남긴다. | [write](memory/write/README.md) |
 
 ## 전체 memory 쓰기 흐름
 
@@ -28,7 +27,6 @@ sequenceDiagram
     participant Extractor as MemoryExtractor
     participant Writer as MemoryProposalsPersister
     participant DB as CanonicalMemoryBatchWriter
-    participant Indexing as MemoryIndexingOutboxProcessor
 
     Caller->>Analysis: execute(request)
     Analysis->>Access: 작성자와 audience 인가 확인
@@ -42,12 +40,11 @@ sequenceDiagram
     Writer->>DB: memory + evidence + outbox 원자적 commit
     DB-->>Writer: canonical memories
     Writer-->>Analysis: saved memories
-    Analysis->>Indexing: 처리 가능한 outbox projection
     Analysis-->>Caller: MemoryAnalysisResult
 ```
 
-Canonical database commit까지가 요청 성공의 기준이다. Indexing은 commit 이후의 후처리이므로
-실패해도 저장된 canonical memory를 되돌리지 않는다. Topic 생성·배치는 호출하지 않는다.
+Canonical database commit까지가 요청 성공의 기준이다. Topic 배정은 commit에 함께 남긴 outbox를
+worker가 이후에 처리하며, 실패해도 저장된 canonical memory를 되돌리지 않는다.
 
 HTTP 지식 입력은 인증된 application userId로 `MemoryAnalysis`를 직접 호출한다.
 

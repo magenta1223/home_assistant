@@ -1,6 +1,6 @@
 # Memory·Topic 그래프와 Group 설계
 
-- 상태: Memory → Topic(LM 복수 배정)과 Topic → Group(xMemory)을 명시적 내부 호출 `organizeMemories`로 구현 (2026-10-19). 자동 실행·검색 연결은 없음
+- 상태: Memory → Topic(cosine 단일 배정)과 Topic → Group(xMemory)을 outbox worker로 실행하고, 대화 context를 Topic 검색으로 구성 (2026-10-20)
 - 기준: [메모리 구조 판단기준](topic-adoption-criteria.md)의 최신 합의
 - 이 문서는 이전의 독립 문서형 Topic 제안과 Memory + Group 제안을 대체한다.
 
@@ -13,7 +13,7 @@ Topic끼리는 관련 관계로 연결한다. 사실의 전체 맥락은 Memory�
 | 개념 | 역할 |
 |---|---|
 | Memory | 질문에 필요한 사실을 찾는 단위. 내용·ACL·근거를 가진다. |
-| Topic | 짧은 설명과 분류별 Memory 참조를 가진다. 관련 Topic과 연결된다. |
+| Topic | 중심 벡터와 ACL별 Memory 목록(slice)을 가진다 (2026-10-20). |
 | Group | Topic들을 묶는 한 단계 상위 검색 단위. 이번 생성·배치·분할 구현의 대상이다. |
 | Evidence | 사실이 나온 원문. 적용 조건·예외·전체 맥락을 확인하는 근거다. |
 
@@ -66,6 +66,9 @@ Memory 2: 시스템 X v2는 조회 조건을 나눠 여러 번 호출할 수 있
 무효화하는 것은 아니며, 사실 간 정정·대체 판단의 상세 규칙은 이번 설계에서 정하지 않는다.
 
 ## 3. Topic: 압축된 설명과 Memory 목록
+
+> 2026-10-20 이후 Topic은 설명·분류·관련 Topic 없이 중심 벡터와 ACL slice만 가진다. 이 절과 4절은 이전 모델의 기록이며
+> 현재 모델은 [10절 구현 결과](#topic-중심-벡터acl-slice-구현-결과-2026-10-20)를 따른다.
 
 Topic은 짧은 설명, 분류별 Memory 참조, 관련 Topic 목록을 가진다.
 다음은 개념을 설명하기 위한 JSON이며 실제 저장 형식을 확정한 것은 아니다.
@@ -166,18 +169,22 @@ session이 살아 있어도 새로 검색하거나 원문을 읽을 때는 현�
 현재 구현은 생성 후 변경하지 않는 ACL을 사용한다. 위 내용은 새 설계의 요구이며,
 이 문서를 작성하는 것으로 기존 데이터의 권한이 바뀌지는 않는다.
 
-### Topic은 공유 단위가 아니다
+### Topic의 ACL은 slice로 나눈다 (2026-10-20)
 
-서로 다른 입력의 Memory들은 같은 Topic에 모일 수 있다. Topic 전체를 공유하는 별도 ACL은 두지 않는다.
-사용자나 ACL 조합마다 같은 주제의 Topic을 자동으로 복제하지 않는다.
+서로 다른 입력의 Memory들은 같은 Topic에 모일 수 있다. Topic은 소속 Memory를 ACL(`PUBLIC` 또는 열람자 집합)별
+slice로 나누며, slice의 ACL은 그 Memory들의 ACL과 같다. slice는 저장하지 않고 조회할 때 Memory의 현재 ACL로
+계산하므로 ACL을 바꿔도 Topic 소속은 옮기지 않는다. Topic 전체를 공유하는 별도 ACL은 두지 않으며,
+사용자나 ACL 조합마다 같은 주제의 Topic을 복제하지 않는다.
 
 Agent에게 Topic을 전달할 때는 다음과 같이 처리한다.
 
-- 현재 사용자가 읽을 수 있는 Memory만 남긴다.
-- 남은 Memory가 없는 분류는 제거한다.
-- 사용할 Memory가 하나도 없는 Topic은 결과에서 제외한다.
-- 비공개 Memory의 ID·내용·개수와 비공개 정보가 드러나는 연결을 전달하지 않는다.
-- 짧은 설명과 분류명도 정보이므로, 비공개 내용이 담겼다면 그대로 전달하지 않고 내부 검색용으로만 사용한다.
+- 현재 사용자가 읽을 수 있는 slice의 Memory만 남긴다.
+- 읽을 수 있는 Memory가 하나도 없는 Topic은 결과에서 제외한다.
+- 비공개 Memory의 ID·내용·개수를 전달하지 않는다.
+- Topic은 설명·분류명을 두지 않으므로 Memory 외의 글은 전달되지 않는다.
+
+중심 벡터는 ACL과 무관하게 모든 소속 Memory의 평균이므로 검색 순위가 비공개 Memory의 영향을 받는다.
+글은 새지 않지만 관련 기록이 다른 사람에게 있다는 추측은 가능하다. 사용자별 벡터는 채택하지 않는다.
 
 권한을 확인하기 전에 비공개 자료를 답변 Agent에게 먼저 주고 무시하라고 하지 않는다.
 Agent가 누구의 질문에 답하는지에 따라 사용할 수 있는 정보가 결정된다.
@@ -248,7 +255,7 @@ Source ID는 변하지 않는 원문을 가리킨다. 내용이 다른 입력은
 
 ## 9. Agent의 구성·정리와 규모
 
-Memory 추출은 기존 분석 경로를 사용한다. Topic 소속과 설명은 임베딩 후보 중에서 LM이 정한다 (2026-10-19).
+Memory 추출은 기존 분석 경로를 사용한다. Topic 소속은 Topic 중심 벡터와의 cosine 유사도로 정한다 (2026-10-20).
 Topic 연결 정리의 구체적인 방식은 별도로 정하며, 현재 자동 실행하지 않는다.
 새 입력이 기존 사실을 반복하는지, 변경 사항인지 구분하되 기존 Source와 Memory content는 수정하지 않는다.
 같은 사실이라도 출처와 공유 범위가 다르면 단순 중복으로 합치지 않는다.
@@ -322,3 +329,19 @@ Topic 소속은 LM이 정한다. Memory·Topic 설명 임베딩으로 후보 Top
 수정 설명 또는 새 Topic을 고른다. 소속이 바뀐 Topic의 설명은 같은 저장에서 교체되며, Group 소속 Topic이면
 재임베딩해 그 Group의 centroid만 갱신한다. 이 결정은 2026-10-10의 'Topic을 LM으로 생성하지 않는다'를 대체한다.
 세부 흐름과 실패 처리는 [Memory → Topic use case](../application/src/main/kotlin/com/homeassistant/application/usecase/topic/README.md)에 있다.
+
+### Topic 중심 벡터·ACL slice 구현 결과 (2026-10-20)
+
+위 2026-10-19 결과의 LM 배정과 xMemory 대응을 대체한다.
+
+- xMemory 대응: Source가 segment, Topic이 component, Group이 group이다. 완전한 1:1 대응은 아니다. Memory는 Topic 하나에만 속하므로
+  Topic을 겹침 허용 묶음으로 두던 대응은 쓰지 않는다.
+- 할당: 새 Memory 벡터와 가장 가까운 Topic 중심 벡터의 cosine이 0.6 이상이면 join, 아니면 새 Topic을 만든다. LM을 호출하지 않는다.
+  중심 벡터는 소속 Memory 단위 벡터의 합과 개수로 저장하며 방향만 쓴다.
+- 저장: Topic 본체(벡터 합·Memory 수)와 소속(Memory당 한 행)만 둔다. 설명·분류·관련 관계는 제거했다.
+- Group: Topic 설명 임베딩 대신 Topic 중심 벡터를 쓴다. Memory 수를 벡터 version으로 삼아 오래된 벡터 저장을 거절한다.
+- 검색: 질문을 같은 모델의 `query:` 규약으로 임베딩해 Topic 중심 벡터를 순위화하고, 읽을 수 있는 slice의 Memory만 남겨
+  상위 3개 Topic으로 대화 context를 구성한다. Memory 직접 벡터 검색은 대화에 연결하지 않는다.
+- 임계값 0.6과 Topic 수 3은 시작값이며 한국어 실데이터로 조정해야 한다.
+
+결정과 trade-off는 [Topic 중심 벡터·ACL slice와 Topic 검색](todolist/p1/topic-centroid-acl-search.md)에 있다.

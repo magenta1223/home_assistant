@@ -13,16 +13,10 @@ tasks.register("setupEmbedding") {
     dependsOn(":app:setupEmbedding")
 }
 
-tasks.register("setupQdrant") {
-    group = "application"
-    description = "Installs the pinned Windows Qdrant runtime."
-    dependsOn(":app:setupQdrant")
-}
-
 tasks.register("setupRuntime") {
     group = "application"
     description = "Prepares all project-managed local runtimes."
-    dependsOn("setupEmbedding", "setupQdrant")
+    dependsOn("setupEmbedding")
 }
 
 val testDeploymentScripts by tasks.registering(Exec::class) {

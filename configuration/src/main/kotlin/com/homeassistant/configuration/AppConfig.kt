@@ -4,8 +4,6 @@ object AppConfig {
     const val DEFAULT_PORT              = 8080
     const val DEFAULT_HOST              = "127.0.0.1"
     const val CONFIG_KEY_DB_PATH        = "homeassistant.dbPath"
-    const val ENV_VAR_QDRANT_URL            = "QDRANT_URL"
-    const val ENV_VAR_QDRANT_COLLECTION     = "QDRANT_COLLECTION"
     const val ENV_VAR_EMBEDDING_MODEL       = "EMBEDDING_MODEL"
     const val ENV_VAR_HTTP_MEMBER_API_KEYS_JSON = "HTTP_MEMBER_API_KEYS_JSON"
     const val ENV_VAR_AGENT_BACKEND         = "AGENT_BACKEND"
@@ -13,9 +11,6 @@ object AppConfig {
     const val DEFAULT_OLLAMA_HOST           = "127.0.0.1:11435"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://$DEFAULT_OLLAMA_HOST"
     const val DEFAULT_OLLAMA_RUNTIME_DIR    = "runtime/ollama"
-    const val DEFAULT_QDRANT_URL            = "http://127.0.0.1:6333"
-    const val DEFAULT_QDRANT_RUNTIME_DIR    = "runtime/qdrant"
-    const val DEFAULT_QDRANT_COLLECTION     = "canonical_memories"
     const val DEFAULT_EMBEDDING_MODEL_NAME  = "qllama/multilingual-e5-base"
     const val DEFAULT_EMBEDDING_VECTOR_SIZE = 768
     const val DEFAULT_AGENT_BACKEND         = "claude"

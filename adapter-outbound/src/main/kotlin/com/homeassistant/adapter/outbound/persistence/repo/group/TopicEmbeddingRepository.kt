@@ -13,14 +13,14 @@ internal class TopicEmbeddingRepository(private val db: Database) : TopicEmbeddi
         TopicEmbeddingTable.insertIgnore {
             it[key] = GroupStorageCodec.key(embedding.key)
             it[topicId] = embedding.key.topicId
-            it[descriptionHash] = embedding.key.descriptionHash
+            it[version] = embedding.key.version
             it[model] = embedding.key.space.model
             it[inputFormat] = embedding.key.space.inputFormat
             it[vector] = GroupStorageCodec.vector(embedding.vector)
         }
         val topic = TopicTable.selectAll().where { TopicTable.id eq embedding.key.topicId }.singleOrNull()
-        require(topic != null && descriptionFingerprint(topic[TopicTable.description]) == embedding.key.descriptionHash) {
-            "topic missing or description changed"
+        require(topic != null && version(topic) == embedding.key.version) {
+            "topic missing or vector version changed"
         }
         requireNotNull(findStored(embedding.key))
     }
@@ -30,8 +30,11 @@ internal class TopicEmbeddingRepository(private val db: Database) : TopicEmbeddi
             .singleOrNull()?.let { decode(it) }
 
     companion object {
+        /** The current vector version of a Topic row; memberships are only added, so the count identifies the centroid. */
+        fun version(topic: ResultRow): String = topic[TopicTable.memoryCount].toString()
+
         fun decode(row: ResultRow): TopicEmbedding = TopicEmbedding(
-            TopicEmbeddingKey(row[TopicEmbeddingTable.topicId], row[TopicEmbeddingTable.descriptionHash],
+            TopicEmbeddingKey(row[TopicEmbeddingTable.topicId], row[TopicEmbeddingTable.version],
                 EmbeddingSpace(row[TopicEmbeddingTable.model], row[TopicEmbeddingTable.inputFormat])),
             GroupStorageCodec.vector(row[TopicEmbeddingTable.vector]),
         )

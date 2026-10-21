@@ -39,6 +39,19 @@ class ClaudeCliCompletionClientTest {
         }
 
     @Test
+    fun `schema dialect declaration is removed because the CLI rejects the 2020-12 meta-schema`() = runBlocking {
+        val runner = RecordingRunner(RESULT)
+
+        client(runner).complete(
+            "s",
+            "u",
+            """{ "${'$'}schema": "https://json-schema.org/draft/2020-12/schema", "type": "object" }""",
+        )
+
+        assertEquals("""{"type":"object"}""", runner.command.after("--json-schema"))
+    }
+
+    @Test
     fun `images are sent inline instead of as files`() = runBlocking {
         val runner = RecordingRunner(RESULT)
 

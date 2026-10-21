@@ -11,7 +11,6 @@ import com.homeassistant.application.port.input.memory.analysis.ConflictingSourc
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
 import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
-import com.homeassistant.application.usecase.memory.write.MemoryIndexingOutboxProcessor
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -28,7 +27,6 @@ class MemoryAnalysisService(
     private val sourceRecords: SourceRecordRepository,
     private val memorySaver: MemoryProposalsPersister,
     private val accessPolicy: UserAccessPolicy,
-    private val memoryIndexing: MemoryIndexingOutboxProcessor? = null,
     private val referenceInterpreter: SourceReferenceInterpreter? = null,
 ) : MemoryAnalysis {
     override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult {
@@ -70,8 +68,6 @@ class MemoryAnalysisService(
         requireAvailable {
             memorySaver.persist(userId, proposals, recordsToAnalyze.map { it.id })
         }
-        runCatching { memoryIndexing?.processAvailable() }
-            .onFailure { error -> log.warn("Memory indexing deferred", error) }
         return MemoryAnalysisResult(
             sourceType = parsedSource.source.type,
             sourceName = parsedSource.source.name,

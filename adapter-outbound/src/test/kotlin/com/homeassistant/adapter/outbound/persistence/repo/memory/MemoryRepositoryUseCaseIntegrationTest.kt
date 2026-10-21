@@ -2,7 +2,10 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
+import com.homeassistant.application.port.output.group.EmbeddingSpace
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
+import com.homeassistant.application.port.output.topic.MemoryEmbedding
+import com.homeassistant.application.port.output.topic.MemoryEmbeddingKey
 import com.homeassistant.application.port.output.topic.TopicJoin
 import com.homeassistant.application.usecase.topic.TopicSearcher
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
@@ -39,7 +42,12 @@ class MemoryRepositoryUseCaseIntegrationTest {
             val mixed = stores.topicMaintenance.create(publicMemory.id, first)
             assertTrue(stores.topicMaintenance.join(otherRestrictedMemory.id, listOf(TopicJoin(mixed, first, first + east))))
             stores.topicMaintenance.create(hiddenMemory.id, TopicCentroid.of(east))
-            val search = TopicSearcher(stores.topicMaintenance, { east }, stores.canonicalMemories, UserAccessPolicy { it == member })
+            val space = EmbeddingSpace("test", "passage:v1")
+            stores.memoryEmbeddings.save(MemoryEmbedding(MemoryEmbeddingKey.of(publicMemory.id, publicMemory.content, space), east))
+            val search = TopicSearcher(
+                stores.topicMaintenance, stores.groups, { east }, stores.canonicalMemories, stores.memoryEmbeddings, space,
+                UserAccessPolicy { it == member },
+            )
 
             val conversationContext = MemoryConversationContextProvider(search).context(member, "question")
 

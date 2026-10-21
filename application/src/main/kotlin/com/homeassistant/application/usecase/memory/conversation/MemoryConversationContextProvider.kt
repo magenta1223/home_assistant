@@ -9,16 +9,16 @@ fun interface MemoryConversationContextSource {
     fun context(userId: UserId, question: String): MemoryConversationContext
 }
 
-/** The reference holds one block per matched Topic, with only the memories the user can read. */
+/**
+ * The reference holds one block per matched Topic, with only the memories the user can read. Whole lines are kept in
+ * search order up to [MAX_CONTEXT_CHARS], and a Topic header is never left without a memory under it.
+ */
 class MemoryConversationContextProvider(
     private val topicSearch: SearchTopics,
 ) : MemoryConversationContextSource {
     override fun context(userId: UserId, question: String): MemoryConversationContext {
-        val matches = topicSearch.search(userId, question)
-        return MemoryConversationContext(
-            reference = matches.joinToString("\n", transform = ::topicReferenceBlock).take(MAX_CONTEXT_CHARS),
-            hasMatches = matches.isNotEmpty(),
-        )
+        val reference = withinBudget(topicSearch.search(userId, question).flatMap(::topicReferenceLines)).joinToString("\n")
+        return MemoryConversationContext(reference = reference, hasMatches = reference.isNotEmpty())
     }
 
     companion object {
@@ -26,10 +26,15 @@ class MemoryConversationContextProvider(
     }
 }
 
-internal fun topicReferenceBlock(match: TopicMatch): String = buildString {
-    appendLine("## Topic ${match.topicId} [score=${match.score}]")
-    match.memories.forEach { appendLine("- [savedAt=${Instant.ofEpochMilli(it.createdAt)}] ${it.content}") }
-}.trimEnd()
+internal fun topicReferenceLines(match: TopicMatch): List<String> =
+    listOf("## Topic ${match.topicId} [score=${match.score}]") + match.memories.map { "- [savedAt=${Instant.ofEpochMilli(it.createdAt)}] ${it.content}" }
+
+/** The leading lines whose newline-joined length fits the budget, without a trailing header. */
+private fun withinBudget(lines: List<String>): List<String> {
+    val joinedLengths = lines.runningFold(-1) { length, line -> length + 1 + line.length }.drop(1)
+    return lines.take(joinedLengths.count { it <= MemoryConversationContextProvider.MAX_CONTEXT_CHARS })
+        .dropLastWhile { it.startsWith("## Topic ") }
+}
 
 data class MemoryConversationContext(
     val reference: String,

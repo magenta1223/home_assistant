@@ -26,6 +26,7 @@ object RepositoryFactory {
             topicDescriptions = TopicDescriptionRepository(db),
             pendingTopics = groups,
             topicEmbeddings = TopicEmbeddingRepository(db),
+            groups = groups,
             groupSnapshots = groups,
             groupChanges = groups,
             topicAssignmentOutbox = TopicAssignmentOutboxRepository(db),

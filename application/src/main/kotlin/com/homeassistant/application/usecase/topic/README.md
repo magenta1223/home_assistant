@@ -56,35 +56,43 @@ sequenceDiagram
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 벡터 준비·배치 단계의 오류는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
 - Topic 중심은 ACL이 다른 Memory를 함께 담는다. 검색은 중심으로 순위만 정하고, 사용자에게는 읽을 수 있는 slice의 Memory만 넘긴다.
-- 검색 결과의 여러 Topic에 같은 Memory가 함께 실릴 수 있다. Topic 단위 블록을 유지하려고 중복을 제거하지 않는다.
 - 할당은 매번 전체 Topic 중심을 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Topic 분할·병합(보류)과 kNN 링크는 [후속 작업](../../../../../../../../../docs/todolist/p1/topic-group-merge-and-knn-links.md)이다.
 
 ## Topic 검색
 
-`TopicSearcher`(`SearchTopics`)는 대화 context가 쓰는 검색이다. 검색 단위는 Memory가 아니라 Topic이다.
+`TopicSearcher`(`SearchTopics`)는 대화 context가 쓰는 검색이다. xMemory의 Stage I처럼 Group에서 들어가 Topic으로 좁힌다.
 
 ```mermaid
 sequenceDiagram
     actor Caller as 대화 context
     participant Search as TopicSearcher
     participant Query as QueryEmbeddingGenerator
+    participant Groups as GroupReader
     participant Topics as TopicReader
     participant Memories as MemoryReader
+    participant Vectors as MemoryEmbeddingStore
     Caller->>Search: 1. search(userId, question)
     Search->>Search: 2. 사용자 인가 확인
     Search->>Topics: 3. 모든 Topic 중심
     Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
-    Search->>Memories: 5. 사용자가 읽을 수 있는 Memory
-    loop cosine 높은 순, Topic 3개가 찰 때까지
-        Search->>Topics: 6. Topic의 slice
-        Search->>Search: 7. 읽을 수 있는 slice ∩ 5의 Memory, 비면 건너뜀
-    end
-    Search-->>Caller: 8. Topic별 Memory(최신순)
+    Search->>Groups: 5. 모든 Group 중심과 소속 Topic
+    Search->>Search: 6. 가까운 Group 5개 중 backbone 3개의 Topic ∪ 가까운 Topic 20개
+    Search->>Memories: 7. 사용자가 읽을 수 있는 Memory
+    Search->>Topics: 8. 후보 Topic의 slice, 읽을 수 있는 Memory가 없으면 제외
+    Search->>Search: 9. backbone Topic 5개
+    Search->>Vectors: 10. Memory 벡터
+    Search-->>Caller: 11. Topic별 Memory(질문 관련도순, 앞 Topic에 나온 Memory는 빼고)
 ```
 
-- Topic 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Memory가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
-- 최소 점수는 아직 두지 않는다. Group 단위 검색은 하지 않는다.
+- backbone 선택은 domain의 `BackboneSelection`(xMemory 식 4)이며 Group과 Topic 두 단계가 같은 것을 쓴다.
+  아직 고르지 않은 후보 중 "새로 덮는 kNN 이웃 가중치 / 전체 가중치 + 질문 관련도"가 가장 큰 것을 차례로 고른다.
+  관련도는 cosine을 0..1로 옮긴 값이다. kNN(10개)은 저장하지 않고 후보 안에서 그때 계산한다.
+- 가까운 Topic을 직접 후보에 더하므로 아직 Group에 들어가지 않은 Topic도 찾힌다.
+- 한 Memory는 먼저 고른 Topic 하나에만 싣는다. Memory가 모두 앞 Topic에 실린 Topic은 결과에서 빠진다.
+- Group·Topic 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Memory가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+- 논문의 Stage II(reader entropy가 줄 때만 하위 텍스트 추가)는 하지 않는다. 대화 context가 Memory를 순서대로 8,000자 안에서
+  줄 단위로 싣는다. 최소 점수는 아직 두지 않는다.
 
 ## Topic 설명
 

@@ -8,7 +8,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class GroupRepository(private val db: Database) : PendingTopicSource, GroupSnapshotReader, GroupChangeWriter {
+internal class GroupRepository(private val db: Database) : PendingTopicSource, GroupReader, GroupSnapshotReader, GroupChangeWriter {
     override fun pending(limit: Int): List<PendingTopic> = transaction(db) {
         require(limit > 0)
         TopicTable.selectAll().where {
@@ -16,22 +16,28 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
         }.orderBy(TopicTable.id).limit(limit).map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
     }
 
+    override fun groups(): List<StoredGroup> = transaction(db) { storedGroups(GroupMembershipTable.selectAll().toList()) }
+
     override fun snapshot(): GroupSnapshot = transaction(db) {
         val memberships = GroupMembershipTable.selectAll().toList()
         val keys = memberships.map { it[GroupMembershipTable.embeddingKey] }
         val embeddings = TopicEmbeddingTable.selectAll().where { TopicEmbeddingTable.key inList keys }
             .map { TopicEmbeddingRepository.decode(it) }.associateBy { it.key.topicId }
-        val byGroup = memberships.groupBy { it[GroupMembershipTable.groupId] }
-        val groups = GroupTable.selectAll().orderBy(GroupTable.id).map { row ->
-            StoredGroup(Group(row[GroupTable.id], byGroup[row[GroupTable.id]].orEmpty()
-                .map { it[GroupMembershipTable.topicId] }.toSet()), row[GroupTable.revision],
-                GroupStorageCodec.vector(row[GroupTable.centroid]))
-        }
+        val groups = storedGroups(memberships)
         val outdated = TopicTable.selectAll().where { TopicTable.id inList embeddings.keys }.orderBy(TopicTable.id)
             .map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
             .filter { it.version != embeddings.getValue(it.id).key.version }
         check(memberships.size == embeddings.size) { "group embedding missing" }
         GroupSnapshot(groups, embeddings, outdated)
+    }
+
+    private fun storedGroups(memberships: List<ResultRow>): List<StoredGroup> {
+        val byGroup = memberships.groupBy { it[GroupMembershipTable.groupId] }
+        return GroupTable.selectAll().orderBy(GroupTable.id).map { row ->
+            StoredGroup(Group(row[GroupTable.id], byGroup[row[GroupTable.id]].orEmpty()
+                .map { it[GroupMembershipTable.topicId] }.toSet()), row[GroupTable.revision],
+                GroupStorageCodec.vector(row[GroupTable.centroid]))
+        }
     }
 
     override fun apply(change: GroupChange): GroupWriteResult = try {

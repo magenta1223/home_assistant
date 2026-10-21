@@ -14,7 +14,7 @@ class MemoryConversationPromptBuilderTest {
     fun `reference exposes storage order as ISO time without treating it as event time`() {
         val older = memoryMatch(1, "2026-01-01T00:00:00Z")
         val newer = memoryMatch(2, "2026-08-01T12:30:00Z")
-        val reference = topicReferenceBlock(TopicMatch(1, 0.9, listOf(older, newer)))
+        val reference = topicReferenceLines(TopicMatch(1, 0.9, listOf(older, newer))).joinToString("\n")
         val prompt = MemoryConversationPromptBuilder(
             Clock.fixed(Instant.parse("2026-08-08T10:00:00Z"), ZoneOffset.UTC),
         ).build(reference, "Which one is current?")

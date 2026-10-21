@@ -16,6 +16,12 @@ data class GroupSnapshot(
 )
 
 /** Trusted internal metadata only; this is not an ACL-filtered user projection. */
+fun interface GroupReader {
+    /** Every Group with its member Topics and centroid. */
+    fun groups(): List<StoredGroup>
+}
+
+/** Trusted internal metadata only; this is not an ACL-filtered user projection. */
 interface GroupSnapshotReader {
     fun snapshot(): GroupSnapshot
 }

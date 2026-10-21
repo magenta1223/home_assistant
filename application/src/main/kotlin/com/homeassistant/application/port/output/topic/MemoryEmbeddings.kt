@@ -7,11 +7,17 @@ import com.homeassistant.domain.group.TopicVector
 /** A memory that belongs to no Topic yet. Content is immutable, so its hash keys the vector cache. */
 data class PendingMemory(val id: Int, val content: String) {
     init { require(id > 0 && content.isNotBlank()) }
-    fun embeddingKey(space: EmbeddingSpace) = MemoryEmbeddingKey(id, descriptionFingerprint(content), space)
+    fun embeddingKey(space: EmbeddingSpace) = MemoryEmbeddingKey.of(id, content, space)
 }
 
 data class MemoryEmbeddingKey(val memoryId: Int, val contentHash: String, val space: EmbeddingSpace) {
     init { require(memoryId > 0 && contentHash.isNotBlank()) }
+
+    companion object {
+        /** The key a memory's vector is cached under in [space]. */
+        fun of(memoryId: Int, content: String, space: EmbeddingSpace) =
+            MemoryEmbeddingKey(memoryId, descriptionFingerprint(content), space)
+    }
 }
 
 data class MemoryEmbedding(val key: MemoryEmbeddingKey, val vector: TopicVector)

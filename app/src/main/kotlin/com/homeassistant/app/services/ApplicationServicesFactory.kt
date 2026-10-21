@@ -90,8 +90,11 @@ object ApplicationServicesFactory {
         )
         val topicSearch = TopicSearcher(
             topics = repositories.topicMaintenance,
+            groups = repositories.groups,
             queries = QueryEmbeddingAdapter(textEmbedder),
             memories = repositories.canonicalMemories,
+            memoryVectors = repositories.memoryEmbeddings,
+            space = memoryEmbeddings.space,
             accessPolicy = accessPolicy,
         )
         val describeTopic = TopicDescriber(

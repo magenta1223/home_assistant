@@ -56,6 +56,7 @@ class GroupRepositoryTest {
         assertEquals(ids, snapshot.groups.flatMap { it.group.topicIds }.toSet())
         assertEquals(ids.size, snapshot.groups.sumOf { it.group.topicIds.size })
         assertTrue(snapshot.groups.all { it.group.topicIds.size <= 2 })
+        assertEquals(snapshot.groups, GroupRepository(restarted).groups())
         assertEquals(beforeTopics, topics.read(ids))
         assertEquals(beforeMemories, memories.getMemories(user))
         assertEquals(beforeSources, sources.findBySource(source))

@@ -3,6 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
+import com.homeassistant.application.port.output.topic.TopicJoin
 import com.homeassistant.application.usecase.topic.TopicSearcher
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
 import com.homeassistant.domain.group.TopicVector
@@ -36,7 +37,7 @@ class MemoryRepositoryUseCaseIntegrationTest {
             val hiddenMemory = stores.saveMemory(UserId("member-2"), "hidden", MemoryAccess.restricted(listOf(UserId("member-2"))))
             val first = TopicCentroid.of(east)
             val mixed = stores.topicMaintenance.create(publicMemory.id, first)
-            assertTrue(stores.topicMaintenance.join(mixed, otherRestrictedMemory.id, first, first + east))
+            assertTrue(stores.topicMaintenance.join(otherRestrictedMemory.id, listOf(TopicJoin(mixed, first, first + east))))
             stores.topicMaintenance.create(hiddenMemory.id, TopicCentroid.of(east))
             val search = TopicSearcher(stores.topicMaintenance, { east }, stores.canonicalMemories, UserAccessPolicy { it == member })
 

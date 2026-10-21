@@ -17,7 +17,7 @@
 - Topic은 **중심 벡터**와 **ACL별 Memory 목록(slice)**만 가진다. 설명·분류명 등 LM이 쓰는 글은 두지 않는다.
 - Topic에 ACL이 있다. slice 하나는 같은 ACL(`PUBLIC` 또는 열람자 집합)을 가진 소속 Memory 목록이며, slice의 ACL은 그 Memory들의 ACL과 같다.
 - 할당은 LM 없이 cosine 유사도로 한다. 가장 가까운 Topic 하나와의 유사도가 임계값 이상이면 join, 아니면 새 Topic을 만든다.
-  Memory는 Topic 하나에만 속한다.
+  Memory는 Topic 하나에만 속한다. (2026-10-21 복수 소속으로 변경: [usecase/topic README](../../../application/src/main/kotlin/com/homeassistant/application/usecase/topic/README.md))
 - 검색 단위는 Topic이다. 질문 임베딩으로 Topic 중심 벡터를 검색하고, 사용자가 읽을 수 있는 slice의 Memory만 응답에 쓴다.
 
 ## AS-IS / TO-BE

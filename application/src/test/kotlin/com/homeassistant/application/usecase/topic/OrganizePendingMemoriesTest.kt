@@ -25,7 +25,7 @@ class OrganizePendingMemoriesTest {
     @Test fun `without topics a memory starts one from its own vector`() {
         val fixture = Fixture()
         val result = fixture.service.execute(1)
-        assertEquals(MemoryAssignmentOutcome.Assigned(100, created = true), result.memories.single().outcome)
+        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(100), created = true), result.memories.single().outcome)
         assertEquals(mapOf(100 to TopicCentroid.of(east)), fixture.centroids)
         assertEquals(mapOf(100 to listOf(1)), fixture.members)
     }
@@ -36,17 +36,29 @@ class OrganizePendingMemoriesTest {
         fixture.add(9, TopicCentroid.of(east), 51)
         fixture.vectors = mapOf("1" to nearEast)
         val outcome = fixture.service.execute(1).memories.single().outcome
-        assertEquals(MemoryAssignmentOutcome.Assigned(9, created = false), outcome)
+        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(9), created = false), outcome)
         assertEquals(TopicCentroid.of(east) + nearEast, fixture.centroids.getValue(9))
         assertEquals(listOf(51, 1), fixture.members.getValue(9))
         assertEquals(TopicCentroid.of(north), fixture.centroids.getValue(7))
+    }
+
+    @Test fun `a memory joins every near topic in one write`() {
+        val fixture = Fixture()
+        fixture.add(7, TopicCentroid.of(north), 50)
+        fixture.add(8, TopicCentroid.of(nearEast), 51)
+        fixture.add(9, TopicCentroid.of(east), 52)
+        val outcome = fixture.service.execute(1).memories.single().outcome
+        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(9, 8), created = false), outcome)
+        assertEquals(TopicCentroid.of(nearEast) + east, fixture.centroids.getValue(8))
+        assertEquals(TopicCentroid.of(east) + east, fixture.centroids.getValue(9))
+        assertEquals(listOf(50), fixture.members.getValue(7))
     }
 
     @Test fun `a memory below the threshold starts a new topic`() {
         val fixture = Fixture()
         fixture.add(7, TopicCentroid.of(north), 50)
         val outcome = fixture.service.execute(1).memories.single().outcome
-        assertEquals(MemoryAssignmentOutcome.Assigned(100, created = true), outcome)
+        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(100), created = true), outcome)
         assertEquals(setOf(7, 100), fixture.centroids.keys)
     }
 
@@ -56,7 +68,7 @@ class OrganizePendingMemoriesTest {
         fixture.losesJoin = setOf(1)
         val result = fixture.service.execute(2)
         assertIs<MemoryAssignmentOutcome.Failed>(result.memories.first().outcome)
-        assertEquals(MemoryAssignmentOutcome.Assigned(7, created = false), result.memories.last().outcome)
+        assertEquals(MemoryAssignmentOutcome.Assigned(listOf(7), created = false), result.memories.last().outcome)
         assertEquals(listOf(50, 2), fixture.members.getValue(7))
         assertEquals(listOf("failed:1:1", "completed:2:1"), fixture.outboxMarks)
     }
@@ -126,10 +138,12 @@ class OrganizePendingMemoriesTest {
             override fun centroids() = centroids.toMap()
             override fun read(topicIds: Collection<Int>) = topicIds.filter { it in centroids }
                 .map { Topic(it, centroids.getValue(it), mapOf(MemoryAccess.PUBLIC to members.getValue(it).toList())) }
-            override fun join(topicId: Int, memoryId: Int, expected: TopicCentroid, updated: TopicCentroid): Boolean {
-                if (memoryId in losesJoin || centroids[topicId] != expected) return false
-                centroids[topicId] = updated
-                members.getValue(topicId).add(memoryId)
+            override fun join(memoryId: Int, joins: List<TopicJoin>): Boolean {
+                if (memoryId in losesJoin || joins.any { centroids[it.topicId] != it.expected }) return false
+                joins.forEach {
+                    centroids[it.topicId] = it.updated
+                    members.getValue(it.topicId).add(memoryId)
+                }
                 return true
             }
             override fun create(memoryId: Int, centroid: TopicCentroid): Int {

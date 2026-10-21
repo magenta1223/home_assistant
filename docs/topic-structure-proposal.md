@@ -334,8 +334,8 @@ Topic 소속은 LM이 정한다. Memory·Topic 설명 임베딩으로 후보 Top
 
 위 2026-10-19 결과의 LM 배정과 xMemory 대응을 대체한다.
 
-- xMemory 대응: Source가 segment, Topic이 component, Group이 group이다. 완전한 1:1 대응은 아니다. Memory는 Topic 하나에만 속하므로
-  Topic을 겹침 허용 묶음으로 두던 대응은 쓰지 않는다.
+- xMemory 대응: Source가 segment, Topic이 component, Group이 group이다. 완전한 1:1 대응은 아니다. Memory는 여러 Topic에
+  속할 수 있다(2026-10-21). Topic끼리의 MECE는 Topic이 Group에 중복 소속되지 않는다는 뜻이다.
 - 할당: 새 Memory 벡터와 가장 가까운 Topic 중심 벡터의 cosine이 0.6 이상이면 join, 아니면 새 Topic을 만든다. LM을 호출하지 않는다.
   중심 벡터는 소속 Memory 단위 벡터의 합과 개수로 저장하며 방향만 쓴다.
 - 저장: Topic 본체(벡터 합·Memory 수)와 소속(Memory당 한 행)만 둔다. 설명·분류·관련 관계는 제거했다.

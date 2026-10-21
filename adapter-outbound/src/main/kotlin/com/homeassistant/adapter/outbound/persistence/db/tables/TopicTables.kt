@@ -10,11 +10,11 @@ internal object TopicTable : Table("topics") {
     override val primaryKey = PrimaryKey(id)
 }
 
-/** A memory belongs to at most one Topic. Its slice is read from the memory's current access. */
+/** A memory may belong to several Topics, once each. Its slice is read from the memory's current access. */
 internal object TopicMembershipTable : Table("topic_memberships") {
-    val topicId = integer("topic_id").references(TopicTable.id).index()
-    val memoryId = integer("memory_id").references(MemoryTable.id)
-    override val primaryKey = PrimaryKey(memoryId)
+    val topicId = integer("topic_id").references(TopicTable.id)
+    val memoryId = integer("memory_id").references(MemoryTable.id).index()
+    override val primaryKey = PrimaryKey(topicId, memoryId)
 }
 
 /** Regenerable read model: one description per Topic and [view] (the set of slices a viewer reads). */

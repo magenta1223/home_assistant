@@ -6,6 +6,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.TopicTable
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
+import com.homeassistant.application.port.output.topic.TopicJoin
 import com.homeassistant.domain.group.TopicVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
@@ -40,8 +41,8 @@ class TopicRepositoryTest {
         val first = TopicCentroid.of(east)
         val id = repository.create(public, first)
         val second = first + north
-        assertTrue(repository.join(id, shared, first, second))
-        assertTrue(repository.join(id, other, second, second + east))
+        assertTrue(repository.join(shared, listOf(TopicJoin(id, first, second))))
+        assertTrue(repository.join(other, listOf(TopicJoin(id, second, second + east))))
 
         val restarted = TopicRepository(DatabaseFactory.init(path))
         val topic = restarted.read(listOf(id)).single()
@@ -57,22 +58,70 @@ class TopicRepositoryTest {
         val repository = TopicRepository(db)
         val start = TopicCentroid.of(east)
         val id = repository.create(first, start)
-        assertTrue(repository.join(id, second, start, start + east))
+        assertTrue(repository.join(second, listOf(TopicJoin(id, start, start + east))))
 
-        assertFalse(repository.join(id, third, start, start + north))
+        assertFalse(repository.join(third, listOf(TopicJoin(id, start, start + north))))
         assertEquals(start + east, repository.centroids().getValue(id))
         assertEquals(2L, transaction(db) { TopicMembershipTable.selectAll().count() })
     }
 
     @Test
-    fun `a memory in a topic or a missing memory rolls the write back`() = withDatabase { db, _ ->
+    fun `a memory joins several topics and lists in each`() = withDatabase { db, _ ->
+        val (a, b, shared) = listOf("a", "b", "shared").map { createMemory(db, it) }
+        val repository = TopicRepository(db)
+        val eastTopic = repository.create(a, TopicCentroid.of(east))
+        val northTopic = repository.create(b, TopicCentroid.of(north))
+
+        assertTrue(repository.join(shared, listOf(
+            TopicJoin(eastTopic, TopicCentroid.of(east), TopicCentroid.of(east) + east),
+            TopicJoin(northTopic, TopicCentroid.of(north), TopicCentroid.of(north) + east),
+        )))
+
+        val topics = repository.read(listOf(eastTopic, northTopic)).associate { it.id to it.slices.getValue(MemoryAccess.PUBLIC) }
+        assertEquals(mapOf(eastTopic to listOf(a, shared), northTopic to listOf(b, shared)), topics)
+    }
+
+    @Test
+    fun `one outdated topic leaves every topic of the join unchanged`() = withDatabase { db, _ ->
+        val (a, b, shared) = listOf("a", "b", "shared").map { createMemory(db, it) }
+        val repository = TopicRepository(db)
+        val eastTopic = repository.create(a, TopicCentroid.of(east))
+        val northTopic = repository.create(b, TopicCentroid.of(north))
+
+        assertFalse(repository.join(shared, listOf(
+            TopicJoin(eastTopic, TopicCentroid.of(east), TopicCentroid.of(east) + east),
+            TopicJoin(northTopic, TopicCentroid.of(north) + north, TopicCentroid.of(north) + north + east),
+        )))
+
+        assertEquals(mapOf(eastTopic to TopicCentroid.of(east), northTopic to TopicCentroid.of(north)), repository.centroids())
+        assertEquals(2L, transaction(db) { TopicMembershipTable.selectAll().count() })
+    }
+
+    @Test
+    fun `memberships keyed by memory alone are rekeyed with their rows kept`() = withDatabase { db, path ->
+        val (a, b) = listOf("a", "b").map { createMemory(db, it) }
+        val topic = TopicRepository(db).create(a, TopicCentroid.of(east))
+        transaction(db) {
+            exec("DROP TABLE topic_memberships")
+            exec("CREATE TABLE topic_memberships (topic_id INT NOT NULL, memory_id INT NOT NULL PRIMARY KEY)")
+            exec("INSERT INTO topic_memberships (topic_id, memory_id) VALUES ($topic, $a)")
+        }
+
+        val restarted = TopicRepository(DatabaseFactory.init(path))
+        val other = restarted.create(b, TopicCentroid.of(north))
+        assertTrue(restarted.join(a, listOf(TopicJoin(other, TopicCentroid.of(north), TopicCentroid.of(north) + east))))
+        val members = restarted.read(listOf(topic, other)).associate { it.id to it.slices.getValue(MemoryAccess.PUBLIC) }
+        assertEquals(mapOf(topic to listOf(a), other to listOf(a, b)), members)
+    }
+
+    @Test
+    fun `a memory already in the topic or a missing memory rolls the write back`() = withDatabase { db, _ ->
         val memory = createMemory(db, "a")
         val repository = TopicRepository(db)
         val start = TopicCentroid.of(east)
         val id = repository.create(memory, start)
 
-        assertFails { repository.create(memory, TopicCentroid.of(north)) }
-        assertFails { repository.join(id, memory, start, start + north) }
+        assertFails { repository.join(memory, listOf(TopicJoin(id, start, start + north))) }
         assertFailsWith<IllegalArgumentException> { repository.create(999, TopicCentroid.of(north)) }
         assertEquals(mapOf(id to start), repository.centroids())
         assertEquals(1L, transaction(db) { TopicTable.selectAll().count() })

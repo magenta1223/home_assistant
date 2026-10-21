@@ -4,6 +4,7 @@ import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.TopicVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
+import kotlin.math.sqrt
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -43,14 +44,35 @@ class TopicTest {
     }
 
     @Test
-    fun `a memory joins the nearest topic at or above the threshold`() {
-        val policy = TopicPlacementPolicy(joinThreshold = 0.6)
-        val northEast = TopicVector.normalized(listOf(1.0, 1.0))
+    fun `a memory starts a topic when none reaches the join threshold`() {
+        val policy = TopicPlacementPolicy()
 
         assertEquals(TopicPlacement.Create, policy.decide(east, emptyMap()))
-        assertEquals(TopicPlacement.Join(2), policy.decide(east, mapOf(1 to north, 2 to northEast)))
-        assertEquals(TopicPlacement.Create, policy.decide(east, mapOf(1 to north)))
-        assertEquals(TopicPlacement.Join(1), TopicPlacementPolicy(joinThreshold = 0.0).decide(east, mapOf(1 to north)))
-        assertEquals(TopicPlacement.Join(3), policy.decide(east, mapOf(4 to east, 3 to east)))
+        assertEquals(TopicPlacement.Create, policy.decide(east, mapOf(1 to north, 2 to at(0.59))))
     }
+
+    @Test
+    fun `nearest topics above the join threshold fill up to three`() {
+        val policy = TopicPlacementPolicy()
+
+        assertEquals(TopicPlacement.Join(listOf(2)), policy.decide(east, mapOf(1 to north, 2 to at(0.65))))
+        assertEquals(TopicPlacement.Join(listOf(4, 2, 3)),
+            policy.decide(east, mapOf(1 to at(0.61), 2 to at(0.7), 3 to at(0.65), 4 to at(0.95))))
+    }
+
+    @Test
+    fun `every topic at the join-all threshold is joined beyond three`() {
+        val policy = TopicPlacementPolicy()
+        val centroids = mapOf(1 to at(0.85), 2 to at(0.99), 3 to at(0.9), 4 to at(0.81), 5 to at(0.7))
+
+        assertEquals(TopicPlacement.Join(listOf(2, 3, 1, 4)), policy.decide(east, centroids))
+    }
+
+    @Test
+    fun `equal cosine goes to the smaller topic id first`() {
+        assertEquals(TopicPlacement.Join(listOf(3, 4)), TopicPlacementPolicy().decide(east, mapOf(4 to east, 3 to east)))
+    }
+
+    /** A unit vector whose cosine to [east] is [cosine]. */
+    private fun at(cosine: Double) = TopicVector.normalized(listOf(cosine, sqrt(1 - cosine * cosine)))
 }

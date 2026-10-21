@@ -9,6 +9,7 @@ internal object DatabaseFactory {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
             migrateLegacyTableNames()
+            migrateTopicMembershipKey()
             SchemaUtils.createMissingTablesAndColumns(
                 MemoryTable,
                 MemoryEvidenceTable,
@@ -42,6 +43,19 @@ internal object DatabaseFactory {
     private fun Transaction.renameTableIfNeeded(legacyName: String, currentName: String) {
         if (!tableExists(legacyName) || tableExists(currentName)) return
         exec("ALTER TABLE \"$legacyName\" RENAME TO \"$currentName\"")
+    }
+
+    /** Memberships were keyed by memory alone (one Topic per memory). SQLite cannot change a key in place. */
+    private fun Transaction.migrateTopicMembershipKey() {
+        if (!tableExists("topic_memberships")) return
+        val keyColumns = exec("PRAGMA table_info(\"topic_memberships\")") { result ->
+            buildList { while (result.next()) if (result.getInt("pk") > 0) add(result.getString("name")) }
+        }
+        if (keyColumns != listOf("memory_id")) return
+        exec("ALTER TABLE topic_memberships RENAME TO topic_memberships_single")
+        SchemaUtils.create(TopicMembershipTable)
+        exec("INSERT INTO topic_memberships (topic_id, memory_id) SELECT topic_id, memory_id FROM topic_memberships_single")
+        exec("DROP TABLE topic_memberships_single")
     }
 
     private fun Transaction.tableExists(name: String): Boolean =

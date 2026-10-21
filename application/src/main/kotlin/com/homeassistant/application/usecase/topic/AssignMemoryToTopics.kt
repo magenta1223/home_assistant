@@ -7,8 +7,8 @@ import com.homeassistant.domain.topic.TopicPlacement
 import com.homeassistant.domain.topic.TopicPlacementPolicy
 
 /**
- * Places one memory into one Topic, as xMemory attaches a component: the memory joins the Topic whose
- * centroid is nearest when the policy accepts it, and starts a new Topic otherwise.
+ * Places one memory into Topics, as xMemory attaches a component: the memory joins every Topic whose centroid
+ * the policy accepts, all in one write, and starts a new Topic when it accepts none.
  */
 class AssignMemoryToTopics(
     private val store: TopicMaintenanceStore,
@@ -23,11 +23,12 @@ class AssignMemoryToTopics(
         val centroids = store.centroids()
         return when (val placement = policy.decide(vector, centroids.mapValues { it.value.direction })) {
             is TopicPlacement.Join -> {
-                val current = centroids.getValue(placement.topicId)
-                check(store.join(placement.topicId, memory.id, current, current + vector)) { "topic changed during assignment" }
-                MemoryAssignmentOutcome.Assigned(placement.topicId, created = false)
+                val joins = placement.topicIds.map { TopicJoin(it, centroids.getValue(it), centroids.getValue(it) + vector) }
+                check(store.join(memory.id, joins)) { "topic changed during assignment" }
+                MemoryAssignmentOutcome.Assigned(placement.topicIds, created = false)
             }
-            TopicPlacement.Create -> MemoryAssignmentOutcome.Assigned(store.create(memory.id, TopicCentroid.of(vector)), created = true)
+            TopicPlacement.Create ->
+                MemoryAssignmentOutcome.Assigned(listOf(store.create(memory.id, TopicCentroid.of(vector))), created = true)
         }
     }
 }

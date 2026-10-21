@@ -26,7 +26,7 @@ Source는 저장 후 불변이다. Memory는 ACL만 변경하며 content·eviden
 | 1 | Topic과 Group | Topic끼리의 관련 관계는 현재 저장하지 않으며 연결은 후속 작업이다 (2026-10-20). Topic 부모·자식은 강제하지 않는다. 별도 Group이 Topic을 묶고, 배치 완료된 Topic은 하나의 Group에 속한다. Memory끼리는 직접 연결하지 않는다. |
 | 2 | 입력 기준의 접근 권한 | 입력에 ACL을 지정한다. 그 입력의 원문과 파생 Memory들은 같은 공유 범위를 가진다. Topic 소속으로 권한을 얻지는 않는다. |
 | 3 | 접근 권한 변경 가능 | 승진·역할 변경 등에 따라 기존 기록의 독자를 추가하거나 제거할 수 있다. 같은 입력의 원문과 Memory들의 공유 범위를 함께 변경한다. |
-| 4 | 추출과 Topic 구성 분리 | Memory 추출은 기존 분석 경로를 사용한다. Topic 소속은 LM 없이 가장 가까운 Topic 중심 벡터와의 cosine 유사도로 정하며, Memory는 Topic 하나에만 속한다 (2026-10-20). Agent에게 ACL 변경 권한을 자동 부여하지 않는다. |
+| 4 | 추출과 Topic 구성 분리 | Memory 추출은 기존 분석 경로를 사용한다. Topic 소속은 LM 없이 Topic 중심 벡터와의 cosine 유사도로 정하며, Memory는 가까운 여러 Topic에 속할 수 있다 (2026-10-21). Agent에게 ACL 변경 권한을 자동 부여하지 않는다. |
 | 5 | Topic은 검색용 묶음 | 중심 벡터와 ACL별 Memory 목록(slice)만 가진다. 설명·분류명은 두지 않는다. 검색은 Topic 단위이며 사용자가 읽을 수 있는 slice의 Memory만 쓴다. |
 | 6 | 원자적 Memory | 독립적으로 이해할 수 있는 사실을 저장한다. 필요한 조건·예외를 포함하며 content는 불변이고 ACL만 변경한다. |
 | 7 | 단순한 모델과 운영 | 사실, 검색 묶음, 원문 근거의 역할을 구분하고 불필요한 문서·권한·관계 모델을 늘리지 않는다. |
@@ -98,7 +98,7 @@ Topic 모델과 명시적 저장 기능은 유지하며 대체 생성 알고리�
 
 ### 최신 작업 범위: Topic 중심 벡터와 ACL slice (2026-10-20)
 
-- Topic을 xMemory의 component로 본다. 완전한 1:1 대응은 아니다. Memory는 Topic 하나에만 속하며, 위의 복수 소속 유지를 대체한다.
+- Topic을 xMemory의 component로 본다. 완전한 1:1 대응은 아니다. Memory는 Topic 하나에만 속하며, 위의 복수 소속 유지를 대체한다. 2026-10-21 복수 소속으로 되돌렸다(cosine 0.8 이상 전부, 3개 미만이면 0.6 이상으로 3개까지).
 - Topic은 중심 벡터와 ACL slice만 가진다. slice는 같은 ACL(`PUBLIC` 또는 열람자 집합)의 소속 Memory 목록이며 조회 시 Memory의 현재 ACL로 계산한다.
 - 할당은 cosine 최근접 Topic이 임계값(시작값 0.6) 이상이면 join, 아니면 새 Topic이다. LM 할당과 TopicRelation은 제거했다.
 - 검색은 Topic 중심 벡터로 하고 읽을 수 있는 Memory가 없는 Topic은 제외한다.

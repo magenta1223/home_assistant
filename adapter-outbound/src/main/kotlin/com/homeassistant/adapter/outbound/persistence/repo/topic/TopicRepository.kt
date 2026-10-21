@@ -4,6 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.MemoryViewerTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicMembershipTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.TopicTable
+import com.homeassistant.application.port.output.topic.TopicJoin
 import com.homeassistant.application.port.output.topic.TopicMaintenanceStore
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.memory.MemoryVisibility
@@ -32,15 +33,20 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
         }
     }
 
-    override fun join(topicId: Int, memoryId: Int, expected: TopicCentroid, updated: TopicCentroid): Boolean = transaction(db) {
-        require(updated.count == expected.count + 1) { "a join adds one memory" }
+    override fun join(memoryId: Int, joins: List<TopicJoin>): Boolean = transaction(db) {
+        require(joins.isNotEmpty() && joins.distinctBy { it.topicId }.size == joins.size) { "a join names distinct topics" }
         requireMemory(memoryId)
-        val changed = TopicTable.update({ (TopicTable.id eq topicId) and (TopicTable.memoryCount eq expected.count) }) {
-            it[vectorSum] = encode(updated.sum)
-            it[memoryCount] = updated.count
+        for (join in joins) {
+            val changed = TopicTable.update({ (TopicTable.id eq join.topicId) and (TopicTable.memoryCount eq join.expected.count) }) {
+                it[vectorSum] = encode(join.updated.sum)
+                it[memoryCount] = join.updated.count
+            }
+            if (changed == 0) {
+                rollback()
+                return@transaction false
+            }
+            addMembership(join.topicId, memoryId)
         }
-        if (changed == 0) return@transaction false
-        addMembership(topicId, memoryId)
         true
     }
 
@@ -59,7 +65,7 @@ internal class TopicRepository(private val db: Database) : TopicMaintenanceStore
         require(MemoryTable.select(MemoryTable.id).where { MemoryTable.id eq memoryId }.any()) { "memory reference does not exist" }
     }
 
-    /** A memory already in a Topic violates the membership key and rolls back the whole write. */
+    /** A memory already in the Topic violates the membership key and rolls back the whole write. */
     private fun addMembership(topicId: Int, memoryId: Int) {
         TopicMembershipTable.insert {
             it[TopicMembershipTable.topicId] = topicId

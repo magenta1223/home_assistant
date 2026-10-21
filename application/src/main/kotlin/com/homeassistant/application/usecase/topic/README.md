@@ -1,13 +1,13 @@
 # Memory → Topic assignment
 
-Topic 할당 outbox에 쌓인 Memory를 Topic 하나에 배정하고, 이어서 Topic을 Group으로 정리한다.
+Topic 할당 outbox에 쌓인 Memory를 가까운 Topic들에 배정하고, 이어서 Topic을 Group으로 정리한다.
 내부 input port는 `OrganizePendingMemories.execute(limit)`이며 앱의 `organizeMemories`로 제공된다.
 outbox 행은 Memory 저장 transaction에서 함께 생긴다. 앱의 Topic 할당 worker가 주기마다 임베딩 runtime이
 준비됐는지 확인한 뒤에만 호출한다. 준비되지 않은 회차는 claim하지 않는다.
 worker는 시작 시 `enqueueUnassigned()`로 outbox 도입 전 저장된 미할당 Memory를 한 번 등록한다.
 
 Topic은 xMemory의 component에 해당한다. xMemory가 segment를 component 중심과의 cosine으로 붙이거나
-새 component를 만들듯, Memory는 가장 가까운 Topic 중심과의 cosine으로 Topic에 합류하거나 새 Topic을 만든다.
+새 component를 만들듯, Memory는 Topic 중심과의 cosine으로 가까운 Topic들에 합류하거나 새 Topic을 만든다.
 Topic 위의 Group은 xMemory의 group이다. 대응이 1:1은 아니다.
 
 ## 정상 흐름
@@ -26,9 +26,9 @@ sequenceDiagram
         Batch->>Assign: 3. 배정 요청
         Assign->>Embed: 4. Memory 벡터
         Assign->>Store: 5. 모든 Topic 중심
-        Assign->>Assign: 6. 가장 가까운 Topic과 cosine ≥ 임계값이면 join, 아니면 생성
-        Assign->>Store: 7. 소속 추가와 중심 갱신을 한 transaction으로
-        Assign-->>Batch: 8. 결과(Topic ID, 생성 여부)
+        Assign->>Assign: 6. 임계값을 넘는 Topic들에 join, 없으면 생성
+        Assign->>Store: 7. 모든 Topic의 소속 추가와 중심 갱신을 한 transaction으로
+        Assign-->>Batch: 8. 결과(Topic ID들, 생성 여부)
     end
     Batch->>Groups: 9. 중심이 바뀐 Topic의 벡터를 다시 준비 → 그 Group 중심만 갱신
     Batch->>Groups: 10. 새 Topic을 xMemory 방식으로 Group 배치·분할
@@ -37,10 +37,12 @@ sequenceDiagram
 
 ## 정책
 
-- 한 Memory는 Topic 하나에만 속한다. 임계값은 `TopicPlacementPolicy(joinThreshold=0.6)`이며 동점은 작은 Topic ID다.
+- 한 Memory는 여러 Topic에 속할 수 있다. `TopicPlacementPolicy`는 cosine 0.8(`joinAllThreshold`) 이상인 Topic을 전부 고르고,
+  그것이 3개(`fillUpTo`) 미만이면 0.6(`joinThreshold`) 이상인 Topic으로 가까운 순으로 3개까지 채운다. 동점은 작은 Topic ID다.
+  0.6 이상이 없으면 새 Topic을 만든다.
 - 중심은 소속 Memory 벡터의 합으로 저장하므로 join은 벡터 하나를 더하면 되고 전체 소속을 다시 읽지 않는다.
-- join은 읽은 시점의 Memory 수를 조건으로 쓴다. 그사이 다른 join이 있었다면 그 Memory는 `Failed`가 되고
-  outbox가 다시 시도한다.
+- join은 고른 Topic마다 읽은 시점의 Memory 수를 조건으로 쓰고, 전부를 한 transaction으로 쓴다. 그사이 어느 Topic에든 다른 join이
+  있었다면 아무것도 쓰지 않고 그 Memory는 `Failed`가 되며 outbox가 다시 시도한다. 그래서 일부 Topic에만 속한 상태는 생기지 않는다.
 - Topic에는 설명·분류명이 없다. ACL별 slice는 Memory의 현재 접근 범위로 읽을 때 나눈다.
 - 배정 대기는 outbox 행 상태로 판단한다. claim 시점에 이미 Topic 소속이 있는 Memory는 배정하지 않고 완료 처리한다.
   그래서 Topic 저장 직후 완료 기록 전에 중단돼도 같은 Memory가 두 번 배정되지 않는다.
@@ -53,6 +55,7 @@ sequenceDiagram
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 벡터 준비·배치 단계의 오류는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
 - Topic 중심은 ACL이 다른 Memory를 함께 담는다. 검색은 중심으로 순위만 정하고, 사용자에게는 읽을 수 있는 slice의 Memory만 넘긴다.
+- 검색 결과의 여러 Topic에 같은 Memory가 함께 실릴 수 있다. Topic 단위 블록을 유지하려고 중복을 제거하지 않는다.
 - 할당은 매번 전체 Topic 중심을 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Topic 분할, Topic·Group 병합과 kNN 링크는 [후속 작업](../../../../../../../../../docs/todolist/p1/topic-group-merge-and-knn-links.md)이다.
 

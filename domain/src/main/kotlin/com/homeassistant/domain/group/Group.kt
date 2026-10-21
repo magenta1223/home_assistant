@@ -26,10 +26,15 @@ data class GroupPolicySettings(
     val attachThreshold: Double = 0.6,
     val maxTopics: Int = 12,
     val splitThreshold: Double = 0.65,
+    val mergeThreshold: Double = 0.65,
+    /** How many nearest Groups a single-Topic Group is offered to for merging (xMemory kNN size). */
+    val mergeNeighbors: Int = 10,
 ) {
     init {
         require(attachThreshold.isFinite() && attachThreshold in -1.0..1.0)
         require(splitThreshold.isFinite() && splitThreshold in -1.0..1.0)
+        require(mergeThreshold.isFinite() && mergeThreshold in -1.0..1.0)
         require(maxTopics >= 1)
+        require(mergeNeighbors >= 1)
     }
 }

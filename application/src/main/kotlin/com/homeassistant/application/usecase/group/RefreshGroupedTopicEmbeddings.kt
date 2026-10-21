@@ -19,12 +19,12 @@ class RefreshGroupedTopicEmbeddings(
 
     fun execute(): List<GroupRefreshOutcome> {
         val snapshot = snapshots.snapshot()
-        val staleIds = snapshot.staleTopics.map { it.id }.toSet()
-        return snapshot.groups.filter { stored -> stored.group.topicIds.any { it in staleIds } }
+        val outdatedIds = snapshot.topicsWithOutdatedGroupVector.map { it.id }.toSet()
+        return snapshot.groups.filter { stored -> stored.group.topicIds.any { it in outdatedIds } }
             .mapNotNull { refresh(it.group.id) }
     }
 
-    /** Returns null when a concurrent change already removed the group or its stale topics. */
+    /** Returns null when a concurrent change already removed the group or renewed its outdated topic vectors. */
     private fun refresh(groupId: Int): GroupRefreshOutcome? {
         repeat(maxAttempts) {
             val snapshot = snapshots.snapshot()
@@ -40,9 +40,9 @@ class RefreshGroupedTopicEmbeddings(
     private fun changeFor(snapshot: GroupSnapshot, groupId: Int): GroupChange? {
         val stored = snapshot.groups.singleOrNull { it.group.id == groupId } ?: return null
         val topicIds = stored.group.topicIds
-        val stale = snapshot.staleTopics.filter { it.id in topicIds }
-        if (stale.isEmpty()) return null
-        val renewed = snapshot.embeddings.filterKeys { it in topicIds } + stale.associate { it.id to embeddings.prepare(it) }
+        val outdated = snapshot.topicsWithOutdatedGroupVector.filter { it.id in topicIds }
+        if (outdated.isEmpty()) return null
+        val renewed = snapshot.embeddings.filterKeys { it in topicIds } + outdated.associate { it.id to embeddings.prepare(it) }
         val centroid = GroupGeometry.centroid(topicIds.sorted().map { renewed.getValue(it).vector })
         return GroupChange(
             UUID.randomUUID().toString(), mapOf(groupId to stored.revision), emptySet(),

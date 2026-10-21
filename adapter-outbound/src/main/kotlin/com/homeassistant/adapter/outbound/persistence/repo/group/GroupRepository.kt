@@ -27,11 +27,11 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
                 .map { it[GroupMembershipTable.topicId] }.toSet()), row[GroupTable.revision],
                 GroupStorageCodec.vector(row[GroupTable.centroid]))
         }
-        val stale = TopicTable.selectAll().where { TopicTable.id inList embeddings.keys }.orderBy(TopicTable.id)
+        val outdated = TopicTable.selectAll().where { TopicTable.id inList embeddings.keys }.orderBy(TopicTable.id)
             .map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
             .filter { it.version != embeddings.getValue(it.id).key.version }
         check(memberships.size == embeddings.size) { "group embedding missing" }
-        GroupSnapshot(groups, embeddings, stale)
+        GroupSnapshot(groups, embeddings, outdated)
     }
 
     override fun apply(change: GroupChange): GroupWriteResult = try {

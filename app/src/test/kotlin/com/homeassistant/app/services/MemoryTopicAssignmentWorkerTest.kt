@@ -61,7 +61,7 @@ class MemoryTopicAssignmentWorkerTest {
 
         override fun execute(limit: Int): MemoryOrganizationResult {
             calls += "execute:$limit"
-            return MemoryOrganizationResult(emptyList(), emptyList(), GroupOrganizationResult.Completed(emptyList()))
+            return MemoryOrganizationResult(emptyList(), emptyList(), GroupOrganizationResult.Completed(emptyList()), emptyList())
         }
 
         override fun enqueueUnassigned(): Int {

@@ -8,11 +8,11 @@ data class StoredGroup(val group: Group, val revision: Long, val centroid: Topic
     init { require(revision > 0) }
 }
 
-/** [staleTopics] are grouped topics whose current vector version no longer matches their membership vector. */
+/** [topicsWithOutdatedGroupVector] are grouped topics whose centroid moved after their Group stored its vector. */
 data class GroupSnapshot(
     val groups: List<StoredGroup>,
     val embeddings: Map<Int, TopicEmbedding>,
-    val staleTopics: List<PendingTopic> = emptyList(),
+    val topicsWithOutdatedGroupVector: List<PendingTopic> = emptyList(),
 )
 
 /** Trusted internal metadata only; this is not an ACL-filtered user projection. */
@@ -27,7 +27,7 @@ sealed interface GroupTarget {
 
 data class ResultingGroup(val target: GroupTarget, val topicIds: Set<Int>, val centroid: TopicVector)
 
-/** Supports create, attach, split and future merge without exposing individual membership edits. */
+/** Supports create, attach, split and merge without exposing individual membership edits. */
 data class GroupChange(
     val operationKey: String,
     val expectedGroups: Map<Int, Long>,

@@ -71,6 +71,7 @@ object ApplicationServicesFactory {
             AssignMemoryToTopics(repositories.topicMaintenance, memoryEmbeddings),
             RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
             organizeTopics,
+            MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings)),
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
         val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)

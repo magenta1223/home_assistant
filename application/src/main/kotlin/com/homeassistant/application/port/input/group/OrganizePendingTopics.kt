@@ -26,3 +26,10 @@ sealed interface GroupRefreshOutcome {
     data class Refreshed(override val groupId: Int) : GroupRefreshOutcome
     data class ConflictExhausted(override val groupId: Int) : GroupRefreshOutcome
 }
+
+sealed interface GroupMergeOutcome {
+    /** [absorbedGroupId]'s Topics joined [survivorGroupId] and [absorbedGroupId] was deleted. */
+    data class Merged(val survivorGroupId: Int, val absorbedGroupId: Int) : GroupMergeOutcome
+    /** Concurrent changes kept merges from being written; the next round decides again. */
+    data object ConflictExhausted : GroupMergeOutcome
+}

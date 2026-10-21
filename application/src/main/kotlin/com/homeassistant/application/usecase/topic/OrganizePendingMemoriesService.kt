@@ -6,16 +6,18 @@ import com.homeassistant.application.port.input.topic.*
 import com.homeassistant.application.port.output.group.GroupRebuildRequired
 import com.homeassistant.application.port.output.topic.TopicAssignmentOutbox
 import com.homeassistant.application.port.output.topic.TopicAssignmentTask
+import com.homeassistant.application.usecase.group.MergeSmallGroups
 import com.homeassistant.application.usecase.group.RefreshGroupedTopicEmbeddings
 import java.time.Clock
 import java.util.concurrent.CancellationException
 
-/** Memory → Topic assignment from the durable outbox, then Topic → Group organization (xMemory component → group). */
+/** Memory → Topic assignment from the durable outbox, then Topic → Group organization and Group merge (xMemory component → group). */
 class OrganizePendingMemoriesService(
     private val outbox: TopicAssignmentOutbox,
     private val assigner: AssignMemoryToTopics,
     private val groupRefresh: RefreshGroupedTopicEmbeddings,
     private val groups: OrganizePendingTopics,
+    private val groupMerge: MergeSmallGroups,
     private val clock: Clock = Clock.systemUTC(),
     private val retryDelayMillis: Long = DEFAULT_RETRY_DELAY_MILLIS,
     private val processingLeaseMillis: Long = DEFAULT_PROCESSING_LEASE_MILLIS,
@@ -39,9 +41,12 @@ class OrganizePendingMemoriesService(
             groupRefresh.execute()
         } catch (rebuild: GroupRebuildRequired) {
             return MemoryOrganizationResult(memories, emptyList(),
-                GroupOrganizationResult.RebuildRequired(emptyList(), rebuild.message.orEmpty()))
+                GroupOrganizationResult.RebuildRequired(emptyList(), rebuild.message.orEmpty()), emptyList())
         }
-        return MemoryOrganizationResult(memories, refreshed, groups.execute(limit))
+        val organized = groups.execute(limit)
+        // Merging only follows a round that changed Topics and placed every one of them.
+        val merged = if (memories.isNotEmpty() && organized is GroupOrganizationResult.Completed) groupMerge.execute() else emptyList()
+        return MemoryOrganizationResult(memories, refreshed, organized, merged)
     }
 
     override fun enqueueUnassigned(): Int = outbox.enqueueUnassigned(clock.millis())

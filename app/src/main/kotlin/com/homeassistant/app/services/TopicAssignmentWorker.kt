@@ -1,5 +1,6 @@
 package com.homeassistant.app.services
 
+import com.homeassistant.application.port.input.group.GroupMergeOutcome
 import com.homeassistant.application.port.input.topic.MemoryAssignmentOutcome
 import com.homeassistant.application.port.input.topic.OrganizePendingMemories
 import org.slf4j.LoggerFactory
@@ -53,7 +54,8 @@ internal class MemoryTopicAssignmentWorker(
             .onSuccess { result ->
                 val failed = result.memories.count { it.outcome is MemoryAssignmentOutcome.Failed }
                 if (result.memories.isNotEmpty()) {
-                    log.info("Topic assignment processed={} failed={}", result.memories.size, failed)
+                    log.info("Topic assignment processed={} failed={} groupMerges={}", result.memories.size, failed,
+                        result.groupMerges.count { it is GroupMergeOutcome.Merged })
                 }
             }
             .onFailure { log.warn("Topic assignment round failed", it) }

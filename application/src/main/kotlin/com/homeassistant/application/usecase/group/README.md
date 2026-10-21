@@ -62,12 +62,25 @@ sequenceDiagram
 - 크기 제약을 만족하는 후보 중 점수가 높은 것을 선택한다. 동점이면 Group 수, Topic ID 순이다.
 - 점수가 개선되지 않아도 상한을 지키며 `GroupSplit.Divided.forced`와 before/after 점수를 반환한다.
 - 분할 시 최소 Topic ID를 가진 조각이 기존 Group ID를 유지한다.
-- 정책은 `GroupPolicySettings(attachThreshold=0.6, maxTopics=12, splitThreshold=0.65)`로 조정한다.
+- 정책은 `GroupPolicySettings(attachThreshold=0.6, maxTopics=12, splitThreshold=0.65, mergeThreshold=0.65, mergeNeighbors=10)`로 조정한다.
   앱 factory의 `groupSettings` 인자로 주입하며 환경변수 해석을 domain에 넣지 않는다.
 
 이분할 fallback은 원본 PCA fallback의 단순화다. 분할은 이번에 추가한 Topic의 대상 Group에만
 적용한다. 설정 상한을 낮춘 뒤 기존 Group 전체를 일괄 정리하는 기능은 없다.
-Group 요약·자동 병합·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다.
+Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다.
+
+## Group 병합
+
+`MergeSmallGroups`는 `organizeMemories` 회차에서 Group 배치가 끝난 뒤 실행된다. 그 회차에 처리한 Memory가 있고
+배치가 `Completed`일 때만 실행한다. 규칙은 xMemory 부록 A.2·B를 따른다.
+
+- Topic이 1개뿐인 Group을 ID 순으로 본다.
+- 중심이 가까운 Group `mergeNeighbors`(10)개 중 중심 cosine이 `mergeThreshold`(0.65) 이상이고 합쳐도 `maxTopics` 이하인 것이 후보다.
+  합친 크기 상한은 논문에 없지만, 넘으면 곧바로 분할 조건에 걸리므로 둔다.
+- 후보마다 전체 Group의 식 (1)을 계산해 개선 폭이 가장 큰 Group과 합친다. 개선이 없으면 합치지 않는다. 동점이면 가까운 Group이다.
+- 작은 ID가 남는다. 저장은 기존 `GroupChange`의 N→1 형태다. 매번 snapshot을 다시 읽어 한 건씩 처리하고, 합칠 Group이 없거나 충돌이 3회 나면 멈춘다.
+  merge마다 Group이 하나 줄어서 루프는 반드시 끝난다.
+- Group 벡터 갱신 뒤에 실행해야 한다. Group이 Topic의 현재 중심보다 예전 벡터를 들고 있으면 점수가 틀리므로, 그런 Topic이 있으면 예외를 던진다.
 
 ## 실패·복구와 신뢰 경계
 

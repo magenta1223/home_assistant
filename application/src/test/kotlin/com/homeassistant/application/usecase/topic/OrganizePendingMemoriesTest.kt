@@ -5,6 +5,7 @@ import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import com.homeassistant.application.port.input.topic.*
 import com.homeassistant.application.port.output.group.*
 import com.homeassistant.application.port.output.topic.*
+import com.homeassistant.application.usecase.group.MergeSmallGroups
 import com.homeassistant.application.usecase.group.PrepareTopicEmbedding
 import com.homeassistant.application.usecase.group.RefreshGroupedTopicEmbeddings
 import com.homeassistant.domain.group.*
@@ -105,7 +106,23 @@ class OrganizePendingMemoriesTest {
         assertTrue(change.incomingTopicIds.isEmpty())
         assertEquals(PendingTopic(7, "2").embeddingKey(space), change.embeddings.getValue(7).key)
         assertEquals((TopicCentroid.of(east) + north).direction, change.embeddings.getValue(7).vector)
-        assertEquals("groups", fixture.order.last())
+        assertEquals(listOf("groups", "merge"), fixture.order.takeLast(2))
+    }
+
+    @Test fun `groups are merged only after a round that assigned memories and placed every topic`() {
+        val placed = Fixture()
+        placed.service.execute(1)
+        assertEquals(listOf("groups", "merge"), placed.order.takeLast(2))
+
+        val idle = Fixture()
+        idle.claimable = 0
+        idle.service.execute(1)
+        assertEquals(listOf("refresh", "groups"), idle.order)
+
+        val rebuilding = Fixture()
+        rebuilding.placement = GroupOrganizationResult.RebuildRequired(emptyList(), "model changed")
+        assertTrue(rebuilding.service.execute(1).groupMerges.isEmpty())
+        assertFalse("merge" in rebuilding.order)
     }
 
     private inner class Fixture {
@@ -119,6 +136,8 @@ class OrganizePendingMemoriesTest {
         val outboxMarks = mutableListOf<String>()
         val claims = mutableListOf<Claim>()
         var embeddingReady = true
+        var claimable = 3
+        var placement: GroupOrganizationResult = GroupOrganizationResult.Completed(emptyList())
 
         fun add(topicId: Int, centroid: TopicCentroid, vararg memoryIds: Int) {
             centroids[topicId] = centroid
@@ -169,7 +188,7 @@ class OrganizePendingMemoriesTest {
                 override fun claimReady(limit: Int, now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int):
                     List<TopicAssignmentTask> {
                     claims.add(Claim(limit, retryBefore, staleProcessingBefore, maxAttempts))
-                    return (1..3).take(limit).map { TopicAssignmentTask(it, 1, PendingMemory(it, "$it")) }
+                    return (1..claimable).take(limit).map { TopicAssignmentTask(it, 1, PendingMemory(it, "$it")) }
                 }
                 override fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long) =
                     outboxMarks.add("completed:$outboxId:$expectedAttempt")
@@ -179,7 +198,10 @@ class OrganizePendingMemoriesTest {
             },
             AssignMemoryToTopics(store, memoryEmbeddings),
             RefreshGroupedTopicEmbeddings(groupReader, groupWriter, topicEmbeddings),
-            OrganizePendingTopics { order.add("groups"); GroupOrganizationResult.Completed(emptyList()) },
+            OrganizePendingTopics { order.add("groups"); placement },
+            MergeSmallGroups(object : GroupSnapshotReader {
+                override fun snapshot(): GroupSnapshot { order.add("merge"); return GroupSnapshot(emptyList(), emptyMap()) }
+            }, groupWriter, GroupMergePolicy(GroupPolicySettings())),
             Clock.fixed(Instant.ofEpochMilli(1_000_000L), ZoneOffset.UTC),
         )
     }

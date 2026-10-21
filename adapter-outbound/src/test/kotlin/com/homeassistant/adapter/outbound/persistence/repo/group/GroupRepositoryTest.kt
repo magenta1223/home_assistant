@@ -97,6 +97,18 @@ class GroupRepositoryTest {
         assertEquals(GroupWriteResult.AlreadyApplied(listOf(first)), repository.apply(merge))
     }
 
+    @Test fun `a single-topic group merges into its neighbor and is deleted`() = withDatabase { db, _ ->
+        val embeddings = seed(db, 3)
+        val repository = GroupRepository(db)
+        val pair = assertIs<GroupWriteResult.Applied>(repository.apply(change("a", incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings))).groupIds.single()
+        val single = assertIs<GroupWriteResult.Applied>(repository.apply(change("b", incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings))).groupIds.single()
+
+        val outcomes = MergeSmallGroups(repository, repository, GroupMergePolicy(GroupPolicySettings())).execute()
+
+        assertEquals(listOf(GroupMergeOutcome.Merged(pair, single)), outcomes)
+        assertEquals(listOf(Group(pair, setOf(1, 2, 3))), repository.snapshot().groups.map { it.group })
+    }
+
     @Test fun `missing stolen omitted topics and incorrect centroid roll back receipt and groups`() = withDatabase { db, _ ->
         val embeddings = seed(db, 3)
         val repository = GroupRepository(db)

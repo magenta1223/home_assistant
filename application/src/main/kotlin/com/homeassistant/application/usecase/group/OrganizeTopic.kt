@@ -38,7 +38,7 @@ class OrganizeTopic(
     }
 
     private fun validateSpace(snapshot: GroupSnapshot) {
-        if (snapshot.staleTopics.isNotEmpty()) throw GroupRebuildRequired("group topic vector changed")
+        if (snapshot.topicsWithOutdatedGroupVector.isNotEmpty()) throw GroupRebuildRequired("group topic vector changed")
         if (snapshot.embeddings.values.any { it.key.space != embeddings.space }) {
             throw GroupRebuildRequired("group embeddings use a different model or input format")
         }

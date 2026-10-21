@@ -1,13 +1,17 @@
 # Topic·Group 병합과 kNN 연결
 
-- 상태: TODO — 구현 방식 탐색 중
+- 상태: TODO — Group 병합 완료(2026-10-21), Topic 분할·병합 보류, kNN 연결 남음
 - 우선순위: P1
 - 선행 작업: Memory → Topic → Group 정리 (2026-10-19)
 
 ## 문제
 
 xMemory는 구성원이 적거나 고립된 묶음을 이웃과 병합하고, 묶음·component 사이에 k=10 이웃 링크를 유지한다.
-현재 구현에는 둘 다 없다. 작은 Topic·Group이 계속 늘어나고 Topic 사이 연결은 저장하지 않는다(TopicRelation은 2026-10-20 제거).
+Group 병합은 논문 규칙대로 구현했다([usecase/group README](../../../application/src/main/kotlin/com/homeassistant/application/usecase/group/README.md#group-병합)).
+이웃 링크는 아직 없다. Topic 사이 연결은 저장하지 않는다(TopicRelation은 2026-10-20 제거).
+
+Topic 분할·병합은 보류한다. Memory가 여러 Topic에 속하므로 Topic 분할 점수에서 이웃 묶음 항을 빼야 하는데,
+그 점수는 크기가 고른 분할이면 거의 항상 올라 분할 여부를 정하지 못한다. 분할 없는 Topic 병합은 의미가 적다.
 
 ## 목표
 

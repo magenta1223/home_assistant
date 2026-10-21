@@ -52,7 +52,7 @@ class MemoryTopicAssignmentTest {
         assertEquals(mapOf(access to listOf(rent)), stored.getValue(housingTopic).slices)
         assertEquals(TopicCentroid.of(east) + nearEast, stored.getValue(boilerTopic).centroid)
         assertTrue(result.groupRefreshes.isNotEmpty())
-        assertTrue(GroupRepository(db).snapshot().staleTopics.isEmpty())
+        assertTrue(GroupRepository(db).snapshot().topicsWithOutdatedGroupVector.isEmpty())
 
         val restarted = DatabaseFactory.init(path)
         assertTrue(service(restarted, vectors).execute(10).memories.isEmpty())
@@ -99,6 +99,7 @@ class MemoryTopicAssignmentTest {
             RefreshGroupedTopicEmbeddings(groups, groups, topicEmbeddings),
             OrganizePendingTopicsService(groups, OrganizeTopic(groups, groups, topicEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)))),
+            MergeSmallGroups(groups, groups, GroupMergePolicy(settings)),
             retryDelayMillis = 0,
         )
     }

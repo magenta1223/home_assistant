@@ -1,5 +1,6 @@
 package com.homeassistant.application.port.input.topic
 
+import com.homeassistant.application.port.input.group.GroupMergeOutcome
 import com.homeassistant.application.port.input.group.GroupOrganizationResult
 import com.homeassistant.application.port.input.group.GroupRefreshOutcome
 
@@ -29,4 +30,5 @@ data class MemoryOrganizationResult(
     val memories: List<MemoryAssignmentResult>,
     val groupRefreshes: List<GroupRefreshOutcome>,
     val groups: GroupOrganizationResult,
+    val groupMerges: List<GroupMergeOutcome>,
 )

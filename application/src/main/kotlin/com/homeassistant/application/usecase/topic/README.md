@@ -32,7 +32,8 @@ sequenceDiagram
     end
     Batch->>Groups: 9. 중심이 바뀐 Topic의 벡터를 다시 준비 → 그 Group 중심만 갱신
     Batch->>Groups: 10. 새 Topic을 xMemory 방식으로 Group 배치·분할
-    Batch-->>Caller: 11. Memory별 결과 + Group 결과
+    Batch->>Groups: 11. Topic 1개짜리 Group을 이웃 Group과 병합(배치가 정상 완료된 회차만)
+    Batch-->>Caller: 12. Memory별 결과 + Group 결과 + 병합 결과
 ```
 
 ## 정책
@@ -57,7 +58,7 @@ sequenceDiagram
 - Topic 중심은 ACL이 다른 Memory를 함께 담는다. 검색은 중심으로 순위만 정하고, 사용자에게는 읽을 수 있는 slice의 Memory만 넘긴다.
 - 검색 결과의 여러 Topic에 같은 Memory가 함께 실릴 수 있다. Topic 단위 블록을 유지하려고 중복을 제거하지 않는다.
 - 할당은 매번 전체 Topic 중심을 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
-- Topic 분할, Topic·Group 병합과 kNN 링크는 [후속 작업](../../../../../../../../../docs/todolist/p1/topic-group-merge-and-knn-links.md)이다.
+- Topic 분할·병합(보류)과 kNN 링크는 [후속 작업](../../../../../../../../../docs/todolist/p1/topic-group-merge-and-knn-links.md)이다.
 
 ## Topic 검색
 

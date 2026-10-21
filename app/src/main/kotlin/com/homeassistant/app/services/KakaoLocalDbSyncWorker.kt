@@ -20,8 +20,8 @@ internal interface KakaoSyncWorker : AutoCloseable {
 }
 
 /**
- * Polls the Kakao local DB. The DB is replaced by an external tool on its own schedule, so polling more often
- * than that only finds nothing new.
+ * Polls the Kakao export folder. The exports are replaced by an external tool on its own schedule, so polling
+ * more often than that only finds nothing new.
  */
 internal class KakaoLocalDbSyncWorker(
     private val sync: KakaoLocalDbSync,
@@ -42,15 +42,15 @@ internal class KakaoLocalDbSyncWorker(
     }
 
     private fun report(result: KakaoChatSyncResult) = when (result) {
-        is KakaoChatSyncResult.UpToDate -> if (result.syncedMessageCount > 0) {
-            log.info("Kakao chat {} synced messages={}", result.chatId, result.syncedMessageCount)
+        is KakaoChatSyncResult.UpToDate -> if (result.importedMessageCount > 0) {
+            log.info("Kakao chat {} imported messages={}", result.chatKey, result.importedMessageCount)
         } else {
             Unit
         }
         is KakaoChatSyncResult.Stopped -> log.warn(
-            "Kakao chat {} sync stopped after messages={}; retrying next round",
-            result.chatId,
-            result.syncedMessageCount,
+            "Kakao chat {} sync stopped after imported messages={}; retrying next round",
+            result.chatKey,
+            result.importedMessageCount,
             result.cause,
         )
     }

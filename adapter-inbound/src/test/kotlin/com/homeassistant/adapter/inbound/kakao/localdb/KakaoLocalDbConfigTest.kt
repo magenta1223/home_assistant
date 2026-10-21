@@ -16,35 +16,48 @@ class KakaoLocalDbConfigTest {
     }
 
     @Test
-    fun `allowlisted chats carry their fixed access`() {
+    fun `allowlisted chats carry their room and fixed access`() {
         val config = KakaoLocalDbConfig.fromEnv(
             env(
                 AppConfig.ENV_VAR_KAKAO_LOCAL_DB_OWNER_USER_ID to "dad",
                 AppConfig.ENV_VAR_KAKAO_LOCAL_DB_CHATS_JSON to """
                     [
-                      {"chatId": "100", "sourceName": "가족 단톡방", "isPublic": false, "allowedUserIds": ["mom", "dad"]},
-                      {"chatId": "200", "sourceName": "집 공지", "isPublic": true}
+                      {"chatKey": "family", "roomName": "우리 가족", "sourceName": "가족 단톡방", "isPublic": false, "allowedUserIds": ["mom", "dad"]},
+                      {"chatKey": "house", "roomName": "집 공지방", "sourceName": "집 공지", "isPublic": true}
                     ]
                 """,
             ),
         )!!
 
         assertEquals(UserId("dad"), config.ownerUserId)
-        assertEquals(Path.of(AppConfig.DEFAULT_KAKAO_LOCAL_DB_PATH), config.dbPath)
+        assertEquals(Path.of(AppConfig.DEFAULT_KAKAO_EXPORT_DIR), config.exportDir)
         assertEquals(
             listOf(
-                KakaoChatSource("100", "가족 단톡방", MemoryAccess.restricted(listOf(UserId("mom"), UserId("dad")))),
-                KakaoChatSource("200", "집 공지", MemoryAccess.PUBLIC),
+                KakaoChatSource("family", "우리 가족", "가족 단톡방", MemoryAccess.restricted(listOf(UserId("mom"), UserId("dad")))),
+                KakaoChatSource("house", "집 공지방", "집 공지", MemoryAccess.PUBLIC),
             ),
             config.chats,
         )
     }
 
     @Test
+    fun `the export folder can be moved`() {
+        val config = KakaoLocalDbConfig.fromEnv(
+            env(
+                AppConfig.ENV_VAR_KAKAO_LOCAL_DB_OWNER_USER_ID to "dad",
+                AppConfig.ENV_VAR_KAKAO_LOCAL_DB_CHATS_JSON to """[{"chatKey":"a","roomName":"a","sourceName":"a","isPublic":true}]""",
+                AppConfig.ENV_VAR_KAKAO_EXPORT_DIR to "D:/kakao",
+            ),
+        )!!
+
+        assertEquals(Path.of("D:/kakao"), config.exportDir)
+    }
+
+    @Test
     fun `an allowlist without an owner is rejected`() {
         assertFailsWith<IllegalArgumentException> {
             KakaoLocalDbConfig.fromEnv(
-                env(AppConfig.ENV_VAR_KAKAO_LOCAL_DB_CHATS_JSON to """[{"chatId":"1","sourceName":"a","isPublic":true}]"""),
+                env(AppConfig.ENV_VAR_KAKAO_LOCAL_DB_CHATS_JSON to """[{"chatKey":"a","roomName":"a","sourceName":"a","isPublic":true}]"""),
             )
         }
     }
@@ -52,10 +65,13 @@ class KakaoLocalDbConfigTest {
     @Test
     fun `ambiguous chat entries are rejected`() {
         val invalid = listOf(
-            """[{"chatId":"1","sourceName":"a","isPublic":true,"allowedUserIds":["mom"]}]""",
-            """[{"chatId":"1","sourceName":"a","isPublic":false}]""",
-            """[{"chatId":"1","sourceName":"a","isPublic":true},{"chatId":"1","sourceName":"b","isPublic":true}]""",
-            """[{"chatId":"1","sourceName":" ","isPublic":true}]""",
+            """[{"chatKey":"a","roomName":"a","sourceName":"a","isPublic":true,"allowedUserIds":["mom"]}]""",
+            """[{"chatKey":"a","roomName":"a","sourceName":"a","isPublic":false}]""",
+            """[{"chatKey":"a","roomName":"a","sourceName":"a","isPublic":true},{"chatKey":"a","roomName":"b","sourceName":"b","isPublic":true}]""",
+            """[{"chatKey":"a","roomName":"a","sourceName":"a","isPublic":true},{"chatKey":"b","roomName":"a","sourceName":"b","isPublic":true}]""",
+            """[{"chatKey":"a","roomName":"a","sourceName":" ","isPublic":true}]""",
+            """[{"chatKey":"a","roomName":" ","sourceName":"a","isPublic":true}]""",
+            """[{"chatKey":"../a","roomName":"a","sourceName":"a","isPublic":true}]""",
             "[]",
         )
         invalid.forEach { raw ->

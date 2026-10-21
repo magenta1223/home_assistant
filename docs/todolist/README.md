@@ -59,6 +59,8 @@
 | [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
 | [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Topic이 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
+| [result-outcome-naming.md](p2/result-outcome-naming.md) | `XxResult`·`XxOutcome` 이름 규칙을 정하고 섞여 있는 타입 이름을 맞춤 |
+| [topic-policy-settings.md](p2/topic-policy-settings.md) | Topic policy 임계값을 Group처럼 settings 객체로 묶어 factory에서 주입 |
 
 ## 제품 기능 계획
 

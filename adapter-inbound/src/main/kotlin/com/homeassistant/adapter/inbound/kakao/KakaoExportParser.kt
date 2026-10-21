@@ -4,8 +4,8 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 
-import java.security.MessageDigest
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 /** Parses KakaoTalk text exports into message records while preserving multiline payloads. */
@@ -30,12 +30,20 @@ object KakaoExportParser {
         "^(\\d{4})\\.\\s*(\\d{1,2})\\.\\s*(\\d{1,2})\\.\\s*(오전|오후)\\s*(\\d{1,2}):(\\d{2})$",
     )
 
-    fun parse(sourceName: String, text: String): SourceDocumentDraft {
+    fun parse(sourceName: String, text: String): SourceDocumentDraft = SourceDocumentDraft(
+        source = SourceDescriptor(KakaoMessageRecord.SOURCE_TYPE, sourceName),
+        records = parseEntries(text).map { it.build(sourceName) },
+    )
+
+    /** The messages of [text] in file order; [KakaoExportMessage.sentAt] is null when the export gives no date. */
+    internal fun messages(text: String): List<KakaoExportMessage> = parseEntries(text).map { it.message() }
+
+    private fun parseEntries(text: String): List<MessageBuilder> {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
         var bracketDate: LocalDate? = null
         lines.forEach { rawLine ->
-            val line = rawLine.trimStart('\uFEFF')
+            val line = rawLine.trimStart('﻿')
             parseBracketDate(line)?.let { date ->
                 if (messages.isNotEmpty()) messages.last().appendLegacy(rawLine)
                 bracketDate = date
@@ -65,11 +73,7 @@ object KakaoExportParser {
                 ?: dottedExportedMatch!!.groupValues[3]
             messages += MessageBuilder(sender, legacySender, timestamp, content)
         }
-
-        return SourceDocumentDraft(
-            source = SourceDescriptor("kakao", sourceName),
-            records = messages.map { it.build(sourceName) },
-        )
+        return messages
     }
 
     private class MessageBuilder(
@@ -90,21 +94,26 @@ object KakaoExportParser {
             legacyContentLines += line
         }
 
+        fun message(): KakaoExportMessage = KakaoExportMessage(sender, timestamp.time, content())
+
         fun build(sourceName: String): SourceRecordDraft {
-            val content = contentLines.joinToString("\n").trimEnd()
-            val fingerprintText = listOf(sender, timestamp.canonical, content).joinToString("\u001F")
             val legacyContent = legacyContentLines.joinToString("\n").trimEnd()
             val legacyFingerprintText = listOf(sourceName, legacySender, timestamp.legacyDisplay, legacyContent)
-                .joinToString("\u001F")
-            return SourceRecordDraft(
-                deduplicationKey = sha256(fingerprintText),
-                content = "$sender | ${timestamp.display} | $content",
-                deduplicationAliases = setOf(sha256(legacyFingerprintText)),
+                .joinToString("")
+            return KakaoMessageRecord.record(
+                sender = sender,
+                displayTime = timestamp.display,
+                canonicalTime = timestamp.canonical,
+                text = content(),
+                deduplicationAliases = setOf(KakaoMessageRecord.sha256(legacyFingerprintText)),
             )
         }
+
+        private fun content(): String = contentLines.joinToString("\n").trimEnd()
     }
 
     private data class ParsedTimestamp(
+        val time: LocalDateTime?,
         val display: String,
         val canonical: String,
         val legacyDisplay: String,
@@ -124,7 +133,7 @@ object KakaoExportParser {
     private fun bracketTimestamp(date: LocalDate?, period: String, time: String): ParsedTimestamp {
         if (date == null) {
             val display = "$period $time"
-            return ParsedTimestamp(display, "UNKNOWN_DATE|$display", display)
+            return ParsedTimestamp(null, display, "UNKNOWN_DATE|$display", display)
         }
         return timestamp(
             date,
@@ -160,29 +169,19 @@ object KakaoExportParser {
     ): ParsedTimestamp {
         require(hour in 1..12) { "Kakao hour must be between 1 and 12: $hour" }
         val hourOfDay = (hour % 12) + if (period == "오후") 12 else 0
-        val time = LocalTime.of(hourOfDay, minute)
+        val time = LocalDateTime.of(date, LocalTime.of(hourOfDay, minute))
         return ParsedTimestamp(
-            display = "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일 $period ${time.hour12()}:" +
-                time.minute.toString().padStart(2, '0'),
-            canonical = "%04d-%02d-%02dT%02d:%02d".format(
-                date.year,
-                date.monthValue,
-                date.dayOfMonth,
-                time.hour,
-                time.minute,
-            ),
+            time = time,
+            display = KakaoMessageRecord.displayTime(time),
+            canonical = KakaoMessageRecord.canonicalTime(time),
             legacyDisplay = legacyDisplay,
         )
     }
-
-    private fun LocalTime.hour12(): Int = when {
-        hour == 0 -> 12
-        hour > 12 -> hour - 12
-        else -> hour
-    }
-
-    private fun sha256(value: String): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-        return digest.joinToString("") { "%02x".format(it) }
-    }
 }
+
+/** One exported message: [sentAt] is Korean local time to the minute, the precision of the export. */
+internal data class KakaoExportMessage(
+    val sender: String,
+    val sentAt: LocalDateTime?,
+    val text: String,
+)

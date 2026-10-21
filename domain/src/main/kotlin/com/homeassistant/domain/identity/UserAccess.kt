@@ -20,7 +20,4 @@ class UserAccessDeniedException : RuntimeException("user access denied")
 object UserAccessPolicies {
     fun fixed(userIds: Collection<UserId>): UserAccessPolicy =
         FixedUserAccessPolicy(userIds)
-
-    fun denyAll(): UserAccessPolicy =
-        UserAccessPolicy { false }
 }

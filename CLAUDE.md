@@ -14,6 +14,11 @@
 - Hexagonal: 규칙은 `domain`·`application`, 외부 시스템은 adapter 뒤에 둔다.
 - SRP, KISS, DRY. 추측성 추상화는 만들지 않는다.
 
+## Public API·method
+
+- orchestration 형태로 작성한다. 내부 구현을 읽지 않아도 함수 이름과 반환값만으로 기능을 파악할 수 있어야 한다.
+- KDoc을 반드시 작성한다.
+
 ## 피해야 할 결함
 
 - 의존 방향 위반 (Dependency Rule), 포트 경계 누수 (Leaky Abstraction)

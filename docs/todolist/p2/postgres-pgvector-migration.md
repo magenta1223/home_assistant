@@ -22,6 +22,7 @@ Topic 검색은 SQLite에 저장한 중심 벡터를 모두 읽어 앱에서 전
 | adapter-outbound persistence | SQLite 연결·legacy migration을 Postgres로 교체. Exposed 테이블과 쿼리는 대부분 그대로 사용 |
 | adapter-outbound `TopicRepository` | 중심 벡터를 vector 열과 HNSW 인덱스로 저장하고 `ORDER BY <=> LIMIT`로 검색 |
 | application `TopicReader` | 전체 중심 벡터 조회 대신 질문 벡터로 상위 Topic을 받는 계약으로 변경 |
+| application `GroupReader`, `BackboneSelection` | 검색의 kNN 이웃(Group·Topic 전체 기준 10개)을 앱 전수 비교 대신 같은 HNSW 질의로 받음. 이웃 링크는 저장하지 않는다 |
 | app | Windows Postgres runtime 설치·기동 |
 | 테스트 | SQLite 임시 파일 테스트를 Postgres 테스트 환경으로 이전 |
 

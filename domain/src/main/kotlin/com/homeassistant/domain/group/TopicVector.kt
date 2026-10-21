@@ -35,6 +35,12 @@ object GroupGeometry {
         return first.values().zip(second.values()).sumOf { (a, b) -> a * b }.coerceIn(-1.0, 1.0)
     }
 
+    /** The [k] ids whose vectors are nearest to [center], nearest first with their cosine; an equal cosine keeps the smaller id. */
+    fun nearest(center: TopicVector, vectors: Map<Int, TopicVector>, k: Int): List<Pair<Int, Double>> =
+        vectors.map { (id, vector) -> id to cosine(center, vector) }
+            .sortedWith(compareByDescending<Pair<Int, Double>> { it.second }.thenBy { it.first })
+            .take(k)
+
     /** Only the direction of the equal-weight mean is needed for cosine comparisons. */
     fun centroid(vectors: Collection<TopicVector>): TopicVector {
         require(vectors.isNotEmpty())

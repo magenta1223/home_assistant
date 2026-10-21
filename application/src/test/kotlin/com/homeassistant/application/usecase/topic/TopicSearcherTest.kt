@@ -61,6 +61,23 @@ class TopicSearcherTest {
         assertEquals(listOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.topicId })
     }
 
+    @Test fun `a topic of a neighbor group outside the nearest groups is found`() {
+        val fixture = Fixture(
+            topic(1, east, MemoryAccess.PUBLIC to listOf(10)),
+            topic(2, north, MemoryAccess.PUBLIC to listOf(20)),
+            topic(3, north, MemoryAccess.PUBLIC to listOf(30)),
+        )
+        fixture.groups += listOf(
+            StoredGroup(Group(1, setOf(1)), 1, east),
+            StoredGroup(Group(2, setOf(2)), 1, northEast),
+            StoredGroup(Group(3, setOf(3)), 1, north),
+        )
+
+        val matches = fixture.searcher(TopicSearchSettings(groupPool = 1, groupLimit = 2, topicPool = 1)).search(a, "q")
+
+        assertEquals(listOf(1, 2), matches.map { it.topicId })
+    }
+
     @Test fun `a memory is listed under its first topic only and a topic left empty is dropped`() {
         val fixture = Fixture(
             topic(1, east, MemoryAccess.PUBLIC to listOf(10, 11)),

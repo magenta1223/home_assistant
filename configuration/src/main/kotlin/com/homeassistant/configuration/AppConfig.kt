@@ -16,6 +16,11 @@ object AppConfig {
     const val DEFAULT_AGENT_BACKEND         = "claude"
     const val DEFAULT_AGENT_TIMEOUT_SECONDS = 600L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
+    const val ENV_VAR_KAKAO_LOCAL_DB_CHATS_JSON    = "KAKAO_LOCAL_DB_CHATS_JSON"
+    const val ENV_VAR_KAKAO_LOCAL_DB_OWNER_USER_ID = "KAKAO_LOCAL_DB_OWNER_USER_ID"
+    const val ENV_VAR_KAKAO_LOCAL_DB_PATH          = "KAKAO_LOCAL_DB_PATH"
+    const val DEFAULT_KAKAO_LOCAL_DB_PATH          = "runtime/kakao/kakaotalk.sqlite"
+    const val DEFAULT_KAKAO_LOCAL_DB_CURSOR_PATH   = "runtime/kakao/sync-cursor.json"
     const val ROUTE_HEALTH              = "/health"
     const val ROUTE_KNOWLEDGE_PAGE = "/knowledge"
     const val ROUTE_MEMORY_CONVERSATION_PAGE = "/conversation"

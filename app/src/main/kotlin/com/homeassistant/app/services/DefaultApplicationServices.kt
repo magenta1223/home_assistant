@@ -18,6 +18,7 @@ internal class DefaultApplicationServices(
     private val embeddingRuntime: EmbeddingServerRuntime,
     private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
     private val topicAssignmentWorker: TopicAssignmentWorker = TopicAssignmentWorker.NONE,
+    private val kakaoSyncWorker: KakaoSyncWorker = KakaoSyncWorker.NONE,
     private val conversationGateway: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
@@ -27,19 +28,24 @@ internal class DefaultApplicationServices(
         embeddingRuntime.start()
         topicAssignmentWorker.start()
         conversationExpiryWorker.start()
+        kakaoSyncWorker.start()
     }
 
     override fun close() {
         try {
-            conversationExpiryWorker.close()
+            kakaoSyncWorker.close()
         } finally {
             try {
-                topicAssignmentWorker.close()
+                conversationExpiryWorker.close()
             } finally {
                 try {
-                    conversationGateway?.close()
+                    topicAssignmentWorker.close()
                 } finally {
-                    embeddingRuntime.close()
+                    try {
+                        conversationGateway?.close()
+                    } finally {
+                        embeddingRuntime.close()
+                    }
                 }
             }
         }

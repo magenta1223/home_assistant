@@ -4,8 +4,8 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 
-import java.security.MessageDigest
 import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
 
 /** Parses KakaoTalk text exports into message records while preserving multiline payloads. */
@@ -67,7 +67,7 @@ object KakaoExportParser {
         }
 
         return SourceDocumentDraft(
-            source = SourceDescriptor("kakao", sourceName),
+            source = SourceDescriptor(KakaoMessageRecord.SOURCE_TYPE, sourceName),
             records = messages.map { it.build(sourceName) },
         )
     }
@@ -92,14 +92,15 @@ object KakaoExportParser {
 
         fun build(sourceName: String): SourceRecordDraft {
             val content = contentLines.joinToString("\n").trimEnd()
-            val fingerprintText = listOf(sender, timestamp.canonical, content).joinToString("\u001F")
             val legacyContent = legacyContentLines.joinToString("\n").trimEnd()
             val legacyFingerprintText = listOf(sourceName, legacySender, timestamp.legacyDisplay, legacyContent)
                 .joinToString("\u001F")
-            return SourceRecordDraft(
-                deduplicationKey = sha256(fingerprintText),
-                content = "$sender | ${timestamp.display} | $content",
-                deduplicationAliases = setOf(sha256(legacyFingerprintText)),
+            return KakaoMessageRecord.record(
+                sender = sender,
+                displayTime = timestamp.display,
+                canonicalTime = timestamp.canonical,
+                text = content,
+                deduplicationAliases = setOf(KakaoMessageRecord.sha256(legacyFingerprintText)),
             )
         }
     }
@@ -160,29 +161,11 @@ object KakaoExportParser {
     ): ParsedTimestamp {
         require(hour in 1..12) { "Kakao hour must be between 1 and 12: $hour" }
         val hourOfDay = (hour % 12) + if (period == "오후") 12 else 0
-        val time = LocalTime.of(hourOfDay, minute)
+        val time = LocalDateTime.of(date, LocalTime.of(hourOfDay, minute))
         return ParsedTimestamp(
-            display = "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일 $period ${time.hour12()}:" +
-                time.minute.toString().padStart(2, '0'),
-            canonical = "%04d-%02d-%02dT%02d:%02d".format(
-                date.year,
-                date.monthValue,
-                date.dayOfMonth,
-                time.hour,
-                time.minute,
-            ),
+            display = KakaoMessageRecord.displayTime(time),
+            canonical = KakaoMessageRecord.canonicalTime(time),
             legacyDisplay = legacyDisplay,
         )
-    }
-
-    private fun LocalTime.hour12(): Int = when {
-        hour == 0 -> 12
-        hour > 12 -> hour - 12
-        else -> hour
-    }
-
-    private fun sha256(value: String): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(value.toByteArray(Charsets.UTF_8))
-        return digest.joinToString("") { "%02x".format(it) }
     }
 }

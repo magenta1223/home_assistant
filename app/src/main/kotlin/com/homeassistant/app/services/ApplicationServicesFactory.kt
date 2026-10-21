@@ -1,8 +1,13 @@
 package com.homeassistant.app.services
 
+import com.homeassistant.adapter.inbound.kakao.localdb.KakaoLocalDbConfig
+import com.homeassistant.adapter.inbound.kakao.localdb.KakaoLocalDbSync
+import com.homeassistant.adapter.inbound.kakao.localdb.KakaoPlainDbStore
+import com.homeassistant.adapter.inbound.kakao.localdb.KakaoSyncCursor
 import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
+import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
@@ -137,7 +142,22 @@ object ApplicationServicesFactory {
             embeddingRuntime = managedEmbedding.runtime,
             conversationExpiryWorker = conversationExpiryWorker,
             topicAssignmentWorker = MemoryTopicAssignmentWorker(organizeMemories),
+            kakaoSyncWorker = kakaoSyncWorker(memoryAnalysisService),
             conversationGateway = conversationGateway,
+        )
+    }
+
+    /** Collects allowlisted chats from the plaintext Kakao local DB; no allowlist means no worker. */
+    private fun kakaoSyncWorker(memoryAnalysis: MemoryAnalysis): KakaoSyncWorker {
+        val config = KakaoLocalDbConfig.fromEnv() ?: return KakaoSyncWorker.NONE
+        log.info("Kakao local DB sync db={} chats={}", config.dbPath, config.chats.size)
+        return KakaoLocalDbSyncWorker(
+            KakaoLocalDbSync(
+                store = KakaoPlainDbStore(config.dbPath),
+                memoryAnalysis = memoryAnalysis,
+                cursor = KakaoSyncCursor(config.cursorPath),
+                config = config,
+            ),
         )
     }
 

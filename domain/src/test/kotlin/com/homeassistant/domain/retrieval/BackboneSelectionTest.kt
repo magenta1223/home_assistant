@@ -27,7 +27,7 @@ class BackboneSelectionTest {
         )
         val selection = BackboneSelection(neighbors = 1)
 
-        assertEquals(listOf(9), selection.neighborsOf(1, vectors))
+        assertEquals(listOf(9), selection.neighborsOf(1, vectors).map { it.first })
         // 1 and 2 lose their nearest neighbor 9 to the non-candidates, so 3, which still covers 2, gains the most.
         assertEquals(listOf(3, 1), selection.select(setOf(1, 2, 3), vectors, vector(1.0, 0.0), limit = 2))
     }

@@ -77,7 +77,7 @@ sequenceDiagram
     Search->>Topics: 3. 모든 Topic 중심
     Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
     Search->>Groups: 5. 모든 Group 중심과 소속 Topic
-    Search->>Search: 6. 가까운 Group 5개와 각각의 kNN 이웃 Group 중 backbone 3개의 Topic ∪ 가까운 Topic 20개
+    Search->>Search: 6. 가까운 Group 5개와 kNN 이웃 Group(합쳐 20개까지) 중 backbone 3개의 Topic ∪ 가까운 Topic 20개
     Search->>Memories: 7. 사용자가 읽을 수 있는 Memory
     Search->>Topics: 8. 후보 Topic의 slice, 읽을 수 있는 Memory가 없으면 제외
     Search->>Search: 9. backbone Topic 5개
@@ -90,6 +90,8 @@ sequenceDiagram
   관련도는 cosine을 0..1로 옮긴 값이다. 이웃은 그 계층 전체에서 가까운 10개이고, 덮음은 후보 안에서만 센다.
 - 후보 Group에 가까운 Group의 kNN 이웃을 더한다. 질문과는 멀지만 질문과 닮은 Group 옆에 있는 맥락을 후보로 올리기 위해서다.
   관련도가 낮아서 coverage 이득이 클 때나 고를 수에 여유가 있을 때만 뽑힌다.
+- 후보 Group은 논문의 Stage I 후보 풀처럼 20개까지다. 후보가 많으면 coverage를 나누는 전체 가중치가 커져 다양성 효과가 약해진다.
+  남는 자리는 이웃 Group 중 이웃한 Group과 더 닮은 순으로 채운다. 질문과 닮은 순으로 자르면 확장하려던 맥락이 먼저 빠진다.
 - kNN은 저장하지 않고 검색할 때 Group·Topic 전체와 cosine으로 계산한다. 저장한 링크와 결과가 같고 낡지 않는다.
   Group·Topic이 수만 개를 넘으면 같은 질의를 벡터 색인(pgvector)에 맡긴다.
 - 가까운 Topic을 직접 후보에 더하므로 아직 Group에 들어가지 않은 Topic도 찾힌다.

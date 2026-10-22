@@ -15,9 +15,9 @@ import com.homeassistant.domain.group.TopicVector
 class BackboneSelection(private val neighbors: Int = 10) {
     init { require(neighbors >= 1) }
 
-    /** The ids of the [neighbors] nodes nearest to [id] among [vectors], nearest first. */
-    fun neighborsOf(id: Int, vectors: Map<Int, TopicVector>): List<Int> =
-        nearestOthers(id, vectors).map { it.first }
+    /** The [neighbors] nodes nearest to [id] among [vectors] with their cosine to it, nearest first. */
+    fun neighborsOf(id: Int, vectors: Map<Int, TopicVector>): List<Pair<Int, Double>> =
+        GroupGeometry.nearest(vectors.getValue(id), vectors - id, neighbors)
 
     /**
      * Up to [limit] of [candidates] in pick order; an equal gain keeps the smaller id.
@@ -42,9 +42,6 @@ class BackboneSelection(private val neighbors: Int = 10) {
 
     /** What picking [id] covers among [candidates], with each covered node's weight. */
     private fun coverage(id: Int, candidates: Set<Int>, vectors: Map<Int, TopicVector>): Map<Int, Double> =
-        nearestOthers(id, vectors).filter { it.first in candidates }
+        neighborsOf(id, vectors).filter { it.first in candidates }
             .associate { (other, cosine) -> other to cosine.coerceAtLeast(0.0) } + (id to 1.0)
-
-    private fun nearestOthers(id: Int, vectors: Map<Int, TopicVector>): List<Pair<Int, Double>> =
-        GroupGeometry.nearest(vectors.getValue(id), vectors - id, neighbors)
 }

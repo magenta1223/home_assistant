@@ -18,14 +18,21 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.retrieval.BackboneSelection
 
-/** How wide each level of [TopicSearcher] looks and how many it keeps. */
+/**
+ * How wide each level of [TopicSearcher] looks and how many it keeps. [groupCandidates] caps the nearest
+ * [groupPool] Groups plus their neighbors, as xMemory's Stage I pool of 20 does.
+ */
 data class TopicSearchSettings(
     val groupPool: Int = 5,
+    val groupCandidates: Int = 20,
     val groupLimit: Int = 3,
     val topicPool: Int = 20,
     val topicLimit: Int = 5,
 ) {
-    init { require(groupPool > 0 && groupLimit > 0 && topicPool > 0 && topicLimit > 0) }
+    init {
+        require(groupPool > 0 && groupLimit > 0 && topicPool > 0 && topicLimit > 0)
+        require(groupCandidates >= groupPool)
+    }
 }
 
 /**
@@ -56,18 +63,28 @@ class TopicSearcher(
         return matches(kept, readable, centroids, question)
     }
 
-    /**
-     * Topics of the backbone Groups among the nearest [TopicSearchSettings.groupPool] Groups and their neighbors,
-     * and the nearest [TopicSearchSettings.topicPool] Topics.
-     */
+    /** Topics of the backbone candidate Groups, and the nearest [TopicSearchSettings.topicPool] Topics. */
     private fun candidateTopics(question: TopicVector, centroids: Map<Int, TopicVector>): Set<Int> {
         val byId = groups.groups().associateBy { it.group.id }
         val groupCentroids = byId.mapValues { it.value.centroid }
-        val nearGroups = nearest(question, groupCentroids, settings.groupPool)
-        val candidateGroups = nearGroups + nearGroups.flatMap { backbone.neighborsOf(it, groupCentroids) }
-        val backboneGroups = backbone.select(candidateGroups.toSet(), groupCentroids, question, settings.groupLimit)
+        val candidates = candidateGroups(question, groupCentroids)
+        val backboneGroups = backbone.select(candidates, groupCentroids, question, settings.groupLimit)
         return backboneGroups.flatMap { byId.getValue(it).group.topicIds }.toSet() +
             nearest(question, centroids, settings.topicPool)
+    }
+
+    /**
+     * The nearest [TopicSearchSettings.groupPool] Groups, then their neighbors most similar to the Group they neighbor,
+     * up to [TopicSearchSettings.groupCandidates]. Neighbors are not ranked by the question, which would drop first the
+     * context next to the question that the expansion is for.
+     */
+    private fun candidateGroups(question: TopicVector, groupCentroids: Map<Int, TopicVector>): Set<Int> {
+        val nearGroups = nearest(question, groupCentroids, settings.groupPool)
+        val linked = nearGroups.flatMap { backbone.neighborsOf(it, groupCentroids) }
+            .filter { it.first !in nearGroups }
+            .sortedWith(compareByDescending<Pair<Int, Double>> { it.second }.thenBy { it.first })
+            .map { it.first }
+        return (nearGroups + linked).distinct().take(settings.groupCandidates).toSet()
     }
 
     /** Each candidate Topic's memories the requester can read; Topics with none are left out. */

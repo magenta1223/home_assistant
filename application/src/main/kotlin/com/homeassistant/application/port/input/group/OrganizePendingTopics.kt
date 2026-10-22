@@ -2,7 +2,12 @@ package com.homeassistant.application.port.input.group
 
 import com.homeassistant.domain.group.GroupSplit
 
+/** Organizes Topics not yet placed in a Group. */
 fun interface OrganizePendingTopics {
+    /**
+     * Places up to [limit] pending Topics in Topic id order and returns each Topic's outcome.
+     * Stops with [GroupOrganizationResult.RebuildRequired] when stored Group vectors must be rebuilt first.
+     */
     fun execute(limit: Int): GroupOrganizationResult
 }
 

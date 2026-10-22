@@ -17,6 +17,10 @@ class RefreshGroupedTopicEmbeddings(
 ) {
     init { require(maxAttempts > 0) }
 
+    /**
+     * Refreshes every Group holding an outdated Topic vector and returns one outcome per Group written or given up on.
+     * Groups a concurrent change already removed or renewed are left out.
+     */
     fun execute(): List<GroupRefreshOutcome> {
         val snapshot = snapshots.snapshot()
         val outdatedIds = snapshot.topicsWithOutdatedGroupVector.map { it.id }.toSet()

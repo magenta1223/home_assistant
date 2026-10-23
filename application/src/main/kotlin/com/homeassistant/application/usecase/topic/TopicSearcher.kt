@@ -18,20 +18,29 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.Memory
 import com.homeassistant.domain.retrieval.BackboneSelection
 
-/** How wide each level of [TopicSearcher] looks and how many it keeps. */
+/**
+ * How wide each level of [TopicSearcher] looks and how many it keeps. [groupCandidates] caps the nearest
+ * [groupPool] Groups plus their neighbors, as xMemory's Stage I pool of 20 does.
+ */
 data class TopicSearchSettings(
     val groupPool: Int = 5,
+    val groupCandidates: Int = 20,
     val groupLimit: Int = 3,
     val topicPool: Int = 20,
     val topicLimit: Int = 5,
 ) {
-    init { require(groupPool > 0 && groupLimit > 0 && topicPool > 0 && topicLimit > 0) }
+    init {
+        require(groupPool > 0 && groupLimit > 0 && topicPool > 0 && topicLimit > 0)
+        require(groupCandidates >= groupPool)
+    }
 }
 
 /**
- * xMemory-style search. Candidates are the Topics of the backbone Groups among the nearest Groups, plus the nearest
- * Topics directly, so a Topic not yet in a Group is still found. Of the candidates the requester can read, the backbone
- * Topics are kept, and each memory goes to the first kept Topic holding it, most relevant to the question first.
+ * xMemory-style search. Candidate Groups are the nearest Groups and their kNN neighbor Groups, which reach context
+ * next to the question that the question itself is not near. Candidate Topics are the Topics of the backbone Groups,
+ * plus the nearest Topics directly, so a Topic not yet in a Group is still found. Of the candidates the requester can
+ * read, the backbone Topics are kept, and each memory goes to the first kept Topic holding it, most relevant to the
+ * question first.
  */
 class TopicSearcher(
     private val topics: TopicReader,
@@ -50,17 +59,32 @@ class TopicSearcher(
         if (centroids.isEmpty()) return emptyList()
         val question = queries.generate(query.trim())
         val readable = readableMemories(userId, candidateTopics(question, centroids))
-        val kept = backbone.select(centroids.filterKeys { it in readable }, question, settings.topicLimit)
+        val kept = backbone.select(readable.keys, centroids, question, settings.topicLimit)
         return matches(kept, readable, centroids, question)
     }
 
-    /** Topics of the backbone Groups among the nearest [TopicSearchSettings.groupPool], and the nearest Topics. */
+    /** Topics of the backbone candidate Groups, and the nearest [TopicSearchSettings.topicPool] Topics. */
     private fun candidateTopics(question: TopicVector, centroids: Map<Int, TopicVector>): Set<Int> {
         val byId = groups.groups().associateBy { it.group.id }
-        val nearGroups = nearest(byId.mapValues { it.value.centroid }, question, settings.groupPool)
-        val backboneGroups = backbone.select(nearGroups, question, settings.groupLimit)
+        val groupCentroids = byId.mapValues { it.value.centroid }
+        val candidates = candidateGroups(question, groupCentroids)
+        val backboneGroups = backbone.select(candidates, groupCentroids, question, settings.groupLimit)
         return backboneGroups.flatMap { byId.getValue(it).group.topicIds }.toSet() +
-            nearest(centroids, question, settings.topicPool).keys
+            nearest(question, centroids, settings.topicPool)
+    }
+
+    /**
+     * The nearest [TopicSearchSettings.groupPool] Groups, then their neighbors most similar to the Group they neighbor,
+     * up to [TopicSearchSettings.groupCandidates]. Neighbors are not ranked by the question, which would drop first the
+     * context next to the question that the expansion is for.
+     */
+    private fun candidateGroups(question: TopicVector, groupCentroids: Map<Int, TopicVector>): Set<Int> {
+        val nearGroups = nearest(question, groupCentroids, settings.groupPool)
+        val linked = nearGroups.flatMap { backbone.neighborsOf(it, groupCentroids) }
+            .filter { it.first !in nearGroups }
+            .sortedWith(compareByDescending<Pair<Int, Double>> { it.second }.thenBy { it.first })
+            .map { it.first }
+        return (nearGroups + linked).distinct().take(settings.groupCandidates).toSet()
     }
 
     /** Each candidate Topic's memories the requester can read; Topics with none are left out. */
@@ -94,7 +118,6 @@ class TopicSearcher(
             "memory ${memory.id} has a Topic but no vector in $space"
         }.vector
 
-    private fun nearest(vectors: Map<Int, TopicVector>, question: TopicVector, limit: Int): Map<Int, TopicVector> =
-        vectors.entries.sortedWith(compareByDescending<Map.Entry<Int, TopicVector>> { GroupGeometry.cosine(question, it.value) }
-            .thenBy { it.key }).take(limit).associate { it.key to it.value }
+    private fun nearest(question: TopicVector, vectors: Map<Int, TopicVector>, limit: Int): List<Int> =
+        GroupGeometry.nearest(question, vectors, limit).map { it.first }
 }

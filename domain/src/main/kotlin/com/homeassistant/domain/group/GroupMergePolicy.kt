@@ -30,11 +30,9 @@ class GroupMergePolicy(
     }
 
     private fun neighbors(single: Group, groups: List<Group>, centroids: Map<Int, TopicVector>): List<Group> {
-        val center = centroids.getValue(single.id)
-        return groups.filter { it.id != single.id }
-            .map { it to GroupGeometry.cosine(center, centroids.getValue(it.id)) }
-            .sortedWith(compareByDescending<Pair<Group, Double>> { it.second }.thenBy { it.first.id })
-            .take(settings.mergeNeighbors)
+        val others = groups.filter { it.id != single.id }.associateBy { it.id }
+        return GroupGeometry.nearest(centroids.getValue(single.id), others.mapValues { centroids.getValue(it.key) }, settings.mergeNeighbors)
+            .map { (id, cosine) -> others.getValue(id) to cosine }
             .filter { (group, cosine) -> cosine >= settings.mergeThreshold && group.topicIds.size + 1 <= settings.maxTopics }
             .map { it.first }
     }

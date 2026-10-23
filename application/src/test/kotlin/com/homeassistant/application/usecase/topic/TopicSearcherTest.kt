@@ -61,6 +61,41 @@ class TopicSearcherTest {
         assertEquals(listOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.topicId })
     }
 
+    @Test fun `a topic of a neighbor group outside the nearest groups is found`() {
+        val fixture = Fixture(
+            topic(1, east, MemoryAccess.PUBLIC to listOf(10)),
+            topic(2, north, MemoryAccess.PUBLIC to listOf(20)),
+            topic(3, north, MemoryAccess.PUBLIC to listOf(30)),
+        )
+        fixture.groups += listOf(
+            StoredGroup(Group(1, setOf(1)), 1, east),
+            StoredGroup(Group(2, setOf(2)), 1, northEast),
+            StoredGroup(Group(3, setOf(3)), 1, north),
+        )
+
+        val matches = fixture.searcher(TopicSearchSettings(groupPool = 1, groupLimit = 2, topicPool = 1)).search(a, "q")
+
+        assertEquals(listOf(1, 2), matches.map { it.topicId })
+    }
+
+    @Test fun `neighbor groups fill the candidates by their similarity to the group they neighbor, not to the question`() {
+        val fixture = Fixture(
+            topic(1, east, MemoryAccess.PUBLIC to listOf(10)),
+            topic(2, northEast, MemoryAccess.PUBLIC to listOf(20)),
+            topic(3, north, MemoryAccess.PUBLIC to listOf(30)),
+        )
+        // At -20°, -60° and 30° from the question: group 3 is nearer to the question than group 2 but less similar to
+        // group 1, so the cap of 2 keeps group 2.
+        fixture.groups += listOf(
+            StoredGroup(Group(1, setOf(1)), 1, degrees(-20.0)),
+            StoredGroup(Group(2, setOf(2)), 1, degrees(-60.0)),
+            StoredGroup(Group(3, setOf(3)), 1, degrees(30.0)),
+        )
+        val narrow = TopicSearchSettings(groupPool = 1, groupCandidates = 2, groupLimit = 3, topicPool = 1)
+
+        assertEquals(setOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.topicId }.toSet())
+    }
+
     @Test fun `a memory is listed under its first topic only and a topic left empty is dropped`() {
         val fixture = Fixture(
             topic(1, east, MemoryAccess.PUBLIC to listOf(10, 11)),
@@ -88,6 +123,9 @@ class TopicSearcherTest {
             Fixture(topic(1, east, MemoryAccess.PUBLIC to listOf(10))).searcher(authorized = false).search(a, "q")
         }
     }
+
+    private fun degrees(angle: Double) =
+        TopicVector.normalized(listOf(kotlin.math.cos(Math.toRadians(angle)), kotlin.math.sin(Math.toRadians(angle))))
 
     private fun topic(id: Int, vector: TopicVector, vararg slices: Pair<MemoryAccess, List<Int>>): Topic {
         val count = slices.sumOf { it.second.size }

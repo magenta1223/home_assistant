@@ -18,7 +18,7 @@
 ## 현재 상태
 
 - 최근 구현 완료: [Topic 중심 벡터·ACL slice와 Topic 검색](p1/topic-centroid-acl-search.md) — cosine 단일 배정, 대화 context를 Topic 검색으로 구성 (2026-10-20, 실데이터 임계값 조정 남음)
-- 다음 후보: [Topic·Group 병합과 kNN 연결](p1/topic-group-merge-and-knn-links.md) — Group 병합 완료, kNN 연결 남음, Topic 분할·병합 보류
+- 다음 후보: [Topic·Group 병합과 kNN 연결](p1/topic-group-merge-and-knn-links.md) — Group 병합 완료, kNN 이웃은 검색 시 계산, Topic 분할·병합 보류
 - 별도 구현 후보: 최소 가족 Task 서비스 1개
 - Memory 구조 전환: Topic은 중심 벡터와 ACL slice, Group 구성·분할·병합 구현, Topic 검색 연결. Topic 자체 분할·병합은 보류, UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
@@ -61,6 +61,7 @@
 | [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Topic이 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
 | [result-outcome-naming.md](p2/result-outcome-naming.md) | `XxResult`·`XxOutcome` 이름 규칙을 정하고 섞여 있는 타입 이름을 맞춤 |
 | [topic-policy-settings.md](p2/topic-policy-settings.md) | Topic policy 임계값을 Group처럼 settings 객체로 묶어 factory에서 주입 |
+| [xmemory-stage2-entropy.md](p2/xmemory-stage2-entropy.md) | HOLD: proxy 모델로 reader entropy를 재서 줄어들 때만 Memory를 context에 더하는 xMemory Stage II |
 
 ## 제품 기능 계획
 

@@ -18,6 +18,10 @@ class AssignMemoryToTopics(
     /** True when the memory embedding can be called now. */
     fun isReady(): Boolean = memoryEmbeddings.isAvailable()
 
+    /**
+     * Places [memory] and returns the Topics it joined, nearest first, or the one Topic created for it.
+     * @throws IllegalStateException when a concurrent join changed a chosen Topic; nothing is written then.
+     */
     fun execute(memory: PendingMemory): MemoryAssignmentOutcome.Assigned {
         val vector = memoryEmbeddings.prepare(memory).vector
         val centroids = store.centroids()

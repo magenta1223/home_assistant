@@ -5,6 +5,10 @@ import com.homeassistant.application.port.output.group.*
 import com.homeassistant.domain.group.*
 import java.util.UUID
 
+/**
+ * Places one pending Topic into a Group, splitting it when the planner says so, and retries on a fresh snapshot up to
+ * [maxAttempts] times when a concurrent change wins the write.
+ */
 class OrganizeTopic(
     private val snapshots: GroupSnapshotReader,
     private val writer: GroupChangeWriter,
@@ -14,6 +18,10 @@ class OrganizeTopic(
 ) {
     init { require(maxAttempts > 0) }
 
+    /**
+     * Places [topic] and returns the Groups it changed, or why nothing was written.
+     * @throws GroupRebuildRequired when stored Group vectors are outdated or come from another embedding space or dimension.
+     */
     fun execute(topic: PendingTopic): TopicOrganizationOutcome {
         val initial = snapshots.snapshot()
         validateSpace(initial)

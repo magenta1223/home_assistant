@@ -20,6 +20,11 @@ class MergeSmallGroups(
 ) {
     init { require(maxConflicts > 0) }
 
+    /**
+     * Merges until no single-Topic Group has a neighbor worth merging into, and returns each merge in order, ending with
+     * [GroupMergeOutcome.ConflictExhausted] when concurrent changes stopped it.
+     * @throws IllegalStateException when a Group still holds an outdated Topic vector.
+     */
     fun execute(): List<GroupMergeOutcome> {
         val outcomes = mutableListOf<GroupMergeOutcome>()
         var conflicts = 0

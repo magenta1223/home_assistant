@@ -41,5 +41,9 @@ sealed interface MemoryConversationResult {
 
 /** Answers one deduplicated question using memories visible to the participant. */
 interface MemoryConversation {
+    /**
+     * The answer to [request], or [MemoryConversationResult.AlreadyHandled] when its key was claimed before and no answer
+     * is stored for it, or [MemoryConversationResult.Failed] when retrieval or the provider failed.
+     */
     fun answer(request: MemoryConversationRequest): MemoryConversationResult
 }

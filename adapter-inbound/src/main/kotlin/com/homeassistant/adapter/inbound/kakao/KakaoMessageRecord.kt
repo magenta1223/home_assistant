@@ -5,8 +5,8 @@ import java.security.MessageDigest
 import java.time.LocalDateTime
 
 /**
- * The Kakao source record format shared by the export parser and the local DB sync.
- * Both paths derive the same deduplication key for the same message, so either may import it first.
+ * The Kakao source record format. The deduplication key depends only on sender, minute and text, so re-importing
+ * an export, even under another file name, finds the messages that are already stored.
  */
 internal object KakaoMessageRecord {
     const val SOURCE_TYPE = "kakao"

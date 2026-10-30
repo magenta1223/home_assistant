@@ -1,7 +1,7 @@
-"""Exports allowlisted KakaoTalk PC chats with KakaoTalk's own "save chat" into <exportDir>/<chatKey>.txt.
+"""Exports allowlisted KakaoTalk PC chats with KakaoTalk's own "save chat" and sends each to the app's import API.
 
 It drives the KakaoTalk window only: it never reads KakaoTalk's local DB files or process memory.
-The allowlist is the app's own KAKAO_LOCAL_DB_CHATS_JSON, so the exporter and the app agree on chatKey and roomName.
+Each export is kept as runtime/kakao/exports/<chatKey>.txt and posted whole; the app analyzes only new messages.
 
 Usage (Windows, unlocked desktop, KakaoTalk signed in):
     py -3 tools/kakao-exporter/kakao_exporter.py [--only <chatKey>]
@@ -11,19 +11,25 @@ import argparse
 import ctypes
 import json
 import os
+import re
 import sys
 import time
 import warnings
+from dataclasses import dataclass
 from pathlib import Path
 
 from pywinauto import Application, Desktop
 from pywinauto.keyboard import send_keys
 
+from knowledge_import import KakaoSource, send_export
+
 # KakaoTalk is a 32-bit process; the win32 messages used here work from 64-bit Python too.
 warnings.filterwarnings("ignore", message="32-bit application should be automated")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-DEFAULT_EXPORT_DIR = "runtime/kakao/exports"
+EXPORT_DIR = REPO_ROOT / "runtime" / "kakao" / "exports"
+DEFAULT_IMPORT_URL = "http://127.0.0.1:8080"
+CHAT_KEY = re.compile(r"[A-Za-z0-9_-]+")
 MAIN_TITLE = "카카오톡"
 WINDOW_CLASS = "EVA_Window_Dblclk"
 SAVE_TIMEOUT_SECONDS = 60
@@ -35,6 +41,15 @@ class ExportError(Exception):
 
 class DesktopUnavailable(Exception):
     """Nothing can be exported in this run, e.g. the screen or KakaoTalk is locked."""
+
+
+@dataclass(frozen=True)
+class KakaoChat:
+    """One allowlisted chat: the KakaoTalk room room_name, saved as <chat_key>.txt and imported as source."""
+
+    chat_key: str
+    room_name: str
+    source: KakaoSource
 
 
 def read_setting(name):
@@ -51,15 +66,29 @@ def read_setting(name):
 
 
 def load_chats():
-    raw = read_setting("KAKAO_LOCAL_DB_CHATS_JSON")
+    raw = read_setting("KAKAO_EXPORTER_CHATS_JSON")
     if not raw:
-        raise SystemExit("KAKAO_LOCAL_DB_CHATS_JSON is not set; nothing is allowlisted")
-    return [(chat["chatKey"].strip(), chat["roomName"].strip()) for chat in json.loads(raw)]
+        raise SystemExit("KAKAO_EXPORTER_CHATS_JSON is not set; nothing is allowlisted")
+    return [chat_from_config(chat) for chat in json.loads(raw)]
 
 
-def export_dir():
-    path = Path(read_setting("KAKAO_EXPORT_DIR") or DEFAULT_EXPORT_DIR)
-    return path if path.is_absolute() else REPO_ROOT / path
+def chat_from_config(chat):
+    chat_key = chat["chatKey"].strip()
+    if not CHAT_KEY.fullmatch(chat_key):
+        raise SystemExit(f"chatKey must match {CHAT_KEY.pattern}, as it names the export file: {chat_key}")
+    source = KakaoSource(
+        name=chat["sourceName"].strip(),
+        is_public=chat["isPublic"],
+        allowed_user_ids=tuple(chat.get("allowedUserIds", ())),
+    )
+    return KakaoChat(chat_key, chat["roomName"].strip(), source)
+
+
+def import_api_token():
+    token = read_setting("KAKAO_EXPORTER_API_TOKEN")
+    if not token:
+        raise SystemExit("KAKAO_EXPORTER_API_TOKEN is not set; the app would reject the import")
+    return token
 
 
 def require_unlocked_desktop():
@@ -156,15 +185,18 @@ def normalize_to_utf8(path):
         path.write_bytes(data.decode("cp949").encode("utf-8"))
 
 
-def export_chat(app, main, target_dir, chat_key, room_name):
-    pending = target_dir / f"{chat_key}.tmp.txt"
-    room = open_room(app, main, room_name)
+def export_chat(app, main, chat):
+    """Saves the room and returns the path of its complete UTF-8 export."""
+    pending = EXPORT_DIR / f"{chat.chat_key}.tmp.txt"
+    room = open_room(app, main, chat.room_name)
     try:
         save_room(app, room, pending)
     finally:
         room.close()
     normalize_to_utf8(pending)
-    os.replace(pending, target_dir / f"{chat_key}.txt")
+    export = EXPORT_DIR / f"{chat.chat_key}.txt"
+    os.replace(pending, export)
+    return export
 
 
 def main():
@@ -172,11 +204,12 @@ def main():
     parser.add_argument("--only", help="export only this chatKey")
     args = parser.parse_args()
 
-    chats = [chat for chat in load_chats() if args.only in (None, chat[0])]
+    chats = [chat for chat in load_chats() if args.only in (None, chat.chat_key)]
     if not chats:
         raise SystemExit(f"chatKey {args.only} is not allowlisted")
-    target_dir = export_dir()
-    target_dir.mkdir(parents=True, exist_ok=True)
+    import_url = read_setting("KAKAO_IMPORT_URL") or DEFAULT_IMPORT_URL
+    token = import_api_token()
+    EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     try:
         require_unlocked_desktop()
         app, main_window = kakao_main_window()
@@ -185,13 +218,14 @@ def main():
         return 2
 
     failed = 0
-    for chat_key, room_name in chats:
+    for chat in chats:
         try:
-            export_chat(app, main_window, target_dir, chat_key, room_name)
-            print(f"exported {chat_key}")
+            export = export_chat(app, main_window, chat)
+            outcome = send_export(import_url, token, chat.source, export.read_text(encoding="utf-8"))
+            print(f"{chat.chat_key}: {outcome.value}")
         except Exception as error:  # one room failing must not stop the others
             failed += 1
-            print(f"error: {chat_key}: {error}", file=sys.stderr)
+            print(f"error: {chat.chat_key}: {error}", file=sys.stderr)
     return 1 if failed else 0
 
 

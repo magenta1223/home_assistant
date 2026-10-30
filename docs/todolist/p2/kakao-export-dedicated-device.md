@@ -2,7 +2,7 @@
 
 - 상태: TODO
 - 우선순위: P2
-- 선행 작업: Kakao export sync (`adapter-inbound/.../kakao/localdb/README.md`, `tools/kakao-exporter/`)
+- 선행 작업: Kakao exporter의 HTTP 주입 (`tools/kakao-exporter/`)
 
 ## 문제
 
@@ -18,7 +18,7 @@
 - VirtualBox VM은 가능하지만 VM용 Windows 라이선스와 RAM 4GB 정도가 든다.
 
 결정(2026-10-21): 사용자가 쓰지 않는 별도 Windows 기기(미니 PC 또는 구형 노트북, Home 가능)에서
-내보내기를 실행한다. 현재 exporter와 `KakaoExportFolderStore`를 코드 변경 없이 쓴다.
+내보내기를 실행한다. exporter는 저장한 파일을 앱의 HTTP 주입 API로 보내므로 코드 변경 없이 쓴다.
 
 제약: 카카오톡 PC는 동시에 PC 한 대만 로그인되는 것으로 알려져 있다(미확인). 그러면 그 기기가 유일한
 PC 카카오톡이 되고 기존 PC의 카카오톡 PC는 로그아웃된다.
@@ -26,7 +26,7 @@ PC 카카오톡이 되고 기존 PC의 카카오톡 PC는 로그아웃된다.
 ## 목표
 
 - 사용자 PC 사용과 화면 잠금에 상관없이 허용 채팅방 export가 주기적으로 갱신된다.
-- 앱은 지금과 같은 `<chatKey>.txt`를 읽는다.
+- 앱은 수동 주입과 같은 HTTP 입구로 받는다.
 
 ## 구현 계획
 
@@ -34,17 +34,14 @@ PC 카카오톡이 되고 기존 PC의 카카오톡 PC는 로그아웃된다.
 2. 카카오톡 PC 설치·로그인, 카카오톡 잠금모드 끄기. PC 한 대 로그인 제약을 실제로 확인한다.
 3. Python 3.12 + pywinauto 설치, 저장소 클론, `tools/kakao-exporter/README.md`대로 작업 스케줄러에
    "사용자가 로그온할 때만 실행"으로 등록한다.
-4. txt 전달 방식을 고른다.
-   - A. 앱도 그 기기에서 실행한다. 공유가 필요 없다.
-   - B. 앱은 기존 서버에 두고, 기기의 exports 폴더를 로컬 네트워크 전용 SMB 공유로 열어
-     `KAKAO_EXPORT_DIR`에 지정한다.
-5. `.env`에 `KAKAO_LOCAL_DB_CHATS_JSON`(`chatKey` + `roomName`)과 `KAKAO_LOCAL_DB_OWNER_USER_ID`를 설정한다.
+4. 앱이 다른 기기에 있으면 `KAKAO_IMPORT_URL`을 그 앱의 tailnet 주소로 지정한다.
+5. `.env`에 `KAKAO_EXPORTER_CHATS_JSON`과 `KAKAO_EXPORTER_API_TOKEN`을 설정한다.
 6. 방 하나로 end-to-end를 확인한 뒤 허용 방을 늘린다.
 
 ## 완료 조건
 
 - 스케줄 실행이 사람 개입 없이 하루 이상 연속 성공한다.
-- 앱이 새 메시지를 수집한다(로그의 `imported messages`).
+- 앱이 새 메시지를 수집한다(exporter 출력의 `analyzed`).
 - 기존 PC 작업과 충돌하지 않는다.
 
 ## 제외 범위

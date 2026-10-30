@@ -35,9 +35,6 @@ object KakaoExportParser {
         records = parseEntries(text).map { it.build(sourceName) },
     )
 
-    /** The messages of [text] in file order; [KakaoExportMessage.sentAt] is null when the export gives no date. */
-    internal fun messages(text: String): List<KakaoExportMessage> = parseEntries(text).map { it.message() }
-
     private fun parseEntries(text: String): List<MessageBuilder> {
         val lines = text.lines()
         val messages = mutableListOf<MessageBuilder>()
@@ -94,8 +91,6 @@ object KakaoExportParser {
             legacyContentLines += line
         }
 
-        fun message(): KakaoExportMessage = KakaoExportMessage(sender, timestamp.time, content())
-
         fun build(sourceName: String): SourceRecordDraft {
             val legacyContent = legacyContentLines.joinToString("\n").trimEnd()
             val legacyFingerprintText = listOf(sourceName, legacySender, timestamp.legacyDisplay, legacyContent)
@@ -113,7 +108,6 @@ object KakaoExportParser {
     }
 
     private data class ParsedTimestamp(
-        val time: LocalDateTime?,
         val display: String,
         val canonical: String,
         val legacyDisplay: String,
@@ -133,7 +127,7 @@ object KakaoExportParser {
     private fun bracketTimestamp(date: LocalDate?, period: String, time: String): ParsedTimestamp {
         if (date == null) {
             val display = "$period $time"
-            return ParsedTimestamp(null, display, "UNKNOWN_DATE|$display", display)
+            return ParsedTimestamp(display, "UNKNOWN_DATE|$display", display)
         }
         return timestamp(
             date,
@@ -171,17 +165,9 @@ object KakaoExportParser {
         val hourOfDay = (hour % 12) + if (period == "오후") 12 else 0
         val time = LocalDateTime.of(date, LocalTime.of(hourOfDay, minute))
         return ParsedTimestamp(
-            time = time,
             display = KakaoMessageRecord.displayTime(time),
             canonical = KakaoMessageRecord.canonicalTime(time),
             legacyDisplay = legacyDisplay,
         )
     }
 }
-
-/** One exported message: [sentAt] is Korean local time to the minute, the precision of the export. */
-internal data class KakaoExportMessage(
-    val sender: String,
-    val sentAt: LocalDateTime?,
-    val text: String,
-)

@@ -15,6 +15,11 @@ import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
 
+/**
+ * Answers a question from the participant's readable memories in a provider conversation. The conversation is resumed
+ * while the participant was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
+ * matching memory gets [NO_MATCH_ANSWER] without calling the provider.
+ */
 class HandleMemoryConversation(
     private val sessions: MemoryConversationSessionStore,
     private val contextProvider: MemoryConversationContextSource,

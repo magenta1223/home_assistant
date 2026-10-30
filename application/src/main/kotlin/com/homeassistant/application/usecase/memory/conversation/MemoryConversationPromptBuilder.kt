@@ -3,9 +3,11 @@ package com.homeassistant.application.usecase.memory.conversation
 import java.time.Clock
 import java.time.Instant
 
+/** Builds the provider prompt that answers only from a memory reference, treated as untrusted data. */
 class MemoryConversationPromptBuilder(
     private val clock: Clock = Clock.systemUTC(),
 ) {
+    /** The prompt for [userText] answered from [context], with the current time to judge how recent each memory is. */
     fun build(context: String, userText: String): String =
         buildString {
             appendLine("Answer the user's question concisely in Korean.")

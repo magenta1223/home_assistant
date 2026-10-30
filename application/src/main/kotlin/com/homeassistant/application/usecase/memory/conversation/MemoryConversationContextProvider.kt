@@ -5,7 +5,9 @@ import com.homeassistant.application.port.input.topic.TopicMatch
 import com.homeassistant.domain.identity.UserId
 import java.time.Instant
 
+/** Supplies the memory reference a conversation answers from. */
 fun interface MemoryConversationContextSource {
+    /** The memories [userId] can read that relate to [question], as a reference block. */
     fun context(userId: UserId, question: String): MemoryConversationContext
 }
 
@@ -36,6 +38,7 @@ private fun withinBudget(lines: List<String>): List<String> {
         .dropLastWhile { it.startsWith("## Topic ") }
 }
 
+/** [reference] is the text given to the provider; [hasMatches] is false when it holds no memory. */
 data class MemoryConversationContext(
     val reference: String,
     val hasMatches: Boolean,

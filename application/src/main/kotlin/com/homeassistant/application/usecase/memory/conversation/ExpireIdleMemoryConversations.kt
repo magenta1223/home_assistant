@@ -13,6 +13,7 @@ class ExpireIdleMemoryConversations(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
+    /** Expires sessions idle for [HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS] and returns how many expired. */
     fun execute(): Int {
         val expired = sessions.expireIdle(
             beforeInclusive = clock.millis() - HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS,

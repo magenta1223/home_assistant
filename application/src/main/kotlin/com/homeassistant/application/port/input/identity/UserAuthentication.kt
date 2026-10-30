@@ -7,22 +7,12 @@ import java.time.Duration
 
 /** Registers people by name and password and keeps them logged in with sessions. */
 interface UserAuthentication {
-    /** Returns whether the first user may still sign up, which is only while no user exists. */
-    fun isSignupOpen(): Boolean
-
     /**
-     * Registers the first user.
-     *
-     * @throws SignupClosedException when a user already exists
-     */
-    fun signUpFirstUser(name: String, password: Password): RegisteredUser
-
-    /**
-     * Registers another user with an initial password. Callers must already be authenticated.
+     * Registers a new user.
      *
      * @throws UserNameTakenException when the name is in use
      */
-    fun addUser(name: String, password: Password): RegisteredUser
+    fun signUp(name: String, password: Password): RegisteredUser
 
     /**
      * Starts a session for the user with this name and password.
@@ -39,12 +29,7 @@ interface UserAuthentication {
 
     companion object {
         val NONE: UserAuthentication = object : UserAuthentication {
-            override fun isSignupOpen(): Boolean = false
-
-            override fun signUpFirstUser(name: String, password: Password): RegisteredUser =
-                throw SignupClosedException()
-
-            override fun addUser(name: String, password: Password): RegisteredUser =
+            override fun signUp(name: String, password: Password): RegisteredUser =
                 throw UserNameTakenException(name)
 
             override fun login(name: String, password: Password): LoginSession =
@@ -62,8 +47,6 @@ data class LoginSession(
     val id: String,
     val lifetime: Duration,
 )
-
-class SignupClosedException internal constructor() : RuntimeException("signup is closed because a user already exists")
 
 class UserNameTakenException internal constructor(
     name: String,

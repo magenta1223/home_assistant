@@ -20,27 +20,16 @@ import kotlin.test.assertTrue
 
 class UserCredentialRepositoryTest {
     @Test
-    fun `the first registration succeeds only on an empty store and registers the user`() = withStores { stores ->
-        assertFalse(stores.userCredentials.hasUsers())
-
-        assertEquals(UserRegistration.REGISTERED, stores.userCredentials.registerFirst(FIRST, HASH))
-
-        assertTrue(stores.userCredentials.hasUsers())
-        assertEquals(listOf(FIRST), stores.users.list())
-        assertTrue(stores.users.isRegistered(FIRST.userId))
-        assertEquals(UserRegistration.USERS_ALREADY_EXIST, stores.userCredentials.registerFirst(SECOND, HASH))
-    }
-
-    @Test
     fun `a display name can be registered once and is found with its hash`() = withStores { stores ->
-        stores.userCredentials.registerFirst(FIRST, HASH)
-
+        assertEquals(UserRegistration.REGISTERED, stores.userCredentials.register(FIRST, HASH))
         assertEquals(UserRegistration.REGISTERED, stores.userCredentials.register(SECOND, HASH))
         assertEquals(
             UserRegistration.NAME_TAKEN,
             stores.userCredentials.register(RegisteredUser(UserId("member-3"), SECOND.displayName), HASH),
         )
 
+        assertEquals(listOf(FIRST, SECOND).sortedBy { it.displayName }, stores.users.list())
+        assertTrue(stores.users.isRegistered(FIRST.userId))
         assertEquals(StoredCredential(SECOND.userId, HASH), stores.userCredentials.findByName(SECOND.displayName))
         assertNull(stores.userCredentials.findByName("없는사람"))
     }

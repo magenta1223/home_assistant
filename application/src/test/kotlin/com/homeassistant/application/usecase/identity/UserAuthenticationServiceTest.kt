@@ -1,7 +1,6 @@
 package com.homeassistant.application.usecase.identity
 
 import com.homeassistant.application.port.input.identity.InvalidCredentialsException
-import com.homeassistant.application.port.input.identity.SignupClosedException
 import com.homeassistant.application.port.input.identity.UserNameTakenException
 import com.homeassistant.application.port.output.identity.PasswordHash
 import com.homeassistant.application.port.output.identity.PasswordHasher
@@ -17,7 +16,6 @@ import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -29,30 +27,25 @@ class UserAuthenticationServiceTest {
     private val service = UserAuthenticationService(credentials, sessions, PlainHasher) { now }
 
     @Test
-    fun `signup is open only until the first user exists`() {
-        assertTrue(service.isSignupOpen())
-
-        val first = service.signUpFirstUser(" 김동훈 ", PASSWORD)
+    fun `anyone signs up with a free name and can then log in`() {
+        val first = service.signUp(" 김동훈 ", PASSWORD)
+        val second = service.signUp("홍승민", PASSWORD)
 
         assertEquals("김동훈", first.displayName)
         assertTrue(first.userId.value.startsWith("member-"))
-        assertFalse(service.isSignupOpen())
-        assertFailsWith<SignupClosedException> { service.signUpFirstUser("홍승민", PASSWORD) }
+        assertEquals(second.userId, service.resolveSession(service.login("홍승민", PASSWORD).id))
     }
 
     @Test
-    fun `added users can log in but a name is used only once`() {
-        service.signUpFirstUser("김동훈", PASSWORD)
+    fun `a name is used only once`() {
+        service.signUp("김동훈", PASSWORD)
 
-        val added = service.addUser("홍승민", PASSWORD)
-
-        assertEquals(added.userId, service.resolveSession(service.login("홍승민", PASSWORD).id))
-        assertFailsWith<UserNameTakenException> { service.addUser("홍승민", PASSWORD) }
+        assertFailsWith<UserNameTakenException> { service.signUp("김동훈", PASSWORD) }
     }
 
     @Test
     fun `login rejects a wrong password and an unknown name`() {
-        service.signUpFirstUser("김동훈", PASSWORD)
+        service.signUp("김동훈", PASSWORD)
 
         assertFailsWith<InvalidCredentialsException> { service.login("김동훈", Password("wrong-password")) }
         assertFailsWith<InvalidCredentialsException> { service.login("없는사람", PASSWORD) }
@@ -60,7 +53,7 @@ class UserAuthenticationServiceTest {
 
     @Test
     fun `sessions are stored only as hashes`() {
-        service.signUpFirstUser("김동훈", PASSWORD)
+        service.signUp("김동훈", PASSWORD)
 
         val session = service.login("김동훈", PASSWORD)
 
@@ -69,7 +62,7 @@ class UserAuthenticationServiceTest {
 
     @Test
     fun `a session stops working at its expiry and is removed by a later login`() {
-        val user = service.signUpFirstUser("김동훈", PASSWORD)
+        val user = service.signUp("김동훈", PASSWORD)
         val session = service.login("김동훈", PASSWORD)
 
         assertEquals(user.userId, service.resolveSession(session.id))
@@ -83,7 +76,7 @@ class UserAuthenticationServiceTest {
 
     @Test
     fun `logout ends only that session`() {
-        val user = service.signUpFirstUser("김동훈", PASSWORD)
+        val user = service.signUp("김동훈", PASSWORD)
         val phone = service.login("김동훈", PASSWORD)
         val laptop = service.login("김동훈", PASSWORD)
 
@@ -101,13 +94,6 @@ class UserAuthenticationServiceTest {
 
     private class InMemoryCredentials : UserCredentialStore {
         private val users = mutableMapOf<String, StoredCredential>()
-
-        override fun hasUsers() = users.isNotEmpty()
-
-        override fun registerFirst(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration {
-            if (hasUsers()) return UserRegistration.USERS_ALREADY_EXIST
-            return register(user, passwordHash)
-        }
 
         override fun register(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration {
             if (user.displayName in users) return UserRegistration.NAME_TAKEN

@@ -159,9 +159,12 @@
         <input id="login-name" autocomplete="username" maxlength="50">
         <label for="login-password">비밀번호</label>
         <input id="login-password" type="password" autocomplete="current-password">
-        <div id="login-hint" class="hint">이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
+        <div class="hint">처음이면 이름과 8자 이상의 비밀번호로 가입하세요. 이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
       </div>
-      <button id="login" type="button">로그인</button>
+      <div>
+        <button id="login" type="button">로그인</button>
+        <button id="signup" type="button">가입</button>
+      </div>
     </div>
     <div id="connection" data-state="idle" role="status">인증 확인 중</div>
     <div id="messages" role="log" aria-live="polite" aria-relevant="additions">
@@ -184,22 +187,26 @@
 <script>
   const loginName = document.getElementById('login-name');
   const loginPassword = document.getElementById('login-password');
-  const loginHint = document.getElementById('login-hint');
   const question = document.getElementById('question');
   const send = document.getElementById('send');
   const messages = document.getElementById('messages');
   const connection = document.getElementById('connection');
   const auth = document.getElementById('auth');
   const login = document.getElementById('login');
+  const signup = document.getElementById('signup');
   let authenticated = false;
-  let signupOpen = false;
 
-  login.addEventListener('click', authenticate);
+  login.addEventListener('click', function () {
+    authenticate(window.HomeSecondBrainAuth.login);
+  });
+  signup.addEventListener('click', function () {
+    authenticate(window.HomeSecondBrainAuth.signUp);
+  });
 
   loginPassword.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.isComposing) {
       event.preventDefault();
-      authenticate();
+      authenticate(window.HomeSecondBrainAuth.login);
     }
   });
 
@@ -214,7 +221,7 @@
     event.preventDefault();
     const text = question.value.trim();
     if (!authenticated) {
-      await showLogin();
+      showLogin();
       return;
     }
     if (!text) {
@@ -247,7 +254,7 @@
       setConnection('error', error instanceof ConversationError && error.status === 401 ? '인증 실패' : '전송 실패');
       if (error instanceof ConversationError && error.status === 401) {
         authenticated = false;
-        await showLogin();
+        showLogin();
       }
     } finally {
       setBusy(false);
@@ -282,20 +289,18 @@
     connection.textContent = text;
   }
 
-  async function authenticate() {
+  async function authenticate(submit) {
     login.disabled = true;
+    signup.disabled = true;
     try {
-      if (signupOpen) {
-        await window.HomeSecondBrainAuth.signUp(loginName.value, loginPassword.value);
-      } else {
-        await window.HomeSecondBrainAuth.login(loginName.value, loginPassword.value);
-      }
+      await submit(loginName.value, loginPassword.value);
       loginPassword.value = '';
       showConnected();
     } catch (error) {
       setConnection('error', error.message);
     } finally {
       login.disabled = false;
+      signup.disabled = false;
     }
   }
 
@@ -306,21 +311,16 @@
     question.focus();
   }
 
-  async function showLogin() {
-    signupOpen = await window.HomeSecondBrainAuth.isSignupOpen();
+  function showLogin() {
     auth.hidden = false;
-    login.textContent = signupOpen ? '첫 사용자로 가입' : '로그인';
-    loginHint.textContent = signupOpen
-      ? '아직 사용자가 없습니다. 이름과 8자 이상의 비밀번호로 가입하세요.'
-      : '이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.';
-    setConnection('idle', signupOpen ? '가입 필요' : '로그인 필요');
+    setConnection('idle', '로그인 필요');
     loginName.focus();
   }
 
   async function restoreAuthentication() {
     const response = await window.HomeSecondBrainAuth.restore();
     if (response.ok) showConnected();
-    else await showLogin();
+    else showLogin();
   }
 
   function createRequestId() {

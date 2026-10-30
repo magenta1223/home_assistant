@@ -23,19 +23,11 @@
     restore: function () {
       return fetch('/api/auth/session');
     },
-    isSignupOpen: async function () {
-      const response = await fetch('/api/auth/signup');
-      return response.ok && (await response.json()).open;
-    },
     login: login,
     signUp: async function (name, password) {
       const response = await postCredentials('/api/auth/signup', name, password);
       if (!response.ok) throw await errorOf(response);
       await login(name, password);
-    },
-    addUser: async function (name, password) {
-      const response = await postCredentials('/api/auth/users', name, password);
-      if (!response.ok) throw await errorOf(response);
     },
     logout: function () {
       return fetch('/api/auth/logout', { method: 'POST' });

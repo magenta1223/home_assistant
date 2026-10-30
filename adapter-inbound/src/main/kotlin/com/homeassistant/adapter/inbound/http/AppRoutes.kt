@@ -26,7 +26,7 @@ fun Application.configureRoutes(
         httpAuthAssetRoutes()
         publicLoginRoutes(authentication)
         authenticate(*HTTP_AUTHENTICATION_NAMES) {
-            authenticatedLoginRoutes(authentication)
+            sessionStatusRoute()
             knowledgeInjectionRoutes(memoryAnalysis, users)
             memoryConversationRoutes(memoryConversation)
         }

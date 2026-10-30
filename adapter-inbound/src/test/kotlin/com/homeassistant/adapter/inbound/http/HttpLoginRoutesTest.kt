@@ -16,7 +16,6 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
-import io.ktor.client.request.HttpRequestBuilder
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.header
@@ -42,12 +41,10 @@ import kotlin.test.assertTrue
 
 class HttpLoginRoutesTest {
     @Test
-    fun `the first user signs up and logs in with a secure session cookie`() = testApplication {
+    fun `a user signs up and logs in with a secure session cookie`() = testApplication {
         application { configure() }
 
-        assertContains(client.get(HTTP_SIGNUP_ROUTE).bodyAsText(), "\"open\": true")
         assertEquals(HttpStatusCode.Created, postCredentials(HTTP_SIGNUP_ROUTE, "김동훈").status)
-        assertContains(client.get(HTTP_SIGNUP_ROUTE).bodyAsText(), "\"open\": false")
 
         val login = postCredentials(HTTP_LOGIN_ROUTE, "김동훈")
 
@@ -62,11 +59,13 @@ class HttpLoginRoutesTest {
     }
 
     @Test
-    fun `signup after the first user is forbidden`() = testApplication {
+    fun `everyone signs up directly but a name is used only once`() = testApplication {
         application { configure() }
-        postCredentials(HTTP_SIGNUP_ROUTE, "김동훈")
 
-        assertEquals(HttpStatusCode.Forbidden, postCredentials(HTTP_SIGNUP_ROUTE, "홍승민").status)
+        assertEquals(HttpStatusCode.Created, postCredentials(HTTP_SIGNUP_ROUTE, "김동훈").status)
+        assertEquals(HttpStatusCode.Created, postCredentials(HTTP_SIGNUP_ROUTE, "홍승민").status)
+        assertEquals(HttpStatusCode.Conflict, postCredentials(HTTP_SIGNUP_ROUTE, "홍승민").status)
+        assertEquals(HttpStatusCode.NoContent, postCredentials(HTTP_LOGIN_ROUTE, "홍승민").status)
     }
 
     @Test
@@ -95,7 +94,6 @@ class HttpLoginRoutesTest {
 
         assertEquals(HttpStatusCode.Unauthorized, client.get(HTTP_SESSION_ROUTE).status)
         assertEquals(HttpStatusCode.Unauthorized, client.get(AppConfig.ROUTE_KNOWLEDGE_USERS).status)
-        assertEquals(HttpStatusCode.Unauthorized, postCredentials(HTTP_USERS_ROUTE, "홍승민").status)
     }
 
     @Test
@@ -112,17 +110,6 @@ class HttpLoginRoutesTest {
         assertEquals(HttpStatusCode.NoContent, logout.status)
         assertContains(logout.headers[HttpHeaders.SetCookie].orEmpty(), "Max-Age=0")
         assertEquals(HttpStatusCode.Unauthorized, client.get(HTTP_SESSION_ROUTE) { header(HttpHeaders.Cookie, cookie) }.status)
-    }
-
-    @Test
-    fun `a logged in user adds a family member once`() = testApplication {
-        application { configure() }
-        postCredentials(HTTP_SIGNUP_ROUTE, "김동훈")
-        val cookie = sessionCookie(postCredentials(HTTP_LOGIN_ROUTE, "김동훈"))
-
-        assertEquals(HttpStatusCode.Created, postCredentials(HTTP_USERS_ROUTE, "홍승민") { header(HttpHeaders.Cookie, cookie) }.status)
-        assertEquals(HttpStatusCode.Conflict, postCredentials(HTTP_USERS_ROUTE, "홍승민") { header(HttpHeaders.Cookie, cookie) }.status)
-        assertEquals(HttpStatusCode.NoContent, postCredentials(HTTP_LOGIN_ROUTE, "홍승민").status)
     }
 
     @Test
@@ -164,9 +151,7 @@ class HttpLoginRoutesTest {
         route: String,
         name: String,
         password: String = PASSWORD,
-        block: HttpRequestBuilder.() -> Unit = {},
     ): HttpResponse = client.post(route) {
-        block()
         contentType(ContentType.Application.Json)
         setBody("""{"name":"$name","password":"$password"}""")
     }
@@ -186,13 +171,6 @@ class HttpLoginRoutesTest {
 
     private class InMemoryCredentials : UserCredentialStore {
         private val users = mutableMapOf<String, StoredCredential>()
-
-        override fun hasUsers() = users.isNotEmpty()
-
-        override fun registerFirst(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration {
-            if (hasUsers()) return UserRegistration.USERS_ALREADY_EXIST
-            return register(user, passwordHash)
-        }
 
         override fun register(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration {
             if (user.displayName in users) return UserRegistration.NAME_TAKEN

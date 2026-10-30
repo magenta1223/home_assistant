@@ -19,14 +19,6 @@ internal class UserCredentialRepository(
     private val db: Database,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : UserCredentialStore {
-    override fun hasUsers(): Boolean = transaction(db) { anyUser() }
-
-    override fun registerFirst(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration = transaction(db) {
-        if (anyUser()) return@transaction UserRegistration.USERS_ALREADY_EXIST
-        insert(user, passwordHash)
-        UserRegistration.REGISTERED
-    }
-
     override fun register(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration = transaction(db) {
         val nameTaken = UserTable.selectAll().where { UserTable.displayName eq user.displayName }.any()
         if (nameTaken) return@transaction UserRegistration.NAME_TAKEN
@@ -41,8 +33,6 @@ internal class UserCredentialRepository(
             .singleOrNull()
             ?.let { StoredCredential(UserId(it[UserTable.userId]), PasswordHash(it[UserCredentialTable.passwordHash])) }
     }
-
-    private fun anyUser(): Boolean = UserTable.selectAll().limit(1).any()
 
     private fun insert(user: RegisteredUser, passwordHash: PasswordHash) {
         val now = clock()

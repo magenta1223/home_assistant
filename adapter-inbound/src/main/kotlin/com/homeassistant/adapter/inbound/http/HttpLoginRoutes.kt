@@ -2,11 +2,9 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.input.identity.InvalidCredentialsException
 import com.homeassistant.application.port.input.identity.LoginSession
-import com.homeassistant.application.port.input.identity.SignupClosedException
 import com.homeassistant.application.port.input.identity.UserAuthentication
 import com.homeassistant.application.port.input.identity.UserNameTakenException
 import com.homeassistant.domain.identity.Password
-import com.homeassistant.domain.identity.RegisteredUser
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.request.receive
@@ -18,11 +16,16 @@ import kotlinx.serialization.Serializable
 
 /** The routes a person needs before having a session. */
 internal fun Route.publicLoginRoutes(authentication: UserAuthentication) {
-    get(HTTP_SIGNUP_ROUTE) {
-        call.respond(SignupStatusResponse(authentication.isSignupOpen()))
-    }
     post(HTTP_SIGNUP_ROUTE) {
-        call.registerUser(authentication::signUpFirstUser)
+        val request = call.receive<HttpCredentialsRequest>()
+        try {
+            val user = authentication.signUp(request.name, request.password())
+            call.respond(HttpStatusCode.Created, HttpUserResponse(user.userId.value, user.displayName))
+        } catch (error: IllegalArgumentException) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to (error.message ?: "invalid name or password")))
+        } catch (error: UserNameTakenException) {
+            call.respond(HttpStatusCode.Conflict, mapOf("error" to error.message))
+        }
     }
     post(HTTP_LOGIN_ROUTE) {
         val request = call.receive<HttpCredentialsRequest>()
@@ -42,27 +45,10 @@ internal fun Route.publicLoginRoutes(authentication: UserAuthentication) {
     }
 }
 
-/** The routes that need an authenticated caller. */
-internal fun Route.authenticatedLoginRoutes(authentication: UserAuthentication) {
+/** Answers whether the caller is authenticated. */
+internal fun Route.sessionStatusRoute() {
     get(HTTP_SESSION_ROUTE) {
         call.respond(HttpStatusCode.NoContent)
-    }
-    post(HTTP_USERS_ROUTE) {
-        call.registerUser(authentication::addUser)
-    }
-}
-
-private suspend fun ApplicationCall.registerUser(register: (String, Password) -> RegisteredUser) {
-    val request = receive<HttpCredentialsRequest>()
-    try {
-        val user = register(request.name, request.password())
-        respond(HttpStatusCode.Created, HttpUserResponse(user.userId.value, user.displayName))
-    } catch (error: IllegalArgumentException) {
-        respond(HttpStatusCode.BadRequest, mapOf("error" to (error.message ?: "invalid name or password")))
-    } catch (error: SignupClosedException) {
-        respond(HttpStatusCode.Forbidden, mapOf("error" to error.message))
-    } catch (error: UserNameTakenException) {
-        respond(HttpStatusCode.Conflict, mapOf("error" to error.message))
     }
 }
 
@@ -104,12 +90,8 @@ private data class HttpUserResponse(
     val name: String,
 )
 
-@Serializable
-private data class SignupStatusResponse(val open: Boolean)
-
 internal const val HTTP_SESSION_ROUTE = "/api/auth/session"
 internal const val HTTP_SIGNUP_ROUTE = "/api/auth/signup"
 internal const val HTTP_LOGIN_ROUTE = "/api/auth/login"
 internal const val HTTP_LOGOUT_ROUTE = "/api/auth/logout"
-internal const val HTTP_USERS_ROUTE = "/api/auth/users"
 internal const val HTTP_SESSION_COOKIE = "__Host-home-second-brain-session"

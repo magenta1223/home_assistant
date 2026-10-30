@@ -2,7 +2,6 @@ package com.homeassistant.application.usecase.identity
 
 import com.homeassistant.application.port.input.identity.InvalidCredentialsException
 import com.homeassistant.application.port.input.identity.LoginSession
-import com.homeassistant.application.port.input.identity.SignupClosedException
 import com.homeassistant.application.port.input.identity.UserAuthentication
 import com.homeassistant.application.port.input.identity.UserNameTakenException
 import com.homeassistant.application.port.output.identity.PasswordHasher
@@ -26,18 +25,12 @@ class UserAuthenticationService(
     private val hasher: PasswordHasher,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : UserAuthentication {
-    override fun isSignupOpen(): Boolean = !credentials.hasUsers()
-
-    override fun signUpFirstUser(name: String, password: Password): RegisteredUser {
-        val user = newUser(name)
-        requireRegistered(credentials.registerFirst(user, hasher.hash(password)), name)
-        return user
-    }
-
-    override fun addUser(name: String, password: Password): RegisteredUser {
-        val user = newUser(name)
-        requireRegistered(credentials.register(user, hasher.hash(password)), name)
-        return user
+    override fun signUp(name: String, password: Password): RegisteredUser {
+        val user = RegisteredUser(UserId("member-${UUID.randomUUID()}"), name.trim())
+        return when (credentials.register(user, hasher.hash(password))) {
+            UserRegistration.REGISTERED -> user
+            UserRegistration.NAME_TAKEN -> throw UserNameTakenException(user.displayName)
+        }
     }
 
     override fun login(name: String, password: Password): LoginSession {
@@ -54,14 +47,6 @@ class UserAuthenticationService(
     override fun logout(sessionId: String) = sessions.delete(hash(sessionId))
 
     override fun resolveSession(sessionId: String): UserId? = sessions.findUser(hash(sessionId), clock())
-
-    private fun newUser(name: String) = RegisteredUser(UserId("member-${UUID.randomUUID()}"), name.trim())
-
-    private fun requireRegistered(registration: UserRegistration, name: String) = when (registration) {
-        UserRegistration.REGISTERED -> Unit
-        UserRegistration.USERS_ALREADY_EXIST -> throw SignupClosedException()
-        UserRegistration.NAME_TAKEN -> throw UserNameTakenException(name)
-    }
 
     private fun newSessionId(): String {
         val bytes = ByteArray(SESSION_ID_BYTES).also(SecureRandom()::nextBytes)

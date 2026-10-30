@@ -49,13 +49,14 @@ fun Application.module() {
     log.info("Database: $dbPath")
 
     val httpApiKeys = HttpApiKeyConfig.fromEnv()
-    val services = ApplicationServicesFactory.create(dbPath, httpApiKeys.values)
+    val services = ApplicationServicesFactory.create(dbPath)
     try {
         services.start()
         configureRoutes(
             memoryAnalysis = services.memoryAnalysis,
             httpApiKeys = httpApiKeys,
             users = services.users,
+            authentication = services.authentication,
             memoryConversation = services.memoryConversation,
             readiness = { services.isReady },
         )

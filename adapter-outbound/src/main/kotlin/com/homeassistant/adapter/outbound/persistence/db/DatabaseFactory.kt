@@ -30,6 +30,8 @@ internal object DatabaseFactory {
                 MemoryConversationActiveSessionTable,
                 MemoryConversationReceiptTable,
                 UserTable,
+                UserCredentialTable,
+                UserSessionTable,
             )
             migrateLegacyPrivateAccess()
         }

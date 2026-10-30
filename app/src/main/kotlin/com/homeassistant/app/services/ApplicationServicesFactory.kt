@@ -1,14 +1,12 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
+import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
 import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
-import com.homeassistant.domain.identity.UserAccessPolicies
-import com.homeassistant.domain.identity.UserAccessPolicy
-import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.adapter.outbound.topicdescription.TopicDescriptionGeneratorFactory
@@ -16,6 +14,7 @@ import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersist
 import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
 import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
 import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
+import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
 import com.homeassistant.adapter.outbound.embedding.memory.QueryEmbeddingAdapter
@@ -33,7 +32,6 @@ object ApplicationServicesFactory {
 
     fun create(
         dbPath: String,
-        httpUsers: Collection<UserId> = emptyList(),
         groupSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
         val agentBackend = agentBackend()
@@ -69,10 +67,6 @@ object ApplicationServicesFactory {
             MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings)),
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-        val httpAccessPolicy = UserAccessPolicies.fixed(httpUsers)
-        val accessPolicy = UserAccessPolicy { userId ->
-            users.isAuthorized(userId) || httpAccessPolicy.isAuthorized(userId)
-        }
         val memorySaver = MemoryProposalsPersister(
             batchWriter = repositories.canonicalMemoryBatchWriter,
         )
@@ -80,7 +74,7 @@ object ApplicationServicesFactory {
             memoryExtractor = MemoryExtractorFactory.create(completionClient),
             sourceRecords = repositories.sourceRecords,
             memorySaver = memorySaver,
-            accessPolicy = accessPolicy,
+            accessPolicy = users,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
         val topicSearch = TopicSearcher(
@@ -90,14 +84,14 @@ object ApplicationServicesFactory {
             memories = repositories.canonicalMemories,
             memoryVectors = repositories.memoryEmbeddings,
             space = memoryEmbeddings.space,
-            accessPolicy = accessPolicy,
+            accessPolicy = users,
         )
         val describeTopic = TopicDescriber(
             topics = repositories.topicMaintenance,
             memories = repositories.canonicalMemories,
             descriptions = repositories.topicDescriptions,
             generator = TopicDescriptionGeneratorFactory.create(completionClient),
-            accessPolicy = accessPolicy,
+            accessPolicy = users,
         )
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
@@ -138,6 +132,11 @@ object ApplicationServicesFactory {
             describeTopic = describeTopic,
             memoryConversation = memoryConversation,
             users = users,
+            authentication = UserAuthenticationService(
+                repositories.userCredentials,
+                repositories.userSessions,
+                Pbkdf2PasswordHasher(),
+            ),
             embeddingRuntime = managedEmbedding.runtime,
             conversationExpiryWorker = conversationExpiryWorker,
             topicAssignmentWorker = MemoryTopicAssignmentWorker(organizeMemories),

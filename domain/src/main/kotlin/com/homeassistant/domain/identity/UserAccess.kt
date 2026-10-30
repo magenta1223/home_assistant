@@ -6,18 +6,4 @@ fun interface UserAccessPolicy {
     fun isAuthorized(userId: UserId): Boolean
 }
 
-private class FixedUserAccessPolicy(
-    userIds: Collection<UserId>,
-) : UserAccessPolicy {
-    private val authorizedUserIds = userIds.toSet()
-
-    override fun isAuthorized(userId: UserId): Boolean =
-        userId in authorizedUserIds
-}
-
 class UserAccessDeniedException : RuntimeException("user access denied")
-
-object UserAccessPolicies {
-    fun fixed(userIds: Collection<UserId>): UserAccessPolicy =
-        FixedUserAccessPolicy(userIds)
-}

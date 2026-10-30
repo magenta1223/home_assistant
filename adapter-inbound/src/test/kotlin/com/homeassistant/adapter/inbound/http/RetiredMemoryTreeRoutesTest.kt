@@ -20,7 +20,7 @@ class RetiredMemoryTreeRoutesTest {
         assertEquals(HttpStatusCode.NotFound, client.get("/api/memory/tree").status)
         val script = client.get(HTTP_AUTH_SESSION_SCRIPT_ROUTE)
         assertEquals(HttpStatusCode.OK, script.status)
-        assertContains(script.bodyAsText(), HTTP_SESSION_ROUTE)
+        assertContains(script.bodyAsText(), HTTP_LOGIN_ROUTE)
         assertFalse(script.bodyAsText().contains("localStorage"))
         for (path in listOf("/knowledge", "/conversation")) {
             val page = client.get(path)

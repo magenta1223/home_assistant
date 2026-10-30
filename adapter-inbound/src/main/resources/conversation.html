@@ -155,11 +155,13 @@
   <section class="panel" aria-label="메모리 대화">
     <div id="auth" class="auth" hidden>
       <div>
-        <label for="token">API 토큰</label>
-        <input id="token" type="password" autocomplete="current-password" placeholder="발급받은 토큰 입력">
-        <div class="hint">이 기기에 한 번 인증하면 이후에는 자동으로 연결됩니다.</div>
+        <label for="login-name">이름</label>
+        <input id="login-name" autocomplete="username" maxlength="50">
+        <label for="login-password">비밀번호</label>
+        <input id="login-password" type="password" autocomplete="current-password">
+        <div id="login-hint" class="hint">이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
       </div>
-      <button id="remember" type="button">인증</button>
+      <button id="login" type="button">로그인</button>
     </div>
     <div id="connection" data-state="idle" role="status">인증 확인 중</div>
     <div id="messages" role="log" aria-live="polite" aria-relevant="additions">
@@ -180,21 +182,24 @@
 </main>
 <script src="/assets/http-auth-session.js"></script>
 <script>
-  const token = document.getElementById('token');
+  const loginName = document.getElementById('login-name');
+  const loginPassword = document.getElementById('login-password');
+  const loginHint = document.getElementById('login-hint');
   const question = document.getElementById('question');
   const send = document.getElementById('send');
   const messages = document.getElementById('messages');
   const connection = document.getElementById('connection');
   const auth = document.getElementById('auth');
-  const remember = document.getElementById('remember');
+  const login = document.getElementById('login');
   let authenticated = false;
+  let signupOpen = false;
 
-  remember.addEventListener('click', rememberToken);
+  login.addEventListener('click', authenticate);
 
-  token.addEventListener('keydown', function (event) {
+  loginPassword.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.isComposing) {
       event.preventDefault();
-      rememberToken();
+      authenticate();
     }
   });
 
@@ -209,9 +214,7 @@
     event.preventDefault();
     const text = question.value.trim();
     if (!authenticated) {
-      setConnection('error', '토큰 필요');
-      auth.hidden = false;
-      token.focus();
+      await showLogin();
       return;
     }
     if (!text) {
@@ -244,7 +247,7 @@
       setConnection('error', error instanceof ConversationError && error.status === 401 ? '인증 실패' : '전송 실패');
       if (error instanceof ConversationError && error.status === 401) {
         authenticated = false;
-        auth.hidden = false;
+        await showLogin();
       }
     } finally {
       setBusy(false);
@@ -271,7 +274,7 @@
   function setBusy(isBusy) {
     send.disabled = isBusy;
     question.disabled = isBusy;
-    token.disabled = isBusy;
+    loginPassword.disabled = isBusy;
   }
 
   function setConnection(state, text) {
@@ -279,41 +282,45 @@
     connection.textContent = text;
   }
 
-  async function rememberToken() {
-    const apiToken = token.value.trim();
-    if (!apiToken) {
-      setConnection('error', '토큰 필요');
-      token.focus();
-      return;
-    }
-    remember.disabled = true;
+  async function authenticate() {
+    login.disabled = true;
     try {
-      const response = await window.HomeSecondBrainAuth.establish(apiToken);
-      if (!response.ok) throw new ConversationError(response.status);
-      authenticated = true;
-      token.value = '';
-      auth.hidden = true;
-      setConnection('ready', '연결됨');
-      question.focus();
+      if (signupOpen) {
+        await window.HomeSecondBrainAuth.signUp(loginName.value, loginPassword.value);
+      } else {
+        await window.HomeSecondBrainAuth.login(loginName.value, loginPassword.value);
+      }
+      loginPassword.value = '';
+      showConnected();
     } catch (error) {
-      setConnection('error', error instanceof ConversationError && error.status === 401 ? '인증 실패' : '연결 실패');
+      setConnection('error', error.message);
     } finally {
-      remember.disabled = false;
+      login.disabled = false;
     }
   }
 
+  function showConnected() {
+    authenticated = true;
+    auth.hidden = true;
+    setConnection('ready', '연결됨');
+    question.focus();
+  }
+
+  async function showLogin() {
+    signupOpen = await window.HomeSecondBrainAuth.isSignupOpen();
+    auth.hidden = false;
+    login.textContent = signupOpen ? '첫 사용자로 가입' : '로그인';
+    loginHint.textContent = signupOpen
+      ? '아직 사용자가 없습니다. 이름과 8자 이상의 비밀번호로 가입하세요.'
+      : '이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.';
+    setConnection('idle', signupOpen ? '가입 필요' : '로그인 필요');
+    loginName.focus();
+  }
+
   async function restoreAuthentication() {
-    try {
-      const response = await window.HomeSecondBrainAuth.restore();
-      if (!response.ok) throw new Error();
-      authenticated = true;
-      setConnection('ready', '연결됨');
-      question.focus();
-    } catch (_) {
-      auth.hidden = false;
-      setConnection('idle', '토큰 필요');
-      token.focus();
-    }
+    const response = await window.HomeSecondBrainAuth.restore();
+    if (response.ok) showConnected();
+    else await showLogin();
   }
 
   function createRequestId() {
@@ -340,7 +347,7 @@
 
   function errorMessage(error) {
     if (!(error instanceof ConversationError)) return '서버에 연결하지 못했습니다. 잠시 후 다시 시도하세요.';
-    if (error.status === 401) return 'API 토큰이 유효하지 않습니다.';
+    if (error.status === 401) return '로그인이 필요합니다.';
     if (error.status === 409) return '같은 요청을 처리 중입니다. 잠시 후 다시 질문하세요.';
     if (error.status === 503) return '대화 서비스를 지금 사용할 수 없습니다. 잠시 후 다시 시도하세요.';
     if (error.status === 400) return '질문 형식이 올바르지 않습니다.';

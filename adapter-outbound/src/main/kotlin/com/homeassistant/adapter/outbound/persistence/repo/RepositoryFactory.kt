@@ -4,7 +4,9 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
+import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
+import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.MemoryEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicAssignmentOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicDescriptionRepository
@@ -33,6 +35,8 @@ object RepositoryFactory {
             memoryEmbeddings = MemoryEmbeddingRepository(db),
             memoryConversationSessions = MemoryConversationSessionRepository(db),
             users = UserRepository(db),
+            userCredentials = UserCredentialRepository(db),
+            userSessions = UserSessionRepository(db),
         )
     }
 }

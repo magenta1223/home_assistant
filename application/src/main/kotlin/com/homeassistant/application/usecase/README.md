@@ -8,7 +8,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 
 | 패키지 | 책임 | 상세 문서 |
 |---|---|---|
-| `identity` | 등록된 application user 목록을 제공하고 인가한다. | [identity](identity/README.md) |
+| `identity` | 사용자를 이름·비밀번호로 등록·로그인시키고, 목록을 제공하고 인가한다. | [identity](identity/README.md) |
 | `group` | 저장된 Topic을 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](group/README.md) |
 | `topic` | Memory를 cosine으로 가까운 Topic들에 배정한 뒤 Group 정리까지 이어가고, 대화용 Topic 검색을 ACL slice로 거른다. | [topic](topic/README.md) |
 | `memory/analysis` | source record를 분석해 canonical memory로 저장하고 후처리를 요청한다. | [analysis](memory/analysis/README.md) |
@@ -77,7 +77,7 @@ sequenceDiagram
 ```
 
 사용자 목록과 application UserId는 공통 identity 기능이다. Slack 등록·최초 질문 재개·
-명령과 DM 처리는 제거했다. HTTP 인증은 기존 API key와 보안 cookie 흐름을 유지한다.
+명령과 DM 처리는 제거했다. HTTP 인증은 사람의 이름·비밀번호 로그인 세션 cookie와 기계의 Bearer API key를 받는다.
 세션 격리, 동일 요청 답변 재사용, 10분 idle 만료는 `MemoryConversation`이 관리한다.
 
 ## 문서 유지 규칙

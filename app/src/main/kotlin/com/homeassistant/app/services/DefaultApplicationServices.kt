@@ -1,6 +1,7 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
+import com.homeassistant.application.port.input.identity.UserAuthentication
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.group.OrganizePendingTopics
 import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
@@ -15,6 +16,7 @@ internal class DefaultApplicationServices(
     override val describeTopic: DescribeTopic,
     override val memoryConversation: MemoryConversation? = null,
     override val users: UserRegistry = UserRegistry.NONE,
+    override val authentication: UserAuthentication = UserAuthentication.NONE,
     private val embeddingRuntime: EmbeddingServerRuntime,
     private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
     private val topicAssignmentWorker: TopicAssignmentWorker = TopicAssignmentWorker.NONE,

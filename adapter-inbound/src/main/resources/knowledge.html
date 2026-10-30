@@ -48,10 +48,19 @@
   </header>
   <form id="knowledge-form">
     <div id="auth" class="field auth" hidden>
-      <label for="token">API 토큰</label>
-      <input id="token" type="password" autocomplete="current-password">
-      <div class="hint">이 기기에 한 번 인증하면 이후에는 자동으로 연결됩니다.</div>
-      <button id="remember" type="button">이 기기 인증</button>
+      <label for="login-name">이름</label>
+      <input id="login-name" autocomplete="username" maxlength="50">
+      <label for="login-password">비밀번호</label>
+      <input id="login-password" type="password" autocomplete="current-password">
+      <div id="login-hint" class="hint">이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
+      <button id="login" type="button">로그인</button>
+    </div>
+    <div id="account" class="field auth" hidden>
+      <label for="member-name">가족 추가</label>
+      <input id="member-name" placeholder="이름" maxlength="50">
+      <input id="member-password" type="password" placeholder="초기 비밀번호 (8자 이상)" autocomplete="new-password">
+      <button id="add-member" type="button">가족 추가</button>
+      <button id="logout" type="button">로그아웃</button>
     </div>
     <div class="grid">
       <div class="field">
@@ -72,7 +81,7 @@
         <label class="choice"><input type="radio" name="audience" value="restricted" checked> 지정 사용자</label>
         <label class="choice"><input type="radio" name="audience" value="public"> 전체 공개</label>
       </div>
-      <div id="users"><span class="hint">API 토큰을 입력하면 사용자 목록을 불러옵니다.</span></div>
+      <div id="users"><span class="hint">로그인하면 사용자 목록을 불러옵니다.</span></div>
     </fieldset>
     <div class="field">
       <label for="text">데이터</label>
@@ -86,9 +95,13 @@
 </main>
 <script src="/assets/http-auth-session.js"></script>
 <script>
-  const token = document.getElementById('token');
+  const loginName = document.getElementById('login-name');
+  const loginPassword = document.getElementById('login-password');
+  const loginHint = document.getElementById('login-hint');
   const auth = document.getElementById('auth');
-  const remember = document.getElementById('remember');
+  const account = document.getElementById('account');
+  const login = document.getElementById('login');
+  let signupOpen = false;
   const users = document.getElementById('users');
   const status = document.getElementById('status');
   let reference = null;
@@ -136,14 +149,25 @@
     }
   }
 
-  remember.addEventListener('click', rememberToken);
+  login.addEventListener('click', authenticate);
+  document.getElementById('add-member').addEventListener('click', addMember);
+  document.getElementById('logout').addEventListener('click', logout);
 
-  token.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter' && !event.isComposing) {
-      event.preventDefault();
-      rememberToken();
-    }
+  [loginName, loginPassword].forEach(function (input) {
+    onEnter(input, authenticate);
   });
+  ['member-name', 'member-password'].forEach(function (id) {
+    onEnter(document.getElementById(id), addMember);
+  });
+
+  function onEnter(input, action) {
+    input.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' && !event.isComposing) {
+        event.preventDefault();
+        action();
+      }
+    });
+  }
 
   document.querySelectorAll('input[name="audience"]').forEach(function (radio) {
     radio.addEventListener('change', function () {
@@ -154,8 +178,7 @@
   async function loadUsers() {
     const response = await fetch('/api/knowledge/users');
     if (!response.ok) {
-      auth.hidden = false;
-      users.innerHTML = '<span class="hint">유효한 API 토큰을 입력하세요.</span>';
+      await showLogin();
       return;
     }
     const body = await response.json();
@@ -218,7 +241,7 @@
       });
       const body = await response.json().catch(function () { return {}; });
       if (!response.ok) {
-        if (response.status === 401) auth.hidden = false;
+        if (response.status === 401) await showLogin();
         throw new Error(body.error || '저장하지 못했습니다.');
       }
       status.textContent = '완료: 소스 레코드 ' + body.importedRecordCount + '개, 메모리 ' + body.memoryCount + '개를 저장했습니다.';
@@ -229,39 +252,70 @@
     }
   });
 
-  async function rememberToken() {
-    const apiToken = token.value.trim();
-    if (!apiToken) {
-      status.textContent = 'API 토큰을 입력하세요.';
-      token.focus();
-      return;
-    }
-    remember.disabled = true;
+  async function authenticate() {
+    login.disabled = true;
     try {
-      const response = await window.HomeSecondBrainAuth.establish(apiToken);
-      if (!response.ok) throw new Error('유효한 API 토큰을 입력하세요.');
-      token.value = '';
-      auth.hidden = true;
-      status.textContent = '인증되었습니다.';
-      await loadUsers();
+      if (signupOpen) {
+        await window.HomeSecondBrainAuth.signUp(loginName.value, loginPassword.value);
+      } else {
+        await window.HomeSecondBrainAuth.login(loginName.value, loginPassword.value);
+      }
+      loginPassword.value = '';
+      await showAuthenticated();
+      status.textContent = '로그인했습니다.';
     } catch (error) {
-      status.textContent = '인증 실패: ' + error.message;
+      status.textContent = '로그인 실패: ' + error.message;
     } finally {
-      remember.disabled = false;
+      login.disabled = false;
     }
   }
 
-  async function restoreAuthentication() {
+  async function addMember() {
+    const name = document.getElementById('member-name');
+    const password = document.getElementById('member-password');
     try {
-      const response = await window.HomeSecondBrainAuth.restore();
-      if (!response.ok) throw new Error();
-      status.textContent = '준비됨';
+      await window.HomeSecondBrainAuth.addUser(name.value, password.value);
+      status.textContent = name.value + '을(를) 추가했습니다.';
+      name.value = '';
+      password.value = '';
       await loadUsers();
-    } catch (_) {
-      auth.hidden = false;
-      status.textContent = 'API 토큰을 한 번 입력해 이 기기를 인증하세요.';
-      token.focus();
+    } catch (error) {
+      status.textContent = '추가 실패: ' + error.message;
     }
+  }
+
+  async function logout() {
+    await window.HomeSecondBrainAuth.logout();
+    await showLogin();
+  }
+
+  async function showAuthenticated() {
+    auth.hidden = true;
+    account.hidden = false;
+    await loadUsers();
+  }
+
+  async function showLogin() {
+    signupOpen = await window.HomeSecondBrainAuth.isSignupOpen();
+    account.hidden = true;
+    auth.hidden = false;
+    login.textContent = signupOpen ? '첫 사용자로 가입' : '로그인';
+    loginHint.textContent = signupOpen
+      ? '아직 사용자가 없습니다. 이름과 8자 이상의 비밀번호로 가입하세요.'
+      : '이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.';
+    users.innerHTML = '<span class="hint">로그인하세요.</span>';
+    status.textContent = signupOpen ? '첫 사용자를 등록하세요.' : '로그인하세요.';
+    loginName.focus();
+  }
+
+  async function restoreAuthentication() {
+    const response = await window.HomeSecondBrainAuth.restore();
+    if (!response.ok) {
+      await showLogin();
+      return;
+    }
+    status.textContent = '준비됨';
+    await showAuthenticated();
   }
 
   restoreAuthentication();

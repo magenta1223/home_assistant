@@ -30,7 +30,7 @@ class MemoryExtractorTest {
 
         assertEquals(setOf("text", "evidenceRecordIds"), required.toSet())
         assertEquals(setOf("text", "evidenceRecordIds"), memorySchema["properties"]!!.jsonObject.keys)
-        assertContains(MemoryAnalysisPrompt.system(), "memory 하나에는 한 가지 사실만")
+        assertContains(MemoryAnalysisPrompt.system(), "같은 일에 관한 내용은 하나의 memory로")
     }
 
     @Test

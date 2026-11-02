@@ -18,7 +18,6 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertFalse
 
 class MemoryExtractorTest {
     @Test
@@ -42,39 +41,6 @@ class MemoryExtractorTest {
 
         assertEquals(content, memory.content)
         assertEquals(listOf(1), memory.evidenceIds)
-    }
-
-    @Test
-    fun `chunk candidates merge without access metadata`() = runBlocking {
-        val client = RecordingClient(
-            responses = mutableListOf(
-                response(text = "first fact", evidenceIds = listOf("r1")),
-                response(text = "second fact", evidenceIds = listOf("r2")),
-                response(text = "first fact", evidenceIds = listOf("r1")),
-            ),
-        )
-        val memories = MemoryExtractor(client, chunkSize = 1).analyze(document(recordCount = 2))
-
-        assertEquals("first fact", memories.single().content)
-        assertFalse(client.calls.last().userMessage.contains("visibility"))
-    }
-
-    @Test
-    fun `duplicate meaning and evidence is removed`() = runBlocking {
-        val client = RecordingClient(
-            responses = mutableListOf(
-                """
-                {"memories":[
-                  ${memoryJson()},
-                  ${memoryJson()}
-                ]}
-                """.trimIndent(),
-            ),
-        )
-
-        val memories = MemoryExtractor(client).analyze(document(recordCount = 1))
-
-        assertEquals(1, memories.size)
     }
 
     @Test
@@ -138,44 +104,6 @@ class MemoryExtractorTest {
 
         assertEquals(6, client.calls.size)
         assertEquals(2, peak.get())
-    }
-
-    @Test
-    fun `oversized merge input falls back to deterministic deduplication`() = runBlocking {
-        val client = FunctionalClient { _, userMessage, _ ->
-            val evidenceId = if (userMessage.contains("r1 |")) "r1" else "r2"
-            response(text = "fact-$evidenceId", evidenceIds = listOf(evidenceId))
-        }
-
-        val memories = MemoryExtractor(
-            client = client,
-            chunkSize = 1,
-            chunkOverlap = 0,
-            maxMergeInputChars = 1,
-        ).analyze(document(recordCount = 2))
-
-        assertEquals(2, client.calls.size)
-        assertEquals(listOf("fact-r1", "fact-r2"), memories.map { it.content }.sorted())
-    }
-
-    @Test
-    fun `oversized merge fallback removes duplicate overlap candidates`() = runBlocking {
-        val client = FunctionalClient { _, userMessage, _ ->
-            response(
-                text = "overlap fact",
-                evidenceIds = listOf("r2"),
-            )
-        }
-
-        val memories = MemoryExtractor(
-            client = client,
-            chunkSize = 2,
-            chunkOverlap = 1,
-            maxMergeInputChars = 1,
-        ).analyze(document(recordCount = 3))
-
-        assertEquals(2, client.calls.size)
-        assertEquals(1, memories.size)
     }
 
     private fun document(recordCount: Int): SourceDocument = SourceDocument(

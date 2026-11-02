@@ -33,16 +33,4 @@ internal object MemoryAnalysisPrompt {
 
         $schema
         """.trimIndent()
-
-    fun mergeSystem(schema: String = MemoryAnalysisOutputContract.schema): String =
-        """
-        chunk별 memory 후보 목록을 검토해 최종 flat atomic memory 목록으로 병합하세요.
-        모든 chunk의 evidence-backed memory를 보존하되, 대상, 내용, 시점과 조건이 같을 때만 중복 제거하세요.
-        $contentCriteria
-        evidenceRecordIds는 후보 목록에 포함된 원본 r1, r2 같은 ID만 사용하세요.
-        열람 권한은 후보 내용에 포함하지 마세요.
-        응답은 아래 JSON Schema를 준수하는 JSON object 하나여야 합니다.
-
-        $schema
-        """.trimIndent()
 }

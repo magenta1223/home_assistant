@@ -21,5 +21,5 @@ Component 분할·병합은 보류한다. Episode가 여러 Component에 속하�
 ## 참고
 
 - 저장 계약: Group 저장은 N→1 병합을 이미 수용한다. `ComponentMaintenanceStore`는 Component 삭제·소속 교체가 없으므로 Component 병합 시 계약 변경이 필요하다.
-- Component 자체 분할도 아직 없다. 온라인 cosine 배정이라 먼저 들어온 Episode가 Component 중심을 정하고 가 커질 수 있다.
+- Component 자체 분할도 아직 없다. 온라인 cosine 배정이라 먼저 들어온 Episode가 Component 중심을 정하고 Component가 커질 수 있다.
 - [xMemory v4](https://arxiv.org/html/2602.02007v4) Appendix A.2 merge trigger, kNN k=10.

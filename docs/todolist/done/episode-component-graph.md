@@ -11,7 +11,7 @@
 
 ## 1. 문제와 목표
 
-Episode가 사실과 조직 관계를 함께 가진 현재 구조에서, 사실은 Episode에 두고 조직 관계는 가
+Episode가 사실과 조직 관계를 함께 가진 현재 구조에서, 사실은 Episode에 두고 조직 관계는 Component가
 맡도록 변경한다. 이번 단계의 중심은 Component 데이터 구조와 전용 배치다. 검색·응답·화면 전체를
 동시에 재설계하지 않는다.
 
@@ -21,7 +21,7 @@ Episode가 사실과 조직 관계를 함께 가진 현재 구조에서, 사실�
 - Episode는 ACL만 변경할 수 있다. content·evidence 참조·ID·생성 시각은 불변이다.
 - 다른 내용은 새 Source와 Episode로 저장한다. 기존 기록을 자동으로 덮어쓰거나 무효화하지 않는다.
 - Episode ACL은 `allowedUserIds`를 활용한다. PUBLIC 표현과 원문 열람 권한의 일관성은 별도 설계 사항이다.
-- Component 소속·분류·연결은 가 관리한다. Episode의 `childrenIds`는 제거한다.
+- Component 소속·분류·연결은 Component가 관리한다. Episode의 `childrenIds`는 제거한다.
 - 새 DB로 시작한다고 가정한다. 기존 DB migration·backfill·호환 전환은 구현 범위에 넣지 않는다.
   이 계획 작성은 실제 DB 삭제·초기화나 운영 서비스 실행을 뜻하지 않는다.
 
@@ -142,7 +142,7 @@ Component 배치가 어떤 입력을 받아 무엇을 확정하는지 정하기 
 
 ### 2 — Component domain 모델
 
-Component ID·짧은 설명·분류별 Episode 참조·관련 를 표현한다. 분류명은 Component 안에서만 의미를
+Component ID·짧은 설명·분류별 Episode 참조·관련 Component를 표현한다. 분류명은 Component 안에서만 의미를
 가지며, 한 Episode의 복수 Component 소속을 허용한다. 관련 관계는 양방향이며 순환을 허용한다.
 중복·자기 연결과 참조의 불변 조건을 모델 테스트로 확정한다. 존재·수정 권한 확인 중 저장된
 상태가 필요한 부분은 이후 application·저장 계약에서 다룬다.

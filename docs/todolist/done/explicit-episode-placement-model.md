@@ -30,7 +30,7 @@ schema로 표현하지 못하고 역방향 parent 조회와 무결성 검증도 
 
 1. 사용자가 원하는 배치는 탐색용 component taxonomy인가, 검색 확장용 연관 관계인가?
 2. 하나의 episode가 여러 component에 속할 수 있는가?
-3. 는 독립 lifecycle과 이름/설명을 가지는가?
+3. component는 독립 lifecycle과 이름/설명을 가지는가?
 4. 배치 실패가 검색 가능성을 막아야 하는가, 아니면 검색을 보조하는 projection이어야 하는가?
 
 기본 권장안은 **검색 가능한 canonical episode는 flat하게 유지하고, 별도 Component 노드와

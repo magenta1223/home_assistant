@@ -1,4 +1,4 @@
-# 를 component로 사용하는 Group 생성·분할
+# Component를 component로 사용하는 Group 생성·분할
 
 - 상태: DONE (2026-10-19)
 - 작성일: 2026-10-10
@@ -9,16 +9,16 @@
 
 ## 1. 목표와 확정한 합의
 
-이미 저장된 를 xMemory의 component에 대응시키고, Component들을 Group으로 조직한다.
-새 를 기존 Group에 배치하거나 새 Group을 만들며, 커진 Group을 분할한다.
+이미 저장된 Component를 xMemory의 component에 대응시키고, Component들을 Group으로 조직한다.
+새 Component를 기존 Group에 배치하거나 새 Group을 만들며, 커진 Group을 분할한다.
 
 ```text
 Source ← evidence ─ Episode ← 복수 소속 ─ Component ← 단일 소속 ─ Group
                                          ↔ ComponentRelation
 ```
 
-- Episode는 여러 Component에 속할 수 있다. Episode를 많이 공유하는 Component도 유사한 별개 로 취급한다.
-- 배치가 완료된 는 정확히 하나의 Group에 속한다. 미처리 는 아직 Group이 없을 수 있다.
+- Episode는 여러 Component에 속할 수 있다. Episode를 많이 공유하는 Component도 유사한 별개 Component로 취급한다.
+- 배치가 완료된 Component는 정확히 하나의 Group에 속한다. 미처리 Component는 아직 Group이 없을 수 있다.
 - Group 분할은 Component의 Group 소속만 바꾼다. Component 본문·분류·Episode 소속·ComponentRelation을 바꾸지 않는다.
 - 이번에는 Group 생성·배치·분할을 구현한다. Group 병합 정책과 자동 실행은 구현하지 않지만 저장 계약은 병합을 수용한다.
 - Component 자체도 장기적으로 분할 대상이다. 이번에는 Component 크기가 적절하다고 가정한다.
@@ -32,12 +32,12 @@ Group은 Component 위의 한 단계 묶음이다. 재귀 Group 계층이나 Com
 
 현재 Component domain, 분류별 Episode 참조, ComponentRelation, 명시적 원자 저장이 존재한다.
 `ComponentMaintenanceStore`는 trusted internal 경계이며 생성과 소속·관계 추가를 지원한다.
-LM Component 생성과 자동 배치는 제거되어 현재 앱에는 를 자동 공급하는 경로가 없다.
+LM Component 생성과 자동 배치는 제거되어 현재 앱에는 Component를 자동 공급하는 경로가 없다.
 
-따라서 첫 입력은 명시적으로 저장된 다. Episode 생성 결과를 억지로 로 변환하거나
+따라서 첫 입력은 명시적으로 저장된 Component다. Episode 생성 결과를 억지로 Component로 변환하거나
 삭제한 LM 생성 경로를 복원하지 않는다. Component 생성 방식은 별도 작업이다.
 
-이번 완료 범위는 내부 use case 호출로 미배치 를 읽어 Group을 만들고 분할한 뒤,
+이번 완료 범위는 내부 use case 호출로 미배치 Component를 읽어 Group을 만들고 분할한 뒤,
 재시작 후에도 저장된 Group을 조회하고 남은 Component 처리를 이어갈 수 있는 단계다.
 앱 factory에 조립하되 주기 worker, 외부 HTTP API, UI는 추가하지 않는다.
 실제 Component 공급 경로가 생기면 그 경로에서 호출하거나 주기 실행을 연결한다.
@@ -98,17 +98,17 @@ port로 구분하되 하나의 persistence adapter가 둘을 구현해도 된다
 - `Group`: 양수 ID, 비어 있지 않은 중복 없는 Component ID 집합.
 - 저장 snapshot에는 경쟁 갱신을 확인할 revision을 포함한다.
 - Group은 ACL·사실 본문·LM 요약을 갖지 않는다. 검색용 설명이 필요하면 이후 별도로 설계한다.
-- 는 기존 모델을 유지한다. 역방향 Group 소속은 저장소가 조회한다.
+- Component는 기존 모델을 유지한다. 역방향 Group 소속은 저장소가 조회한다.
 - 저장소는 Group 본체와 소속을 저장하고 `componentId`의 전역 유일 제약으로 단일 Group 소속을 보장한다.
 
-### 와 Group 벡터
+### Component와 Group 벡터
 
 첫 기본안은 Component의 `description`을 component text로 사용한다. 기존 embedder를 outbound
 adapter에서 재사용하고 application에는 목적이 명확한 Component embedding port를 둔다.
 기존 Episode 벡터 평균을 Component 벡터로 쓰는 방안과 혼합하지 않는다.
 
 - Component 벡터는 정규화하고 Group centroid는 소속 Component 벡터의 동일 가중 평균으로 계산한다.
-- 같은 Episode를 공유해도 Component ID가 다르면 각각 계산한다. Episode 중복률로 를 합치지 않는다.
+- 같은 Episode를 공유해도 Component ID가 다르면 각각 계산한다. Episode 중복률로 Component를 합치지 않는다.
 - Component 벡터는 Component ID, 설명 fingerprint, 임베딩 모델·입력 규약 식별자와 함께 재사용한다.
 - 모델·차원·입력 규약이 다른 벡터를 섞지 않는다. 변경 시 재구성이 필요함을 명시적으로 반환한다.
 - 비정상 차원, NaN/무한대, 영벡터와 계산 불가능한 centroid는 저장 전에 실패시킨다.
@@ -122,14 +122,14 @@ fixture로 확인할 가정이다. 빈 Component도 유효한 설명이 있으�
 
 ### 기존 Group 배치 / 새 Group
 
-1. 미배치 를 ID 순서로 제한된 수만 읽는다.
+1. 미배치 Component를 ID 순서로 제한된 수만 읽는다.
 2. 임베딩은 DB transaction 밖에서 준비한다.
 3. 현재 Group centroid 중 cosine이 가장 높은 Group을 선택한다.
 4. attach 임계값을 초과하면 추가하고, 아니면 새 Group을 만든다. 동점은 Group ID 순서로 결정한다.
 5. 추가 후 크기 제한을 초과하면 저장 전에 분할 결과까지 계산한다.
 
 초기 기본값 후보는 attach `0.6`, Group 크기 `12 Component`, 분할 연결 유사도 `0.65`다.
-논문 실험값을 가져온 출발점이며 한국어 와 현재 임베딩에서 검증된 기준은 아니다.
+논문 실험값을 가져온 출발점이며 한국어 Component와 현재 임베딩에서 검증된 기준은 아니다.
 설정으로 분리하고 경계값을 테스트한다. 최초 Group 생성과 singleton Group을 허용한다.
 
 ### 분할 후보와 선택
@@ -137,7 +137,7 @@ fixture로 확인할 가정이다. 빈 Component도 유효한 설명이 있으�
 분할 대상 Group의 Component 벡터로 유사도 임계값 그래프를 만들고 연결 성분을 후보로 사용한다.
 연결 성분이 하나뿐이거나 여전히 큰 경우에도 종료할 수 있도록 크기 제한을 만족하는 대안을 만든다.
 
-우리 기본안의 fallback은 먼 두 를 seed로 삼고 가까운 쪽으로 나누는 결정적 이분할이다.
+우리 기본안의 fallback은 먼 두 Component를 seed로 삼고 가까운 쪽으로 나누는 결정적 이분할이다.
 양쪽이 비어 있지 않도록 하며 완전히 같은 벡터 등 동점에서는 Component ID로 균형을 맞춘다.
 상한을 넘는 조각에만 반복 적용한다. 각 단계에서 최대 조각 크기가 감소해야 한다.
 이는 공개 구현의 PCA 기반 fallback을 그대로 이식하는 것이 아닌 우리 쪽 단순화다.
@@ -152,12 +152,12 @@ fixture로 확인할 가정이다. 빈 Component도 유효한 설명이 있으�
 fallback은 서로 다른 두 seed를 각 조각에 고정해 비어 있는 조각을 방지한다.
 
 후보 평가는 xMemory의 `SparsityScore + SemScore` 구조를 Component 단위에 적용한다.
-크기 항, 와 Group centroid의 응집도, Group centroid 사이의 기하를 구분한다.
+크기 항, Component와 Group centroid의 응집도, Group centroid 사이의 기하를 구분한다.
 동일 평가 대상 Component 집합과 동일한 주변 Group snapshot으로 모든 대안을 비교한다.
 빈 집합·Group 하나·동일 centroid에서 점수가 정의되도록 경계 규칙을 수치 테스트로 고정한다.
 이때 이웃이 없는 단일 Group의 기하 가중치는 1로 두는 것을 기본안으로 한다.
 
-분할 전 비교 기준에도 incoming 를 이미 추가해 Component 수를 같게 유지한다. 점수 계산은
+분할 전 비교 기준에도 incoming Component를 이미 추가해 Component 수를 같게 유지한다. 점수 계산은
 Double로 수행하고 식·epsilon·동점 규칙은 수치 fixture로 고정한다. 빈 조직의 점수는 0,
 단일 Group의 기하 가중치는 1, MAD가 0이면 양의 epsilon을 사용한다. 유효하지 않은
 centroid를 가진 후보는 제외하며 유효한 후보가 없으면 명시적인 계산 실패로 반환한다.
@@ -216,12 +216,12 @@ domain의 분할 결과는 아직 발급되지 않은 DB ID 대신 Component par
 첫 버전은 순차 처리하며, Component 하나의 배치와 필요한 분할을 하나의 확정 단위로 삼는다.
 
 - 미배치 여부는 Group 소속 부재로 다시 찾는다. 별도 자동 worker나 새 outbox는 만들지 않는다.
-- 임베딩 실패 시 Group을 일부 저장하지 않고 실패 와 이유를 결과에 남긴다.
-- 호출 중 뒤의 독립 Component도 정해진 예산 안에서 처리한다. 다음 호출에서는 미처리 를 재시도한다.
+- 임베딩 실패 시 Group을 일부 저장하지 않고 실패 Component와 이유를 결과에 남긴다.
+- 호출 중 뒤의 독립 Component도 정해진 예산 안에서 처리한다. 다음 호출에서는 미처리 Component를 재시도한다.
 - DB 경쟁 충돌은 최신 snapshot으로 제한된 횟수만 다시 계산하고, 초과 시 다음 호출로 넘긴다.
-- 저장 성공 직후 중단돼도 다음 조회에서 이미 배치된 를 중복 배치하지 않는다.
+- 저장 성공 직후 중단돼도 다음 조회에서 이미 배치된 Component를 중복 배치하지 않는다.
 - 메모리 색인 outbox, Episode 분석 성공 여부, conversation 요청 dedup·10분 idle lease와 분리한다.
-- 영구 실패 가 batch를 독점할 수 있는 반복 운용 문제는 실제 worker 도입 시 격리·backoff와 함께 다룬다.
+- 영구 실패 Component가 batch를 독점할 수 있는 반복 운용 문제는 실제 worker 도입 시 격리·backoff와 함께 다룬다.
 
 모델·입력 규약 불일치처럼 조직 전체에 영향을 주는 실패는 `RebuildRequired`로 이번 실행을
 중단한다. Component 하나의 임베딩 실패는 해당 항목에 기록하고 계속한다. coroutine cancellation은
@@ -257,10 +257,10 @@ adapter의 배치 판단, service 내부의 군집 계산이 없는지 확인한
 
 추가 확인 사례:
 
-- 같은 Episode를 공유하는 별개의 가 서로 다른 component로 보존된다.
+- 같은 Episode를 공유하는 별개의 Component가 서로 다른 component로 보존된다.
 - 분할 전후 Component ID 합집합이 같고 Group 사이 Component 중복이 없다.
 - 임베딩 준비 중 오류와 저장 중 오류 모두 기존 조직을 훼손하지 않는다.
-- 동시에 같은 미배치 를 처리해도 소속이 두 개 생기지 않는다.
+- 동시에 같은 미배치 Component를 처리해도 소속이 두 개 생기지 않는다.
 - 병합이 없어 singleton Group이 남는 것을 정상 결과로 취급한다.
 - 작은 의미 fixture에서 원하는 분리와 원치 않는 파편화를 관찰한다. 점수 상승을 검색 품질 향상으로 동일시하지 않는다.
 
@@ -283,7 +283,7 @@ adapter의 배치 판단, service 내부의 군집 계산이 없는지 확인한
 - [공개 memory_hierarchy.py](https://github.com/HU-xiaobai/xMemory/blob/main/src/core/memory_hierarchy.py): 요약 생성과 벡터 기반 조직 판단의 분리, fallback 구현 참고.
 
 기존 조사에서 제외했던 국소 군집화는 이번 Group 분할 범위에서 채택한다. 전체 알고리즘의
-그대로인 재현이나 같은 품질 보장을 뜻하지 않는다. 를 component로 사용하고, Group LM 요약·
+그대로인 재현이나 같은 품질 보장을 뜻하지 않는다. Component를 component로 사용하고, Group LM 요약·
 병합·검색을 제외하며, fallback과 경계값 처리는 위 기본안을 따른다.
 
 계획 작성 당시에는 애플리케이션 코드를 변경하지 않았다. 아래 구현에서도 실제 운영 데이터와
@@ -295,7 +295,7 @@ adapter의 배치 판단, service 내부의 군집 계산이 없는지 확인한
   `GroupOrganizationPlanner`를 추가했다. 순수 정책은 framework·application·adapter에 의존하지 않는다.
 - Application에 6개 output 역할과 내부 input port를 추가했다. batch 실행, 한 Component 실행,
   임베딩 준비를 분리했다. 충돌은 최신 snapshot에서 최대 3회 판단하며 모델·규약·차원 불일치는
-  `RebuildRequired`로 중단한다. 개별 실패는 결과에 남기고 다음 를 처리한다.
+  `RebuildRequired`로 중단한다. 개별 실패는 결과에 남기고 다음 Component를 처리한다.
 - 기존 TextEmbedder를 Component 설명용 adapter로 연결했다. 규약은 `passage: `, 벡터 재사용 key는
   Component ID·설명 SHA-256·모델·입력 규약이다. 같은 key의 벡터는 불변이며 경쟁 생성 시 먼저 저장한 값을 사용한다.
 - 새 SQLite 테이블은 `component_embeddings`, `component_groups`, `component_group_memberships`,

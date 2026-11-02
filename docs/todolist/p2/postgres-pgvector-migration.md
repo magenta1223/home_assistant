@@ -1,6 +1,6 @@
 # Postgres + pgvector 전환
 
-- 상태: HOLD — 가 10만 개를 넘을 때 시작
+- 상태: HOLD — Component가 10만 개를 넘을 때 시작
 - 우선순위: P2
 - 선행 작업: [Component 중심 벡터·ACL slice와 Component 검색](../p1/component-centroid-acl-search.md)
 
@@ -13,7 +13,7 @@ Component 검색은 SQLite에 저장한 중심 벡터를 모두 읽어 앱에서
 ## 결정 (2026-10-20)
 
 - 지금은 SQLite 전수 비교를 유지한다. 별도 vector DB(Qdrant)는 원본 DB와의 동기화 비용 때문에 쓰지 않는다.
-- 가 10만 개를 넘으면 SQLite를 Postgres + pgvector(HNSW)로 바꾼다. join과 중심 벡터 갱신은 한 transaction을 유지한다.
+- Component가 10만 개를 넘으면 SQLite를 Postgres + pgvector(HNSW)로 바꾼다. join과 중심 벡터 갱신은 한 transaction을 유지한다.
 
 ## 범위
 
@@ -21,7 +21,7 @@ Component 검색은 SQLite에 저장한 중심 벡터를 모두 읽어 앱에서
 |---|---|
 | adapter-outbound persistence | SQLite 연결·legacy migration을 Postgres로 교체. Exposed 테이블과 쿼리는 대부분 그대로 사용 |
 | adapter-outbound `ComponentRepository` | 중심 벡터를 vector 열과 HNSW 인덱스로 저장하고 `ORDER BY <=> LIMIT`로 검색 |
-| application `ComponentReader` | 전체 중심 벡터 조회 대신 질문 벡터로 상위 를 받는 계약으로 변경 |
+| application `ComponentReader` | 전체 중심 벡터 조회 대신 질문 벡터로 상위 Component를 받는 계약으로 변경 |
 | application `GroupReader`, `BackboneSelection` | 검색의 kNN 이웃(Group·Component 전체 기준 10개)을 앱 전수 비교 대신 같은 HNSW 질의로 받음. 이웃 링크는 저장하지 않는다 |
 | app | Windows Postgres runtime 설치·기동 |
 | 테스트 | SQLite 임시 파일 테스트를 Postgres 테스트 환경으로 이전 |

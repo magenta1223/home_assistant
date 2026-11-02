@@ -14,7 +14,7 @@
 `GroupChange`는 expected Group revision, 미배치 incoming Component, 최종 Group 집합, 사용한 벡터와
 operation key를 포함한다. `0→1`, `1→1`, `1→N`, `N→1`을 지원한다. 자동 병합 정책은 없다.
 
-확정 전에 기존 대상의 모든 와 incoming 가 결과에서 정확히 한 번씩 나타나는지
+확정 전에 기존 대상의 모든 Component와 incoming Component가 결과에서 정확히 한 번씩 나타나는지
 domain의 `ComponentPartition`으로 검사한다. 없는 Component, 다른 Group에서 가져온 Component, 빈 Group,
 누락·중복, 일치하지 않는 벡터·centroid를 거절한다. 출력의 기존 Group ID는 expected에 있어야 한다.
 DB의 Component 단일 소속 제약과 revision 확인을 함께 사용한다. 결과에서 사라진 대상 Group은 삭제한다.

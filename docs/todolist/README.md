@@ -20,7 +20,7 @@
 - 최근 구현 완료: [Component 중심 벡터·ACL slice와 Component 검색](p1/component-centroid-acl-search.md) — cosine 단일 배정, 대화 context를 Component 검색으로 구성 (2026-10-20, 실데이터 임계값 조정 남음)
 - 다음 후보: [Component·Group 병합과 kNN 연결](p1/component-group-merge-and-knn-links.md) — Group 병합 완료, kNN 이웃은 검색 시 계산, Component 분할·병합 보류
 - 별도 구현 후보: 최소 가족 Task 서비스 1개
-- Episode 구조 전환: 는 중심 벡터와 ACL slice, Group 구성·분할·병합 구현, Component 검색 연결. Component 자체 분할·병합은 보류, UI는 후속 범위
+- Episode 구조 전환: Component는 중심 벡터와 ACL slice, Group 구성·분할·병합 구현, Component 검색 연결. Component 자체 분할·병합은 보류, UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
@@ -44,7 +44,7 @@
 | 문서 | 목적 |
 |---|---|
 | [component-assignment-outbox.md](p1/component-assignment-outbox.md) | Episode 저장 시 Component 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
-| [component-centroid-acl-search.md](p1/component-centroid-acl-search.md) | 를 중심 벡터와 ACL별 Episode 목록으로 바꾸고 cosine 할당과 ACL 필터 Component 검색을 연결 |
+| [component-centroid-acl-search.md](p1/component-centroid-acl-search.md) | Component를 중심 벡터와 ACL별 Episode 목록으로 바꾸고 cosine 할당과 ACL 필터 Component 검색을 연결 |
 | [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | DROPPED: Qdrant semantic index 제거 (2026-10-20) |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 
@@ -58,7 +58,7 @@
 | [episode-analysis-outbox-pipeline.md](p2/episode-analysis-outbox-pipeline.md) | 첨부 해석·Episode 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
 | [episode-query-performance.md](p2/episode-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Episode query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
-| [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: 가 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
+| [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Component가 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
 | [result-outcome-naming.md](p2/result-outcome-naming.md) | `XxResult`·`XxOutcome` 이름 규칙을 정하고 섞여 있는 타입 이름을 맞춤 |
 | [component-policy-settings.md](p2/component-policy-settings.md) | Component policy 임계값을 Group처럼 settings 객체로 묶어 factory에서 주입 |
 | [xmemory-stage2-entropy.md](p2/xmemory-stage2-entropy.md) | HOLD: proxy 모델로 reader entropy를 재서 줄어들 때만 Episode를 context에 더하는 xMemory Stage II |

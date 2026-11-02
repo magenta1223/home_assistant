@@ -52,7 +52,7 @@ TO-BE: Analysis → commit(episode + 색인 outbox + 할당 outbox) → 응답
 - 색인 outbox 테이블(`indexing_outbox`)을 재사용하지 않는다. 이름이 색인 전용이고 최대 시도 정책이 다르다.
 - Component 저장과 outbox 완료는 별도 transaction이다. 그 사이 중단되면 다음 claim이 Component 소속이 이미 있는 Episode를
   할당하지 않고 완료 처리한다. 같은 Episode가 두 번 할당되지 않는다.
-- Group 정리는 별도 outbox 없이 같은 회차의 다음 단계로 실행한다. 미배치 는 상태로 판단하며 receipt로 멱등하다.
+- Group 정리는 별도 outbox 없이 같은 회차의 다음 단계로 실행한다. 미배치 Component는 상태로 판단하며 receipt로 멱등하다.
 - 기본값: 주기 30초, batch 20, 재시도 지연 60초, 처리 lease 10분, 최대 시도 5회.
 
 ## 구현 순서

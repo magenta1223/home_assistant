@@ -13,12 +13,12 @@
 
 ## 결정 (2026-10-20 스레드 합의)
 
-- 를 xMemory의 component로 본다. 완전한 1:1 대응은 아니다.
-- 는 **중심 벡터**와 **ACL별 Episode 목록(slice)**만 가진다. 설명·분류명 등 LM이 쓰는 글은 두지 않는다.
+- Component를 xMemory의 component로 본다. 완전한 1:1 대응은 아니다.
+- Component는 **중심 벡터**와 **ACL별 Episode 목록(slice)**만 가진다. 설명·분류명 등 LM이 쓰는 글은 두지 않는다.
 - Component에 ACL이 있다. slice 하나는 같은 ACL(`PUBLIC` 또는 열람자 집합)을 가진 소속 Episode 목록이며, slice의 ACL은 그 Episode들의 ACL과 같다.
-- 할당은 LM 없이 cosine 유사도로 한다. 가장 가까운 Component 하나와의 유사도가 임계값 이상이면 join, 아니면 새 를 만든다.
+- 할당은 LM 없이 cosine 유사도로 한다. 가장 가까운 Component 하나와의 유사도가 임계값 이상이면 join, 아니면 새 Component를 만든다.
   Episode는 Component 하나에만 속한다. (2026-10-21 복수 소속으로 변경: [usecase/component README](../../../application/src/main/kotlin/com/homeassistant/application/usecase/component/README.md))
-- 검색 단위는 다. 질문 임베딩으로 Component 중심 벡터를 검색하고, 사용자가 읽을 수 있는 slice의 Episode만 응답에 쓴다.
+- 검색 단위는 Component다. 질문 임베딩으로 Component 중심 벡터를 검색하고, 사용자가 읽을 수 있는 slice의 Episode만 응답에 쓴다.
 
 ## AS-IS / TO-BE
 
@@ -49,7 +49,7 @@ sequenceDiagram
     participant ComponentDB as Component DB
     participant EpisodeIndex as Episode index
     Worker->>ComponentDB: 1. Episode 벡터 vs Component 중심 벡터 cosine
-    ComponentDB-->>Worker: 2. 가장 가까운 와 점수
+    ComponentDB-->>Worker: 2. 가장 가까운 Component와 점수
     Worker->>ComponentDB: 3. 임계값 이상이면 join, 아니면 새 Component
     Worker->>ComponentDB: 4. ACL slice에 추가 + 중심 벡터 갱신
     User->>Search: 5. 질문
@@ -81,7 +81,7 @@ sequenceDiagram
 ## 알려진 trade-off
 
 - Component 중심 벡터는 ACL과 무관하게 모든 소속 Episode의 평균이다. 검색 순위가 비공개 Episode의 영향을 받는다. 글은 새지 않고
-  읽을 수 있는 Episode가 없는 는 결과에서 빠지지만, 관련 기록이 다른 사람에게 있다는 추측은 가능하다. 사용자별 벡터는 채택하지 않는다.
+  읽을 수 있는 Episode가 없는 Component는 결과에서 빠지지만, 관련 기록이 다른 사람에게 있다는 추측은 가능하다. 사용자별 벡터는 채택하지 않는다.
 - 온라인 할당이라 먼저 들어온 Episode가 Component 중심을 정한다. 분할·병합([Component·Group 병합과 kNN 연결](component-group-merge-and-knn-links.md))이 보정한다.
 - LM 요약이 없어 추상적인 질문에는 중심 벡터 매칭 품질이 낮을 수 있다.
 

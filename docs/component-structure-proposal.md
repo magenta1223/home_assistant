@@ -6,7 +6,7 @@
 
 ## 1. 핵심 구조
 
-**Episode는 원자적 사실을 저장하고, 는 여러 Episode를 압축해서 표현하는 검색용 묶음이다.**
+**Episode는 원자적 사실을 저장하고, Component는 여러 Episode를 압축해서 표현하는 검색용 묶음이다.**
 Component끼리는 관련 관계로 연결한다. 사실의 전체 맥락은 Episode가 가리키는 원문 evidence에서 확인한다.
 2026-10-10 추가 합의로 Component 위에 별도 Group을 두며, xMemory의 component는 Component에 대응시킨다.
 
@@ -17,22 +17,22 @@ Component끼리는 관련 관계로 연결한다. 사실의 전체 맥락은 Epi
 | Group | Component들을 묶는 한 단계 상위 검색 단위. 이번 생성·배치·분할 구현의 대상이다. |
 | Evidence | 사실이 나온 원문. 적용 조건·예외·전체 맥락을 확인하는 근거다. |
 
-초기에는 Component에 xMemory Group의 역할을 참고했지만, 최신 합의에서는 를 component로 보고
+초기에는 Component에 xMemory Group의 역할을 참고했지만, 최신 합의에서는 Component를 component로 보고
 그 위의 Group에 구성 알고리즘을 적용한다. 원문을 삭제하거나 사실을 대체하는 압축이 아니며,
 xMemory의 전체 추출·검색 알고리즘을 그대로 채택하는 것은 아니다.
 
 ### Group 추가 합의와 이번 가정 (2026-10-10)
 
-Episode는 여러 Component에 속할 수 있고 배치 완료된 는 하나의 Group에 속한다. 같은 Episode를
+Episode는 여러 Component에 속할 수 있고 배치 완료된 Component는 하나의 Group에 속한다. 같은 Episode를
 많이 공유하는 Component도 별개로 유지한다. Group 소속은 ComponentRelation과 다른 관계이며 Component의
 부모·자식이나 재귀 Group 계층을 만들지 않는다. Group 자체에는 공유 ACL을 두지 않는다.
 
-이번에는 이미 저장된 로 Group을 생성·배치하고 커진 Group을 분할한다. Group 병합은
+이번에는 이미 저장된 Component로 Group을 생성·배치하고 커진 Group을 분할한다. Group 병합은
 후속이며 저장 API는 여러 기존 Group을 여러 결과 Group으로 바꿀 수 있도록 설계한다.
 Group 분할은 Component 내부와 Episode·Source·ACL을 변경하지 않는다.
 
 **Component 자체도 분할 대상이다.** 순수한 Component도 무한히 커질 수 있고 순수성 판정도 어렵다.
-다만 이번에는 가 적절한 크기라고 가정하고 Component 분할은 기록만 남긴다. Component 크기를
+다만 이번에는 Component가 적절한 크기라고 가정하고 Component 분할은 기록만 남긴다. Component 크기를
 제한하거나 기존 Episode 배치를 바꾸는 작업을 이번 범위에 포함하지 않는다.
 
 구현 계약과 검증 결과는 [Group 생성·분할 완료 기록](todolist/done/component-group-construction.md)에 있다.
@@ -45,7 +45,7 @@ Episode끼리 직접 연결하지 않는다. 한 Episode는 여러 Component에 
 
 **Source는 한 번 저장하면 불변이며, Episode도 생성 이후 ACL만 변경할 수 있다.**
 Episode의 content·evidence 참조·ID·생성 시각은 변경하지 않는다. Component 소속은 Episode 본문의
-변경이 아니라 가 관리하는 참조의 변경이다. Episode ACL은 `allowedUserIds`를 활용하며,
+변경이 아니라 Component가 관리하는 참조의 변경이다. Episode ACL은 `allowedUserIds`를 활용하며,
 PUBLIC 표현과 원문 열람 권한의 일관성은 별도로 구체화한다.
 
 원자적이라는 말은 무조건 짧은 한 문장으로 자른다는 뜻이 아니다.
@@ -67,10 +67,10 @@ Episode 2: 시스템 X v2는 조회 조건을 나눠 여러 번 호출할 수 �
 
 ## 3. Component: 압축된 설명과 Episode 목록
 
-> 2026-10-20 이후 는 설명·분류·관련 Component 없이 중심 벡터와 ACL slice만 가진다. 이 절과 4절은 이전 모델의 기록이며
+> 2026-10-20 이후 Component는 설명·분류·관련 Component 없이 중심 벡터와 ACL slice만 가진다. 이 절과 4절은 이전 모델의 기록이며
 > 현재 모델은 [10절 구현 결과](#component-중심-벡터acl-slice-구현-결과-2026-10-20)를 따른다.
 
-는 짧은 설명, 분류별 Episode 참조, 관련 Component 목록을 가진다.
+Component는 짧은 설명, 분류별 Episode 참조, 관련 Component 목록을 가진다.
 다음은 개념을 설명하기 위한 JSON이며 실제 저장 형식을 확정한 것은 아니다.
 
 ```json
@@ -86,7 +86,7 @@ Episode 2: 시스템 X v2는 조회 조건을 나눠 여러 번 호출할 수 �
 }
 ```
 
-분류명은 Component 안의 Episode를 찾기 위한 간단한 이름이다. 별도 하위 나 고정된 관계 종류를 뜻하지 않는다.
+분류명은 Component 안의 Episode를 찾기 위한 간단한 이름이다. 별도 하위 Component나 고정된 관계 종류를 뜻하지 않는다.
 Episode를 여러 Component에서 참조해도 내용과 근거를 복사하지 않는다.
 
 Component의 설명은 검색할 범위를 알려준다. 자세한 사실은 Episode에서 읽고, 설명만으로 최종 답변을 확정하지 않는다.
@@ -97,7 +97,7 @@ Component의 설명은 검색할 범위를 알려준다. 자세한 사실은 Epi
 `Component`은 양수 `Int` ID, 비어 있지 않은 설명, `Map<String, List<Int>>` 형태의 분류별 Episode
 참조를 가진다. 분류명은 Component 내부의 이름이며 공백만 있는 이름과 빈 분류는 거절한다. 같은
 분류 안의 Episode ID 중복은 거절하되, 같은 Episode를 다른 분류나 다른 Component에서 참조할 수 있다.
-단계적 생성을 위해 분류가 아직 없는 는 허용한다. Episode ID도 양수여야 하며 실제 대상의
+단계적 생성을 위해 분류가 아직 없는 Component는 허용한다. Episode ID도 양수여야 하며 실제 대상의
 존재·현재 접근 권한은 application·저장 경계에서 확인한다.
 
 관련 관계는 `ComponentRelation`에 별도로 표현한다. 작은 Component ID를 첫 번째에 두므로 반대 방향의
@@ -127,7 +127,7 @@ Component 하나를 그래프의 점인 노드(Node), relatedComponents를 통�
 별도 Group→Component 소속은 이 관련 그래프와 구분한다.
 연결을 추가할 때 순환 검사는 하지 않는다. 대상 존재·수정 권한·중복은 확인하며 자기 자신과는 연결하지 않는다.
 
-가 커져 검색 대상을 충분히 줄이지 못하면 여러 로 나눈다. 크기뿐 아니라 서로 다른
+Component가 커져 검색 대상을 충분히 줄이지 못하면 여러 Component로 나눈다. 크기뿐 아니라 서로 다른
 내용이 과도하게 섞였는지도 판단한다. 비슷한 Component의 병합과 연결 재정리도 가능하다.
 분할·병합은 Episode의 소속과 검색 설명을 바꾸는 작업이며, Episode의 ID·내용·근거·ACL을 바꾸지 않는다.
 분할 후 여러 Component에 관련된 Episode는 복수 소속을 유지할 수 있다.
@@ -171,17 +171,17 @@ session이 살아 있어도 새로 검색하거나 원문을 읽을 때는 현�
 
 ### Component의 ACL은 slice로 나눈다 (2026-10-20)
 
-서로 다른 입력의 Episode들은 같은 Component에 모일 수 있다. 는 소속 Episode를 ACL(`PUBLIC` 또는 열람자 집합)별
+서로 다른 입력의 Episode들은 같은 Component에 모일 수 있다. Component는 소속 Episode를 ACL(`PUBLIC` 또는 열람자 집합)별
 slice로 나누며, slice의 ACL은 그 Episode들의 ACL과 같다. slice는 저장하지 않고 조회할 때 Episode의 현재 ACL로
 계산하므로 ACL을 바꿔도 Component 소속은 옮기지 않는다. Component 전체를 공유하는 별도 ACL은 두지 않으며,
-사용자나 ACL 조합마다 같은 주제의 를 복제하지 않는다.
+사용자나 ACL 조합마다 같은 주제의 Component를 복제하지 않는다.
 
-Agent에게 를 전달할 때는 다음과 같이 처리한다.
+Agent에게 Component를 전달할 때는 다음과 같이 처리한다.
 
 - 현재 사용자가 읽을 수 있는 slice의 Episode만 남긴다.
-- 읽을 수 있는 Episode가 하나도 없는 는 결과에서 제외한다.
+- 읽을 수 있는 Episode가 하나도 없는 Component는 결과에서 제외한다.
 - 비공개 Episode의 ID·내용·개수를 전달하지 않는다.
-- 는 설명·분류명을 두지 않으므로 Episode 외의 글은 전달되지 않는다.
+- Component는 설명·분류명을 두지 않으므로 Episode 외의 글은 전달되지 않는다.
 
 중심 벡터는 ACL과 무관하게 모든 소속 Episode의 평균이므로 검색 순위가 비공개 Episode의 영향을 받는다.
 글은 새지 않지만 관련 기록이 다른 사람에게 있다는 추측은 가능하다. 사용자별 벡터는 채택하지 않는다.
@@ -202,7 +202,7 @@ Episode 3 ─┘
 
 Episode들이 서로 다른 Component에 배치되어도 원문 참조는 유지한다.
 Episode 3만 검색되었더라도 그 원문을 읽으면서 Episode 1·2에 해당하는 전제와 예외를 확인할 수 있다.
-모든 관련 가 검색 상위권에 올라와야만 정확한 답을 할 수 있는 구조에 의존하지 않는다.
+모든 관련 Component가 검색 상위권에 올라와야만 정확한 답을 할 수 있는 구조에 의존하지 않는다.
 
 evidence가 조각으로 저장된다면 같은 입력의 어느 부분인지, 앞뒤 문맥이 무엇인지 확인할 수 있어야 한다.
 Source ID는 변하지 않는 원문을 가리킨다. 내용이 다른 입력은 다른 Source로 저장하므로
@@ -297,7 +297,7 @@ Component 검색과 Episode 선택은 데이터 구조 확정 후에 다룬다. 
 Component 모델·분류별 Episode 소속·양방향 관계와 명시적 원자 저장 기능은 유지한다.
 사용자 요청에 따라 LM Component 생성 adapter·prompt·배치 service·전용 port·재시도 worker와
 Episode 분석 이후의 연결을 삭제했다. 미배치 Episode와 최근 Component 후보를 조회하던 경로도 제거했다.
-현재 앱은 를 자동 생성하거나 배치하지 않으며 대체 생성 알고리즘은 아직 정하지 않았다.
+현재 앱은 Component를 자동 생성하거나 배치하지 않으며 대체 생성 알고리즘은 아직 정하지 않았다.
 
 Episode 추출·저장·색인 outbox, 현재 ACL로 확인하는 직접 검색, conversation context와 session
 정책은 유지한다. 기존 tree 구조·API·화면을 복원하지 않으며 실제 DB 데이터도 변경하지 않는다.
@@ -318,30 +318,30 @@ SparsityScore는 Group 크기 균형 점수이며 Group 수 자체의 벌점은 
 소속·centroid·revision·receipt를 원자 저장하며 저장 계약은 후속 병합도 수용한다.
 
 내부 `organizeComponents.execute(limit)` 호출만 추가했다. 자동 실행·Component 생성·검색·응답 경로는
-연결하지 않았다. 재시작 후 다음 명시적 호출로 미배치 를 이어 처리하며 모델·규약 변경은
+연결하지 않았다. 재시작 후 다음 명시적 호출로 미배치 Component를 이어 처리하며 모델·규약 변경은
 재구성 필요 상태로 반환한다. 실제 임베딩에 따른 한국어 분할 품질은 아직 검증되지 않았다.
 
 ### Episode → Component 구현 결과 (2026-10-19)
 
 xMemory 대응은 Source가 segment, Episode가 component, Group이 group이다. xMemory group은 한 component가
-한 group에만 속하는 분할이므로, Episode 복수 소속을 위해 를 그 사이의 겹침 허용 묶음으로 유지한다.
-Component 소속은 LM이 정한다. Episode·Component 설명 임베딩으로 후보 를 좁히고, LM이 참여할 Component들과 분류,
-수정 설명 또는 새 를 고른다. 소속이 바뀐 Component의 설명은 같은 저장에서 교체되며, Group 소속 면
-재임베딩해 그 Group의 centroid만 갱신한다. 이 결정은 2026-10-10의 '를 LM으로 생성하지 않는다'를 대체한다.
+한 group에만 속하는 분할이므로, Episode 복수 소속을 위해 Component를 그 사이의 겹침 허용 묶음으로 유지한다.
+Component 소속은 LM이 정한다. Episode·Component 설명 임베딩으로 후보 Component를 좁히고, LM이 참여할 Component들과 분류,
+수정 설명 또는 새 Component를 고른다. 소속이 바뀐 Component의 설명은 같은 저장에서 교체되며, Group 소속 Component면
+재임베딩해 그 Group의 centroid만 갱신한다. 이 결정은 2026-10-10의 'Component를 LM으로 생성하지 않는다'를 대체한다.
 세부 흐름과 실패 처리는 [Episode → Component use case](../application/src/main/kotlin/com/homeassistant/application/usecase/component/README.md)에 있다.
 
 ### Component 중심 벡터·ACL slice 구현 결과 (2026-10-20)
 
 위 2026-10-19 결과의 LM 배정과 xMemory 대응을 대체한다.
 
-- xMemory 대응: Source가 segment, 가 component, Group이 group이다. 완전한 1:1 대응은 아니다. Episode는 여러 Component에
-  속할 수 있다(2026-10-21). Component끼리의 MECE는 가 Group에 중복 소속되지 않는다는 뜻이다.
-- 할당: 새 Episode 벡터와 가장 가까운 Component 중심 벡터의 cosine이 0.6 이상이면 join, 아니면 새 를 만든다. LM을 호출하지 않는다.
+- xMemory 대응: Source가 segment, Component가 component, Group이 group이다. 완전한 1:1 대응은 아니다. Episode는 여러 Component에
+  속할 수 있다(2026-10-21). Component끼리의 MECE는 Component가 Group에 중복 소속되지 않는다는 뜻이다.
+- 할당: 새 Episode 벡터와 가장 가까운 Component 중심 벡터의 cosine이 0.6 이상이면 join, 아니면 새 Component를 만든다. LM을 호출하지 않는다.
   중심 벡터는 소속 Episode 단위 벡터의 합과 개수로 저장하며 방향만 쓴다.
 - 저장: Component 본체(벡터 합·Episode 수)와 소속(Episode당 한 행)만 둔다. 설명·분류·관련 관계는 제거했다.
 - Group: Component 설명 임베딩 대신 Component 중심 벡터를 쓴다. Episode 수를 벡터 version으로 삼아 오래된 벡터 저장을 거절한다.
 - 검색: 질문을 같은 모델의 `query:` 규약으로 임베딩해 Component 중심 벡터를 순위화하고, 읽을 수 있는 slice의 Episode만 남겨
-  상위 3개 로 대화 context를 구성한다. Episode 직접 벡터 검색은 대화에 연결하지 않는다.
+  상위 3개 Component로 대화 context를 구성한다. Episode 직접 벡터 검색은 대화에 연결하지 않는다.
 - 임계값 0.6과 Component 수 3은 시작값이며 한국어 실데이터로 조정해야 한다.
 
 결정과 trade-off는 [Component 중심 벡터·ACL slice와 Component 검색](todolist/p1/component-centroid-acl-search.md)에 있다.

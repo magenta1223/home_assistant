@@ -1,6 +1,6 @@
 # Component → Group organization
 
-명시적으로 저장된 를 component로 사용해 Group을 생성·배치·분할한다.
+명시적으로 저장된 Component를 component로 사용해 Group을 생성·배치·분할한다.
 내부 input port는 `OrganizePendingComponents.execute(limit)`이며 앱의 `organizeComponents`로 제공된다.
 HTTP·worker·Episode 분석 경로에서는 호출하지 않는다. 앱 시작만으로 실행되지 않는다.
 현재 Component 자동 생성 경로는 없으므로 기존 trusted Component 저장 경로로 입력을 준비해야 한다.
@@ -74,13 +74,13 @@ Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다
 `MergeSmallGroups`는 `organizeEpisodes` 회차에서 Group 배치가 끝난 뒤 실행된다. 그 회차에 처리한 Episode가 있고
 배치가 `Completed`일 때만 실행한다. 규칙은 xMemory 부록 A.2·B를 따른다.
 
-- 가 1개뿐인 Group을 ID 순으로 본다.
+- Component가 1개뿐인 Group을 ID 순으로 본다.
 - 중심이 가까운 Group `mergeNeighbors`(10)개 중 중심 cosine이 `mergeThreshold`(0.65) 이상이고 합쳐도 `maxComponents` 이하인 것이 후보다.
   합친 크기 상한은 논문에 없지만, 넘으면 곧바로 분할 조건에 걸리므로 둔다.
 - 후보마다 전체 Group의 식 (1)을 계산해 개선 폭이 가장 큰 Group과 합친다. 개선이 없으면 합치지 않는다. 동점이면 가까운 Group이다.
 - 작은 ID가 남는다. 저장은 기존 `GroupChange`의 N→1 형태다. 매번 snapshot을 다시 읽어 한 건씩 처리하고, 합칠 Group이 없거나 충돌이 3회 나면 멈춘다.
   merge마다 Group이 하나 줄어서 루프는 반드시 끝난다.
-- Group 벡터 갱신 뒤에 실행해야 한다. Group이 Component의 현재 중심보다 예전 벡터를 들고 있으면 점수가 틀리므로, 그런 가 있으면 예외를 던진다.
+- Group 벡터 갱신 뒤에 실행해야 한다. Group이 Component의 현재 중심보다 예전 벡터를 들고 있으면 점수가 틀리므로, 그런 Component가 있으면 예외를 던진다.
 
 ## 실패·복구와 신뢰 경계
 
@@ -92,11 +92,11 @@ Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다
   `organizeEpisodes`는 이 단계 전에 `RefreshGroupedComponentEmbeddings`로 버전이 바뀐 Component의 벡터를 다시 준비하고
   그 Group의 벡터·centroid만 교체한다. Group 소속은 옮기지 않는다.
   모델 이름이 같아도 실제 가중치를 교체했다면 식별자를 변경해야 한다. 자동 재구성은 후속 작업이다.
-- 개별 Component 실패는 `Failed`, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 는 계속 처리한다.
+- 개별 Component 실패는 `Failed`, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Component는 계속 처리한다.
   취소 예외는 삼키지 않는다. Pending 조회 자체의 저장소 장애는 호출자에게 전파한다.
 - 저장 성공 후 호출이 중단되어도 다음 실행은 Group 미소속 Component만 조회한다.
   저장 요청 자체를 재전송할 때에는 같은 operation key와 내용을 사용하면 같은 ID를 받는다.
-- 재시작 시 자동 실행하지 않는다. 다음 명시적 호출로 미처리를 이어간다. 영구 실패 가 반복
+- 재시작 시 자동 실행하지 않는다. 다음 명시적 호출로 미처리를 이어간다. 영구 실패 Component가 반복
   batch 앞부분을 차지하는 문제의 backoff·격리 및 worker는 후속 범위다.
 - 전체 Group snapshot을 읽으며 점수 계산은 Group 수에 따라 증가한다. ANN·증분 최적화는 없다.
 - 다른 Group의 동시 변경 때문에 점수가 오래된 기준일 수 있지만 대상 소속을 덮어쓰지 않는다.

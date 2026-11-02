@@ -29,11 +29,11 @@ class MemoryExtractorTest {
 
         assertEquals(setOf("text", "evidenceRecordIds"), required.toSet())
         assertEquals(setOf("text", "evidenceRecordIds"), memorySchema["properties"]!!.jsonObject.keys)
-        assertContains(MemoryAnalysisPrompt.system(), "열람 권한은 사용자가 입력 단계에서 지정")
+        assertContains(MemoryAnalysisPrompt.system(), "memory 하나에는 한 가지 사실만")
     }
 
     @Test
-    fun `self contained content preserves attribution conditions and uncertainty`() = runBlocking {
+    fun `memory text is kept as the model wrote it with its evidence`() = runBlocking {
         val content = "연구자는 9월 측정값이 센서 오류일 가능성이 있으며 재측정 전에는 확정할 수 없다고 말했다."
         val client = RecordingClient(mutableListOf(response(text = content)))
 

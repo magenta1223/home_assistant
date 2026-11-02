@@ -25,9 +25,9 @@ internal data class MemoryAnalysisLlmResponse(
 @Schema
 @Serializable
 internal data class MemoryLlmResponse(
-    @property:SerialDescription("Self-contained content supported by the cited evidence. Preserve the subject, attribution, time, conditions and uncertainty in the text. Do not combine unrelated information.")
+    @property:SerialDescription("근거 기록으로 뒷받침되는 독립적인 memory 본문")
     val text: String,
-    @property:SerialDescription("Source record ids supporting this memory, using ids such as r1 or r2 from the input.")
+    @property:SerialDescription("이 memory의 근거인 records의 id")
     val evidenceRecordIds: List<String>,
 )
 

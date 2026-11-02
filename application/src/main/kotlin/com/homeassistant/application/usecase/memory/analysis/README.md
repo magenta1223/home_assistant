@@ -5,8 +5,8 @@ canonical memory로 즉시 확정한다. 별도의 preview/review 단계는 없�
 
 추출 계약은 독립적인 `content`와 `evidenceIds`만 갖는다. 모델 응답의 `text`와
 `evidenceRecordIds`를 이 계약으로 변환하며, 고정된 정보 종류·대상 필드·확실성 enum을 요구하지
-않는다. 대상, 발화자, 시점, 조건과 불확실성은 본문에 보존한다. 분야별 분류로 수집 범위를
-제한하지 않으며, 원문에 없는 사실을 추가하거나 발언·추정을 확정된 사실로 바꾸지 않는다.
+않는다. 보낸 사람과 시각은 근거 source record에 남는다.
+모델 입력에는 메시지 시각을 넣지 않는다. 분야별 분류로 수집 범위를 제한하지 않는다.
 권한은 추출 모델이 판단하지 않고 근거 source의 immutable access에서 결정한다.
 
 HTTP adapter가 인증된 principal의 application userId, source, access를 `MemoryAnalysis`에 직접 전달한다.

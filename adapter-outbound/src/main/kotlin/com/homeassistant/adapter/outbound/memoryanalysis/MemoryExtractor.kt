@@ -2,6 +2,7 @@ package com.homeassistant.adapter.outbound.memoryanalysis
 
 import com.homeassistant.application.port.output.memory.analysis.MemoryExtractor
 import com.homeassistant.llm.completion.CompletionClient
+import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.MemoryProposal
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
@@ -71,10 +72,9 @@ internal class MemoryExtractor(
                 ?: throw IllegalArgumentException("Unknown evidence record id: $recordId")
         }.distinctBy { it.id }
 
-    private fun renderDocument(document: SourceDocument): String = buildString {
-        appendLine("[NEW_RECORDS]")
-        append(document.records.joinToString("\n") { "${it.promptId} | ${it.content}" })
-    }
+    private fun renderDocument(document: SourceDocument): String = MemoryAnalysisInput(
+        records = document.records.map { it.toInput() },
+    ).encodeToString()
 
     private companion object {
         const val CHUNK_SIZE = 400
@@ -82,6 +82,9 @@ internal class MemoryExtractor(
         const val MAX_CONCURRENT_CHUNKS = 4
     }
 }
+
+private fun SourceRecord.toInput() =
+    MemoryAnalysisInputRecord(promptId, content)
 
 private val SourceRecord.promptId: String
     get() = "r$id"

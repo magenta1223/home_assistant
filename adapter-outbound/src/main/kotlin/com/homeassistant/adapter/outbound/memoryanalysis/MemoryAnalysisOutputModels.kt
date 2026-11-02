@@ -17,6 +17,18 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
+internal data class MemoryAnalysisInput(
+    val records: List<MemoryAnalysisInputRecord>,
+)
+
+/** Message time is left out on purpose: the model repeats it in the body, and the source record keeps it. */
+@Serializable
+internal data class MemoryAnalysisInputRecord(
+    val id: String,
+    val text: String,
+)
+
+@Serializable
 internal data class MemoryAnalysisLlmResponse(
     @property:SerialDescription("Evidence-backed atomic memories. Return an empty array when there are no reusable memories.")
     val memories: List<MemoryLlmResponse>,

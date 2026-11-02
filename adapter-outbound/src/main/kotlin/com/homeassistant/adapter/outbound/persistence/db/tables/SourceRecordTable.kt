@@ -21,7 +21,7 @@ internal object SourceRecordTable : Table("source_records") {
     val sourceName = text("source_name")
     val content = text("content")
     val deduplicationKey = text("deduplication_key")
-    val createdAt = long("created_at")
+    val recordedAt = long("created_at")
     val analysisStatus = text("analysis_status").default(SourceRecordAnalysisStatus.ANALYZED.name)
     val visibility = text("visibility").default(MemoryVisibility.PUBLIC.name)
     /** False only for rows created before explicit source audiences existed. */

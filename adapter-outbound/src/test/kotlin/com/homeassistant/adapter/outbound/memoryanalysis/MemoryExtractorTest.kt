@@ -5,6 +5,7 @@ import com.homeassistant.llm.completion.CompletionImage
 import com.homeassistant.domain.memory.MemoryAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import java.util.concurrent.atomic.AtomicInteger
@@ -54,16 +55,16 @@ class MemoryExtractorTest {
         ).analyze(document(recordCount = 1_001))
 
         assertEquals(3, client.calls.size)
-        assertEquals(400, client.calls[0].newRecordLines().size)
-        assertEquals(400, client.calls[1].newRecordLines().size)
-        assertEquals(241, client.calls[2].newRecordLines().size)
+        assertEquals(400, client.calls[0].input().records.size)
+        assertEquals(400, client.calls[1].input().records.size)
+        assertEquals(241, client.calls[2].input().records.size)
         assertEquals(
-            client.calls[0].newRecordLines().takeLast(20),
-            client.calls[1].newRecordLines().take(20),
+            client.calls[0].input().records.takeLast(20),
+            client.calls[1].input().records.take(20),
         )
         assertEquals(
-            client.calls[1].newRecordLines().takeLast(20),
-            client.calls[2].newRecordLines().take(20),
+            client.calls[1].input().records.takeLast(20),
+            client.calls[2].input().records.take(20),
         )
     }
 
@@ -163,6 +164,5 @@ class MemoryExtractorTest {
         }
     }
 
-    private fun Call.newRecordLines(): List<String> =
-        userMessage.substringAfter("[NEW_RECORDS]\n").lines().filter { it.isNotBlank() }
+    private fun Call.input(): MemoryAnalysisInput = userMessage.decodeFromString()
 }

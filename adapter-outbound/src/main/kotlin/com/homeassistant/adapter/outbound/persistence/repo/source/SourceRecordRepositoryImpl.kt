@@ -59,6 +59,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                     SourceRecordTable.update({ SourceRecordTable.id eq legacy[SourceRecordTable.id] }) {
                         it[deduplicationKey] = record.deduplicationKey
                         it[content] = record.content
+                        it[recordedAt] = record.recordedAt
                         if (referenceId != null) it[SourceRecordTable.referenceId] = referenceId
                     }
                     existing = SourceRecordTable.selectAll()
@@ -96,7 +97,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 it[sourceName] = source.name
                 it[content] = record.content
                 it[deduplicationKey] = record.deduplicationKey
-                it[createdAt] = System.currentTimeMillis()
+                it[recordedAt] = record.recordedAt
                 it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
                 it[visibility] = access.visibility.name
                 it[audienceExplicit] = true

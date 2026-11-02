@@ -6,8 +6,8 @@ import kotlinx.serialization.Serializable
 /**
  * Evidence-backed, immutable content with independently managed access.
  *
- * Attribution, time, conditions and uncertainty belong in the content, without
- * predefined categories. Organization belongs to Topic references.
+ * The content holds what happened, without predefined categories. Who sent it and when stay in the evidence.
+ * Organization belongs to Topic references.
  */
 @Serializable
 data class Memory(

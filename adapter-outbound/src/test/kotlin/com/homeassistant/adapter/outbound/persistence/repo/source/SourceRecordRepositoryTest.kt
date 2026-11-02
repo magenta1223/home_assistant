@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.MemoryAccess
@@ -9,6 +10,8 @@ import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceReferenceDraft
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import java.sql.DriverManager
 import kotlin.test.Test
@@ -46,6 +49,22 @@ class SourceRecordRepositoryTest {
                     }
                 }
             }
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `a record keeps the time its draft was recorded at`() {
+        val databasePath = Files.createTempFile("source-record-time", ".db")
+        try {
+            val db = DatabaseFactory.init(databasePath.toString())
+            SourceRecordRepositoryImpl(db).saveAll(
+                SourceDescriptor("kakao", "room"),
+                listOf(SourceRecordDraft("key", "content", recordedAt = 1_234L)),
+            )
+
+            assertEquals(1_234L, transaction(db) { SourceRecordTable.selectAll().single()[SourceRecordTable.recordedAt] })
         } finally {
             Files.deleteIfExists(databasePath)
         }

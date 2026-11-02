@@ -2,16 +2,16 @@
 
 - 상태: TODO
 - 우선순위: P2
-- 선행 작업: [Topic 할당 outbox와 worker](../p1/topic-assignment-outbox.md)
+- 선행 작업: [Component 할당 outbox와 worker](../p1/component-assignment-outbox.md)
 
 ## 문제
 
-Topic 할당 worker는 라운드 전에 `isReady()`(Ollama 준비 + CLI 실행 가능)로 사전 확인만 한다. 그래서 두 경우를 놓친다.
+Component 할당 worker는 라운드 전에 `isReady()`(Ollama 준비 + CLI 실행 가능)로 사전 확인만 한다. 그래서 두 경우를 놓친다.
 
 - 확인 직후 서비스가 꺼지면 claim한 작업이 실패로 기록되고 시도 횟수 1회를 잃는다.
 - CLI는 실행되지만 로그인·네트워크 문제로 호출이 실패하면, 확인을 통과한 뒤 시도 횟수를 소모해 결국 영구 FAILED가 된다.
 
-장애로 인한 실패와 Memory 내용으로 인한 실패를 구분하지 못하는 것이 원인이다. 같은 문제는 indexing outbox와 앞으로의 Memory 분석 outbox에도 생긴다.
+장애로 인한 실패와 Episode 내용으로 인한 실패를 구분하지 못하는 것이 원인이다. 같은 문제는 indexing outbox와 앞으로의 Episode 분석 outbox에도 생긴다.
 
 ## 조사한 표준 절차
 
@@ -38,5 +38,5 @@ Topic 할당 worker는 라운드 전에 `isReady()`(Ollama 준비 + CLI 실행 �
 - 실패 분류 위치: 모델 응답 decode·검증 실패만 영구 실패로 보고(application 예외), 나머지는 일시적 실패로 볼지 정한다. 어댑터가 연결·프로세스 오류를 일시적 실패 예외로 바꾸는 방식과 비교한다.
 - 일시적 실패 처리: 시도 횟수를 소모하지 않고 claim을 되돌리는 outbox 연산이 필요하다. 현재 attempts가 claim fencing 세대 번호를 겸하므로 둘을 분리해야 한다.
 - Circuit breaker: Ollama와 CLI 각각에 두고, Open이면 worker 라운드를 건너뛴다. 그러면 `isReady()` 사전 확인을 대체하거나 Half-open 시험으로 흡수할 수 있다. Resilience4j 도입과 직접 구현(상태 3개)의 비용을 비교한다.
-- 적용 범위: Topic 할당, indexing outbox, Memory 분석 outbox에 공통 적용할 수 있는 경계(adapter 또는 application port)를 정한다.
+- 적용 범위: Component 할당, indexing outbox, Episode 분석 outbox에 공통 적용할 수 있는 경계(adapter 또는 application port)를 정한다.
 - FAILED 행 조회와 재처리 경로(DLQ 운영)를 둘지 정한다.

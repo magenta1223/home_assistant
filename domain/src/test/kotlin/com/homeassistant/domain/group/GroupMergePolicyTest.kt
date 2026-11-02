@@ -7,7 +7,7 @@ class GroupMergePolicyTest {
     private val north = vector(0.0, 1.0)
     private val policy = GroupMergePolicy(GroupPolicySettings())
 
-    @Test fun `a single-topic group joins a near group when equation 1 improves`() {
+    @Test fun `a single-component group joins a near group when equation 1 improves`() {
         val vectors = mapOf(1 to east, 2 to vector(1.0, 0.1), 3 to vector(1.0, 0.05), 4 to vector(1.0, 0.08), 5 to north, 6 to north, 7 to north)
         val groups = listOf(Group(1, setOf(1, 3, 4)), Group(2, setOf(2)), Group(3, setOf(5, 6, 7)))
 
@@ -31,7 +31,7 @@ class GroupMergePolicyTest {
         assertEquals(1 to 4, assertNotNull(policy.decide(groups, centroids, vectors)).let { it.survivor to it.absorbed })
     }
 
-    @Test fun `isolated, over-cap and multi-topic groups are not merged`() {
+    @Test fun `isolated, over-cap and multi-component groups are not merged`() {
         val apart = mapOf(1 to east, 2 to north)
         val single = listOf(Group(1, setOf(1)), Group(2, setOf(2)))
         assertNull(policy.decide(single, centroids(single, apart), apart))
@@ -54,8 +54,8 @@ class GroupMergePolicyTest {
         assertEquals(2 to 3, assertNotNull(policy.decide(groups, centroids, vectors)).let { it.survivor to it.absorbed })
     }
 
-    private fun centroids(groups: List<Group>, vectors: Map<Int, TopicVector>) =
-        groups.associate { group -> group.id to GroupGeometry.centroid(group.topicIds.sorted().map(vectors::getValue)) }
+    private fun centroids(groups: List<Group>, vectors: Map<Int, ComponentVector>) =
+        groups.associate { group -> group.id to GroupGeometry.centroid(group.componentIds.sorted().map(vectors::getValue)) }
 
-    private fun vector(vararg values: Double) = TopicVector.normalized(values.toList())
+    private fun vector(vararg values: Double) = ComponentVector.normalized(values.toList())
 }

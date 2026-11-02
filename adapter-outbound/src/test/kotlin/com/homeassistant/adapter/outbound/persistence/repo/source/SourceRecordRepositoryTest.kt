@@ -2,9 +2,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -76,7 +76,7 @@ class SourceRecordRepositoryTest {
         try {
             val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("text", "knowledge")
-            val existingAccess = MemoryAccess.restricted(listOf(UserId("member-1")))
+            val existingAccess = EpisodeAccess.restricted(listOf(UserId("member-1")))
             repository.saveAll(
                 source,
                 listOf(draft("same")),
@@ -87,7 +87,7 @@ class SourceRecordRepositoryTest {
                 repository.saveAll(
                     source,
                     listOf(draft("same")),
-                    MemoryAccess.restricted(listOf(UserId("member-2"))),
+                    EpisodeAccess.restricted(listOf(UserId("member-2"))),
                 )
             }
             assertEquals(existingAccess, failure.existingAccess)
@@ -175,7 +175,7 @@ class SourceRecordRepositoryTest {
 
             val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("test", "legacy")
-            val access = MemoryAccess.restricted(listOf(UserId("member-1"), UserId("member-2")))
+            val access = EpisodeAccess.restricted(listOf(UserId("member-1"), UserId("member-2")))
             val saved = repository.saveAll(
                 source,
                 listOf(SourceRecordDraft("legacy-key", "legacy content")),
@@ -247,6 +247,6 @@ class SourceRecordRepositoryTest {
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
     private fun markAnalyzed(db: org.jetbrains.exposed.sql.Database, recordIds: Collection<Int>) {
-        MemoryRepository(db).commit(UserId("test-member"), emptyList(), recordIds)
+        EpisodeRepository(db).commit(UserId("test-member"), emptyList(), recordIds)
     }
 }

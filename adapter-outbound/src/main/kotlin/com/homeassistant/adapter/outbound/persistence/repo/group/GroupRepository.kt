@@ -8,12 +8,12 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class GroupRepository(private val db: Database) : PendingTopicSource, GroupReader, GroupSnapshotReader, GroupChangeWriter {
-    override fun pending(limit: Int): List<PendingTopic> = transaction(db) {
+internal class GroupRepository(private val db: Database) : PendingComponentSource, GroupReader, GroupSnapshotReader, GroupChangeWriter {
+    override fun pending(limit: Int): List<PendingComponent> = transaction(db) {
         require(limit > 0)
-        TopicTable.selectAll().where {
-            notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.topicId eq TopicTable.id })
-        }.orderBy(TopicTable.id).limit(limit).map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
+        ComponentTable.selectAll().where {
+            notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
+        }.orderBy(ComponentTable.id).limit(limit).map { PendingComponent(it[ComponentTable.id], ComponentEmbeddingRepository.version(it)) }
     }
 
     override fun groups(): List<StoredGroup> = transaction(db) { storedGroups(GroupMembershipTable.selectAll().toList()) }
@@ -21,11 +21,11 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
     override fun snapshot(): GroupSnapshot = transaction(db) {
         val memberships = GroupMembershipTable.selectAll().toList()
         val keys = memberships.map { it[GroupMembershipTable.embeddingKey] }
-        val embeddings = TopicEmbeddingTable.selectAll().where { TopicEmbeddingTable.key inList keys }
-            .map { TopicEmbeddingRepository.decode(it) }.associateBy { it.key.topicId }
+        val embeddings = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList keys }
+            .map { ComponentEmbeddingRepository.decode(it) }.associateBy { it.key.componentId }
         val groups = storedGroups(memberships)
-        val outdated = TopicTable.selectAll().where { TopicTable.id inList embeddings.keys }.orderBy(TopicTable.id)
-            .map { PendingTopic(it[TopicTable.id], TopicEmbeddingRepository.version(it)) }
+        val outdated = ComponentTable.selectAll().where { ComponentTable.id inList embeddings.keys }.orderBy(ComponentTable.id)
+            .map { PendingComponent(it[ComponentTable.id], ComponentEmbeddingRepository.version(it)) }
             .filter { it.version != embeddings.getValue(it.id).key.version }
         check(memberships.size == embeddings.size) { "group embedding missing" }
         GroupSnapshot(groups, embeddings, outdated)
@@ -35,7 +35,7 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
         val byGroup = memberships.groupBy { it[GroupMembershipTable.groupId] }
         return GroupTable.selectAll().orderBy(GroupTable.id).map { row ->
             StoredGroup(Group(row[GroupTable.id], byGroup[row[GroupTable.id]].orEmpty()
-                .map { it[GroupMembershipTable.topicId] }.toSet()), row[GroupTable.revision],
+                .map { it[GroupMembershipTable.componentId] }.toSet()), row[GroupTable.revision],
                 GroupStorageCodec.vector(row[GroupTable.centroid]))
         }
     }
@@ -74,33 +74,33 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
             .associate { it[GroupTable.id] to it[GroupTable.revision] }
         if (revisions != change.expectedGroups) throw StaleGroupChange()
         val consumed = GroupMembershipTable.selectAll().where { GroupMembershipTable.groupId inList revisions.keys }
-            .map { it[GroupMembershipTable.topicId] }.toSet()
-        val assignedIncoming = GroupMembershipTable.selectAll().where { GroupMembershipTable.topicId inList change.incomingTopicIds }.any()
+            .map { it[GroupMembershipTable.componentId] }.toSet()
+        val assignedIncoming = GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId inList change.incomingComponentIds }.any()
         if (assignedIncoming) throw StaleGroupChange()
-        require(consumed.intersect(change.incomingTopicIds).isEmpty())
-        TopicPartition(change.resultingGroups.map { it.topicIds }).requireConserves(consumed + change.incomingTopicIds)
-        val topics = TopicTable.select(TopicTable.id).where { TopicTable.id inList change.embeddings.keys }
-            .map { it[TopicTable.id] }.toSet()
-        require(topics == change.embeddings.keys) { "topic does not exist" }
+        require(consumed.intersect(change.incomingComponentIds).isEmpty())
+        ComponentPartition(change.resultingGroups.map { it.componentIds }).requireConserves(consumed + change.incomingComponentIds)
+        val components = ComponentTable.select(ComponentTable.id).where { ComponentTable.id inList change.embeddings.keys }
+            .map { it[ComponentTable.id] }.toSet()
+        require(components == change.embeddings.keys) { "component does not exist" }
     }
 
     private fun verifyEmbeddings(change: GroupChange) {
-        val stored = TopicEmbeddingTable.selectAll().where {
-            TopicEmbeddingTable.key inList change.embeddings.values.map { GroupStorageCodec.key(it.key) }
-        }.map { TopicEmbeddingRepository.decode(it) }.associateBy { it.key.topicId }
+        val stored = ComponentEmbeddingTable.selectAll().where {
+            ComponentEmbeddingTable.key inList change.embeddings.values.map { GroupStorageCodec.key(it.key) }
+        }.map { ComponentEmbeddingRepository.decode(it) }.associateBy { it.key.componentId }
         require(stored == change.embeddings) { "expected immutable vectors are missing or changed" }
-        val versions = TopicTable.selectAll().where { TopicTable.id inList stored.keys }
-            .associate { it[TopicTable.id] to TopicEmbeddingRepository.version(it) }
-        if (stored.values.any { versions[it.key.topicId] != it.key.version }) throw StaleGroupChange()
+        val versions = ComponentTable.selectAll().where { ComponentTable.id inList stored.keys }
+            .associate { it[ComponentTable.id] to ComponentEmbeddingRepository.version(it) }
+        if (stored.values.any { versions[it.key.componentId] != it.key.version }) throw StaleGroupChange()
         val activeKeys = GroupMembershipTable.selectAll().map { it[GroupMembershipTable.embeddingKey] }
-        val active = TopicEmbeddingTable.selectAll().where { TopicEmbeddingTable.key inList activeKeys }
-            .map { TopicEmbeddingRepository.decode(it) }
+        val active = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList activeKeys }
+            .map { ComponentEmbeddingRepository.decode(it) }
         val combined = active + stored.values
         if (combined.map { it.key.space }.distinct().size != 1 || combined.map { it.vector.dimension }.distinct().size != 1) {
             throw GroupRebuildRequired("cannot mix group embedding models, formats or dimensions")
         }
         change.resultingGroups.forEach { result ->
-            val centroid = GroupGeometry.centroid(result.topicIds.sorted().map { stored.getValue(it).vector })
+            val centroid = GroupGeometry.centroid(result.componentIds.sorted().map { stored.getValue(it).vector })
             require(centroid == result.centroid) { "centroid does not match membership vectors" }
         }
     }
@@ -121,11 +121,11 @@ internal class GroupRepository(private val db: Database) : PendingTopicSource, G
                     it[centroid] = GroupStorageCodec.vector(result.centroid)
                 }[GroupTable.id]
             }
-            result.topicIds.sorted().forEach { topic ->
+            result.componentIds.sorted().forEach { component ->
                 GroupMembershipTable.insert {
-                    it[topicId] = topic
+                    it[componentId] = component
                     it[groupId] = id
-                    it[embeddingKey] = GroupStorageCodec.key(change.embeddings.getValue(topic).key)
+                    it[embeddingKey] = GroupStorageCodec.key(change.embeddings.getValue(component).key)
                 }
             }
             id

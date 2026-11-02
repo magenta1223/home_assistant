@@ -3,7 +3,7 @@ package com.homeassistant.domain.group
 sealed interface GroupSplit {
     data object Unchanged : GroupSplit
     data class Divided(
-        val partition: TopicPartition,
+        val partition: ComponentPartition,
         val before: OrganizationScore,
         val after: OrganizationScore,
     ) : GroupSplit {
@@ -16,8 +16,8 @@ class GroupSplitPolicy(
     private val candidates: GroupSplitCandidateGenerator = GroupSplitCandidateGenerator(settings),
     private val scorer: GroupOrganizationScorer = GroupOrganizationScorer(),
 ) {
-    fun decide(target: Set<Int>, surrounding: List<Set<Int>>, vectors: Map<Int, TopicVector>): GroupSplit {
-        if (target.size <= settings.maxTopics) return GroupSplit.Unchanged
+    fun decide(target: Set<Int>, surrounding: List<Set<Int>>, vectors: Map<Int, ComponentVector>): GroupSplit {
+        if (target.size <= settings.maxComponents) return GroupSplit.Unchanged
         val before = scorer.score(surrounding + listOf(target), vectors)
         val ranked = candidates.generate(vectors.filterKeys { it in target }).mapNotNull { partition ->
             partition.requireConserves(target)
@@ -32,7 +32,7 @@ class GroupSplitPolicy(
         return requireNotNull(ranked.firstOrNull()) { "no valid split candidate" }
     }
 
-    private fun comparePartitions(first: TopicPartition, second: TopicPartition): Int {
+    private fun comparePartitions(first: ComponentPartition, second: ComponentPartition): Int {
         first.parts.zip(second.parts).forEach { (a, b) ->
             a.sorted().zip(b.sorted()).forEach { (x, y) -> if (x != y) return x.compareTo(y) }
             if (a.size != b.size) return a.size.compareTo(b.size)

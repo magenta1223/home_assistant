@@ -8,7 +8,7 @@
 1. Slack adapter·런타임·명령·DM 등록/답변·지식 입력 workflow와 조립을 제거한다.
 2. Slack 전용 등록 대기 질문 저장소와 legacy 설정 예약 경로를 제거한다.
 3. Slack SDK·환경변수·manifest·업데이트 도구를 삭제한다.
-4. HTTP가 사용하는 공통 UserId·ACL·Memory 분석·대화·요청 중복 방지·10분 idle lease를 보존한다.
+4. HTTP가 사용하는 공통 UserId·ACL·Episode 분석·대화·요청 중복 방지·10분 idle lease를 보존한다.
 5. HTTP 대화 저장소의 코드 이름을 중립적으로 바꾸되 기존 물리 테이블/컬럼 매핑은 유지한다.
    실제 DB를 삭제하거나 변환하지 않는다. HTTP도 이미 해당 테이블을 사용한다.
 6. 현재 문서와 지침을 HTTP 기준으로 갱신하고 집중 테스트 후 전체 테스트를 실행한다.
@@ -25,12 +25,12 @@ Slack 외부 앱 삭제·토큰 폐기·운영 배포는 이 저장소 코드 �
 ## 실제 변경
 
 - Slack Socket Mode·DM·slash command·modal·사용자 등록 안내·지식 주입과 관련 테스트를 삭제했다.
-- Slack에서만 쓰던 KnowledgeInjectionWorkflowService, MemoryAnswerWorkflowService와 input port,
+- Slack에서만 쓰던 KnowledgeInjectionWorkflowService, EpisodeAnswerWorkflowService와 input port,
   등록 전 질문 대기 저장소·테이블 선언, 환경변수 기반 legacy user 예약을 제거했다.
 - Slack SDK, WebSocket client 의존성, 환경변수 상수, manifest와 갱신 script/Gradle task를 제거했다.
 - HTTP 공통 대화의 request key를 conversation port로 옮겼다. Slack 전송 완료 callback과
   delivery ID 쓰기는 삭제했고 HTTP는 기존대로 ANSWER_READY 답변을 동일 요청에 재사용한다.
-- 세션 테이블의 Kotlin 이름과 필드는 MemoryConversation/일반 요청 용어로 바꿨다.
+- 세션 테이블의 Kotlin 이름과 필드는 EpisodeConversation/일반 요청 용어로 바꿨다.
   기존 HTTP 데이터가 들어 있는 물리 테이블 이름과 사용 중인 컬럼은 그대로 매핑한다.
   기존 COMPLETED 상태는 읽기 호환으로만 남기며 신규 HTTP 요청에는 생성하지 않는다.
 - HTTP 인증·지식 입력·검색·대화, 사용자 UserId와 등록 정보, ACL, 색인 outbox는 유지했다.

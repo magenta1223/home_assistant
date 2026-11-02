@@ -1,20 +1,20 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
+import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
 import com.homeassistant.application.port.input.identity.UserAuthentication
 import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
+import com.homeassistant.application.port.input.episode.conversation.EpisodeConversation
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
 import io.ktor.server.routing.routing
 
 fun Application.configureRoutes(
-    memoryAnalysis: MemoryAnalysis,
+    episodeAnalysis: EpisodeAnalysis,
     httpApiKeys: Map<String, UserId> = emptyMap(),
     users: UserRegistry = UserRegistry.NONE,
     authentication: UserAuthentication = UserAuthentication.NONE,
-    memoryConversation: MemoryConversation? = null,
+    episodeConversation: EpisodeConversation? = null,
     readiness: () -> Boolean = { true },
 ) {
     validateHttpUsers(httpApiKeys.values, users)
@@ -22,13 +22,13 @@ fun Application.configureRoutes(
     routing {
         healthRoutes(readiness)
         knowledgePageRoute()
-        memoryConversationPageRoute()
+        episodeConversationPageRoute()
         httpAuthAssetRoutes()
         publicLoginRoutes(authentication)
         authenticate(*HTTP_AUTHENTICATION_NAMES) {
             sessionStatusRoute()
-            knowledgeInjectionRoutes(memoryAnalysis, users)
-            memoryConversationRoutes(memoryConversation)
+            knowledgeInjectionRoutes(episodeAnalysis, users)
+            episodeConversationRoutes(episodeConversation)
         }
     }
 }

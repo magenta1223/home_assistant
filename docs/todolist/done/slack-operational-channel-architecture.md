@@ -21,7 +21,7 @@ Slack을 단일 슬래시 명령 모음이 아닌 웹 UI와 동등한 운영 채
 
 ## 구현 계획
 
-1. 기존 Slack DM의 사용자 조회, 등록 상태 전이, 최초 질문 보관·재개, memory 답변 routing을 기술 중립적인 application input port로 이동한다. **완료**
+1. 기존 Slack DM의 사용자 조회, 등록 상태 전이, 최초 질문 보관·재개, episode 답변 routing을 기술 중립적인 application input port로 이동한다. **완료**
 2. Slack adapter를 인증된 이벤트 변환, 즉시 ack, modal/block 렌더링과 결과 전달로 제한한다. **완료**
 3. 운영 기능·채널·workflow·감사 이벤트의 최소 domain/application 모델과 책임 경계를 ADR로 확정한다.
 4. 기능 레지스트리와 채널별 capability 조회 계약을 추가한다.
@@ -32,7 +32,7 @@ Slack을 단일 슬래시 명령 모음이 아닌 웹 UI와 동등한 운영 채
 
 ## 구현된 기반
 
-- `MemoryAnswerWorkflow`가 외부 conversation identity를 받아 사용자를 resolve하고 등록 필요 여부와 memory 답변을 결정한다.
+- `EpisodeAnswerWorkflow`가 외부 conversation identity를 받아 사용자를 resolve하고 등록 필요 여부와 episode 답변을 결정한다.
 - 미등록 사용자의 최초 질문은 application output port 뒤의 SQLite 저장소에 보존되며 등록 완료 후 같은 application workflow에서 재개한다.
 - 표시 이름 정규화와 길이 제한은 domain invariant이며 application이 검증 결과를 채널에 제공한다.
 - Slack modal의 channel metadata는 Slack payload에서 재사용하지 않고 application에 보관된 최초 질문의 reply key에서 생성한다.
@@ -48,12 +48,12 @@ Slack을 단일 슬래시 명령 모음이 아닌 웹 UI와 동등한 운영 채
 
 - 임의의 범용 플러그인 마켓플레이스
 - Slack 외 채널의 실제 구현
-- 기존 canonical memory 권한 모델 변경
+- 기존 canonical episode 권한 모델 변경
 
 ## 종료 내용
 
-계획의 1~2단계인 사용자 등록·memory 답변 application 경계 분리는 완료했고
-`slack-memory-answer-application-boundary.md`에 별도 완료 이력으로 남겼다. 나머지 운영 기능 registry,
+계획의 1~2단계인 사용자 등록·episode 답변 application 경계 분리는 완료했고
+`slack-episode-answer-application-boundary.md`에 별도 완료 이력으로 남겼다. 나머지 운영 기능 registry,
 공통 interaction 상태, 감사 저장소와 Slack 지식 주입 기반은 구현하지 않는다.
 
 범용 운영 기능 registry, 공통 interaction 상태와 감사 저장소를 한 번에 도입하는 계획은 취소한다.
@@ -62,7 +62,7 @@ registry만 구현하고, 업무 규칙은 `KnowledgeInjectionWorkflow`에 유�
 
 ## 검증
 
-- Slack inbound에는 등록·DM memory 답변과 `/knowledge` 지식 주입 경로가 있다.
+- Slack inbound에는 등록·DM episode 답변과 `/knowledge` 지식 주입 경로가 있다.
 - 로컬 지식 주입은 `/knowledge`와 `/api/knowledge/import/analyze`에 그대로 유지되어 있다.
 - 2026-08-20: `:application:test`, `:adapter-inbound:test`, `:adapter-outbound:test` 통과
 

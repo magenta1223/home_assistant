@@ -7,7 +7,7 @@
 ## 현재 결정
 
 Slack 연결은 제거했으며 현재 HTTP 화면은 사용자가 직접 여는 pull 채널이다. 확정되지 않은
-delivery 채널을 전제로 worker, 승인 UI와 Memory 추론을 먼저 만들지 않는다.
+delivery 채널을 전제로 worker, 승인 UI와 Episode 추론을 먼저 만들지 않는다.
 
 재개 조건은 다음 두 가지다.
 
@@ -16,7 +16,7 @@ delivery 채널을 전제로 worker, 승인 UI와 Memory 추론을 먼저 만들
 
 ## 문제
 
-Task나 Memory에 시점이 기록되어도 사용자가 다시 화면을 열지 않으면 놓칠 수 있다. 외부 전달은
+Task나 Episode에 시점이 기록되어도 사용자가 다시 화면을 열지 않으면 놓칠 수 있다. 외부 전달은
 재시작·재시도 중 중복될 수 있고, 잘못된 수신자 선택은 권한 누출로 이어진다.
 
 ## 첫 구현 범위
@@ -27,7 +27,7 @@ Task나 Memory에 시점이 기록되어도 사용자가 다시 화면을 열지
 - delivery adapter는 application 사용자를 채널 identity로 변환하고 전송 결과만 반환한다.
 - producer transaction은 delivery 실패 때문에 롤백하지 않는다.
 
-Memory에서 모델이 날짜·수신자를 추론해 후보를 만들고 별도 승인 workflow를 운영하는 기능은 실제
+Episode에서 모델이 날짜·수신자를 추론해 후보를 만들고 별도 승인 workflow를 운영하는 기능은 실제
 명시적 알림이 안정적으로 사용된 뒤에만 검토한다.
 
 ## 구현 순서
@@ -51,7 +51,7 @@ Memory에서 모델이 날짜·수신자를 추론해 후보를 만들고 별도
 ## 제외 범위
 
 - Slack 기능 추가
-- Memory 기반 자동 후보 발견과 승인 workflow
+- Episode 기반 자동 후보 발견과 승인 workflow
 - 반복·위치·센서·임의 조건 trigger
 - 범용 automation DSL, escalation과 복잡한 사용자 선호도
 

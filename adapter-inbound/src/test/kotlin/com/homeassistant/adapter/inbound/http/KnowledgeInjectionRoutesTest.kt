@@ -1,15 +1,15 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
+import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
+import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisResult
 import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser
-import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.episode.EpisodeProposal
+import com.homeassistant.domain.episode.EpisodeVisibility
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -31,27 +31,27 @@ import kotlin.test.assertContentEquals
 
 class KnowledgeInjectionRoutesTest {
     @Test
-    fun `memory answers are not exposed over HTTP`() = testApplication {
+    fun `episode answers are not exposed over HTTP`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
-            configureRoutes(RecordingMemoryAnalysis())
+            configureRoutes(RecordingEpisodeAnalysis())
         }
 
-        assertEquals(HttpStatusCode.NotFound, client.post("/api/memories/answer").status)
+        assertEquals(HttpStatusCode.NotFound, client.post("/api/episodes/answer").status)
     }
 
     @Test
     fun `knowledge page is hosted without exposing data`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
-            configureRoutes(RecordingMemoryAnalysis())
+            configureRoutes(RecordingEpisodeAnalysis())
         }
 
         val response = client.get(AppConfig.ROUTE_KNOWLEDGE_PAGE)
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.bodyAsText().contains("지식 주입"))
-        assertTrue(response.bodyAsText().contains(AppConfig.ROUTE_MEMORY_CONVERSATION_PAGE))
+        assertTrue(response.bodyAsText().contains(AppConfig.ROUTE_EPISODE_CONVERSATION_PAGE))
         assertTrue(response.bodyAsText().contains(HTTP_AUTH_SESSION_SCRIPT_ROUTE))
         assertTrue(!response.bodyAsText().contains("localStorage"))
         assertTrue(!response.bodyAsText().contains("sessionStorage"))
@@ -59,11 +59,11 @@ class KnowledgeInjectionRoutesTest {
 
     @Test
     fun `authenticated import passes selected viewers as restricted source access`() = testApplication {
-        val analysis = RecordingMemoryAnalysis()
+        val analysis = RecordingEpisodeAnalysis()
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                memoryAnalysis = analysis,
+                episodeAnalysis = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = FixedUserRegistry(
                     RegisteredUser(UserId("operator"), "운영자"),
@@ -94,7 +94,7 @@ class KnowledgeInjectionRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val captured = analysis.requests.single()
         assertEquals("operator", captured.userId)
-        assertEquals(MemoryVisibility.RESTRICTED, captured.access.visibility)
+        assertEquals(EpisodeVisibility.RESTRICTED, captured.access.visibility)
         assertEquals(setOf("member-1", "member-2"), captured.access.allowedUserIds)
         assertEquals("text", captured.source.source.type)
     }
@@ -104,7 +104,7 @@ class KnowledgeInjectionRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                memoryAnalysis = RecordingMemoryAnalysis(),
+                episodeAnalysis = RecordingEpisodeAnalysis(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -134,8 +134,8 @@ class KnowledgeInjectionRoutesTest {
                   "alreadyAnalyzedRecordCount":0,
                   "visibility":"PUBLIC",
                   "allowedUserIds":[],
-                  "memoryCount":1,
-                  "memories":[{"text":"memory","evidenceRefs":[1]}]
+                  "episodeCount":1,
+                  "episodes":[{"text":"episode","evidenceRefs":[1]}]
                 }""",
             ),
             Json.parseToJsonElement(response.bodyAsText()),
@@ -147,7 +147,7 @@ class KnowledgeInjectionRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                memoryAnalysis = RecordingMemoryAnalysis(),
+                episodeAnalysis = RecordingEpisodeAnalysis(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -172,11 +172,11 @@ class KnowledgeInjectionRoutesTest {
 
     @Test
     fun `PDF reference can be submitted with direct text and keeps original bytes`() = testApplication {
-        val analysis = RecordingMemoryAnalysis()
+        val analysis = RecordingEpisodeAnalysis()
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                memoryAnalysis = analysis,
+                episodeAnalysis = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -215,7 +215,7 @@ class KnowledgeInjectionRoutesTest {
                 application {
                     install(ContentNegotiation) { json(JsonSerializer.json) }
                     configureRoutes(
-                        memoryAnalysis = RecordingMemoryAnalysis(),
+                        episodeAnalysis = RecordingEpisodeAnalysis(),
                         httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("unknown")),
                         users = operatorRegistry(),
                     )
@@ -225,16 +225,16 @@ class KnowledgeInjectionRoutesTest {
         }
     }
 
-    private class RecordingMemoryAnalysis : MemoryAnalysis {
-        val requests = mutableListOf<MemoryAnalysisRequest>()
+    private class RecordingEpisodeAnalysis : EpisodeAnalysis {
+        val requests = mutableListOf<EpisodeAnalysisRequest>()
 
-        override suspend fun execute(request: MemoryAnalysisRequest): MemoryAnalysisResult {
+        override suspend fun execute(request: EpisodeAnalysisRequest): EpisodeAnalysisResult {
             requests += request
-            val proposal = MemoryProposal(
-                content = "memory",
+            val proposal = EpisodeProposal(
+                content = "episode",
                 evidenceIds = listOf(1),
             )
-            return MemoryAnalysisResult(
+            return EpisodeAnalysisResult(
                 sourceType = request.source.source.type,
                 sourceName = request.source.source.name,
                 importedRecordCount = request.source.records.size,
@@ -242,8 +242,8 @@ class KnowledgeInjectionRoutesTest {
                 alreadyAnalyzedRecordCount = 0,
                 visibility = request.access.visibility,
                 allowedUserIds = request.access.allowedUserIds,
-                memoryCount = 1,
-                memories = listOf(proposal),
+                episodeCount = 1,
+                episodes = listOf(proposal),
             )
         }
     }

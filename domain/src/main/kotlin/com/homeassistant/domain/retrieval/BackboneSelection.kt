@@ -1,7 +1,7 @@
 package com.homeassistant.domain.retrieval
 
 import com.homeassistant.domain.group.GroupGeometry
-import com.homeassistant.domain.group.TopicVector
+import com.homeassistant.domain.group.ComponentVector
 
 /**
  * xMemory Stage I (equation 4): greedily picks the candidate that adds the most uncovered neighbor weight plus query
@@ -16,14 +16,14 @@ class BackboneSelection(private val neighbors: Int = 10) {
     init { require(neighbors >= 1) }
 
     /** The [neighbors] nodes nearest to [id] among [vectors] with their cosine to it, nearest first. */
-    fun neighborsOf(id: Int, vectors: Map<Int, TopicVector>): List<Pair<Int, Double>> =
+    fun neighborsOf(id: Int, vectors: Map<Int, ComponentVector>): List<Pair<Int, Double>> =
         GroupGeometry.nearest(vectors.getValue(id), vectors - id, neighbors)
 
     /**
      * Up to [limit] of [candidates] in pick order; an equal gain keeps the smaller id.
      * [vectors] hold every node of the level, so a candidate's neighbors are found across the whole level.
      */
-    fun select(candidates: Set<Int>, vectors: Map<Int, TopicVector>, query: TopicVector, limit: Int): List<Int> {
+    fun select(candidates: Set<Int>, vectors: Map<Int, ComponentVector>, query: ComponentVector, limit: Int): List<Int> {
         require(limit > 0)
         val reach = candidates.associateWith { coverage(it, candidates, vectors) }
         val total = reach.values.sumOf { it.values.sum() }
@@ -41,7 +41,7 @@ class BackboneSelection(private val neighbors: Int = 10) {
     }
 
     /** What picking [id] covers among [candidates], with each covered node's weight. */
-    private fun coverage(id: Int, candidates: Set<Int>, vectors: Map<Int, TopicVector>): Map<Int, Double> =
+    private fun coverage(id: Int, candidates: Set<Int>, vectors: Map<Int, ComponentVector>): Map<Int, Double> =
         neighborsOf(id, vectors).filter { it.first in candidates }
             .associate { (other, cosine) -> other to cosine.coerceAtLeast(0.0) } + (id to 1.0)
 }

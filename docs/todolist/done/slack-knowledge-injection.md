@@ -24,12 +24,12 @@ application use case를 호출한다.
 
 - Slack 경로와 웹 경로가 같은 입력 계약과 권한 규칙을 사용한다.
 - 사용자가 분석 전 audience와 대상 내용을 확인할 수 있다.
-- 실패·중복·만료 후 재시도해도 canonical memory와 권한이 손상되지 않는다.
+- 실패·중복·만료 후 재시도해도 canonical episode와 권한이 손상되지 않는다.
 - Slack에서 원문 또는 제한된 audience가 권한 없는 사용자에게 노출되지 않는다.
 
 ## 제외 범위
 
-- Slack을 통한 canonical memory 직접 편집
+- Slack을 통한 canonical episode 직접 편집
 - 대화 답변과 지식 주입의 세션·권한 상태 공유
 
 ## 실제 상태와 검증
@@ -39,7 +39,7 @@ application use case를 호출한다.
 - 직접 작성 형식은 붙여넣기만 허용한다. 카카오톡 내보내기 형식은 붙여넣기와 UTF-8 `.txt`
   파일 중 정확히 하나를 허용하며 파일은 Slack에서 내려받아 메모리에만 유지한다.
 - `KnowledgeInjectionWorkflow`가 Slack identity를 application user로 해석한 뒤 기존
-  `MemoryAnalysis`를 호출한다.
+  `EpisodeAnalysis`를 호출한다.
 - command와 interaction callback 중복을 거부하는 `SlackSlashCommandRegistry`로 listener를 등록한다.
 - modal 제출은 즉시 ack한 뒤 분석을 실행하고 원래 interaction의 response URL로 진행·결과를 알린다.
 - manifest 원격 갱신은 `updateSlackManifest` 작업이 validate 후 update한다.

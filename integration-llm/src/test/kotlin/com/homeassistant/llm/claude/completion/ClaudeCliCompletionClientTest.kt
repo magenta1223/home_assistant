@@ -26,7 +26,7 @@ class ClaudeCliCompletionClientTest {
                 """{ "type": "object" }""",
             )
 
-            assertEquals("""{"memories":[]}""", response)
+            assertEquals("""{"episodes":[]}""", response)
             val command = runner.command
             assertEquals("claude-test", command.first())
             assertEquals("claude-opus-5-5", command.after("--model"))
@@ -104,6 +104,6 @@ class ClaudeCliCompletionClientTest {
     }
 
     private companion object {
-        const val RESULT = """{"type":"result","is_error":false,"result":"","structured_output":{"memories":[]}}"""
+        const val RESULT = """{"type":"result","is_error":false,"result":"","structured_output":{"episodes":[]}}"""
     }
 }

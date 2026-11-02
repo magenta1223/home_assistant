@@ -1,6 +1,6 @@
 package com.homeassistant.application.port.output.source
 
-import com.homeassistant.domain.memory.MemoryAccess
+import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -12,7 +12,7 @@ interface SourceRecordRepository {
     fun saveAll(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
-        access: MemoryAccess = MemoryAccess.PUBLIC,
+        access: EpisodeAccess = EpisodeAccess.PUBLIC,
     ): SourceRecordSaveResult
 
     /** Returns source records belonging to the specified source. */

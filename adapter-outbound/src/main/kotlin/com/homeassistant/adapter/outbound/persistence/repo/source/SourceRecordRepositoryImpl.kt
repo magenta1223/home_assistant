@@ -3,8 +3,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceReferenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
-import com.homeassistant.domain.memory.MemoryAccess
-import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
@@ -24,7 +24,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
     override fun saveAll(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
-        access: MemoryAccess,
+        access: EpisodeAccess,
     ): SourceRecordSaveResult = transaction(db) {
         val recordsToAnalyze = mutableListOf<SourceRecord>()
         var importedRecordCount = 0
@@ -130,7 +130,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             .map { it.toSourceRecord() }
     }
 
-    private fun SourceRecordDraft.toSourceRecord(id: Int, access: MemoryAccess): SourceRecord =
+    private fun SourceRecordDraft.toSourceRecord(id: Int, access: EpisodeAccess): SourceRecord =
         SourceRecord(
             id = id,
             deduplicationKey = deduplicationKey,
@@ -183,18 +183,18 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         sha256 = this[SourceReferenceTable.sha256],
     )
 
-    private fun ResultRow.toAccess(): MemoryAccess {
+    private fun ResultRow.toAccess(): EpisodeAccess {
         val recordId = this[SourceRecordTable.id]
-        val visibility = MemoryVisibility.valueOf(this[SourceRecordTable.visibility])
-        val viewers = if (visibility == MemoryVisibility.PUBLIC) emptySet() else {
+        val visibility = EpisodeVisibility.valueOf(this[SourceRecordTable.visibility])
+        val viewers = if (visibility == EpisodeVisibility.PUBLIC) emptySet() else {
             SourceRecordViewerTable.select(SourceRecordViewerTable.userId)
                 .where { SourceRecordViewerTable.sourceRecordId eq recordId }
                 .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
         }
-        return MemoryAccess(visibility, viewers)
+        return EpisodeAccess(visibility, viewers)
     }
 
-    private fun assignAccess(recordId: Int, access: MemoryAccess) {
+    private fun assignAccess(recordId: Int, access: EpisodeAccess) {
         SourceRecordViewerTable.deleteWhere {
             SourceRecordViewerTable.sourceRecordId eq recordId
         }

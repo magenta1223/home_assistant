@@ -3,7 +3,7 @@ package com.homeassistant.domain.source
 
 
 /**
- * Source-agnostic document passed to memory analysis.
+ * Source-agnostic document passed to episode analysis.
  *
  * @property source Import source category and human-readable name.
  * @property records Ordered source records available for analysis.

@@ -1,7 +1,7 @@
 # ONNX Runtime 기반 임베딩 전환
 
 - 상태: HOLD — 실제 운영 장애 또는 측정된 비용이 생길 때 재평가
-- 2026-10-20: Qdrant 색인·검색·runtime과 `setupQdrant`·`reindexMemories`를 제거했다. 아래의 Qdrant 관련 내용은 더 이상 대상이 없다.
+- 2026-10-20: Qdrant 색인·검색·runtime과 `setupQdrant`·`reindexEpisodes`를 제거했다. 아래의 Qdrant 관련 내용은 더 이상 대상이 없다.
 - 우선순위: P2
 - 선행 작업: [managed-embedding-server.md](../done/managed-embedding-server.md)
 
@@ -19,12 +19,12 @@
 
 - Ollama 배포본과 모델을 별도로 설치하고 버전을 맞춰야 한다.
 - 애플리케이션 시작·종료가 자식 프로세스, 전용 포트, readiness polling에 결합된다.
-- 프로세스 시작 실패, 포트 충돌, 비정상 종료가 전체 memory 색인·검색과 애플리케이션 기동을 막는다.
+- 프로세스 시작 실패, 포트 충돌, 비정상 종료가 전체 episode 색인·검색과 애플리케이션 기동을 막는다.
 - 배포 스크립트가 Java, Qdrant뿐 아니라 Ollama 프로세스 트리와 포트도 안전하게 정리해야 한다.
 - setup과 정상 실행이 서로 다른 Ollama lifecycle을 중복해서 가진다.
 
 임베딩은 외부 서버가 필요한 기능이 아니므로 JVM 프로세스 안에서 ONNX Runtime으로 직접
-추론해 이 운영 경계를 제거한다. 임베딩이 memory 저장과 검색 모두에 사용되므로 잘못 전환하면
+추론해 이 운영 경계를 제거한다. 임베딩이 episode 저장과 검색 모두에 사용되므로 잘못 전환하면
 기존 Qdrant 벡터와 query 벡터가 호환되지 않아 검색 전체가 무효화된다. 따라서 단순 구현 교체가
 아니라 모델 산출물, tokenizer, pooling, 정규화와 전체 재색인을 하나의 P0 전환으로 관리한다.
 
@@ -35,7 +35,7 @@
 - `setupEmbedding`이 검증된 모델 bundle을 준비하되 프로세스를 시작하거나 포트를 열지 않게 한다.
 - 정상 실행에서 Ollama 실행 파일, HTTP API, 자식 프로세스와 `11435` 포트 의존성을 제거한다.
 - 현재 모델의 768차원 E5 의미 계약을 명시하고 ONNX 구현에서도 동일하게 재현한다.
-- 기존 canonical memory를 새 임베딩으로 전부 재색인한 후 검증된 새 Qdrant collection으로
+- 기존 canonical episode를 새 임베딩으로 전부 재색인한 후 검증된 새 Qdrant collection으로
   안전하게 전환한다.
 - 누락·손상된 모델, tokenizer 불일치와 native library 로딩 실패를 시작 시 명확하게 감지한다.
 - 전환 전 Ollama 경로와 기존 Qdrant collection을 보존해 운영 검증 실패 시 되돌릴 수 있게 한다.
@@ -88,9 +88,9 @@
 
 1. 한국어, 영어, 혼합 언어, 숫자·날짜, 특수문자, 장문과 유사/비유사 문장으로 고정 corpus를
    만든다.
-2. 현재 Ollama 구현에 대해 출력 차원, norm, 반복 호출 결정성, latency와 memory 검색 top-k를
+2. 현재 Ollama 구현에 대해 출력 차원, norm, 반복 호출 결정성, latency와 episode 검색 top-k를
    기록한다.
-3. 실제 canonical memory 검색에서 반드시 찾아야 할 query-memory 사례를 회귀 fixture로 만든다.
+3. 실제 canonical episode 검색에서 반드시 찾아야 할 query-episode 사례를 회귀 fixture로 만든다.
 4. 현재 Ollama 모델의 정확한 식별 정보와 digest를 기록한다.
 5. 공식 Hugging Face PyTorch 출력도 같은 corpus로 생성해 Ollama 결과와 cosine similarity,
    ranking 차이를 비교한다.
@@ -112,7 +112,7 @@
    - 어느 경로도 공식 tokenizer와 일치하지 않으면 구현을 진행하지 않고 blocker로 기록
 4. 우선 FP32 모델로 tokenization, inference, mean pooling과 L2 normalization을 끝까지 구현한다.
 5. 기준 corpus에서 Hugging Face reference와 수치 오차, Ollama 대비 검색 ranking을 비교한다.
-6. startup 시간, 단건 latency, 동시 호출, resident memory를 production 사양에서 측정한다.
+6. startup 시간, 단건 latency, 동시 호출, resident episode를 production 사양에서 측정한다.
 
 spike 결과로 tokenizer 경로, ONNX opset, session option, thread 수와 최종 artifact 구성을
 결정한다. ONNX Runtime Extensions가 Windows Java용 별도 native build를 요구하면 그 운영 비용까지
@@ -145,8 +145,8 @@ spike 결과로 tokenizer 경로, ONNX opset, session option, thread 수와 최�
    소유권을 명확히 한다.
 5. 동시 호출 시 session 사용이 안전한지 검증하고 필요 이상의 전역 lock은 두지 않는다.
 6. blank input, token truncation, 잘못된 출력 shape, NaN/Infinity와 zero norm을 명확히 거부한다.
-7. `ApplicationServicesFactory`와 `MemoryReindex`는 새 factory를 사용하되 기존 `TextEmbedder`를
-   소비하는 memory indexing/search 흐름은 변경하지 않는다.
+7. `ApplicationServicesFactory`와 `EpisodeReindex`는 새 factory를 사용하되 기존 `TextEmbedder`를
+   소비하는 episode indexing/search 흐름은 변경하지 않는다.
 8. 애플리케이션 시작 시 실제 embedding probe를 한 번 수행한다. 별도 process runtime을 만들지
    말고, ONNX resource의 `close` 책임만 application lifecycle에 연결한다.
 
@@ -156,16 +156,16 @@ Ollama로 만든 vector와 ONNX vector는 모델 이름과 차원이 같아도 �
 기존 collection에 새 vector를 부분적으로 섞지 않는다.
 
 1. 기존 collection과 다른 versioned collection을 생성한다.
-2. 새 ONNX embedder를 사용해 모든 canonical memory를 새 collection에 전체 재색인한다.
-3. SQLite canonical memory 수와 새 collection point 수, 실패·superseded outbox 수를 대조한다.
-4. 고정 회귀 fixture와 실제 memory query로 top-k, score와 접근 권한 결과를 비교한다.
+2. 새 ONNX embedder를 사용해 모든 canonical episode를 새 collection에 전체 재색인한다.
+3. SQLite canonical episode 수와 새 collection point 수, 실패·superseded outbox 수를 대조한다.
+4. 고정 회귀 fixture와 실제 episode query로 top-k, score와 접근 권한 결과를 비교한다.
 5. 검증이 끝난 뒤 application 설정을 새 collection으로 한 번에 전환하고 재시작한다.
-6. HTTP memory conversation와 새 memory 저장·검색 smoke test를 수행한다.
+6. HTTP episode conversation와 새 episode 저장·검색 smoke test를 수행한다.
 7. 관찰 기간에는 기존 Ollama 설치와 기존 collection을 읽지 않는 상태로 보존한다.
 8. 실패하면 이전 배포본과 이전 collection 설정으로 함께 rollback한다. embedder와 collection 중
    하나만 되돌리는 혼합 상태는 허용하지 않는다.
 
-현재 `reindexMemories`의 outbox 기반 전체 재색인 흐름은 재사용하되, 대상 collection을 명시하고
+현재 `reindexEpisodes`의 outbox 기반 전체 재색인 흐름은 재사용하되, 대상 collection을 명시하고
 운영 중인 기존 collection을 덮어쓰지 않도록 보강한다.
 
 ### 6. Ollama 운영 경계 제거
@@ -195,8 +195,8 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 3. ONNX 출력이 확정된 reference 오차 안에 드는지 corpus 전체에서 확인한다.
 4. 같은 입력 반복, 장문 truncation, 다국어, 동시 호출과 resource close를 통합 테스트한다.
 5. 누락·checksum 불일치·손상된 ONNX·native DLL 로딩 실패 시 setup/startup 오류를 검증한다.
-6. `gradlew test`, `setupEmbedding`, `setupRuntime`, `reindexMemories`를 새 경로로 검증한다.
-7. `HOMESERVER`에서 startup 시간, embedding latency와 memory 사용량을 기준선과 비교한다.
+6. `gradlew test`, `setupEmbedding`, `setupRuntime`, `reindexEpisodes`를 새 경로로 검증한다.
+7. `HOMESERVER`에서 startup 시간, embedding latency와 episode 사용량을 기준선과 비교한다.
 8. 별도 collection 재색인, 전환, health, HTTP 질의와 rollback을 순서대로 rehearsal한다.
 9. 운영 관찰이 끝난 뒤에만 Ollama runtime과 이전 collection 삭제를 별도 정리 작업으로 수행한다.
 
@@ -209,14 +209,14 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 - `TextEmbedder` 출력은 항상 768차원이고 유한하며 L2 norm이 허용 오차 안에서 1이다.
 - tokenizer와 ONNX FP32 출력이 spike에서 확정한 공식 reference 허용 오차를 모든 고정 fixture에서
   만족한다.
-- 기존 Ollama 대비 byte equality가 아니라, 고정 검색 사례의 기대 memory가 모두 top-k 안에
+- 기존 Ollama 대비 byte equality가 아니라, 고정 검색 사례의 기대 episode가 모두 top-k 안에
   유지되고 실제 corpus 평가에서 승인한 품질 기준을 만족한다.
-- 모든 canonical memory가 새 collection에 재색인되며 memory 수, point 수와 실패 건수 검증이
+- 모든 canonical episode가 새 collection에 재색인되며 episode 수, point 수와 실패 건수 검증이
   통과한다.
 - 새 embedder와 새 collection이 항상 한 쌍으로 배포·rollback되고 혼합 vector 상태가 없다.
 - 누락되거나 손상된 bundle은 setup 안내가 포함된 오류로 startup 전에 실패한다.
 - concurrent embedding과 application shutdown에서 native resource leak이나 종료 hang이 없다.
-- production에서 health, 새 memory 색인, semantic search와 HTTP memory conversation smoke test가
+- production에서 health, 새 episode 색인, semantic search와 HTTP episode conversation smoke test가
   통과한다.
 - Ollama 제거 후 Gradle 전체 테스트와 배포 종료·복구 회귀 테스트가 통과한다.
 - rollback rehearsal과 운영 관찰이 끝날 때까지 이전 배포본과 Qdrant collection이 보존된다.
@@ -229,7 +229,7 @@ ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다
 | pooling/prefix 차이로 검색 품질 저하 | 공식 reference와 실제 retrieval 회귀를 모두 통과하기 전 cutover 금지 |
 | ONNX Java native library 배포 실패 | production Windows/JDK 최소 실행 검증 전 의존성 확정 금지 |
 | Extensions가 별도 native build를 요구 | 재현 가능한 binary 공급·checksum 경로가 없으면 다른 tokenizer 경로 선택 |
-| FP32 memory/latency 과다 | 먼저 session/thread 설정을 측정하고, 정확도 기준 고정 후에만 INT8 별도 평가 |
+| FP32 episode/latency 과다 | 먼저 session/thread 설정을 측정하고, 정확도 기준 고정 후에만 INT8 별도 평가 |
 | 기존 vector와 새 vector 혼합 | versioned collection 전체 재색인과 embedder-collection 묶음 전환 강제 |
 | artifact 출처·license 불명확 | 제3자 pre-export 모델을 바로 사용하지 않고 공식 revision 기반 bundle과 provenance 기록 |
 

@@ -48,17 +48,17 @@ internal class CodexCliClient(
                 check(transport.start(result)) { "Codex app-server could not start" }
                 await(transport.initialize(AppServerProtocol.Initialize(ClientInfo("home_second_brain", "Home Second Brain", "1"))), deadline)
                 val thread = await(transport.startThread(AppServerProtocol.ThreadStart(
-                    model = MEMORY_GENERATION_MODEL,
+                    model = EPISODE_GENERATION_MODEL,
                     cwd = workingDirectory.toString(),
-                    config = ThreadConfig(modelReasoningEffort = MEMORY_GENERATION_REASONING_EFFORT),
+                    config = ThreadConfig(modelReasoningEffort = EPISODE_GENERATION_REASONING_EFFORT),
                     ephemeral = true,
                 )), deadline).thread
                 await(transport.startTurn(AppServerProtocol.TurnStart(
                     threadId = thread.id,
                     input = input,
                     cwd = workingDirectory.toString(),
-                    model = MEMORY_GENERATION_MODEL,
-                    effort = MEMORY_GENERATION_REASONING_EFFORT,
+                    model = EPISODE_GENERATION_MODEL,
+                    effort = EPISODE_GENERATION_REASONING_EFFORT,
                     outputSchema = schema,
                 )), deadline)
                 await(result.completed, deadline)
@@ -101,7 +101,7 @@ internal class CodexCliClient(
 
     private companion object {
         const val DEFAULT_TIMEOUT_MILLIS = 10 * 60 * 1_000L
-        const val MEMORY_GENERATION_MODEL = "gpt-5.6-sol"
-        const val MEMORY_GENERATION_REASONING_EFFORT = "high"
+        const val EPISODE_GENERATION_MODEL = "gpt-5.6-sol"
+        const val EPISODE_GENERATION_REASONING_EFFORT = "high"
     }
 }

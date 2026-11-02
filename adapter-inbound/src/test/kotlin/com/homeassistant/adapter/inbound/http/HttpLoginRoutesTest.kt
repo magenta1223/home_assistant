@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
+import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
+import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
 import com.homeassistant.application.port.output.identity.PasswordHash
 import com.homeassistant.application.port.output.identity.PasswordHasher
 import com.homeassistant.application.port.output.identity.StoredCredential
@@ -126,7 +126,7 @@ class HttpLoginRoutesTest {
             testApplication {
                 application {
                     configureRoutes(
-                        memoryAnalysis = unusedMemoryAnalysis(),
+                        episodeAnalysis = unusedEpisodeAnalysis(),
                         httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_KEY) to UserId("not-registered")),
                     )
                 }
@@ -138,7 +138,7 @@ class HttpLoginRoutesTest {
     private fun Application.configure() {
         install(ContentNegotiation) { json(JsonSerializer.json) }
         configureRoutes(
-            memoryAnalysis = unusedMemoryAnalysis(),
+            episodeAnalysis = unusedEpisodeAnalysis(),
             httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_KEY) to MACHINE.userId),
             users = object : UserRegistry {
                 override fun list() = listOf(MACHINE)
@@ -159,8 +159,8 @@ class HttpLoginRoutesTest {
     private fun sessionCookie(login: HttpResponse): String =
         login.headers[HttpHeaders.SetCookie].orEmpty().substringBefore(';')
 
-    private fun unusedMemoryAnalysis() = object : MemoryAnalysis {
-        override suspend fun execute(request: MemoryAnalysisRequest) = error("unused")
+    private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
+        override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
     }
 
     private object PlainHasher : PasswordHasher {

@@ -17,10 +17,10 @@
 - Slack Java SDK, Web API와 Socket Mode lifecycle
 - message, modal, file download 같은 Slack 고유 통신
 - Bolt listener와 interaction routing
-- `MemoryAnswerWorkflow`, `KnowledgeInjectionWorkflow`를 호출하는 application input adapter
+- `EpisodeAnswerWorkflow`, `KnowledgeInjectionWorkflow`를 호출하는 application input adapter
 - application result를 Slack message/modal로 변환하는 기능별 presentation
 
-특히 `SlackClient`는 application input port를 구현하지 않으면서 memory answer와 knowledge
+특히 `SlackClient`는 application input port를 구현하지 않으면서 episode answer와 knowledge
 injection adapter가 함께 사용하는 외부 시스템 client다. Slack은 event 수신과 응답 전송이 하나의
 연결에 모인 bidirectional integration이므로 이를 단순 inbound helper로 취급하면 기술 lifecycle과
 기능 adapter 경계가 보이지 않는다.
@@ -48,8 +48,8 @@ injection adapter가 함께 사용하는 외부 시스템 client다. Slack은 ev
 ### `adapter-inbound`에 유지
 
 - Slack identity를 application `ConversationIdentity`로 변환하는 코드
-- `MemoryAnswerWorkflow`, `KnowledgeInjectionWorkflow` 호출
-- 등록, memory answer와 knowledge injection의 기능별 분기
+- `EpisodeAnswerWorkflow`, `KnowledgeInjectionWorkflow` 호출
+- 등록, episode answer와 knowledge injection의 기능별 분기
 - application result/exception을 사용자 message와 modal로 렌더링하는 코드
 - Kakao/plain-text source parser 호출과 domain draft 생성
 

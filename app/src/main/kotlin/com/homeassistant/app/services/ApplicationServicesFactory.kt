@@ -2,23 +2,23 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
 import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
-import com.homeassistant.adapter.outbound.memoryanalysis.MemoryExtractorFactory
+import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.application.usecase.memory.analysis.MemoryAnalysisService
+import com.homeassistant.application.usecase.episode.analysis.EpisodeAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
-import com.homeassistant.adapter.outbound.topicdescription.TopicDescriptionGeneratorFactory
-import com.homeassistant.application.usecase.memory.write.MemoryProposalsPersister
-import com.homeassistant.application.usecase.memory.conversation.HandleMemoryConversation
-import com.homeassistant.application.usecase.memory.conversation.ExpireIdleMemoryConversations
-import com.homeassistant.application.usecase.memory.conversation.MemoryConversationContextProvider
+import com.homeassistant.adapter.outbound.componentdescription.ComponentDescriptionGeneratorFactory
+import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
+import com.homeassistant.application.usecase.episode.conversation.HandleEpisodeConversation
+import com.homeassistant.application.usecase.episode.conversation.ExpireIdleEpisodeConversations
+import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
-import com.homeassistant.adapter.outbound.embedding.memory.MemoryEmbeddingAdapter
-import com.homeassistant.adapter.outbound.embedding.memory.QueryEmbeddingAdapter
-import com.homeassistant.application.usecase.topic.*
+import com.homeassistant.adapter.outbound.embedding.episode.EpisodeEmbeddingAdapter
+import com.homeassistant.adapter.outbound.embedding.episode.QueryEmbeddingAdapter
+import com.homeassistant.application.usecase.component.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
 import com.homeassistant.llm.AgentBackend
@@ -42,55 +42,55 @@ object ApplicationServicesFactory {
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val textEmbedder = managedEmbedding.embedder
-        val memoryEmbeddings = PrepareMemoryEmbedding(
-            MemoryEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime),
-            repositories.memoryEmbeddings,
+        val episodeEmbeddings = PrepareEpisodeEmbedding(
+            EpisodeEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime),
+            repositories.episodeEmbeddings,
         )
-        val topicEmbeddings = PrepareTopicEmbedding(
-            TopicCentroidVectors(repositories.topicMaintenance, memoryEmbeddings.space),
-            repositories.topicEmbeddings,
+        val componentEmbeddings = PrepareComponentEmbedding(
+            ComponentCentroidVectors(repositories.componentMaintenance, episodeEmbeddings.space),
+            repositories.componentEmbeddings,
         )
-        val organizeTopics = OrganizePendingTopicsService(
-            repositories.pendingTopics,
-            OrganizeTopic(
+        val organizeComponents = OrganizePendingComponentsService(
+            repositories.pendingComponents,
+            OrganizeComponent(
                 repositories.groupSnapshots,
                 repositories.groupChanges,
-                topicEmbeddings,
+                componentEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
             ),
         )
-        val organizeMemories = OrganizePendingMemoriesService(
-            repositories.topicAssignmentOutbox,
-            AssignMemoryToTopics(repositories.topicMaintenance, memoryEmbeddings),
-            RefreshGroupedTopicEmbeddings(repositories.groupSnapshots, repositories.groupChanges, topicEmbeddings),
-            organizeTopics,
+        val organizeEpisodes = OrganizePendingEpisodesService(
+            repositories.componentAssignmentOutbox,
+            AssignEpisodeToComponents(repositories.componentMaintenance, episodeEmbeddings),
+            RefreshGroupedComponentEmbeddings(repositories.groupSnapshots, repositories.groupChanges, componentEmbeddings),
+            organizeComponents,
             MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings)),
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-        val memorySaver = MemoryProposalsPersister(
-            batchWriter = repositories.canonicalMemoryBatchWriter,
+        val episodeSaver = EpisodeProposalsPersister(
+            batchWriter = repositories.canonicalEpisodeBatchWriter,
         )
-        val memoryAnalysisService = MemoryAnalysisService(
-            memoryExtractor = MemoryExtractorFactory.create(completionClient),
+        val episodeAnalysisService = EpisodeAnalysisService(
+            episodeExtractor = EpisodeExtractorFactory.create(completionClient),
             sourceRecords = repositories.sourceRecords,
-            memorySaver = memorySaver,
+            episodeSaver = episodeSaver,
             accessPolicy = users,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
-        val topicSearch = TopicSearcher(
-            topics = repositories.topicMaintenance,
+        val componentSearch = ComponentSearcher(
+            components = repositories.componentMaintenance,
             groups = repositories.groups,
             queries = QueryEmbeddingAdapter(textEmbedder),
-            memories = repositories.canonicalMemories,
-            memoryVectors = repositories.memoryEmbeddings,
-            space = memoryEmbeddings.space,
+            episodes = repositories.canonicalEpisodes,
+            episodeVectors = repositories.episodeEmbeddings,
+            space = episodeEmbeddings.space,
             accessPolicy = users,
         )
-        val describeTopic = TopicDescriber(
-            topics = repositories.topicMaintenance,
-            memories = repositories.canonicalMemories,
-            descriptions = repositories.topicDescriptions,
-            generator = TopicDescriptionGeneratorFactory.create(completionClient),
+        val describeComponent = ComponentDescriber(
+            components = repositories.componentMaintenance,
+            episodes = repositories.canonicalEpisodes,
+            descriptions = repositories.componentDescriptions,
+            generator = ComponentDescriptionGeneratorFactory.create(completionClient),
             accessPolicy = users,
         )
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
@@ -105,32 +105,32 @@ object ApplicationServicesFactory {
             agentBackend,
             if (conversationGateway == null) "unavailable" else "enabled",
         )
-        val memoryConversation = conversationGateway?.let {
+        val episodeConversation = conversationGateway?.let {
             val now = System.currentTimeMillis()
-            repositories.memoryConversationSessions.failStaleProcessing(
-                before = now - HandleMemoryConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+            repositories.episodeConversationSessions.failStaleProcessing(
+                before = now - HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS,
                 now = now,
             )
-            HandleMemoryConversation(
-                sessions = repositories.memoryConversationSessions,
-                contextProvider = MemoryConversationContextProvider(topicSearch),
+            HandleEpisodeConversation(
+                sessions = repositories.episodeConversationSessions,
+                contextProvider = EpisodeConversationContextProvider(componentSearch),
                 conversationGateway = it,
             )
         }
         val conversationExpiryWorker = conversationGateway?.let {
-            MemoryConversationExpiryWorker(
-                ExpireIdleMemoryConversations(
-                    sessions = repositories.memoryConversationSessions,
+            EpisodeConversationExpiryWorker(
+                ExpireIdleEpisodeConversations(
+                    sessions = repositories.episodeConversationSessions,
                     conversationGateway = it,
                 ),
             )
         } ?: ConversationExpiryWorker.NONE
         return DefaultApplicationServices(
-            memoryAnalysis = memoryAnalysisService,
-            organizeTopics = organizeTopics,
-            organizeMemories = organizeMemories,
-            describeTopic = describeTopic,
-            memoryConversation = memoryConversation,
+            episodeAnalysis = episodeAnalysisService,
+            organizeComponents = organizeComponents,
+            organizeEpisodes = organizeEpisodes,
+            describeComponent = describeComponent,
+            episodeConversation = episodeConversation,
             users = users,
             authentication = UserAuthenticationService(
                 repositories.userCredentials,
@@ -139,7 +139,7 @@ object ApplicationServicesFactory {
             ),
             embeddingRuntime = managedEmbedding.runtime,
             conversationExpiryWorker = conversationExpiryWorker,
-            topicAssignmentWorker = MemoryTopicAssignmentWorker(organizeMemories),
+            componentAssignmentWorker = EpisodeComponentAssignmentWorker(organizeEpisodes),
             conversationGateway = conversationGateway,
         )
     }

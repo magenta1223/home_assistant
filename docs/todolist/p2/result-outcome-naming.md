@@ -7,14 +7,14 @@
 
 `XxResult`와 `XxOutcome`의 구분이 일관되지 않아 이름만으로 타입의 모양을 알 수 없다.
 
-- Outcome: 항목 하나의 결말을 나타내는 sealed 타입이다. `MemoryAssignmentOutcome`, `TopicOrganizationOutcome`,
+- Outcome: 항목 하나의 결말을 나타내는 sealed 타입이다. `EpisodeAssignmentOutcome`, `ComponentOrganizationOutcome`,
   `GroupRefreshOutcome`, `GroupMergeOutcome`
 - Result는 세 가지 모양이 섞여 있다.
-  - ID와 Outcome의 짝: `MemoryAssignmentResult`, `TopicOrganizationResult`
-  - 호출 하나의 묶음: `MemoryOrganizationResult`, `MemoryAnalysisResult`, `SearchMemoriesResult`, `SourceRecordSaveResult`,
-    `MemoryIndexingRunResult`
-  - Outcome과 같은 의미의 sealed 변형: `GroupOrganizationResult`, `GroupWriteResult`, `TopicDescriptionResult`,
-    `ConversationTurnResult`, `MemoryConversationResult`, `KakaoChatSyncResult`
+  - ID와 Outcome의 짝: `EpisodeAssignmentResult`, `ComponentOrganizationResult`
+  - 호출 하나의 묶음: `EpisodeOrganizationResult`, `EpisodeAnalysisResult`, `SearchEpisodesResult`, `SourceRecordSaveResult`,
+    `EpisodeIndexingRunResult`
+  - Outcome과 같은 의미의 sealed 변형: `GroupOrganizationResult`, `GroupWriteResult`, `ComponentDescriptionResult`,
+    `ConversationTurnResult`, `EpisodeConversationResult`, `KakaoChatSyncResult`
 
 ## 목표
 

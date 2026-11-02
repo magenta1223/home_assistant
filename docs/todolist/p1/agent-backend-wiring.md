@@ -9,7 +9,7 @@
 `integration-llm`은 Codex와 Claude Code CLI를 같은 계약으로 제공하지만 아직 어디에도 연결되지
 않았다. adapter-outbound와 app은 여전히 `integration-codex`를 직접 사용한다.
 
-- `MemoryExtractor`, `CodexTopicAssignmentGenerator`, `CodexSourceReferenceInterpreter`가
+- `EpisodeExtractor`, `CodexComponentAssignmentGenerator`, `CodexSourceReferenceInterpreter`가
   `com.homeassistant.codex.completion.CompletionClient`·`CodexImage`를 import하고, 각 Factory가
   `CodexCompletionClientFactory`를 직접 호출한다.
 - 대화는 adapter-outbound의 `ConversationGatewayFactory`가 `CodexAppServerFactory`로
@@ -44,7 +44,7 @@ app만 `AgentBackend`를 알고, adapter-outbound는 `CompletionClient` 타입�
    - 알 수 없는 backend 값은 시작 시 실패시킨다(조용히 codex로 대체하지 않는다).
 2. adapter-outbound completion 사용처
    - `build.gradle.kts`: `integration-codex` → `integration-llm`.
-   - `MemoryExtractorFactory`, `TopicAssignmentGeneratorFactory`, `SourceReferenceInterpreterFactory`의
+   - `EpisodeExtractorFactory`, `ComponentAssignmentGeneratorFactory`, `SourceReferenceInterpreterFactory`의
      `create()`를 `create(client: CompletionClient)`로 바꾼다.
    - `CodexImage` → `CompletionImage`로 import를 교체한다.
 3. app 조립 (`ApplicationServicesFactory`)
@@ -68,8 +68,8 @@ app만 `AgentBackend`를 알고, adapter-outbound는 `CompletionClient` 타입�
 | adapter-outbound `CodexConversationGateway` + 테스트 | `integration-llm`에 같은 구현이 있음 | 삭제 |
 | adapter-outbound `ConversationGatewayFactory` | app이 `AgentClientFactory`를 직접 씀 | 삭제 |
 | adapter-outbound `NoOpConversationGateway` + `ConversationGatewayFactoryTest` | 인자 없는 `create()`는 테스트에서만 쓰임. app은 null로 대화를 끔 | 삭제 |
-| `CodexTopicAssignmentGenerator`, `CodexSourceReferenceInterpreter` 이름과 "Codex" 주석 | 더 이상 Codex 전용이 아님 | `ModelTopicAssignmentGenerator`, `ModelSourceReferenceInterpreter`로 이름 변경(테스트 포함) |
-| `ApplicationServices`의 "local Codex runtime" 주석, `application/usecase/memory/analysis/README.md`의 Codex transport 설명 | 사실과 달라짐 | backend 중립 문구로 수정 |
+| `CodexComponentAssignmentGenerator`, `CodexSourceReferenceInterpreter` 이름과 "Codex" 주석 | 더 이상 Codex 전용이 아님 | `ModelComponentAssignmentGenerator`, `ModelSourceReferenceInterpreter`로 이름 변경(테스트 포함) |
+| `ApplicationServices`의 "local Codex runtime" 주석, `application/usecase/episode/analysis/README.md`의 Codex transport 설명 | 사실과 달라짐 | backend 중립 문구로 수정 |
 | `integration-llm/.../codex/transport/README.md`의 Completion 절 | `CompletionClient` 위치 설명이 옛 구조 | 경로 수정 |
 
 ## 유지하는 것
@@ -99,10 +99,10 @@ app만 `AgentBackend`를 알고, adapter-outbound는 `CompletionClient` 타입�
 
 - `AGENT_BACKEND`와 `AGENT_TIMEOUT_SECONDS`를 추가하고 `CODEX_TIMEOUT_SECONDS`를 제거했다.
   알 수 없는 backend 값은 저장소를 열기 전에 시작을 실패시킨다.
-- app이 completion client 하나를 만들어 Memory 분석·Topic 배정·이미지 해석 Factory에 넘기고, 대화는
+- app이 completion client 하나를 만들어 Episode 분석·Component 배정·이미지 해석 Factory에 넘기고, 대화는
   `AgentClientFactory.conversation`을 그대로 쓴다.
 - adapter-outbound는 `integration-llm`의 `CompletionClient`/`CompletionImage`만 의존한다.
-  `CodexTopicAssignmentGenerator`·`CodexSourceReferenceInterpreter`를 `Model*`로 이름을 바꿨다.
+  `CodexComponentAssignmentGenerator`·`CodexSourceReferenceInterpreter`를 `Model*`로 이름을 바꿨다.
 - `integration-codex` 모듈, adapter-outbound의 `CodexConversationGateway`·`ConversationGatewayFactory`·
   `NoOpConversationGateway`와 그 테스트를 제거했다.
 - analysis README, Codex transport README, 배포 문서, core 경계 강화 문서의 Codex 전용 서술을 고쳤다.

@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.db.tables
 
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
-import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.episode.EpisodeVisibility
 import org.jetbrains.exposed.sql.Table
 
 internal object SourceReferenceTable : Table("source_references") {
@@ -23,7 +23,7 @@ internal object SourceRecordTable : Table("source_records") {
     val deduplicationKey = text("deduplication_key")
     val recordedAt = long("created_at")
     val analysisStatus = text("analysis_status").default(SourceRecordAnalysisStatus.ANALYZED.name)
-    val visibility = text("visibility").default(MemoryVisibility.PUBLIC.name)
+    val visibility = text("visibility").default(EpisodeVisibility.PUBLIC.name)
     /** False only for rows created before explicit source audiences existed. */
     val audienceExplicit = bool("audience_explicit").default(false)
     val referenceId = integer("reference_id").references(SourceReferenceTable.id).nullable()

@@ -103,7 +103,7 @@
 ## 제외 범위
 
 - 인덱싱 outbox와 background retry worker
-- memory placement 실패의 영속 기록과 재실행
+- episode placement 실패의 영속 기록과 재실행
 - Qdrant 프로세스의 직접 기동
 - 애플리케이션 시작 중 모델 자동 download
 - 원격 또는 hosted embedding provider

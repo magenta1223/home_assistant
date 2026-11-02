@@ -14,9 +14,9 @@ class PrepareEpisodeEmbedding(
     /** True when the embedding generator can be called now. */
     fun isAvailable(): Boolean = generator.isAvailable()
 
-    /** The stored vector of [episode]'s content in [space], generated and stored first when missing. */
-    fun prepare(episode: PendingEpisode): EpisodeEmbedding {
-        val key = episode.embeddingKey(space)
-        return store.find(key) ?: store.save(EpisodeEmbedding(key, generator.generate(episode.content)))
+    /** The stored vector of an episode's [content] in [space], generated and stored first when missing. */
+    fun prepare(episodeId: Int, content: String): EpisodeEmbedding {
+        val key = EpisodeEmbeddingKey.of(episodeId, content, space)
+        return store.find(key) ?: store.save(EpisodeEmbedding(key, generator.generate(content)))
     }
 }

@@ -7,7 +7,6 @@ import com.homeassistant.domain.group.ComponentVector
 
 /**
  * An episode whose Components are not extracted yet, with the messages it was written from, oldest first.
- * Content is immutable, so its hash keys the vector cache.
  */
 data class PendingEpisode(
     val id: Int,
@@ -17,7 +16,6 @@ data class PendingEpisode(
     val messages: List<String>,
 ) {
     init { require(id > 0 && title.isNotBlank() && content.isNotBlank() && messages.isNotEmpty()) }
-    fun embeddingKey(space: EmbeddingSpace) = EpisodeEmbeddingKey.of(id, content, space)
 }
 
 data class EpisodeEmbeddingKey(val episodeId: Int, val contentHash: String, val space: EmbeddingSpace) {

@@ -7,6 +7,8 @@ import com.homeassistant.application.port.output.episode.write.IdempotentEpisode
 import com.homeassistant.application.port.output.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.usecase.component.ComponentSearcher
 import com.homeassistant.application.usecase.component.ComponentStatementVectors
+import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
 import com.homeassistant.domain.group.ComponentVector
@@ -27,7 +29,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     private val member = UserId("member-1")
 
     @Test
-    fun `conversation context reads only the components the user can see`() {
+    fun `conversation context reads only the components and episodes the user can see`() {
         withRepositories("component-search-integration") { stores ->
             val east = ComponentVector.normalized(listOf(1.0, 0.0))
             val publicEpisode = stores.saveEpisode(member, "public", EpisodeAccess.PUBLIC)
@@ -51,7 +53,11 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 UserAccessPolicy { it == member },
             )
 
-            val conversationContext = EpisodeConversationContextProvider(search).context(member, "question")
+            val episodeSearch = EpisodeSearcher(
+                stores.canonicalEpisodes, { east }, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
+            )
+
+            val conversationContext = EpisodeConversationContextProvider(search, episodeSearch).context(member, "question")
 
             assertTrue(conversationContext.hasMatches)
             assertTrue(conversationContext.reference.contains(publicEpisode.content))

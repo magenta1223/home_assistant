@@ -14,6 +14,7 @@ import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersi
 import com.homeassistant.application.usecase.episode.conversation.HandleEpisodeConversation
 import com.homeassistant.application.usecase.episode.conversation.ExpireIdleEpisodeConversations
 import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
+import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.episode.EpisodeEmbeddingAdapter
@@ -83,14 +84,16 @@ object ApplicationServicesFactory {
             accessPolicy = users,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
+        val queryEmbedder = QueryEmbeddingAdapter(textEmbedder)
         val componentSearch = ComponentSearcher(
             components = repositories.componentMaintenance,
             groups = repositories.groups,
-            queries = QueryEmbeddingAdapter(textEmbedder),
+            queries = queryEmbedder,
             episodes = repositories.canonicalEpisodes,
             componentEmbeddings = componentEmbeddings,
             accessPolicy = users,
         )
+        val episodeSearch = EpisodeSearcher(repositories.canonicalEpisodes, queryEmbedder, episodeEmbeddings, users)
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
@@ -111,7 +114,7 @@ object ApplicationServicesFactory {
             )
             HandleEpisodeConversation(
                 sessions = repositories.episodeConversationSessions,
-                contextProvider = EpisodeConversationContextProvider(componentSearch),
+                contextProvider = EpisodeConversationContextProvider(componentSearch, episodeSearch),
                 conversationGateway = it,
             )
         }

@@ -27,6 +27,7 @@ class ModelComponentKnowledgeExtractorTest {
         assertEquals(listOf("홍승민은 임신기간 단축근로를 한다"), statements)
         assertContains(client.calls.single().userMessage, episode.content)
         assertContains(client.calls.single().system, "6개월 뒤에도 사실")
+        assertContains(client.calls.single().system, "추정이나 일반화를 더하지 마세요")
     }
 
     @Test

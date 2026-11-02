@@ -46,7 +46,6 @@ class OrganizeComponent(
     }
 
     private fun validateSpace(snapshot: GroupSnapshot) {
-        if (snapshot.componentsWithOutdatedGroupVector.isNotEmpty()) throw GroupRebuildRequired("group component vector changed")
         if (snapshot.embeddings.values.any { it.key.space != embeddings.space }) {
             throw GroupRebuildRequired("group embeddings use a different model or input format")
         }

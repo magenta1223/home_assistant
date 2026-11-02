@@ -20,14 +20,6 @@ class MergeSmallGroupsTest {
         assertEquals(3, store.reads)
     }
 
-    @Test fun `merging before group vectors are refreshed fails without writing`() {
-        val store = Store(mapOf(1 to setOf(1, 2), 2 to setOf(3)))
-        store.outdated = listOf(PendingComponent(1, "2"))
-
-        assertFailsWith<IllegalStateException> { merger(store).execute() }
-        assertTrue(store.writes.isEmpty())
-    }
-
     @Test fun `conflicts are retried on a new snapshot and bounded`() {
         val store = Store(mapOf(1 to setOf(1, 2), 2 to setOf(3)))
         store.conflicts = Int.MAX_VALUE
@@ -42,7 +34,6 @@ class MergeSmallGroupsTest {
     private inner class Store(initial: Map<Int, Set<Int>>) : GroupSnapshotReader, GroupChangeWriter {
         val groups = initial.toMutableMap()
         private val revisions = initial.keys.associateWith { 1L }.toMutableMap()
-        var outdated = emptyList<PendingComponent>()
         var conflicts = 0
         var reads = 0
         val writes = mutableListOf<GroupChange>()
@@ -50,7 +41,7 @@ class MergeSmallGroupsTest {
         override fun snapshot(): GroupSnapshot {
             reads++
             val embeddings = groups.values.flatten().associateWith { ComponentEmbedding(PendingComponent(it, "1").embeddingKey(space), east) }
-            return GroupSnapshot(groups.map { (id, components) -> StoredGroup(Group(id, components), revisions.getValue(id), east) }, embeddings, outdated)
+            return GroupSnapshot(groups.map { (id, components) -> StoredGroup(Group(id, components), revisions.getValue(id), east) }, embeddings)
         }
 
         override fun apply(change: GroupChange): GroupWriteResult {

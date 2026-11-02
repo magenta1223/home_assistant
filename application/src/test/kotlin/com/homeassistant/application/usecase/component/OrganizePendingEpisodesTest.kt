@@ -7,7 +7,6 @@ import com.homeassistant.application.port.output.group.*
 import com.homeassistant.application.port.output.component.*
 import com.homeassistant.application.usecase.group.MergeSmallGroups
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.group.RefreshGroupedComponentEmbeddings
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -81,22 +80,6 @@ class OrganizePendingEpisodesTest {
         assertEquals(3, fixture.service.enqueueUnassigned())
     }
 
-    @Test fun `outdated group vectors are refreshed before new components are grouped`() {
-        val fixture = Fixture()
-        val seven = fixture.add("seven", north)
-        val old = ComponentEmbedding(PendingComponent(seven.id, "old").embeddingKey(space), east)
-        fixture.groupSnapshot = GroupSnapshot(listOf(StoredGroup(Group(3, setOf(seven.id)), 5, east)), mapOf(seven.id to old),
-            listOf(seven.pending()))
-        val result = fixture.service.execute(1)
-        assertEquals(1, result.groupRefreshes.size)
-        val change = fixture.groupWrites.single()
-        assertEquals(mapOf(3 to 5L), change.expectedGroups)
-        assertTrue(change.incomingComponentIds.isEmpty())
-        assertEquals(seven.pending().embeddingKey(space), change.embeddings.getValue(seven.id).key)
-        assertEquals(north, change.embeddings.getValue(seven.id).vector)
-        assertEquals(listOf("groups", "merge"), fixture.order.takeLast(2))
-    }
-
     @Test fun `groups are merged only after a round that extracted episodes and placed every component`() {
         val placed = Fixture()
         placed.service.execute(1)
@@ -105,7 +88,7 @@ class OrganizePendingEpisodesTest {
         val idle = Fixture()
         idle.claimable = 0
         idle.service.execute(1)
-        assertEquals(listOf("refresh", "groups"), idle.order)
+        assertEquals(listOf("groups"), idle.order)
 
         val rebuilding = Fixture()
         rebuilding.placement = GroupOrganizationResult.RebuildRequired(emptyList(), "model changed")
@@ -117,7 +100,6 @@ class OrganizePendingEpisodesTest {
         var vectors = emptyMap<String, ComponentVector>()
         var statements = emptyMap<Int, List<String>>()
         var failing = emptySet<Int>()
-        var groupSnapshot = GroupSnapshot(emptyList(), emptyMap())
         val components = mutableListOf<Component>()
         val extracted = mutableSetOf<Int>()
         val extractions = mutableListOf<Extraction>()
@@ -162,9 +144,6 @@ class OrganizePendingEpisodesTest {
             if (episode.id in failing) error("model unavailable")
             statements[episode.id].orEmpty()
         }
-        private val groupReader = object : GroupSnapshotReader {
-            override fun snapshot(): GroupSnapshot { order.add("refresh"); return groupSnapshot }
-        }
         private val groupWriter = object : GroupChangeWriter {
             override fun apply(change: GroupChange): GroupWriteResult { groupWrites.add(change); return GroupWriteResult.Applied(listOf(3)) }
         }
@@ -185,7 +164,6 @@ class OrganizePendingEpisodesTest {
                 override fun enqueueUnassigned(now: Long) = 3
             },
             ExtractComponents(store, episodeEmbeddings, componentEmbeddings, extractor, knownLimit),
-            RefreshGroupedComponentEmbeddings(groupReader, groupWriter, componentEmbeddings),
             OrganizePendingComponents { order.add("groups"); placement },
             MergeSmallGroups(object : GroupSnapshotReader {
                 override fun snapshot(): GroupSnapshot { order.add("merge"); return GroupSnapshot(emptyList(), emptyMap()) }

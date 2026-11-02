@@ -116,7 +116,6 @@ class EpisodeComponentAssignmentTest {
         return OrganizePendingEpisodesService(
             ComponentAssignmentOutboxRepository(db),
             ExtractComponents(store, episodeEmbeddings, componentEmbeddings, extractor),
-            RefreshGroupedComponentEmbeddings(groups, groups, componentEmbeddings),
             OrganizePendingComponentsService(groups, OrganizeComponent(groups, groups, componentEmbeddings,
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)))),
             MergeSmallGroups(groups, groups, GroupMergePolicy(settings)),

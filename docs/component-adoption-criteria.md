@@ -105,6 +105,14 @@ Component 모델과 명시적 저장 기능은 유지하며 대체 생성 알고
 
 결정과 trade-off는 [Component 중심 벡터·ACL slice와 Component 검색](todolist/p1/component-centroid-acl-search.md)을 따른다.
 
+### 최신 작업 범위: Episode에서 Component 추출 (2026-11-02)
+
+- 위 2026-10-20 범위를 대체한다. Episode는 xMemory의 episode, Component는 component, Group은 group이다.
+- Component는 LLM이 Episode에서 추출한 장기 지식 한 문장이며 출처 Episode의 ACL을 따른다. cosine 배정과 ACL slice는 제거했다.
+- 대화 context는 Component 검색에 더해 Episode 직접 검색을 쓴다. Component가 없는 일회성 Episode도 찾기 위해서다.
+
+세부 내용은 [Episode·Component 그래프와 Group 설계](component-structure-proposal.md)의 2026-11-02 절을 따른다.
+
 ## 관련 문서
 
 - [Episode와 Component 그래프 설계](component-structure-proposal.md): 현재 개념 설계.

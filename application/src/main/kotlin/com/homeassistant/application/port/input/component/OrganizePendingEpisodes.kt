@@ -2,7 +2,6 @@ package com.homeassistant.application.port.input.component
 
 import com.homeassistant.application.port.input.group.GroupMergeOutcome
 import com.homeassistant.application.port.input.group.GroupOrganizationResult
-import com.homeassistant.application.port.input.group.GroupRefreshOutcome
 
 /** Extracts the Components of each queued Episode, then organizes Components into Groups. */
 interface OrganizePendingEpisodes {
@@ -26,7 +25,6 @@ data class EpisodeAssignmentResult(val episodeId: Int, val outcome: EpisodeAssig
 
 data class EpisodeOrganizationResult(
     val episodes: List<EpisodeAssignmentResult>,
-    val groupRefreshes: List<GroupRefreshOutcome>,
     val groups: GroupOrganizationResult,
     val groupMerges: List<GroupMergeOutcome>,
 )

@@ -69,7 +69,6 @@ object ApplicationServicesFactory {
                 componentEmbeddings,
                 ComponentKnowledgeExtractorFactory.create(completionClient),
             ),
-            RefreshGroupedComponentEmbeddings(repositories.groupSnapshots, repositories.groupChanges, componentEmbeddings),
             organizeComponents,
             MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings)),
         )

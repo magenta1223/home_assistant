@@ -1,6 +1,6 @@
 # Episode·Component 그래프와 Group 설계
 
-- 상태: Episode → Component(cosine 단일 배정)과 Component → Group(xMemory)을 outbox worker로 실행하고, 대화 context를 Component 검색으로 구성 (2026-10-20)
+- 상태: Episode에서 Component를 LLM으로 추출(xMemory 예측 후 비교)하고 Component → Group(xMemory)을 outbox worker로 실행하며, 대화 context를 Component 검색과 Episode 검색으로 구성 (2026-11-02). 아래 1~10장의 Component 설명 중 이와 다른 부분은 맨 끝 2026-11-02 절이 대체한다.
 - 기준: [메모리 구조 판단기준](component-adoption-criteria.md)의 최신 합의
 - 이 문서는 이전의 독립 문서형 Component 제안과 Episode + Group 제안을 대체한다.
 
@@ -13,7 +13,7 @@ Component끼리는 관련 관계로 연결한다. 사실의 전체 맥락은 Epi
 | 개념 | 역할 |
 |---|---|
 | Episode | 질문에 필요한 사실을 찾는 단위. 내용·ACL·근거를 가진다. |
-| Component | 중심 벡터와 ACL별 Episode 목록(slice)을 가진다 (2026-10-20). |
+| Component | Episode 하나에서 추출한 장기 지식 한 문장. 출처 Episode의 ACL을 따른다 (2026-11-02). |
 | Group | Component들을 묶는 한 단계 상위 검색 단위. 이번 생성·배치·분할 구현의 대상이다. |
 | Evidence | 사실이 나온 원문. 적용 조건·예외·전체 맥락을 확인하는 근거다. |
 
@@ -345,3 +345,20 @@ Component 소속은 LM이 정한다. Episode·Component 설명 임베딩으로 �
 - 임계값 0.6과 Component 수 3은 시작값이며 한국어 실데이터로 조정해야 한다.
 
 결정과 trade-off는 [Component 중심 벡터·ACL slice와 Component 검색](todolist/p1/component-centroid-acl-search.md)에 있다.
+
+### Episode에서 Component 추출 (2026-11-02)
+
+위 2026-10-20 결과의 cosine 배정, 중심 벡터, ACL slice와 xMemory 대응을 대체한다.
+
+- xMemory 대응: Episode가 episode(segment를 서술한 기록), Component가 component, Group이 group이다. segment 경계 판단은 따로 두지 않고,
+  Episode 추출이 같은 일에 관한 메시지를 하나의 Episode로 묶는다. Episode는 제목을 가진다.
+- 추출: xMemory 코드의 prediction-correction을 따른다. Episode에 가까운 기존 Component 최대 10개를 아는 지식으로 두고, 아는 지식이 없으면
+  장기 지식을 바로 뽑는다. 있으면 제목과 아는 지식만으로 내용을 예측한 뒤 원래 메시지와 비교해 새 장기 지식만 뽑는다.
+  아는 지식은 Episode의 독자가 모두 읽을 수 있는 Component로 한정한다.
+- Component: 문장 하나와 출처 Episode 하나를 가지며 바뀌지 않는다. 바뀐 지식은 새 Component로 더한다. Episode 하나에서 Component가
+  0개 이상 나오며, 일회성 Episode는 Component가 없다.
+- Group: Component 문장 임베딩으로 배치·분할·병합한다. 문장이 바뀌지 않으므로 Group 벡터 갱신 단계는 없다.
+- 검색: Group에서 들어가 Component를 고르고 그 출처 Episode를 싣는다. 그와 별도로 질문에 가까운 Episode를 최대 10개 찾아,
+  Component 블록에 없는 것을 덧붙인다(xMemory가 Component와 함께 Episode를 찾는 것과 같다).
+
+세부 흐름은 [Episode → Component use case](../application/src/main/kotlin/com/homeassistant/application/usecase/component/README.md)에 있다.

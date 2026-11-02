@@ -61,7 +61,7 @@ class EpisodeComponentAssignmentWorkerTest {
 
         override fun execute(limit: Int): EpisodeOrganizationResult {
             calls += "execute:$limit"
-            return EpisodeOrganizationResult(emptyList(), emptyList(), GroupOrganizationResult.Completed(emptyList()), emptyList())
+            return EpisodeOrganizationResult(emptyList(), GroupOrganizationResult.Completed(emptyList()), emptyList())
         }
 
         override fun enqueueUnassigned(): Int {

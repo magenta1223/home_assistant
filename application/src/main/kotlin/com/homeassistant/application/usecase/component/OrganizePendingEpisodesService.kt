@@ -3,11 +3,9 @@ package com.homeassistant.application.usecase.component
 import com.homeassistant.application.port.input.group.GroupOrganizationResult
 import com.homeassistant.application.port.input.group.OrganizePendingComponents
 import com.homeassistant.application.port.input.component.*
-import com.homeassistant.application.port.output.group.GroupRebuildRequired
 import com.homeassistant.application.port.output.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.output.component.ComponentAssignmentTask
 import com.homeassistant.application.usecase.group.MergeSmallGroups
-import com.homeassistant.application.usecase.group.RefreshGroupedComponentEmbeddings
 import java.time.Clock
 import java.util.concurrent.CancellationException
 
@@ -15,7 +13,6 @@ import java.util.concurrent.CancellationException
 class OrganizePendingEpisodesService(
     private val outbox: ComponentAssignmentOutbox,
     private val extractor: ExtractComponents,
-    private val groupRefresh: RefreshGroupedComponentEmbeddings,
     private val groups: OrganizePendingComponents,
     private val groupMerge: MergeSmallGroups,
     private val clock: Clock = Clock.systemUTC(),
@@ -36,16 +33,10 @@ class OrganizePendingEpisodesService(
         val now = clock.millis()
         val tasks = outbox.claimReady(limit, now, now - retryDelayMillis, now - processingLeaseMillis, maxAttempts)
         val episodes = tasks.map { EpisodeAssignmentResult(it.episode.id, extract(it)) }
-        val refreshed = try {
-            groupRefresh.execute()
-        } catch (rebuild: GroupRebuildRequired) {
-            return EpisodeOrganizationResult(episodes, emptyList(),
-                GroupOrganizationResult.RebuildRequired(emptyList(), rebuild.message.orEmpty()), emptyList())
-        }
         val organized = groups.execute(limit)
         // Merging only follows a round that changed Components and placed every one of them.
         val merged = if (episodes.isNotEmpty() && organized is GroupOrganizationResult.Completed) groupMerge.execute() else emptyList()
-        return EpisodeOrganizationResult(episodes, refreshed, organized, merged)
+        return EpisodeOrganizationResult(episodes, organized, merged)
     }
 
     override fun enqueueUnassigned(): Int = outbox.enqueueUnassigned(clock.millis())

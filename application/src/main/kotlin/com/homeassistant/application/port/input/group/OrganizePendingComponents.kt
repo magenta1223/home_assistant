@@ -26,12 +26,6 @@ sealed interface GroupOrganizationResult {
     data class RebuildRequired(override val components: List<ComponentOrganizationResult>, val reason: String) : GroupOrganizationResult
 }
 
-sealed interface GroupRefreshOutcome {
-    val groupId: Int
-    data class Refreshed(override val groupId: Int) : GroupRefreshOutcome
-    data class ConflictExhausted(override val groupId: Int) : GroupRefreshOutcome
-}
-
 sealed interface GroupMergeOutcome {
     /** [absorbedGroupId]'s Components joined [survivorGroupId] and [absorbedGroupId] was deleted. */
     data class Merged(val survivorGroupId: Int, val absorbedGroupId: Int) : GroupMergeOutcome

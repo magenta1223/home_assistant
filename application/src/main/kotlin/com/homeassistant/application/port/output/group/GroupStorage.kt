@@ -8,11 +8,9 @@ data class StoredGroup(val group: Group, val revision: Long, val centroid: Compo
     init { require(revision > 0) }
 }
 
-/** [componentsWithOutdatedGroupVector] are grouped components whose centroid moved after their Group stored its vector. */
 data class GroupSnapshot(
     val groups: List<StoredGroup>,
     val embeddings: Map<Int, ComponentEmbedding>,
-    val componentsWithOutdatedGroupVector: List<PendingComponent> = emptyList(),
 )
 
 /** Trusted internal metadata only; this is not an ACL-filtered user projection. */

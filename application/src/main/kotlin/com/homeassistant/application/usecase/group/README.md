@@ -88,9 +88,8 @@ Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다
 - 캐시는 Component ID·벡터 버전·모델·입력 규약으로 구분한다. 같은 key는 첫 저장 벡터를 재사용한다.
 - 유한하지 않은 값·영벡터·차원 불일치·계산 불가능한 centroid는 성공으로 처리하지 않는다.
 - Group 소속·centroid·revision·receipt는 한 transaction으로 확정한다. 실패 시 모두 롤백한다.
-- 모델·규약·차원 또는 이미 배치된 Component의 벡터 버전이 바뀌면 `RebuildRequired`로 실행을 중단한다.
-  `organizeEpisodes`는 이 단계 전에 `RefreshGroupedComponentEmbeddings`로 버전이 바뀐 Component의 벡터를 다시 준비하고
-  그 Group의 벡터·centroid만 교체한다. Group 소속은 옮기지 않는다.
+- 모델·규약·차원이 바뀌면 `RebuildRequired`로 실행을 중단한다. Component 문장은 바뀌지 않으므로 이미 배치된 Component의
+  벡터 버전도 바뀌지 않는다.
   모델 이름이 같아도 실제 가중치를 교체했다면 식별자를 변경해야 한다. 자동 재구성은 후속 작업이다.
 - 개별 Component 실패는 `Failed`, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Component는 계속 처리한다.
   취소 예외는 삼키지 않는다. Pending 조회 자체의 저장소 장애는 호출자에게 전파한다.

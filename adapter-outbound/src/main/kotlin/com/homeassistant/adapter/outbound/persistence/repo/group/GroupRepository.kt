@@ -24,11 +24,8 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         val embeddings = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList keys }
             .map { ComponentEmbeddingRepository.decode(it) }.associateBy { it.key.componentId }
         val groups = storedGroups(memberships)
-        val outdated = ComponentTable.selectAll().where { ComponentTable.id inList embeddings.keys }.orderBy(ComponentTable.id)
-            .map { PendingComponent(it[ComponentTable.id], ComponentEmbeddingRepository.version(it)) }
-            .filter { it.version != embeddings.getValue(it.id).key.version }
         check(memberships.size == embeddings.size) { "group embedding missing" }
-        GroupSnapshot(groups, embeddings, outdated)
+        GroupSnapshot(groups, embeddings)
     }
 
     private fun storedGroups(memberships: List<ResultRow>): List<StoredGroup> {

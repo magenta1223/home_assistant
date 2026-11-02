@@ -30,7 +30,6 @@ class MergeSmallGroups(
         var conflicts = 0
         while (true) {
             val snapshot = snapshots.snapshot()
-            check(snapshot.componentsWithOutdatedGroupVector.isEmpty()) { "group component vectors must be refreshed before merging" }
             val merge = policy.decide(
                 snapshot.groups.map { it.group },
                 snapshot.groups.associate { it.group.id to it.centroid },

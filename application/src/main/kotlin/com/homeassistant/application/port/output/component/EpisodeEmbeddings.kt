@@ -2,11 +2,21 @@ package com.homeassistant.application.port.output.component
 
 import com.homeassistant.application.port.output.group.EmbeddingSpace
 import com.homeassistant.application.port.output.group.descriptionFingerprint
+import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.group.ComponentVector
 
-/** An episode that belongs to no Component yet. Content is immutable, so its hash keys the vector cache. */
-data class PendingEpisode(val id: Int, val content: String) {
-    init { require(id > 0 && content.isNotBlank()) }
+/**
+ * An episode whose Components are not extracted yet, with the messages it was written from, oldest first.
+ * Content is immutable, so its hash keys the vector cache.
+ */
+data class PendingEpisode(
+    val id: Int,
+    val title: String,
+    val content: String,
+    val access: EpisodeAccess,
+    val messages: List<String>,
+) {
+    init { require(id > 0 && title.isNotBlank() && content.isNotBlank() && messages.isNotEmpty()) }
     fun embeddingKey(space: EmbeddingSpace) = EpisodeEmbeddingKey.of(id, content, space)
 }
 

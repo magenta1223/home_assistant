@@ -6,13 +6,11 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeReposi
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.application.port.output.component.*
-import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import com.homeassistant.domain.component.ComponentCentroid
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
@@ -27,7 +25,7 @@ class ComponentAssignmentOutboxRepositoryTest {
     @Test fun `saving an episode queues it for assignment`() = withDatabase { db ->
         val (episode) = seedEpisodes(db, "first", "화분 물주기")
         val task = ComponentAssignmentOutboxRepository(db).claimReady(10, now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5).single()
-        assertEquals(PendingEpisode(episode, "화분 물주기"), task.episode)
+        assertEquals(PendingEpisode(episode, "title", "화분 물주기", EpisodeAccess.restricted(listOf(user)), listOf("화분 물주기")), task.episode)
         assertEquals(1, task.attempt)
         assertEquals(OutboxRow("PROCESSING", 1, null), outboxRow(db, episode))
     }
@@ -53,9 +51,9 @@ class ComponentAssignmentOutboxRepositoryTest {
         assertTrue(outbox.markCompleted(fresh.outboxId, fresh.attempt, now = 1_000))
     }
 
-    @Test fun `an episode assigned before its outbox completed is completed on claim`() = withDatabase { db ->
+    @Test fun `an episode extracted before its outbox completed is completed on claim`() = withDatabase { db ->
         val (episode) = seedEpisodes(db, "first", "a")
-        ComponentRepository(db).create(episode, ComponentCentroid.of(ComponentVector.normalized(listOf(1.0, 0.0))))
+        ComponentRepository(db).saveExtraction(episode, emptyList())
         assertTrue(ComponentAssignmentOutboxRepository(db).claimReady(10, now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5).isEmpty())
         assertEquals(OutboxRow("COMPLETED", 0, null), outboxRow(db, episode))
     }

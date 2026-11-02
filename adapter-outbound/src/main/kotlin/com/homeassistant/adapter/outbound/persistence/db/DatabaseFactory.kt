@@ -9,14 +9,12 @@ internal object DatabaseFactory {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
             migrateLegacyTableNames()
-            migrateComponentMembershipKey()
             SchemaUtils.createMissingTablesAndColumns(
                 EpisodeTable,
                 EpisodeEvidenceTable,
                 EpisodeViewerTable,
                 ComponentTable,
-                ComponentMembershipTable,
-                ComponentDescriptionTable,
+                ComponentExtractionTable,
                 EpisodeEmbeddingTable,
                 ComponentEmbeddingTable,
                 GroupTable,
@@ -45,19 +43,6 @@ internal object DatabaseFactory {
     private fun Transaction.renameTableIfNeeded(legacyName: String, currentName: String) {
         if (!tableExists(legacyName) || tableExists(currentName)) return
         exec("ALTER TABLE \"$legacyName\" RENAME TO \"$currentName\"")
-    }
-
-    /** Memberships were keyed by episode alone (one Component per episode). SQLite cannot change a key in place. */
-    private fun Transaction.migrateComponentMembershipKey() {
-        if (!tableExists("component_memberships")) return
-        val keyColumns = exec("PRAGMA table_info(\"component_memberships\")") { result ->
-            buildList { while (result.next()) if (result.getInt("pk") > 0) add(result.getString("name")) }
-        }
-        if (keyColumns != listOf("episode_id")) return
-        exec("ALTER TABLE component_memberships RENAME TO component_memberships_single")
-        SchemaUtils.create(ComponentMembershipTable)
-        exec("INSERT INTO component_memberships (component_id, episode_id) SELECT component_id, episode_id FROM component_memberships_single")
-        exec("DROP TABLE component_memberships_single")
     }
 
     private fun Transaction.tableExists(name: String): Boolean =

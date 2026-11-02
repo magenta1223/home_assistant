@@ -9,7 +9,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.identity.UserReposito
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.EpisodeEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
-import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentDescriptionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
@@ -25,7 +24,6 @@ object RepositoryFactory {
             canonicalEpisodeBatchWriter = canonicalEpisodes,
             canonicalEpisodes = canonicalEpisodes,
             componentMaintenance = components,
-            componentDescriptions = ComponentDescriptionRepository(db),
             pendingComponents = groups,
             componentEmbeddings = ComponentEmbeddingRepository(db),
             groups = groups,

@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntim
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
 import com.homeassistant.application.port.input.group.OrganizePendingComponents
-import com.homeassistant.application.port.input.component.DescribeComponent
 import com.homeassistant.application.port.input.component.OrganizePendingEpisodes
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,7 +23,6 @@ class DefaultApplicationServicesTest {
             episodeAnalysis = unusedEpisodeAnalysis(),
             organizeComponents = OrganizePendingComponents { error("must only run on explicit invocation") },
             organizeEpisodes = unusedOrganizeEpisodes(),
-            describeComponent = DescribeComponent { _, _ -> error("must only run on request") },
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             componentAssignmentWorker = assignment,
@@ -67,7 +65,6 @@ class DefaultApplicationServicesTest {
             episodeAnalysis = unusedEpisodeAnalysis(),
             organizeComponents = OrganizePendingComponents { error("must only run on explicit invocation") },
             organizeEpisodes = unusedOrganizeEpisodes(),
-            describeComponent = DescribeComponent { _, _ -> error("must only run on request") },
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,

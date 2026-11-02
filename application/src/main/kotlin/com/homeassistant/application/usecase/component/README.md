@@ -1,14 +1,13 @@
-# Episode → Component assignment
+# Episode → Component extraction
 
-Component 할당 outbox에 쌓인 Episode를 가까운 Component들에 배정하고, 이어서 Component를 Group으로 정리한다.
+Component 할당 outbox에 쌓인 Episode에서 Component를 추출하고, 이어서 Component를 Group으로 정리한다.
 내부 input port는 `OrganizePendingEpisodes.execute(limit)`이며 앱의 `organizeEpisodes`로 제공된다.
 outbox 행은 Episode 저장 transaction에서 함께 생긴다. 앱의 Component 할당 worker가 주기마다 임베딩 runtime이
 준비됐는지 확인한 뒤에만 호출한다. 준비되지 않은 회차는 claim하지 않는다.
-worker는 시작 시 `enqueueUnassigned()`로 outbox 도입 전 저장된 미할당 Episode를 한 번 등록한다.
+worker는 시작 시 `enqueueUnassigned()`로 outbox 도입 전 저장된 미추출 Episode를 한 번 등록한다.
 
-Component는 xMemory의 component에 해당한다. xMemory가 segment를 component 중심과의 cosine으로 붙이거나
-새 component를 만들듯, Episode는 Component 중심과의 cosine으로 가까운 Component들에 합류하거나 새 Component를 만든다.
-Component 위의 Group은 xMemory의 group이다. 대응이 1:1은 아니다.
+Episode는 xMemory의 episode, Component는 component, Group은 group이다. xMemory의 prediction-correction처럼
+Episode에 가까운 기존 Component를 이미 아는 지식으로 두고, 그 지식이 말하지 않는 장기 지식만 새 Component로 저장한다.
 
 ## 정상 흐름
 
@@ -16,47 +15,47 @@ Component 위의 Group은 xMemory의 group이다. 대응이 1:1은 아니다.
 sequenceDiagram
     actor Caller as 호출자
     participant Batch as OrganizePendingEpisodesService
-    participant Assign as AssignEpisodeToComponents
-    participant Embed as Episode 임베딩 캐시
+    participant Extract as ExtractComponents
+    participant Embed as 임베딩 캐시
+    participant Model as ComponentKnowledgeExtractor
     participant Store as Component DB
     participant Groups as Group 정리
     Caller->>Batch: 1. organizeEpisodes(limit)
     Batch->>Store: 2. 할당 outbox claim (시도 횟수 증가)
     loop Episode마다
-        Batch->>Assign: 3. 배정 요청
-        Assign->>Embed: 4. Episode 벡터
-        Assign->>Store: 5. 모든 Component 중심
-        Assign->>Assign: 6. 임계값을 넘는 Component들에 join, 없으면 생성
-        Assign->>Store: 7. 모든 Component의 소속 추가와 중심 갱신을 한 transaction으로
-        Assign-->>Batch: 8. 결과(Component ID들, 생성 여부)
+        Batch->>Extract: 3. 추출 요청
+        Extract->>Store: 4. Episode의 독자가 모두 읽을 수 있는 Component
+        Extract->>Embed: 5. Episode 벡터와 Component 문장 벡터
+        Extract->>Model: 6. 가까운 Component 10개를 아는 지식으로 넘겨 새 장기 지식 추출
+        Extract->>Store: 7. 추출 완료 표시와 새 Component를 한 transaction으로
+        Extract->>Embed: 8. 새 Component 문장 벡터
+        Extract-->>Batch: 9. 새 Component ID들 (없을 수 있음)
     end
-    Batch->>Groups: 9. 중심이 바뀐 Component의 벡터를 다시 준비 → 그 Group 중심만 갱신
-    Batch->>Groups: 10. 새 Component를 xMemory 방식으로 Group 배치·분할
-    Batch->>Groups: 11. Component 1개짜리 Group을 이웃 Group과 병합(배치가 정상 완료된 회차만)
-    Batch-->>Caller: 12. Episode별 결과 + Group 결과 + 병합 결과
+    Batch->>Groups: 10. 버전이 바뀐 Component 벡터의 Group 갱신
+    Batch->>Groups: 11. 새 Component를 xMemory 방식으로 Group 배치·분할
+    Batch->>Groups: 12. Component 1개짜리 Group을 이웃 Group과 병합(배치가 정상 완료된 회차만)
+    Batch-->>Caller: 13. Episode별 결과 + Group 결과 + 병합 결과
 ```
 
 ## 정책
 
-- 한 Episode는 여러 Component에 속할 수 있다. `ComponentPlacementPolicy`는 cosine 0.8(`joinAllThreshold`) 이상인 Component를 전부 고르고,
-  그것이 3개(`fillUpTo`) 미만이면 0.6(`joinThreshold`) 이상인 Component로 가까운 순으로 3개까지 채운다. 동점은 작은 Component ID다.
-  0.6 이상이 없으면 새 Component를 만든다.
-- 중심은 소속 Episode 벡터의 합으로 저장하므로 join은 벡터 하나를 더하면 되고 전체 소속을 다시 읽지 않는다.
-- join은 고른 Component마다 읽은 시점의 Episode 수를 조건으로 쓰고, 전부를 한 transaction으로 쓴다. 그사이 어느 Component에든 다른 join이
-  있었다면 아무것도 쓰지 않고 그 Episode는 `Failed`가 되며 outbox가 다시 시도한다. 그래서 일부 Component에만 속한 상태는 생기지 않는다.
-- Component에는 설명·분류명이 없다. ACL별 slice는 Episode의 현재 접근 범위로 읽을 때 나눈다.
-- 배정 대기는 outbox 행 상태로 판단한다. claim 시점에 이미 Component 소속이 있는 Episode는 배정하지 않고 완료 처리한다.
-  그래서 Component 저장 직후 완료 기록 전에 중단돼도 같은 Episode가 두 번 배정되지 않는다.
+- 아는 지식이 없으면 Episode 제목과 본문에서 장기 지식을 바로 뽑는다. 있으면 제목과 아는 지식만으로 Episode 내용을 예측한 뒤,
+  원래 메시지와 비교해 예측에 없거나 틀린 장기 지식만 뽑는다. 프롬프트는 `ModelComponentKnowledgeExtractor`에 있다.
+- 아는 지식은 Episode의 독자가 모두 읽을 수 있는 Component로 한정한다. 독자에게 숨겨진 지식이 그 독자의 추출에 영향을 주지 않게 하기 위해서다.
+- Component는 문장 하나와 출처 Episode 하나를 가지며 바뀌지 않는다. 지식이 바뀌면 새 Component가 생기고 예전 것은 남는다.
+- 접근 범위는 저장하지 않고 출처 Episode의 현재 접근 범위로 읽는다.
+- 같은 문장이 여러 번 나오면 하나만 저장한다. 빈 문장은 버린다.
+- 추출 대기는 outbox 행 상태로 판단한다. claim 시점에 이미 추출 표시가 있는 Episode는 추출하지 않고 완료 처리한다.
+  그래서 Component 저장 직후 완료 기록 전에 중단돼도 같은 Episode가 두 번 추출되지 않는다.
 
 ## 실패·복구와 신뢰 경계
 
-- 임베딩은 DB transaction 밖에서 수행한다. 저장은 `ComponentMaintenanceStore`의 원자 write다.
+- 임베딩과 모델 호출은 DB transaction 밖에서 수행한다. 저장은 `ComponentMaintenanceStore.saveExtraction`의 원자 write다.
 - 개별 Episode 실패는 `Failed`이며 outbox에 시도 횟수와 오류를 남기고 다음 Episode를 계속 처리한다.
   실패한 Episode는 재시도 지연(기본 60초) 뒤 다시 claim되며, 최대 시도(기본 5회)를 넘으면 그 Episode만 멈춘다.
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 벡터 준비·배치 단계의 오류는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
-- Component 중심은 ACL이 다른 Episode를 함께 담는다. 검색은 중심으로 순위만 정하고, 사용자에게는 읽을 수 있는 slice의 Episode만 넘긴다.
-- 할당은 매번 전체 Component 중심을 비교한다. 가족 규모를 전제로 하며 ANN 색인은 없다.
+- 아는 지식은 매번 모든 Component 벡터와 비교해 고른다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Component 분할·병합(보류)은 [후속 작업](../../../../../../../../../docs/todolist/p1/component-group-merge-and-knn-links.md)이다.
 
 ## Component 검색
@@ -71,18 +70,16 @@ sequenceDiagram
     participant Groups as GroupReader
     participant Components as ComponentReader
     participant Episodes as EpisodeReader
-    participant Vectors as EpisodeEmbeddingStore
     Caller->>Search: 1. search(userId, question)
     Search->>Search: 2. 사용자 인가 확인
-    Search->>Components: 3. 모든 Component 중심
+    Search->>Components: 3. 모든 Component와 문장 벡터
     Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
     Search->>Groups: 5. 모든 Group 중심과 소속 Component
     Search->>Search: 6. 가까운 Group 5개와 kNN 이웃 Group(합쳐 20개까지) 중 backbone 3개의 Component ∪ 가까운 Component 20개
     Search->>Episodes: 7. 사용자가 읽을 수 있는 Episode
-    Search->>Components: 8. 후보 Component의 slice, 읽을 수 있는 Episode가 없으면 제외
+    Search->>Components: 8. 후보 Component, 사용자가 읽을 수 없거나 출처 Episode가 보이지 않으면 제외
     Search->>Search: 9. backbone Component 5개
-    Search->>Vectors: 10. Episode 벡터
-    Search-->>Caller: 11. Component별 Episode(질문 관련도순, 앞 Component에 나온 Episode는 빼고)
+    Search-->>Caller: 10. Component별 출처 Episode(앞 Component에 나온 Episode는 빼고)
 ```
 
 - backbone 선택은 domain의 `BackboneSelection`(xMemory 식 4)이며 Group과 Component 두 단계가 같은 것을 쓴다.
@@ -95,27 +92,9 @@ sequenceDiagram
 - kNN은 저장하지 않고 검색할 때 Group·Component 전체와 cosine으로 계산한다. 저장한 링크와 결과가 같고 낡지 않는다.
   Group·Component가 수만 개를 넘으면 같은 질의를 벡터 색인(pgvector)에 맡긴다.
 - 가까운 Component를 직접 후보에 더하므로 아직 Group에 들어가지 않은 Component도 찾힌다.
-- 한 Episode는 먼저 고른 Component 하나에만 싣는다. Episode가 모두 앞 Component에 실린 Component는 결과에서 빠진다.
-- Group·Component 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Episode가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+- 한 Episode는 먼저 고른 Component 하나에만 싣는다. 출처 Episode가 앞 Component에 실린 Component는 결과에서 빠진다.
+- Group 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Component가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
 - 논문의 Stage II(reader entropy가 줄 때만 하위 텍스트 추가)는 하지 않는다([후속 작업](../../../../../../../../../docs/todolist/p2/xmemory-stage2-entropy.md)). 대화 context가 Episode를 순서대로 8,000자 안에서
   줄 단위로 싣는다. 최소 점수는 아직 두지 않는다.
-
-## Component 설명
-
-`ComponentDescriber`(`DescribeComponent`)는 사람이 읽는 Component 설명을 조회자마다 만든다. 설명은 Component에 저장하지 않는
-재생성 가능한 read model이다. Component는 계속 중심 벡터와 ACL slice만 가진다.
-
-1. 사용자 인가를 확인하고 Component를 읽는다. 없거나 읽을 수 있는 slice가 없으면 `Hidden`이다. 둘을 구분하지 않는다.
-2. 열람 범위(`ComponentView`)는 PUBLIC slice와 조회자가 포함된 slice의 합이다. 같은 slice를 읽는 조회자는 같은 범위다.
-3. 캐시 key는 (Component ID, 범위의 slice 집합)이다. 권한이 바뀌면 slice 집합이 달라져 이전 설명을 쓰지 않는다.
-4. 캐시에는 설명을 쓸 때의 slice별 Episode 수(slice 버전)를 함께 둔다. `ComponentDescriptionRefreshPolicy`가 재생성을 정한다.
-   - 캐시가 없거나, 어떤 slice의 Episode가 줄었으면 재생성한다.
-   - 범위의 Episode가 설명을 쓴 시점보다 `growthThreshold`(기본 0.2, 20%) 이상 늘었으면 재생성한다.
-   - 그 밖에는 이전 설명을 그대로 보여준다.
-5. 재생성 입력은 범위의 Episode 중 `EpisodeReader`가 조회자에게 보여주는 것뿐이며 최신순이다. LM 결과를 저장하고 돌려준다.
-
-- 미리 만들지 않는다. 설명이 필요한 요청이 올 때만 LM을 호출한다.
-- LM·저장 실패는 호출자에게 전파한다. 캐시가 없어지면 다음 요청이 다시 만든다.
-- 같은 범위를 동시에 처음 열면 LM이 두 번 불릴 수 있고 나중 결과가 남는다. 가족 규모라 잠금은 두지 않는다.
 
 검증은 fake port application 테스트와 임시 SQLite 통합 테스트를 사용한다. 실제 임베딩 서버는 호출하지 않는다.

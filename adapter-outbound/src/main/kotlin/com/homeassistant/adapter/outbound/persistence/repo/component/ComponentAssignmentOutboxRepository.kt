@@ -6,7 +6,10 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignm
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable.FAILED
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable.PENDING
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable.PROCESSING
-import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentMembershipTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtractionTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEvidenceTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.application.port.output.component.PendingEpisode
 import com.homeassistant.application.port.output.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.output.component.ComponentAssignmentTask
@@ -31,7 +34,7 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
         rows.mapNotNull { row ->
             val outboxId = row[ComponentAssignmentOutboxTable.id]
             val episodeId = row[ComponentAssignmentOutboxTable.episodeId]
-            if (isAssigned(episodeId)) {
+            if (isExtracted(episodeId)) {
                 ComponentAssignmentOutboxTable.update({ ComponentAssignmentOutboxTable.id eq outboxId }) {
                     it[status] = COMPLETED
                     it[lastError] = null
@@ -46,7 +49,7 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
                 it[updatedAt] = now
             }
             if (claimed == 0) return@mapNotNull null
-            ComponentAssignmentTask(outboxId, attempt, PendingEpisode(episodeId, row[EpisodeTable.content]))
+            ComponentAssignmentTask(outboxId, attempt, pendingEpisode(row))
         }
     }
 
@@ -58,7 +61,7 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
 
     override fun enqueueUnassigned(now: Long): Int = transaction(db) {
         val episodeIds = EpisodeTable.select(EpisodeTable.id).where {
-            notExists(ComponentMembershipTable.selectAll().where { ComponentMembershipTable.episodeId eq EpisodeTable.id }) and
+            notExists(ComponentExtractionTable.selectAll().where { ComponentExtractionTable.episodeId eq EpisodeTable.id }) and
                 notExists(ComponentAssignmentOutboxTable.selectAll().where { ComponentAssignmentOutboxTable.episodeId eq EpisodeTable.id })
         }.map { it[EpisodeTable.id] }
         episodeIds.forEach { enqueue(it, now) }
@@ -78,8 +81,18 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
             } == 1
         }
 
-    private fun isAssigned(episodeId: Int): Boolean =
-        ComponentMembershipTable.select(ComponentMembershipTable.episodeId).where { ComponentMembershipTable.episodeId eq episodeId }.limit(1).any()
+    private fun isExtracted(episodeId: Int): Boolean =
+        ComponentExtractionTable.select(ComponentExtractionTable.episodeId).where { ComponentExtractionTable.episodeId eq episodeId }.any()
+
+    /** The episode with the messages it was written from, oldest first, read from the same transaction as its claim. */
+    private fun pendingEpisode(row: ResultRow): PendingEpisode {
+        val episode = with(EpisodeRepository(db)) { row.toEpisode() }
+        val messages = (EpisodeEvidenceTable innerJoin SourceRecordTable).select(SourceRecordTable.content)
+            .where { EpisodeEvidenceTable.episodeId eq episode.id }
+            .orderBy(SourceRecordTable.id)
+            .map { it[SourceRecordTable.content] }
+        return PendingEpisode(episode.id, episode.title, episode.content, episode.access, messages)
+    }
 
     private fun readyCondition(retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): Op<Boolean> =
         SqlExpressionBuilder.run {

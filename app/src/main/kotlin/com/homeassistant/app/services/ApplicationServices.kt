@@ -5,7 +5,6 @@ import com.homeassistant.application.port.input.identity.UserRegistry
 import com.homeassistant.application.port.input.group.OrganizePendingComponents
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
 import com.homeassistant.application.port.input.episode.conversation.EpisodeConversation
-import com.homeassistant.application.port.input.component.DescribeComponent
 import com.homeassistant.application.port.input.component.OrganizePendingEpisodes
 
 /** Provides the application's top-level use cases and managed runtimes. */
@@ -29,7 +28,6 @@ interface ApplicationServices : AutoCloseable {
     val organizeEpisodes: OrganizePendingEpisodes
 
     /** Describes a Component per viewer on demand; nothing is generated ahead of a request. */
-    val describeComponent: DescribeComponent
 
     /** Reports whether required managed runtimes are available. */
     val isReady: Boolean

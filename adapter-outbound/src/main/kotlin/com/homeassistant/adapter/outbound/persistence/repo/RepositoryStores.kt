@@ -15,7 +15,6 @@ data class RepositoryStores(
     val canonicalEpisodeBatchWriter: CanonicalEpisodeBatchWriter,
     val canonicalEpisodes: EpisodeReader,
     val componentMaintenance: ComponentMaintenanceStore,
-    val componentDescriptions: ComponentDescriptionStore,
     val pendingComponents: PendingComponentSource,
     val componentEmbeddings: ComponentEmbeddingStore,
     val groups: GroupReader,

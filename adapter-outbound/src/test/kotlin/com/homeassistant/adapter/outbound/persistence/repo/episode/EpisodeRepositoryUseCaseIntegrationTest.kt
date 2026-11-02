@@ -4,10 +4,10 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.output.group.EmbeddingSpace
 import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
-import com.homeassistant.application.port.output.component.EpisodeEmbedding
-import com.homeassistant.application.port.output.component.EpisodeEmbeddingKey
-import com.homeassistant.application.port.output.component.ComponentJoin
+import com.homeassistant.application.port.output.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.usecase.component.ComponentSearcher
+import com.homeassistant.application.usecase.component.ComponentStatementVectors
+import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessPolicy
@@ -17,7 +17,6 @@ import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import com.homeassistant.domain.component.ComponentCentroid
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -28,7 +27,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     private val member = UserId("member-1")
 
     @Test
-    fun `conversation context reads only the component slices the user can see`() {
+    fun `conversation context reads only the components the user can see`() {
         withRepositories("component-search-integration") { stores ->
             val east = ComponentVector.normalized(listOf(1.0, 0.0))
             val publicEpisode = stores.saveEpisode(member, "public", EpisodeAccess.PUBLIC)
@@ -38,14 +37,17 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 EpisodeAccess.restricted(listOf(UserId("member-2"))),
             )
             val hiddenEpisode = stores.saveEpisode(UserId("member-2"), "hidden", EpisodeAccess.restricted(listOf(UserId("member-2"))))
-            val first = ComponentCentroid.of(east)
-            val mixed = stores.componentMaintenance.create(publicEpisode.id, first)
-            assertTrue(stores.componentMaintenance.join(otherRestrictedEpisode.id, listOf(ComponentJoin(mixed, first, first + east))))
-            stores.componentMaintenance.create(hiddenEpisode.id, ComponentCentroid.of(east))
-            val space = EmbeddingSpace("test", "passage:v1")
-            stores.episodeEmbeddings.save(EpisodeEmbedding(EpisodeEmbeddingKey.of(publicEpisode.id, publicEpisode.content, space), east))
+            listOf(publicEpisode, otherRestrictedEpisode, hiddenEpisode).forEach {
+                stores.componentMaintenance.saveExtraction(it.id, listOf("fact of ${it.content}"))
+            }
+            val texts = object : EpisodeEmbeddingGenerator {
+                override val space = EmbeddingSpace("test", "passage:v1")
+                override fun isAvailable() = true
+                override fun generate(content: String) = east
+            }
             val search = ComponentSearcher(
-                stores.componentMaintenance, stores.groups, { east }, stores.canonicalEpisodes, stores.episodeEmbeddings, space,
+                stores.componentMaintenance, stores.groups, { east }, stores.canonicalEpisodes,
+                PrepareComponentEmbedding(ComponentStatementVectors(stores.componentMaintenance, texts), stores.componentEmbeddings),
                 UserAccessPolicy { it == member },
             )
 
@@ -65,8 +67,8 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             val access = EpisodeAccess.restricted(listOf(UserId("other")))
             val episode = stores.saveEpisode(member, "incoming", access)
             val before = stores.canonicalEpisodes.getEpisodes(UserId("other"))
-            val componentId = stores.componentMaintenance.create(episode.id, ComponentCentroid.of(ComponentVector.normalized(listOf(1.0, 0.0))))
-            assertEquals(mapOf(access to listOf(episode.id)), stores.componentMaintenance.read(listOf(componentId)).single().slices)
+            val (componentId) = stores.componentMaintenance.saveExtraction(episode.id, listOf("fact"))
+            assertEquals(access, stores.componentMaintenance.read(listOf(componentId)).single().access)
             assertEquals(before, stores.canonicalEpisodes.getEpisodes(UserId("other")))
         }
     }

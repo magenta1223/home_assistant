@@ -14,7 +14,6 @@ import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.component.ComponentCentroid
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.*
@@ -39,7 +38,7 @@ class GroupRepositoryTest {
         val committed = episodes.commit(user, (1..5).map { IdempotentEpisodeProposal("m$it", EpisodeProposal("title", "fact $it", listOf(record.id))) },
             listOf(record.id))
         val components = ComponentRepository(db)
-        val ids = committed.map { components.create(it.id, ComponentCentroid.of(vector)) }.toSet()
+        val ids = committed.map { components.saveExtraction(it.id, listOf("knowledge of ${it.content}")).single() }.toSet()
         val beforeComponents = components.read(ids)
         val beforeEpisodes = episodes.getEpisodes(user)
         val beforeSources = sources.findBySource(source)
@@ -185,8 +184,9 @@ class GroupRepositoryTest {
         val components = ComponentRepository(db)
         val store = ComponentEmbeddingRepository(db)
         return episodes.associate { episode ->
-            val id = components.create(episode.id, ComponentCentroid.of(vector))
-            id to store.save(ComponentEmbedding(PendingComponent(id, "1").embeddingKey(space), vector))
+            val statement = "knowledge of ${episode.content}"
+            val id = components.saveExtraction(episode.id, listOf(statement)).single()
+            id to store.save(ComponentEmbedding(PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(space), vector))
         }
     }
 

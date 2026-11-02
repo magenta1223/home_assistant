@@ -9,9 +9,9 @@ import com.homeassistant.application.usecase.group.MergeSmallGroups
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.group.RefreshGroupedComponentEmbeddings
 import com.homeassistant.domain.group.*
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.component.Component
-import com.homeassistant.domain.component.ComponentCentroid
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
@@ -22,55 +22,44 @@ class OrganizePendingEpisodesTest {
     private val east = ComponentVector.normalized(listOf(1.0, 0.0))
     private val north = ComponentVector.normalized(listOf(0.0, 1.0))
     private val nearEast = ComponentVector.normalized(listOf(1.0, 0.2))
+    private val onlyB = EpisodeAccess.restricted(listOf(UserId("b")))
 
-    @Test fun `without components an episode starts one from its own vector`() {
+    @Test fun `without components every long-term statement of the episode becomes a component`() {
+        val fixture = Fixture()
+        fixture.statements = mapOf(1 to listOf("홍승민은 임신기간 단축근로를 한다", " ", "홍승민은 임신기간 단축근로를 한다"))
+        val result = fixture.service.execute(1)
+        assertEquals(EpisodeAssignmentOutcome.Extracted(listOf(1)), result.episodes.single().outcome)
+        assertEquals(listOf(Extraction(1, emptyList())), fixture.extractions)
+        assertEquals(listOf(Component(1, "홍승민은 임신기간 단축근로를 한다", 1, EpisodeAccess.PUBLIC)), fixture.components)
+        assertEquals(listOf("completed:1:1"), fixture.outboxMarks)
+    }
+
+    @Test fun `known knowledge is the nearest components every reader of the episode can read`() {
+        val fixture = Fixture(knownLimit = 2)
+        fixture.add("north fact", north)
+        fixture.add("east fact", east)
+        fixture.add("near east fact", nearEast)
+        fixture.add("hidden east fact", east, onlyB)
+        fixture.service.execute(1)
+        assertEquals(listOf("east fact", "near east fact"), fixture.extractions.single().known)
+    }
+
+    @Test fun `an episode with no new knowledge is completed without components`() {
         val fixture = Fixture()
         val result = fixture.service.execute(1)
-        assertEquals(EpisodeAssignmentOutcome.Assigned(listOf(100), created = true), result.episodes.single().outcome)
-        assertEquals(mapOf(100 to ComponentCentroid.of(east)), fixture.centroids)
-        assertEquals(mapOf(100 to listOf(1)), fixture.members)
+        assertEquals(EpisodeAssignmentOutcome.Extracted(emptyList()), result.episodes.single().outcome)
+        assertEquals(setOf(1), fixture.extracted)
+        assertEquals(listOf("completed:1:1"), fixture.outboxMarks)
     }
 
-    @Test fun `an episode joins the nearest component and moves its centroid`() {
+    @Test fun `a failed extraction fails that episode only`() {
         val fixture = Fixture()
-        fixture.add(7, ComponentCentroid.of(north), 50)
-        fixture.add(9, ComponentCentroid.of(east), 51)
-        fixture.vectors = mapOf("1" to nearEast)
-        val outcome = fixture.service.execute(1).episodes.single().outcome
-        assertEquals(EpisodeAssignmentOutcome.Assigned(listOf(9), created = false), outcome)
-        assertEquals(ComponentCentroid.of(east) + nearEast, fixture.centroids.getValue(9))
-        assertEquals(listOf(51, 1), fixture.members.getValue(9))
-        assertEquals(ComponentCentroid.of(north), fixture.centroids.getValue(7))
-    }
-
-    @Test fun `an episode joins every near component in one write`() {
-        val fixture = Fixture()
-        fixture.add(7, ComponentCentroid.of(north), 50)
-        fixture.add(8, ComponentCentroid.of(nearEast), 51)
-        fixture.add(9, ComponentCentroid.of(east), 52)
-        val outcome = fixture.service.execute(1).episodes.single().outcome
-        assertEquals(EpisodeAssignmentOutcome.Assigned(listOf(9, 8), created = false), outcome)
-        assertEquals(ComponentCentroid.of(nearEast) + east, fixture.centroids.getValue(8))
-        assertEquals(ComponentCentroid.of(east) + east, fixture.centroids.getValue(9))
-        assertEquals(listOf(50), fixture.members.getValue(7))
-    }
-
-    @Test fun `an episode below the threshold starts a new component`() {
-        val fixture = Fixture()
-        fixture.add(7, ComponentCentroid.of(north), 50)
-        val outcome = fixture.service.execute(1).episodes.single().outcome
-        assertEquals(EpisodeAssignmentOutcome.Assigned(listOf(100), created = true), outcome)
-        assertEquals(setOf(7, 100), fixture.centroids.keys)
-    }
-
-    @Test fun `a join that lost to another write fails that episode only`() {
-        val fixture = Fixture()
-        fixture.add(7, ComponentCentroid.of(east), 50)
-        fixture.losesJoin = setOf(1)
+        fixture.failing = setOf(1)
+        fixture.statements = mapOf(2 to listOf("fact"))
         val result = fixture.service.execute(2)
         assertIs<EpisodeAssignmentOutcome.Failed>(result.episodes.first().outcome)
-        assertEquals(EpisodeAssignmentOutcome.Assigned(listOf(7), created = false), result.episodes.last().outcome)
-        assertEquals(listOf(50, 2), fixture.members.getValue(7))
+        assertEquals(EpisodeAssignmentOutcome.Extracted(listOf(1)), result.episodes.last().outcome)
+        assertEquals(setOf(2), fixture.extracted)
         assertEquals(listOf("failed:1:1", "completed:2:1"), fixture.outboxMarks)
     }
 
@@ -92,24 +81,23 @@ class OrganizePendingEpisodesTest {
         assertEquals(3, fixture.service.enqueueUnassigned())
     }
 
-    @Test fun `moved centroids refresh group vectors before new components are grouped`() {
+    @Test fun `outdated group vectors are refreshed before new components are grouped`() {
         val fixture = Fixture()
-        fixture.add(7, ComponentCentroid.of(east) + north, 50, 51)
-        val old = ComponentEmbedding(PendingComponent(7, "1").embeddingKey(space), east)
-        fixture.groupSnapshot = GroupSnapshot(listOf(StoredGroup(Group(3, setOf(7)), 5, east)), mapOf(7 to old),
-            listOf(PendingComponent(7, "2")))
-        fixture.vectors = mapOf("1" to ComponentVector.normalized(listOf(-1.0, 0.0)))
+        val seven = fixture.add("seven", north)
+        val old = ComponentEmbedding(PendingComponent(seven.id, "old").embeddingKey(space), east)
+        fixture.groupSnapshot = GroupSnapshot(listOf(StoredGroup(Group(3, setOf(seven.id)), 5, east)), mapOf(seven.id to old),
+            listOf(seven.pending()))
         val result = fixture.service.execute(1)
         assertEquals(1, result.groupRefreshes.size)
         val change = fixture.groupWrites.single()
         assertEquals(mapOf(3 to 5L), change.expectedGroups)
         assertTrue(change.incomingComponentIds.isEmpty())
-        assertEquals(PendingComponent(7, "2").embeddingKey(space), change.embeddings.getValue(7).key)
-        assertEquals((ComponentCentroid.of(east) + north).direction, change.embeddings.getValue(7).vector)
+        assertEquals(seven.pending().embeddingKey(space), change.embeddings.getValue(seven.id).key)
+        assertEquals(north, change.embeddings.getValue(seven.id).vector)
         assertEquals(listOf("groups", "merge"), fixture.order.takeLast(2))
     }
 
-    @Test fun `groups are merged only after a round that assigned episodes and placed every component`() {
+    @Test fun `groups are merged only after a round that extracted episodes and placed every component`() {
         val placed = Fixture()
         placed.service.execute(1)
         assertEquals(listOf("groups", "merge"), placed.order.takeLast(2))
@@ -125,12 +113,14 @@ class OrganizePendingEpisodesTest {
         assertFalse("merge" in rebuilding.order)
     }
 
-    private inner class Fixture {
+    private inner class Fixture(knownLimit: Int = 10) {
         var vectors = emptyMap<String, ComponentVector>()
+        var statements = emptyMap<Int, List<String>>()
+        var failing = emptySet<Int>()
         var groupSnapshot = GroupSnapshot(emptyList(), emptyMap())
-        val centroids = linkedMapOf<Int, ComponentCentroid>()
-        val members = mutableMapOf<Int, MutableList<Int>>()
-        var losesJoin = emptySet<Int>()
+        val components = mutableListOf<Component>()
+        val extracted = mutableSetOf<Int>()
+        val extractions = mutableListOf<Extraction>()
         val groupWrites = mutableListOf<GroupChange>()
         val order = mutableListOf<String>()
         val outboxMarks = mutableListOf<String>()
@@ -139,43 +129,39 @@ class OrganizePendingEpisodesTest {
         var claimable = 3
         var placement: GroupOrganizationResult = GroupOrganizationResult.Completed(emptyList())
 
-        fun add(componentId: Int, centroid: ComponentCentroid, vararg episodeIds: Int) {
-            centroids[componentId] = centroid
-            members[componentId] = episodeIds.toMutableList()
+        fun add(statement: String, vector: ComponentVector, access: EpisodeAccess = EpisodeAccess.PUBLIC): Component {
+            vectors = vectors + (statement to vector)
+            return Component(components.size + 1, statement, 50 + components.size, access).also(components::add)
         }
 
-        private val episodeCache = mutableMapOf<EpisodeEmbeddingKey, EpisodeEmbedding>()
-        private val episodeEmbeddings = PrepareEpisodeEmbedding(object : EpisodeEmbeddingGenerator {
+        private val texts = object : EpisodeEmbeddingGenerator {
             override val space = this@OrganizePendingEpisodesTest.space
             override fun isAvailable() = embeddingReady
             override fun generate(content: String) = vectors[content] ?: east
-        }, object : EpisodeEmbeddingStore {
+        }
+        private val episodeCache = mutableMapOf<EpisodeEmbeddingKey, EpisodeEmbedding>()
+        private val episodeEmbeddings = PrepareEpisodeEmbedding(texts, object : EpisodeEmbeddingStore {
             override fun find(key: EpisodeEmbeddingKey) = episodeCache[key]
             override fun save(embedding: EpisodeEmbedding) = episodeCache.getOrPut(embedding.key) { embedding }
         })
         private val store = object : ComponentMaintenanceStore {
-            override fun centroids() = centroids.toMap()
-            override fun read(componentIds: Collection<Int>) = componentIds.filter { it in centroids }
-                .map { Component(it, centroids.getValue(it), mapOf(EpisodeAccess.PUBLIC to members.getValue(it).toList())) }
-            override fun join(episodeId: Int, joins: List<ComponentJoin>): Boolean {
-                if (episodeId in losesJoin || joins.any { centroids[it.componentId] != it.expected }) return false
-                joins.forEach {
-                    centroids[it.componentId] = it.updated
-                    members.getValue(it.componentId).add(episodeId)
-                }
-                return true
-            }
-            override fun create(episodeId: Int, centroid: ComponentCentroid): Int {
-                val id = 100 + centroids.keys.count { it >= 100 }
-                add(id, centroid, episodeId)
-                return id
+            override fun all() = components.toList()
+            override fun read(componentIds: Collection<Int>) = components.filter { it.id in componentIds }
+            override fun saveExtraction(episodeId: Int, statements: List<String>): List<Int> {
+                check(extracted.add(episodeId))
+                return statements.map { Component(components.size + 1, it, episodeId, EpisodeAccess.PUBLIC).also(components::add).id }
             }
         }
         private val componentCache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
-        private val componentEmbeddings = PrepareComponentEmbedding(ComponentCentroidVectors(store, space), object : ComponentEmbeddingStore {
+        private val componentEmbeddings = PrepareComponentEmbedding(ComponentStatementVectors(store, texts), object : ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: ComponentEmbedding) = componentCache.getOrPut(embedding.key) { embedding }
         })
+        private val extractor = ComponentKnowledgeExtractor { episode, known ->
+            extractions.add(Extraction(episode.id, known))
+            if (episode.id in failing) error("model unavailable")
+            statements[episode.id].orEmpty()
+        }
         private val groupReader = object : GroupSnapshotReader {
             override fun snapshot(): GroupSnapshot { order.add("refresh"); return groupSnapshot }
         }
@@ -188,7 +174,9 @@ class OrganizePendingEpisodesTest {
                 override fun claimReady(limit: Int, now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int):
                     List<ComponentAssignmentTask> {
                     claims.add(Claim(limit, retryBefore, staleProcessingBefore, maxAttempts))
-                    return (1..claimable).take(limit).map { ComponentAssignmentTask(it, 1, PendingEpisode(it, "$it")) }
+                    return (1..claimable).take(limit).map {
+                        ComponentAssignmentTask(it, 1, PendingEpisode(it, "title $it", "$it", EpisodeAccess.PUBLIC, listOf("message $it")))
+                    }
                 }
                 override fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long) =
                     outboxMarks.add("completed:$outboxId:$expectedAttempt")
@@ -196,7 +184,7 @@ class OrganizePendingEpisodesTest {
                     outboxMarks.add("failed:$outboxId:$expectedAttempt")
                 override fun enqueueUnassigned(now: Long) = 3
             },
-            AssignEpisodeToComponents(store, episodeEmbeddings),
+            ExtractComponents(store, episodeEmbeddings, componentEmbeddings, extractor, knownLimit),
             RefreshGroupedComponentEmbeddings(groupReader, groupWriter, componentEmbeddings),
             OrganizePendingComponents { order.add("groups"); placement },
             MergeSmallGroups(object : GroupSnapshotReader {
@@ -205,6 +193,8 @@ class OrganizePendingEpisodesTest {
             Clock.fixed(Instant.ofEpochMilli(1_000_000L), ZoneOffset.UTC),
         )
     }
+
+    private data class Extraction(val episodeId: Int, val known: List<String>)
 
     private data class Claim(val limit: Int, val retryBefore: Long, val staleBefore: Long, val maxAttempts: Int)
 }

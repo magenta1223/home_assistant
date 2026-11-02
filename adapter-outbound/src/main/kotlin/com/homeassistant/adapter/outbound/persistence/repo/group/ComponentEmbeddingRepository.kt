@@ -30,8 +30,8 @@ internal class ComponentEmbeddingRepository(private val db: Database) : Componen
             .singleOrNull()?.let { decode(it) }
 
     companion object {
-        /** The current vector version of a Component row; memberships are only added, so the count identifies the centroid. */
-        fun version(component: ResultRow): String = component[ComponentTable.episodeCount].toString()
+        /** The vector version of a Component row: its statement never changes, so the fingerprint identifies the vector. */
+        fun version(component: ResultRow): String = descriptionFingerprint(component[ComponentTable.statement])
 
         fun decode(row: ResultRow): ComponentEmbedding = ComponentEmbedding(
             ComponentEmbeddingKey(row[ComponentEmbeddingTable.componentId], row[ComponentEmbeddingTable.version],

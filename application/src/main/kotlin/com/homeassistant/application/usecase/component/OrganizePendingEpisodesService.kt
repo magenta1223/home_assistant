@@ -11,10 +11,10 @@ import com.homeassistant.application.usecase.group.RefreshGroupedComponentEmbedd
 import java.time.Clock
 import java.util.concurrent.CancellationException
 
-/** Episode → Component assignment from the durable outbox, then Component → Group organization and Group merge (xMemory component → group). */
+/** Episode → Component extraction from the durable outbox, then Component → Group organization and Group merge (xMemory component → group). */
 class OrganizePendingEpisodesService(
     private val outbox: ComponentAssignmentOutbox,
-    private val assigner: AssignEpisodeToComponents,
+    private val extractor: ExtractComponents,
     private val groupRefresh: RefreshGroupedComponentEmbeddings,
     private val groups: OrganizePendingComponents,
     private val groupMerge: MergeSmallGroups,
@@ -29,14 +29,13 @@ class OrganizePendingEpisodesService(
         require(maxAttempts > 0) { "maxAttempts must be positive" }
     }
 
-    override fun isReady(): Boolean = assigner.isReady()
+    override fun isReady(): Boolean = extractor.isReady()
 
     override fun execute(limit: Int): EpisodeOrganizationResult {
         require(limit > 0) { "limit must be positive" }
         val now = clock.millis()
         val tasks = outbox.claimReady(limit, now, now - retryDelayMillis, now - processingLeaseMillis, maxAttempts)
-        val episodes = tasks.map { EpisodeAssignmentResult(it.episode.id, assign(it)) }
-        // Joined Components have moved centroids, so their Group vectors are refreshed before new Components are placed.
+        val episodes = tasks.map { EpisodeAssignmentResult(it.episode.id, extract(it)) }
         val refreshed = try {
             groupRefresh.execute()
         } catch (rebuild: GroupRebuildRequired) {
@@ -51,8 +50,8 @@ class OrganizePendingEpisodesService(
 
     override fun enqueueUnassigned(): Int = outbox.enqueueUnassigned(clock.millis())
 
-    private fun assign(task: ComponentAssignmentTask): EpisodeAssignmentOutcome = try {
-        assigner.execute(task.episode).also { outbox.markCompleted(task.outboxId, task.attempt, clock.millis()) }
+    private fun extract(task: ComponentAssignmentTask): EpisodeAssignmentOutcome = try {
+        extractor.execute(task.episode).also { outbox.markCompleted(task.outboxId, task.attempt, clock.millis()) }
     } catch (cancelled: CancellationException) {
         throw cancelled
     } catch (failure: Exception) {

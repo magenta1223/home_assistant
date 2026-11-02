@@ -22,6 +22,11 @@ data class EpisodeAccess(
     fun isVisibleTo(requester: UserId): Boolean =
         visibility == EpisodeVisibility.PUBLIC || requester.value in allowedUserIds
 
+    /** True when everyone who can read [other] can also read this. */
+    fun covers(other: EpisodeAccess): Boolean =
+        visibility == EpisodeVisibility.PUBLIC ||
+            (other.visibility == EpisodeVisibility.RESTRICTED && allowedUserIds.containsAll(other.allowedUserIds))
+
     companion object {
         val PUBLIC = EpisodeAccess(EpisodeVisibility.PUBLIC)
 

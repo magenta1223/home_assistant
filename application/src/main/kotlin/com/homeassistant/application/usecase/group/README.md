@@ -53,8 +53,8 @@ sequenceDiagram
 
 ## 정책
 
-- Component 벡터는 `ComponentCentroidVectors`가 주는 Component 중심 벡터의 방향이며 Episode 벡터와 같은 공간이다.
-  벡터 버전은 Component의 Episode 수다. Component 크기는 적절하다고 가정한다.
+- Component 벡터는 `ComponentStatementVectors`가 Component 문장을 임베딩한 것이며 Episode 벡터와 같은 공간이다.
+  벡터 버전은 문장의 fingerprint다. 문장은 바뀌지 않으므로 버전도 바뀌지 않는다.
 - cosine이 attach threshold를 **초과**하면 가장 가까운 Group에 배치한다. 동점은 작은 Group ID다.
 - 상한 초과 시 연결 성분과 결정적 이분할로 최대 두 종류의 partition 후보를 만든다.
 - 각 후보를 동일 Component 집합과 동일한 주변 Group snapshot에서 평가한다.

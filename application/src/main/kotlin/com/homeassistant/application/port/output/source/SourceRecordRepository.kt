@@ -22,7 +22,6 @@ interface SourceRecordRepository {
 
 data class SourceRecordSaveResult(
     val recordsToAnalyze: List<SourceRecord>,
-    val contextRecords: List<SourceRecord>,
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,

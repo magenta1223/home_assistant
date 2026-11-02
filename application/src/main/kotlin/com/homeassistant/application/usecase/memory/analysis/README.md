@@ -39,7 +39,7 @@ sequenceDiagram
         Sources-->>Analysis: SourceAccessConflictException(existingAccess)
         Analysis-->>Caller: ConflictingSourceAudienceException(existingAccess)
     else 저장 성공
-        Sources-->>Analysis: recordsToAnalyze + contextRecords
+        Sources-->>Analysis: recordsToAnalyze
         alt 새 분석 대상이 없음
             Analysis-->>Caller: DuplicateSourceRecordsException
         else 분석 대상 존재

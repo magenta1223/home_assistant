@@ -27,7 +27,6 @@ internal object MemoryAnalysisPrompt {
 
         대상, 내용, 시점과 조건이 같은 중복 memory만 하나로 합치세요.
         시간 순서나 메시지 개수로 중요도를 판단하지 마세요.
-        CONTEXT_ONLY의 c1, c2 같은 record는 해석에만 사용하고 memory evidence로 선택하지 마세요.
         evidenceRecordIds는 NEW_RECORDS에 제공된 r1, r2 같은 ID만 사용하세요.
         열람 권한은 사용자가 입력 단계에서 지정하므로 판단하거나 출력하지 마세요.
         응답은 아래 JSON Schema를 준수하는 JSON object 하나여야 합니다.

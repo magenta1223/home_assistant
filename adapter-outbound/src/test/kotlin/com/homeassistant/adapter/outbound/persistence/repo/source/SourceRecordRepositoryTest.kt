@@ -78,8 +78,8 @@ class SourceRecordRepositoryTest {
     }
 
     @Test
-    fun `incremental import returns only the analyzed prefix verified by the current upload`() {
-        val databasePath = Files.createTempFile("source-record-context", ".db")
+    fun `incremental import analyzes only the new records`() {
+        val databasePath = Files.createTempFile("source-record-incremental", ".db")
         try {
             val db = DatabaseFactory.init(databasePath.toString())
             val repository = SourceRecordRepositoryImpl(db)
@@ -93,9 +93,7 @@ class SourceRecordRepositoryTest {
                 existingDrafts + draft("new") + draft("old-1"),
             )
 
-            assertEquals((6..25).map { "old-$it" }, incremental.contextRecords.map { it.deduplicationKey })
             assertEquals(listOf("new"), incremental.recordsToAnalyze.map { it.deduplicationKey })
-            assertTrue(incremental.contextRecords.all { it.analysisStatus == SourceRecordAnalysisStatus.ANALYZED })
         } finally {
             Files.deleteIfExists(databasePath)
         }

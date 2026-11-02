@@ -82,7 +82,7 @@ class MemoryAnalysisReferenceTest {
                     },
                 )
             }
-            return SourceRecordSaveResult(saved, emptyList(), saved.size, 0, 0)
+            return SourceRecordSaveResult(saved, saved.size, 0, 0)
         }
 
         override fun findBySource(source: SourceDescriptor): List<SourceRecord> = emptyList()

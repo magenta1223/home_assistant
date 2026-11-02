@@ -20,7 +20,7 @@ class MemoryAnalysisPersistenceTest {
             override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>, access: MemoryAccess) =
                 SourceRecordSaveResult(
                     listOf(SourceRecord(1, "key", "source", SourceRecordAnalysisStatus.PENDING, access)),
-                    emptyList(), 1, 0, 0,
+                    1, 0, 0,
                 )
             override fun findBySource(source: SourceDescriptor) = emptyList<SourceRecord>()
         }

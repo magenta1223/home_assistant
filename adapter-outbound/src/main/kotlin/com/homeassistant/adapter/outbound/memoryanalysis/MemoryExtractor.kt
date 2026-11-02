@@ -95,7 +95,6 @@ internal class MemoryExtractor(
             }
             .mapIndexed { index, start ->
                 document.copy(
-                    contextRecords = if (index == 0) document.contextRecords else emptyList(),
                     records = document.records.subList(start, minOf(start + chunkSize, document.records.size)),
                 )
             }
@@ -109,10 +108,6 @@ internal class MemoryExtractor(
         }.distinctBy { it.id }
 
     private fun renderDocument(document: SourceDocument): String = buildString {
-        if (document.contextRecords.isNotEmpty()) {
-            appendLine("[CONTEXT_ONLY]")
-            document.contextRecords.forEach { appendLine("${it.contextPromptId} | ${it.content}") }
-        }
         appendLine("[NEW_RECORDS]")
         append(document.records.joinToString("\n") { "${it.promptId} | ${it.content}" })
     }
@@ -141,9 +136,6 @@ internal class MemoryExtractor(
 
 private val SourceRecord.promptId: String
     get() = "r$id"
-
-private val SourceRecord.contextPromptId: String
-    get() = "c$id"
 
 private fun List<MemoryProposal>.distinctByMeaningAndEvidence(): List<MemoryProposal> =
     distinctBy { memory -> memory.content to memory.evidenceIds.toSet() }

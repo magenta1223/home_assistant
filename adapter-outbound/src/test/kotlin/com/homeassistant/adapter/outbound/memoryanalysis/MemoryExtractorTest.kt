@@ -78,23 +78,6 @@ class MemoryExtractorTest {
     }
 
     @Test
-    fun `context records are rendered separately and cannot become evidence`() = runBlocking {
-        val client = RecordingClient(
-            responses = mutableListOf(response(evidenceIds = listOf("c99"))),
-        )
-        val input = document(recordCount = 1).copy(
-            contextRecords = listOf(
-                SourceRecord(99, "context", "earlier message", SourceRecordAnalysisStatus.ANALYZED, MemoryAccess.PUBLIC),
-            ),
-        )
-
-        assertFailsWith<IllegalArgumentException> { MemoryExtractor(client).analyze(input) }
-        assertContains(client.calls.single().userMessage, "[CONTEXT_ONLY]\nc99 | earlier message")
-        assertContains(client.calls.single().userMessage, "[NEW_RECORDS]\nr1 | content-1")
-        assertContains(client.calls.single().system, "c1, c2 같은 record는 해석에만 사용")
-    }
-
-    @Test
     fun `large documents use bounded chunks with overlap`() = runBlocking {
         val client = FunctionalClient { _, _, _ -> """{"memories":[]}""" }
 

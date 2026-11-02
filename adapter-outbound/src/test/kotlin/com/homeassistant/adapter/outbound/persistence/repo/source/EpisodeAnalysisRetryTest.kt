@@ -250,6 +250,7 @@ class EpisodeAnalysisRetryTest {
     }
 
     private fun proposal(document: SourceDocument): EpisodeProposal = EpisodeProposal(
+        title = "title",
         content = "episode-${document.records.single().deduplicationKey}",
         evidenceIds = document.records.map { it.id },
     )
@@ -281,6 +282,7 @@ class EpisodeAnalysisRetryTest {
                 Episode(
                     id = episodes.size + 1,
                     createdByUserId = createdBy.value,
+                    title = proposal.title,
                     content = proposal.content,
                     visibility = EpisodeVisibility.PUBLIC,
                     evidenceRefs = proposal.evidenceIds,

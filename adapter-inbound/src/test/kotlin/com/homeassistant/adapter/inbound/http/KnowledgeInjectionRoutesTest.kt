@@ -231,6 +231,7 @@ class KnowledgeInjectionRoutesTest {
         override suspend fun execute(request: EpisodeAnalysisRequest): EpisodeAnalysisResult {
             requests += request
             val proposal = EpisodeProposal(
+                title = "title",
                 content = "episode",
                 evidenceIds = listOf(1),
             )

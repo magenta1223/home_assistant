@@ -5,6 +5,7 @@ import org.jetbrains.exposed.sql.Table
 internal object EpisodeTable : Table("episodes") {
     val id = integer("id").autoIncrement()
     val createdByUserId = text("created_by_user_id")
+    val title = text("title")
     val content = text("content")
     val visibility = text("visibility")
     /** Null only for canonical episodes created before durable batch persistence was introduced. */

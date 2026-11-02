@@ -59,7 +59,7 @@ class EpisodeRepositoryTest {
     }
 
     @Test
-    fun `stores one creation time and reads it from an existing episode`() {
+    fun `stores the title and one creation time and reads them from an existing episode`() {
         val databasePath = Files.createTempFile("episode-created-at", ".db")
         try {
             val database = DatabaseFactory.init(databasePath.toString())
@@ -81,6 +81,7 @@ class EpisodeRepositoryTest {
 
             assertEquals(createdAt.toEpochMilli(), saved.createdAt)
             assertEquals(saved.createdAt, stored.createdAt)
+            assertEquals("title", stored.title)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -147,6 +148,7 @@ class EpisodeRepositoryTest {
     }
 
     private fun episodeProposal(evidenceId: Int, content: String) = EpisodeProposal(
+        title = "title",
         content = content,
         evidenceIds = listOf(evidenceId),
     )

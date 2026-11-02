@@ -90,6 +90,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             access,
         ).recordsToAnalyze.single()
         val proposal = EpisodeProposal(
+                title = "title",
                 content = content,
                 evidenceIds = listOf(evidence.id),
             )

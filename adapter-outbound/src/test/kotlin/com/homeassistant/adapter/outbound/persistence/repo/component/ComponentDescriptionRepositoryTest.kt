@@ -56,7 +56,7 @@ class ComponentDescriptionRepositoryTest {
         ).recordsToAnalyze.single()
         return EpisodeRepository(db).commit(
             UserId("creator"),
-            listOf(IdempotentEpisodeProposal("component", EpisodeProposal("fact", listOf(record.id)))),
+            listOf(IdempotentEpisodeProposal("component", EpisodeProposal("title", "fact", listOf(record.id)))),
             listOf(record.id),
         ).single().id
     }

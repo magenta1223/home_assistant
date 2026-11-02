@@ -9,6 +9,7 @@ import kotlin.test.assertNotEquals
 class EpisodeIdempotencyKeyTest {
     private val user = UserId("member-1")
     private val proposal = EpisodeProposal(
+        title = "title",
         content = "A fact",
         evidenceIds = listOf(1, 2),
     )

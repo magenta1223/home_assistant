@@ -36,7 +36,7 @@ class GroupRepositoryTest {
         val user = UserId("owner")
         val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
             .recordsToAnalyze.single()
-        val committed = episodes.commit(user, (1..5).map { IdempotentEpisodeProposal("m$it", EpisodeProposal("fact $it", listOf(record.id))) },
+        val committed = episodes.commit(user, (1..5).map { IdempotentEpisodeProposal("m$it", EpisodeProposal("title", "fact $it", listOf(record.id))) },
             listOf(record.id))
         val components = ComponentRepository(db)
         val ids = committed.map { components.create(it.id, ComponentCentroid.of(vector)) }.toSet()
@@ -180,7 +180,7 @@ class GroupRepositoryTest {
         val user = UserId("owner")
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", "seed"), listOf(SourceRecordDraft("seed", "seed")),
             EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
-        val episodes = EpisodeRepository(db).commit(user, (1..count).map { IdempotentEpisodeProposal("seed-$it", EpisodeProposal("fact $it", listOf(record.id))) },
+        val episodes = EpisodeRepository(db).commit(user, (1..count).map { IdempotentEpisodeProposal("seed-$it", EpisodeProposal("title", "fact $it", listOf(record.id))) },
             listOf(record.id))
         val components = ComponentRepository(db)
         val store = ComponentEmbeddingRepository(db)

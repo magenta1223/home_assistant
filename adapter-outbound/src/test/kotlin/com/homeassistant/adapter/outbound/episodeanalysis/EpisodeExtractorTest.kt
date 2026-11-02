@@ -22,24 +22,25 @@ import kotlin.test.assertFailsWith
 
 class EpisodeExtractorTest {
     @Test
-    fun `extraction contract only requires content and evidence`() {
+    fun `extraction contract requires a title, content and evidence`() {
         val root = Json.parseToJsonElement(EpisodeAnalysisOutputContract.schema).jsonObject
         val episodeSchema = root["properties"]!!.jsonObject["episodes"]!!
             .jsonObject["items"]!!.jsonObject
         val required = episodeSchema["required"]!!.jsonArray.map { it.jsonPrimitive.content }
 
-        assertEquals(setOf("text", "evidenceRecordIds"), required.toSet())
-        assertEquals(setOf("text", "evidenceRecordIds"), episodeSchema["properties"]!!.jsonObject.keys)
+        assertEquals(setOf("title", "text", "evidenceRecordIds"), required.toSet())
+        assertEquals(setOf("title", "text", "evidenceRecordIds"), episodeSchema["properties"]!!.jsonObject.keys)
         assertContains(EpisodeAnalysisPrompt.system(), "같은 일에 관한 내용은 하나의 episode로")
     }
 
     @Test
-    fun `episode text is kept as the model wrote it with its evidence`() = runBlocking {
+    fun `episode title and text are kept as the model wrote them with their evidence`() = runBlocking {
         val content = "연구자는 9월 측정값이 센서 오류일 가능성이 있으며 재측정 전에는 확정할 수 없다고 말했다."
         val client = RecordingClient(mutableListOf(response(text = content)))
 
         val episode = EpisodeExtractor(client).analyze(document(recordCount = 1)).single()
 
+        assertEquals("title", episode.title)
         assertEquals(content, episode.content)
         assertEquals(listOf(1), episode.evidenceIds)
     }
@@ -124,7 +125,7 @@ class EpisodeExtractorTest {
         evidenceIds: List<String> = listOf("r1"),
     ): String {
         val evidenceJson = evidenceIds.joinToString(",") { "\"$it\"" }
-        return """{"text":"$text","evidenceRecordIds":[$evidenceJson]}"""
+        return """{"title":"title","text":"$text","evidenceRecordIds":[$evidenceJson]}"""
     }
 
     private class RecordingClient(

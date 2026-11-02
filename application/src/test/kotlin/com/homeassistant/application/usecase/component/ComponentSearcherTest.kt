@@ -152,7 +152,7 @@ class ComponentSearcherTest {
                     .flatMap { component -> component.slices.filterKeys { it.isVisibleTo(userId) }.values.flatten() }
                     .distinct()
                     .filter { visible == null || it in visible!! }
-                    .map { Episode(it, "creator", "episode $it", EpisodeAccess.PUBLIC.visibility, emptySet(), listOf(1), it.toLong()) }
+                    .map { Episode(it, "creator", "title $it", "episode $it", EpisodeAccess.PUBLIC.visibility, emptySet(), listOf(1), it.toLong()) }
             },
             object : EpisodeEmbeddingStore {
                 override fun find(key: EpisodeEmbeddingKey) =

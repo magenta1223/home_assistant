@@ -13,6 +13,8 @@ import kotlinx.serialization.Serializable
 data class Episode(
     val id: Int,
     val createdByUserId: String,
+    /** A short searchable name of what happened. */
+    val title: String,
     val content: String,
     val visibility: EpisodeVisibility,
     val allowedUserIds: Set<String> = emptySet(),
@@ -21,6 +23,7 @@ data class Episode(
     val createdAt: Long,
 ) {
     init {
+        require(title.isNotBlank()) { "episode title is required" }
         require(content.isNotBlank()) { "episode content is required" }
         require(createdByUserId.isNotBlank()) { "createdByUserId is required" }
         EpisodeAccess(visibility, allowedUserIds)

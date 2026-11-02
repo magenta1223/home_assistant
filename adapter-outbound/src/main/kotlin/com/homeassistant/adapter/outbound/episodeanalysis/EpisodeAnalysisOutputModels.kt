@@ -37,6 +37,8 @@ internal data class EpisodeAnalysisLlmResponse(
 @Schema
 @Serializable
 internal data class EpisodeLlmResponse(
+    @property:SerialDescription("이 episode의 주제와 활동을 담은 검색하기 쉬운 제목")
+    val title: String,
     @property:SerialDescription("근거 기록으로 뒷받침되는 독립적인 episode 본문")
     val text: String,
     @property:SerialDescription("이 episode의 근거인 records의 id")

@@ -86,7 +86,7 @@ class ComponentDescriberTest {
             object : EpisodeReader {
                 override fun getEpisodes(userId: UserId) = slices.filterKeys { it.isVisibleTo(userId) }.values.flatten()
                     .filter { visible == null || it in visible!! }
-                    .map { Episode(it, "creator", "episode $it", EpisodeAccess.PUBLIC.visibility, emptySet(), listOf(1), it.toLong()) }
+                    .map { Episode(it, "creator", "title $it", "episode $it", EpisodeAccess.PUBLIC.visibility, emptySet(), listOf(1), it.toLong()) }
             },
             object : ComponentDescriptionStore {
                 override fun find(key: ComponentViewKey) = saved[key]

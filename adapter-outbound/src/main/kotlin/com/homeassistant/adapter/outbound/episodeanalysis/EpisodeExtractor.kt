@@ -43,9 +43,11 @@ internal class EpisodeExtractor(
         )
         return EpisodeAnalysisOutputContract.decode(raw).episodes.map { episode ->
             val evidence = parseEvidence(document, episode.evidenceRecordIds)
+            require(episode.title.isNotBlank()) { "Episode title must not be blank" }
             require(episode.text.isNotBlank()) { "Episode text must not be blank" }
             require(evidence.isNotEmpty()) { "Episode must include at least one evidence record" }
             EpisodeProposal(
+                title = episode.title.trim(),
                 content = episode.text.trim(),
                 evidenceIds = evidence.map { it.id },
             )

@@ -67,6 +67,7 @@ internal class EpisodeRepository(
                 )
                 val episodeId = EpisodeTable.insert {
                     it[createdByUserId] = createdBy.value
+                    it[title] = proposal.title
                     it[content] = proposal.content
                     it[visibility] = access.visibility.name
                     it[idempotencyKey] = item.idempotencyKey
@@ -108,6 +109,7 @@ internal class EpisodeRepository(
         return Episode(
             id = episodeId,
             createdByUserId = this[EpisodeTable.createdByUserId],
+            title = this[EpisodeTable.title],
             content = this[EpisodeTable.content],
             visibility = EpisodeVisibility.valueOf(this[EpisodeTable.visibility]),
             allowedUserIds = EpisodeViewerTable.select(EpisodeViewerTable.userId)
@@ -127,6 +129,7 @@ internal class EpisodeRepository(
         return Episode(
             id = episodeId,
             createdByUserId = userId.value,
+            title = title,
             content = content,
             visibility = access.visibility,
             allowedUserIds = access.allowedUserIds,

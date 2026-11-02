@@ -88,6 +88,7 @@ class CanonicalEpisodeBatchRepositoryTest {
     private fun item(key: String, proposal: EpisodeProposal) = IdempotentEpisodeProposal(key, proposal)
 
     private fun proposal(content: String, evidenceId: Int) = EpisodeProposal(
+        title = "title",
         content = content,
         evidenceIds = listOf(evidenceId),
     )

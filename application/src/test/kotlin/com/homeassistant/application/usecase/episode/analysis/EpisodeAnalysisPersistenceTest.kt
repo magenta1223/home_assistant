@@ -26,7 +26,7 @@ class EpisodeAnalysisPersistenceTest {
         }
         val service = EpisodeAnalysisService(
             episodeExtractor = object : com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor {
-                override suspend fun analyze(document: SourceDocument) = listOf(EpisodeProposal("fact", listOf(1)))
+                override suspend fun analyze(document: SourceDocument) = listOf(EpisodeProposal("title", "fact", listOf(1)))
             },
             sourceRecords = records,
             episodeSaver = EpisodeProposalsPersister(CanonicalEpisodeBatchWriter { _, _, _ ->

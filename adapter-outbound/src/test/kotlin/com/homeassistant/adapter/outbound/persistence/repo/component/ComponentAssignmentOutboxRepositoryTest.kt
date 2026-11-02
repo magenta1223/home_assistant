@@ -81,7 +81,7 @@ class ComponentAssignmentOutboxRepositoryTest {
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
             EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
         return EpisodeRepository(db).commit(user, contents.mapIndexed { index, content ->
-            IdempotentEpisodeProposal("$key-$index", EpisodeProposal(content, listOf(record.id)))
+            IdempotentEpisodeProposal("$key-$index", EpisodeProposal("title", content, listOf(record.id)))
         }, listOf(record.id)).map { it.id }
     }
 

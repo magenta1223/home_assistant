@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.input.identity.UserAuthentication
-import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.identity.UserAuthentication
+import com.homeassistant.application.port.inbound.identity.UserRegistry
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversation
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate

@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.outbound.group.*
 import com.homeassistant.domain.group.ComponentVector
 import kotlinx.serialization.json.*
 

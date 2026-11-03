@@ -10,9 +10,9 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtract
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
-import com.homeassistant.application.port.output.component.PendingEpisode
-import com.homeassistant.application.port.output.component.ComponentAssignmentOutbox
-import com.homeassistant.application.port.output.component.ComponentAssignmentTask
+import com.homeassistant.application.port.outbound.component.PendingEpisode
+import com.homeassistant.application.port.outbound.component.ComponentAssignmentOutbox
+import com.homeassistant.application.port.outbound.component.ComponentAssignmentTask
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 

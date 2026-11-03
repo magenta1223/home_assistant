@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.componentextraction
 
-import com.homeassistant.application.port.output.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.output.component.PendingEpisode
+import com.homeassistant.application.port.outbound.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.component.PendingEpisode
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
 import com.homeassistant.llm.completion.CompletionClient

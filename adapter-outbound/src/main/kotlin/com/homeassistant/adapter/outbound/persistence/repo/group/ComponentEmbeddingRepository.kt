@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.group
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.outbound.group.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 

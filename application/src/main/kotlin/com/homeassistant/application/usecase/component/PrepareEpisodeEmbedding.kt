@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.output.group.EmbeddingSpace
-import com.homeassistant.application.port.output.component.*
+import com.homeassistant.application.port.outbound.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.component.*
 
 /** Provides an episode's vector for Component placement, generating and storing it only when its content is not stored yet. */
 class PrepareEpisodeEmbedding(

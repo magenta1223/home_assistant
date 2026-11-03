@@ -1,10 +1,10 @@
 package com.homeassistant.application.usecase.episode.analysis
 
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.output.episode.EpisodeExtractor
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
 import com.homeassistant.domain.episode.*
-import com.homeassistant.application.port.output.source.SourceRecordRepository
-import com.homeassistant.application.port.output.source.SourceRecordSaveResult
+import com.homeassistant.application.port.outbound.source.SourceRecordRepository
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.*
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*

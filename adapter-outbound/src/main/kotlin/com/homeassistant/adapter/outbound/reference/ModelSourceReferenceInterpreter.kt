@@ -1,14 +1,13 @@
 package com.homeassistant.adapter.outbound.reference
 
-import com.homeassistant.application.port.output.source.SourceReferenceInterpretation
-import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceReferenceDraft
 import com.homeassistant.llm.completion.CompletionClient
 import com.homeassistant.llm.completion.CompletionImage
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.decodeFromString
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.rendering.PDFRenderer

@@ -2,8 +2,8 @@ package com.homeassistant.adapter.outbound.embedding.episode
 
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
-import com.homeassistant.application.port.output.group.EmbeddingSpace
-import com.homeassistant.application.port.output.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingGenerator
 import com.homeassistant.domain.group.ComponentVector
 
 class EpisodeEmbeddingAdapter(

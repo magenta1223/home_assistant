@@ -1,15 +1,15 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.output.identity.PasswordHash
-import com.homeassistant.application.port.output.identity.PasswordHasher
-import com.homeassistant.application.port.output.identity.StoredCredential
-import com.homeassistant.application.port.output.identity.StoredSession
-import com.homeassistant.application.port.output.identity.UserCredentialStore
-import com.homeassistant.application.port.output.identity.UserRegistration
-import com.homeassistant.application.port.output.identity.UserSessionStore
+import com.homeassistant.application.port.inbound.identity.UserRegistry
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.outbound.identity.PasswordHash
+import com.homeassistant.application.port.outbound.identity.PasswordHasher
+import com.homeassistant.application.port.outbound.identity.StoredCredential
+import com.homeassistant.application.port.outbound.identity.StoredSession
+import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
@@ -22,7 +22,6 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode

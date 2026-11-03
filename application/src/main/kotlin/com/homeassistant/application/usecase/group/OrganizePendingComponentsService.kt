@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.group
 
-import com.homeassistant.application.port.input.group.*
-import com.homeassistant.application.port.output.group.GroupRebuildRequired
-import com.homeassistant.application.port.output.group.PendingComponentSource
+import com.homeassistant.application.port.inbound.group.*
+import com.homeassistant.application.port.outbound.group.GroupRebuildRequired
+import com.homeassistant.application.port.outbound.group.PendingComponentSource
 import java.util.concurrent.CancellationException
 
 class OrganizePendingComponentsService(

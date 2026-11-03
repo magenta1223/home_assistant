@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.group
 
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.outbound.group.*
 
 /** Provides a Component's vector for Group organization, generating and storing it only when its version is not stored yet. */
 class PrepareComponentEmbedding(

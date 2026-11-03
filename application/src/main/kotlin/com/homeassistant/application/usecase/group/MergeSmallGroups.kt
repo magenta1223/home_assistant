@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.group
 
-import com.homeassistant.application.port.input.group.GroupMergeOutcome
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.inbound.group.GroupMergeOutcome
+import com.homeassistant.application.port.outbound.group.*
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.GroupMerge
 import com.homeassistant.domain.group.GroupMergePolicy

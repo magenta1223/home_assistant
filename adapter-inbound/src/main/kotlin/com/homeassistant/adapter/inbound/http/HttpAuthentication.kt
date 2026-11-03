@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.identity.UserAuthentication
+import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env

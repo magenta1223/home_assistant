@@ -1,12 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.repo.identity
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.UserTable
-import com.homeassistant.application.port.output.identity.UserStore
+import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.ResultRow
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction
 

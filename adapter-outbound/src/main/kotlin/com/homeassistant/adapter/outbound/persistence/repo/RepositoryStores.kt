@@ -1,14 +1,14 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
-import com.homeassistant.application.port.output.source.SourceRecordRepository
-import com.homeassistant.application.port.output.episode.EpisodeReader
-import com.homeassistant.application.port.output.episode.EpisodeWriter
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionStore
-import com.homeassistant.application.port.output.identity.UserCredentialStore
-import com.homeassistant.application.port.output.identity.UserSessionStore
-import com.homeassistant.application.port.output.identity.UserStore
-import com.homeassistant.application.port.output.component.*
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.outbound.source.SourceRecordRepository
+import com.homeassistant.application.port.outbound.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserSessionStore
+import com.homeassistant.application.port.outbound.identity.UserStore
+import com.homeassistant.application.port.outbound.component.*
+import com.homeassistant.application.port.outbound.group.*
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,

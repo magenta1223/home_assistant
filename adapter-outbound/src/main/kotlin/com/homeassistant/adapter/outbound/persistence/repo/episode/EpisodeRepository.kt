@@ -6,8 +6,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeViewerTab
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
-import com.homeassistant.application.port.output.episode.EpisodeReader
-import com.homeassistant.application.port.output.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.episode.EpisodeWriter
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAccess

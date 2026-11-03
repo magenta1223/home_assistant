@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode

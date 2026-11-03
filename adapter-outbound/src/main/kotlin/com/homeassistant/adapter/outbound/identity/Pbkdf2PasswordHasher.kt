@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.identity
 
-import com.homeassistant.application.port.output.identity.PasswordHash
-import com.homeassistant.application.port.output.identity.PasswordHasher
+import com.homeassistant.application.port.outbound.identity.PasswordHash
+import com.homeassistant.application.port.outbound.identity.PasswordHasher
 import com.homeassistant.domain.identity.Password
 import java.security.MessageDigest
 import java.security.SecureRandom

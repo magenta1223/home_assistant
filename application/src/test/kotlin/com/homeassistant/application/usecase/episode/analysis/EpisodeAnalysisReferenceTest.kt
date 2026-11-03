@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.episode.analysis
 
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.output.episode.EpisodeExtractor
-import com.homeassistant.application.port.output.source.SourceReferenceInterpretation
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -10,8 +10,8 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
-import com.homeassistant.application.port.output.source.SourceRecordRepository
-import com.homeassistant.application.port.output.source.SourceRecordSaveResult
+import com.homeassistant.application.port.outbound.source.SourceRecordRepository
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceReference
 import com.homeassistant.domain.source.SourceReferenceDraft
 import kotlinx.coroutines.runBlocking

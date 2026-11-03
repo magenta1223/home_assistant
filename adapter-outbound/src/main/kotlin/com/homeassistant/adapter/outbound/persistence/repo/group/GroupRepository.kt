@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.outbound.group.*
 import com.homeassistant.domain.group.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList

@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationParticipant
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationRequestKey
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationRequestStatus
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.output.episode.conversation.ConversationId
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationParticipant
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import java.sql.DriverManager

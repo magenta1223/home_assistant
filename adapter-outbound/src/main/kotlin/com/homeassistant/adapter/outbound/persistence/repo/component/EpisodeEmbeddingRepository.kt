@@ -3,9 +3,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.component
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
-import com.homeassistant.application.port.output.group.EmbeddingSpace
-import com.homeassistant.application.port.output.group.descriptionFingerprint
-import com.homeassistant.application.port.output.component.*
+import com.homeassistant.application.port.outbound.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.group.descriptionFingerprint
+import com.homeassistant.application.port.outbound.component.*
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import org.jetbrains.exposed.sql.*

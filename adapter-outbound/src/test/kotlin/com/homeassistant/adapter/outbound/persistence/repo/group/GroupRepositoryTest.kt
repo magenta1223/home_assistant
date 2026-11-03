@@ -5,8 +5,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.group.*
-import com.homeassistant.application.port.input.group.*
+import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.inbound.group.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId

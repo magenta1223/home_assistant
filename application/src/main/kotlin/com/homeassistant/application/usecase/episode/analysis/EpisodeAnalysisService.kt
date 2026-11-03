@@ -1,16 +1,16 @@
 package com.homeassistant.application.usecase.episode.analysis
 
-import com.homeassistant.application.port.input.episode.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisResult
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisUnavailableException
-import com.homeassistant.application.port.input.episode.analysis.InvalidEpisodeAudienceException
-import com.homeassistant.application.port.input.episode.analysis.InvalidKnowledgeReferenceException
-import com.homeassistant.application.port.input.episode.analysis.ConflictingSourceAudienceException
-import com.homeassistant.application.port.output.episode.EpisodeExtractor
-import com.homeassistant.application.port.output.episode.EpisodeWriter
-import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
+import com.homeassistant.application.port.inbound.episode.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisResult
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisUnavailableException
+import com.homeassistant.application.port.inbound.episode.analysis.InvalidEpisodeAudienceException
+import com.homeassistant.application.port.inbound.episode.analysis.InvalidKnowledgeReferenceException
+import com.homeassistant.application.port.inbound.episode.analysis.ConflictingSourceAudienceException
+import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
+import com.homeassistant.application.port.outbound.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -18,7 +18,7 @@ import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceAccessConflictException
-import com.homeassistant.application.port.output.source.SourceRecordRepository
+import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
 

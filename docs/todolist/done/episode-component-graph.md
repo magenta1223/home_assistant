@@ -99,7 +99,7 @@ Source 분석 처리 상태와 불변 원문 자체의 경계도 계약 검토 �
 
 관련 코드:
 
-- [CanonicalEpisodeBatchWriter](../../../application/src/main/kotlin/com/homeassistant/application/port/output/episode/write/CanonicalEpisodeBatchWriter.kt)
+- [CanonicalEpisodeBatchWriter](../../../application/src/main/kotlin/com/homeassistant/application/port/outbound/episode/write/CanonicalEpisodeBatchWriter.kt)
 - [EpisodeProposalsPersister](../../../application/src/main/kotlin/com/homeassistant/application/usecase/episode/write/EpisodeProposalsPersister.kt)
 - [EpisodeRepository](../../../adapter-outbound/src/main/kotlin/com/homeassistant/adapter/outbound/persistence/repo/episode/EpisodeRepository.kt)
 
@@ -287,4 +287,4 @@ GPT-6 Astra 서브에이전트가 1~3단계와 4단계 대부분을 순차 구�
 - 초기 배치만 구현했다. 기존 Component 재정리·설명 수정·분할·병합, Component 검색·표시 API·UI는 보류한다.
 - 새 DB 기준의 스키마다. 기존 데이터 변환이나 운영 DB 초기화는 이번 작업에 포함하지 않았다.
 
-당시 Component placement README와 구현은 2026-10-10에 삭제했다. 남아 있는 명시적 저장 계약은 [Component storage README](../../../application/src/main/kotlin/com/homeassistant/application/port/output/component/README.md)를 따른다.
+당시 Component placement README와 구현은 2026-10-10에 삭제했다. 남아 있는 명시적 저장 계약은 [Component storage README](../../../application/src/main/kotlin/com/homeassistant/application/port/outbound/component/README.md)를 따른다.

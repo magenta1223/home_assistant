@@ -1,10 +1,10 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.input.group.GroupOrganizationResult
-import com.homeassistant.application.port.input.group.OrganizePendingComponents
-import com.homeassistant.application.port.input.component.*
-import com.homeassistant.application.port.output.component.ComponentAssignmentOutbox
-import com.homeassistant.application.port.output.component.ComponentAssignmentTask
+import com.homeassistant.application.port.inbound.group.GroupOrganizationResult
+import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.component.*
+import com.homeassistant.application.port.outbound.component.ComponentAssignmentOutbox
+import com.homeassistant.application.port.outbound.component.ComponentAssignmentTask
 import com.homeassistant.application.usecase.group.MergeSmallGroups
 import java.time.Clock
 import java.util.concurrent.CancellationException

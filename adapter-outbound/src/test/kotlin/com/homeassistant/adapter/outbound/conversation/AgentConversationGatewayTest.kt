@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.conversation
 
-import com.homeassistant.application.port.output.episode.conversation.ConversationId
-import com.homeassistant.application.port.output.episode.conversation.ConversationReply
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
 import com.homeassistant.llm.conversation.ConversationClient
 import kotlin.test.Test
 import kotlin.test.assertEquals

@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversation
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationParticipant
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationRequest
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationRequestKey
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationResult
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationParticipant
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequest
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationResult
 import com.homeassistant.configuration.AppConfig
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode

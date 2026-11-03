@@ -2,14 +2,14 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
-import com.homeassistant.application.port.input.episode.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.port.input.episode.analysis.ConflictingSourceAudienceException
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisUnavailableException
-import com.homeassistant.application.port.input.episode.analysis.InvalidEpisodeAudienceException
-import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.episode.analysis.DuplicateSourceRecordsException
+import com.homeassistant.application.port.inbound.episode.analysis.ConflictingSourceAudienceException
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisUnavailableException
+import com.homeassistant.application.port.inbound.episode.analysis.InvalidEpisodeAudienceException
+import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
 import com.homeassistant.application.usecase.episode.analysis.EpisodeAnalysisService
-import com.homeassistant.application.port.output.episode.EpisodeExtractor
-import com.homeassistant.application.port.output.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
+import com.homeassistant.application.port.outbound.episode.EpisodeWriter
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAccess

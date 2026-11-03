@@ -1,9 +1,9 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.input.component.EpisodeAssignmentOutcome
-import com.homeassistant.application.port.output.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.output.component.ComponentMaintenanceStore
-import com.homeassistant.application.port.output.component.PendingEpisode
+import com.homeassistant.application.port.inbound.component.EpisodeAssignmentOutcome
+import com.homeassistant.application.port.outbound.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.component.PendingEpisode
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.group.GroupGeometry

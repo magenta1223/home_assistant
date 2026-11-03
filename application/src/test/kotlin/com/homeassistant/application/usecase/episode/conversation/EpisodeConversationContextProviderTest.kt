@@ -1,10 +1,10 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.input.component.SearchComponents
-import com.homeassistant.application.port.input.component.ComponentMatch
-import com.homeassistant.application.port.input.component.ComponentMatchEpisode
-import com.homeassistant.application.port.input.episode.search.EpisodeMatch
-import com.homeassistant.application.port.input.episode.search.SearchEpisodes
+import com.homeassistant.application.port.inbound.component.SearchComponents
+import com.homeassistant.application.port.inbound.component.ComponentMatch
+import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
+import com.homeassistant.application.port.inbound.episode.search.EpisodeMatch
+import com.homeassistant.application.port.inbound.episode.search.SearchEpisodes
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
 import kotlin.test.assertEquals

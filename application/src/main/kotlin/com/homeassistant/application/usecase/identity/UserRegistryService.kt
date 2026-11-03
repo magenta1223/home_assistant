@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.identity
 
-import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.output.identity.UserStore
+import com.homeassistant.application.port.inbound.identity.UserRegistry
+import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId

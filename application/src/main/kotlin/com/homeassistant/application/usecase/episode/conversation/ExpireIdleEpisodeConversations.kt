@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.output.episode.conversation.ConversationGateway
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
 

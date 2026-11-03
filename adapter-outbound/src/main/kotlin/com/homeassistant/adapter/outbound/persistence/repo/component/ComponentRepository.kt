@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtract
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeViewerTable
-import com.homeassistant.application.port.output.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.component.ComponentMaintenanceStore
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeVisibility

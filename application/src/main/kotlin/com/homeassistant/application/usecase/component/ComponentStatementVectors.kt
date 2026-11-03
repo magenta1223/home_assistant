@@ -1,10 +1,10 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.output.component.ComponentReader
-import com.homeassistant.application.port.output.component.EpisodeEmbeddingGenerator
-import com.homeassistant.application.port.output.group.ComponentEmbeddingGenerator
-import com.homeassistant.application.port.output.group.PendingComponent
-import com.homeassistant.application.port.output.group.descriptionFingerprint
+import com.homeassistant.application.port.outbound.component.ComponentReader
+import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.group.ComponentEmbeddingGenerator
+import com.homeassistant.application.port.outbound.group.PendingComponent
+import com.homeassistant.application.port.outbound.group.descriptionFingerprint
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.group.ComponentVector
 

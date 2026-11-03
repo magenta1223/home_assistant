@@ -1,12 +1,12 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.input.component.SearchComponents
-import com.homeassistant.application.port.input.component.ComponentMatch
-import com.homeassistant.application.port.input.component.ComponentMatchEpisode
-import com.homeassistant.application.port.output.group.GroupReader
-import com.homeassistant.application.port.output.episode.EpisodeReader
-import com.homeassistant.application.port.output.component.QueryEmbeddingGenerator
-import com.homeassistant.application.port.output.component.ComponentReader
+import com.homeassistant.application.port.inbound.component.SearchComponents
+import com.homeassistant.application.port.inbound.component.ComponentMatch
+import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
+import com.homeassistant.application.port.outbound.group.GroupReader
+import com.homeassistant.application.port.outbound.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
+import com.homeassistant.application.port.outbound.component.ComponentReader
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessDeniedException

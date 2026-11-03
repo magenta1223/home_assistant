@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.group
 
-import com.homeassistant.application.port.input.group.ComponentOrganizationOutcome
-import com.homeassistant.application.port.output.group.*
+import com.homeassistant.application.port.inbound.group.ComponentOrganizationOutcome
+import com.homeassistant.application.port.outbound.group.*
 import com.homeassistant.domain.group.*
 import java.util.UUID
 

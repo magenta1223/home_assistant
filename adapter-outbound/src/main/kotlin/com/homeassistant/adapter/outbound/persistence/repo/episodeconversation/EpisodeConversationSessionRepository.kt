@@ -1,13 +1,13 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationParticipant
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationRequestKey
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationReceipt
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationRequestStatus
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSession
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionStore
-import com.homeassistant.application.port.output.episode.conversation.ConversationId
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationParticipant
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeConversationActiveSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeConversationSessionTable
@@ -18,7 +18,6 @@ import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere
-import org.jetbrains.exposed.sql.innerJoin
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction

@@ -1,16 +1,16 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversation
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationRequest
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationRequestKey
-import com.homeassistant.application.port.input.episode.conversation.EpisodeConversationResult
-import com.homeassistant.application.port.output.episode.conversation.ConversationGateway
-import com.homeassistant.application.port.output.episode.conversation.ConversationId
-import com.homeassistant.application.port.output.episode.conversation.ConversationReply
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationRequestStatus
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSession
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequest
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationResult
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
+import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
+import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration

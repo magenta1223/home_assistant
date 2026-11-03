@@ -1,10 +1,10 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.input.group.GroupOrganizationResult
-import com.homeassistant.application.port.input.group.OrganizePendingComponents
-import com.homeassistant.application.port.input.component.*
-import com.homeassistant.application.port.output.group.*
-import com.homeassistant.application.port.output.component.*
+import com.homeassistant.application.port.inbound.group.GroupOrganizationResult
+import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.component.*
+import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.outbound.component.*
 import com.homeassistant.application.usecase.group.MergeSmallGroups
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*

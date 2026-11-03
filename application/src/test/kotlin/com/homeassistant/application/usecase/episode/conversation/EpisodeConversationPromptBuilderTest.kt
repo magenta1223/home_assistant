@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.input.component.ComponentMatch
-import com.homeassistant.application.port.input.component.ComponentMatchEpisode
+import com.homeassistant.application.port.inbound.component.ComponentMatch
+import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset

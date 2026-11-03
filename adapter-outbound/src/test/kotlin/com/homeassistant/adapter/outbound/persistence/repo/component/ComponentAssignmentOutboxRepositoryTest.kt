@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.component.*
+import com.homeassistant.application.port.outbound.component.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal

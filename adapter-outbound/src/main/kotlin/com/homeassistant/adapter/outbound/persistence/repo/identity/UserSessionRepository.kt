@@ -1,12 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.repo.identity
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.UserSessionTable
-import com.homeassistant.application.port.output.identity.StoredSession
-import com.homeassistant.application.port.output.identity.UserSessionStore
+import com.homeassistant.application.port.outbound.identity.StoredSession
+import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.greater
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.lessEq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.deleteWhere

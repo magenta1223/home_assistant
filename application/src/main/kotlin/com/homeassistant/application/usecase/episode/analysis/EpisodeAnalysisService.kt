@@ -9,8 +9,8 @@ import com.homeassistant.application.port.input.episode.analysis.InvalidEpisodeA
 import com.homeassistant.application.port.input.episode.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.episode.analysis.ConflictingSourceAudienceException
 import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
+import com.homeassistant.application.port.output.episode.write.EpisodeWriter
 import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
-import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory
 class EpisodeAnalysisService(
     private val episodeExtractor: EpisodeExtractor,
     private val sourceRecords: SourceRecordRepository,
-    private val episodeSaver: EpisodeProposalsPersister,
+    private val episodeWriter: EpisodeWriter,
     private val accessPolicy: UserAccessPolicy,
     private val referenceInterpreter: SourceReferenceInterpreter? = null,
 ) : EpisodeAnalysis {
@@ -63,7 +63,7 @@ class EpisodeAnalysisService(
             )
         }
         requireAvailable {
-            episodeSaver.persist(userId, proposals, recordsToAnalyze.map { it.id })
+            episodeWriter.commit(userId, proposals, recordsToAnalyze.map { it.id })
         }
         return EpisodeAnalysisResult(
             sourceType = parsedSource.source.type,

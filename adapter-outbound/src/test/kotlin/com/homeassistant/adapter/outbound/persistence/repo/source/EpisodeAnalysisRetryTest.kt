@@ -9,9 +9,7 @@ import com.homeassistant.application.port.input.episode.analysis.InvalidEpisodeA
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
 import com.homeassistant.application.usecase.episode.analysis.EpisodeAnalysisService
 import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
-import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
 import com.homeassistant.application.port.output.episode.write.EpisodeWriter
-import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -228,12 +226,12 @@ class EpisodeAnalysisRetryTest {
     ) = EpisodeAnalysisService(
         episodeExtractor = extractor,
         sourceRecords = sourceRecords,
-        episodeSaver = EpisodeProposalsPersister { createdBy, proposals, recordIds ->
+        episodeWriter = { createdBy, proposals, recordIds ->
             writer.commit(createdBy, proposals, recordIds).also {
                 markAnalyzed(db, recordIds)
             }
         },
-        accessPolicy = UserAccessPolicy { it == USER_ID },
+        accessPolicy = { it == USER_ID },
     )
 
     private fun request(key: String, access: EpisodeAccess = EpisodeAccess.PUBLIC) = EpisodeAnalysisRequest(

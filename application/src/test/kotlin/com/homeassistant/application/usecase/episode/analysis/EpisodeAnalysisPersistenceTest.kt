@@ -1,9 +1,6 @@
 package com.homeassistant.application.usecase.episode.analysis
 
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.output.episode.write.EpisodeWriter
-import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
-import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.episode.*
 import com.homeassistant.application.port.output.source.SourceRecordRepository
 import com.homeassistant.application.port.output.source.SourceRecordSaveResult
@@ -29,11 +26,11 @@ class EpisodeAnalysisPersistenceTest {
                 override suspend fun analyze(document: SourceDocument) = listOf(EpisodeProposal("title", "fact", listOf(1)))
             },
             sourceRecords = records,
-            episodeSaver = EpisodeProposalsPersister(EpisodeWriter { _, _, _ ->
+            episodeWriter = { _, _, _ ->
                 events += "commit"
                 emptyList()
-            }),
-            accessPolicy = UserAccessPolicy { true },
+            },
+            accessPolicy = { true },
         )
 
         val result = service.execute(EpisodeAnalysisRequest("user", SourceDocumentDraft(source, listOf(SourceRecordDraft("key", "source")))))

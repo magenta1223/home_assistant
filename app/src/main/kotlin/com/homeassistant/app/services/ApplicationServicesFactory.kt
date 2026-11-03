@@ -10,7 +10,6 @@ import com.homeassistant.configuration.Env
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
-import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
 import com.homeassistant.application.usecase.episode.conversation.HandleEpisodeConversation
 import com.homeassistant.application.usecase.episode.conversation.ExpireIdleEpisodeConversations
 import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
@@ -73,13 +72,11 @@ object ApplicationServicesFactory {
             MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings)),
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-        val episodeSaver = EpisodeProposalsPersister(
-            batchWriter = repositories.episodeWriter,
-        )
+
         val episodeAnalysisService = EpisodeAnalysisService(
             episodeExtractor = EpisodeExtractorFactory.create(completionClient),
             sourceRecords = repositories.sourceRecords,
-            episodeSaver = episodeSaver,
+            episodeWriter = repositories.episodeWriter,
             accessPolicy = users,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )

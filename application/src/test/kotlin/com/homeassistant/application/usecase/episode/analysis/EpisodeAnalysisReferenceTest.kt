@@ -2,10 +2,7 @@ package com.homeassistant.application.usecase.episode.analysis
 
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
 import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
-import com.homeassistant.application.port.output.episode.write.EpisodeWriter
 import com.homeassistant.application.port.output.source.SourceReferenceInterpretation
-import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
-import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -32,8 +29,8 @@ class EpisodeAnalysisReferenceTest {
         val service = EpisodeAnalysisService(
             episodeExtractor = extractor,
             sourceRecords = repository,
-            episodeSaver = EpisodeProposalsPersister(EpisodeWriter { _, _, _ -> emptyList() }),
-            accessPolicy = UserAccessPolicy { true },
+            episodeWriter = { _, _, _ -> emptyList() },
+            accessPolicy = { true },
             referenceInterpreter = {
                 listOf(
                     SourceReferenceInterpretation("page-1", "첫 페이지 해석"),

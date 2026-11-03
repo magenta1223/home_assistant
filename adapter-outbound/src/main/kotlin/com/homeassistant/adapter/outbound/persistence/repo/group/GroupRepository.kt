@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.application.port.output.group.*
 import com.homeassistant.domain.group.*
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 

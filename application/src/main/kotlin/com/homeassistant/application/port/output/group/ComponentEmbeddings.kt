@@ -23,20 +23,4 @@ data class ComponentEmbeddingKey(val componentId: Int, val version: String, val 
 
 data class ComponentEmbedding(val key: ComponentEmbeddingKey, val vector: ComponentVector)
 
-interface PendingComponentSource {
-    fun pending(limit: Int): List<PendingComponent>
-}
-
-interface ComponentEmbeddingGenerator {
-    val space: EmbeddingSpace
-    /** The vector of [component]; the store rejects it if the Component is no longer at [PendingComponent.version]. */
-    fun generate(component: PendingComponent): ComponentVector
-}
-
-interface ComponentEmbeddingStore {
-    fun find(key: ComponentEmbeddingKey): ComponentEmbedding?
-    /** Immutable per key. Concurrent preparation returns the first persisted vector. */
-    fun save(embedding: ComponentEmbedding): ComponentEmbedding
-}
-
 class GroupRebuildRequired(message: String) : IllegalStateException(message)

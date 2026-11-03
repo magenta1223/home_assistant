@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.episode.search
 
-import com.homeassistant.application.port.inbound.episode.search.EpisodeMatch
+import com.homeassistant.application.port.inbound.episode.EpisodeMatch
 import com.homeassistant.application.port.outbound.component.EpisodeEmbedding
 import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingKey

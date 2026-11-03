@@ -2,8 +2,8 @@ package com.homeassistant.application.usecase.episode.conversation
 
 import com.homeassistant.application.port.inbound.component.SearchComponents
 import com.homeassistant.application.port.inbound.component.ComponentMatch
-import com.homeassistant.application.port.inbound.episode.search.EpisodeMatch
-import com.homeassistant.application.port.inbound.episode.search.SearchEpisodes
+import com.homeassistant.application.port.inbound.episode.EpisodeMatch
+import com.homeassistant.application.port.inbound.episode.SearchEpisodes
 import com.homeassistant.domain.identity.UserId
 import java.time.Instant
 

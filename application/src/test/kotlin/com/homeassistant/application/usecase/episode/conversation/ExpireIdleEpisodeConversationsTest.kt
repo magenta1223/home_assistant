@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationParticipant
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationParticipant
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply

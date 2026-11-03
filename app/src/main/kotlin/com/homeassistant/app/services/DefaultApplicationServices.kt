@@ -4,8 +4,8 @@ import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntim
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.episode.EpisodeConversation
 import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
 
 internal class DefaultApplicationServices(

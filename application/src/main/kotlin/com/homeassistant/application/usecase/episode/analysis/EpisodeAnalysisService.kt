@@ -1,13 +1,13 @@
 package com.homeassistant.application.usecase.episode.analysis
 
-import com.homeassistant.application.port.inbound.episode.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisResult
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisUnavailableException
-import com.homeassistant.application.port.inbound.episode.analysis.InvalidEpisodeAudienceException
-import com.homeassistant.application.port.inbound.episode.analysis.InvalidKnowledgeReferenceException
-import com.homeassistant.application.port.inbound.episode.analysis.ConflictingSourceAudienceException
+import com.homeassistant.application.port.inbound.episode.DuplicateSourceRecordsException
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisResult
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisUnavailableException
+import com.homeassistant.application.port.inbound.episode.InvalidEpisodeAudienceException
+import com.homeassistant.application.port.inbound.episode.InvalidKnowledgeReferenceException
+import com.homeassistant.application.port.inbound.episode.ConflictingSourceAudienceException
 import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
 import com.homeassistant.application.port.outbound.episode.EpisodeWriter
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter

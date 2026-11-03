@@ -1,7 +1,7 @@
 package com.homeassistant.application.port.outbound.episode.conversation
 
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationParticipant
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationParticipant
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
 
 enum class EpisodeConversationRequestStatus {
     PROCESSING,

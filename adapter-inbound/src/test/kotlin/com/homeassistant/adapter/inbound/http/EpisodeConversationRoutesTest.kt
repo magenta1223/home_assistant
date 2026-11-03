@@ -1,12 +1,12 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversation
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequest
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationResult
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.episode.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequest
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationResult
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.RegisteredUser

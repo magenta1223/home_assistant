@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.inbound.episode.analysis
+package com.homeassistant.application.port.inbound.episode
 
 /** Imports source records, extracts flat episodes, and saves them. */
 interface EpisodeAnalysis {

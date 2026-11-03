@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.inbound.episode.search
+package com.homeassistant.application.port.inbound.episode
 
 import com.homeassistant.domain.identity.UserId
 
@@ -11,4 +11,3 @@ fun interface SearchEpisodes {
     fun search(userId: UserId, query: String): List<EpisodeMatch>
 }
 
-data class EpisodeMatch(val episodeId: Int, val score: Double, val content: String, val createdAt: Long)

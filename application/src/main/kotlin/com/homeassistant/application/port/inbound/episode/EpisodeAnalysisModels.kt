@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.inbound.episode.analysis
+package com.homeassistant.application.port.inbound.episode
 
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -45,3 +45,4 @@ class ConflictingSourceAudienceException internal constructor(
     val sourceName: String,
     val existingAccess: EpisodeAccess,
 ) : RuntimeException("source already exists with a different audience: $sourceName")
+

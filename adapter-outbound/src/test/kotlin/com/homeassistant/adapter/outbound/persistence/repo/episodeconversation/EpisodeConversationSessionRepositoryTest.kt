@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationParticipant
-import com.homeassistant.application.port.inbound.episode.conversation.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationParticipant
+import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationId

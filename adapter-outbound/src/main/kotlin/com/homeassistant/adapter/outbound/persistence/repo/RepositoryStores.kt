@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.application.port.output.source.SourceRecordRepository
-import com.homeassistant.application.port.output.episode.read.EpisodeReader
-import com.homeassistant.application.port.output.episode.write.EpisodeWriter
+import com.homeassistant.application.port.output.episode.EpisodeReader
+import com.homeassistant.application.port.output.episode.EpisodeWriter
 import com.homeassistant.application.port.output.episode.conversation.EpisodeConversationSessionStore
 import com.homeassistant.application.port.output.identity.UserCredentialStore
 import com.homeassistant.application.port.output.identity.UserSessionStore

@@ -1,8 +1,8 @@
-package com.homeassistant.application.port.output.episode.write
+package com.homeassistant.application.port.output.episode
 
-import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeProposal
+import com.homeassistant.domain.identity.UserId
 
 /**
  * Atomically commits one completed source-analysis batch.

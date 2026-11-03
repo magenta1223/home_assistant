@@ -8,7 +8,7 @@ import com.homeassistant.application.port.output.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.output.group.EmbeddingSpace
 import com.homeassistant.application.port.output.group.GroupReader
 import com.homeassistant.application.port.output.group.StoredGroup
-import com.homeassistant.application.port.output.episode.read.EpisodeReader
+import com.homeassistant.application.port.output.episode.EpisodeReader
 import com.homeassistant.application.port.output.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.output.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.output.component.ComponentReader

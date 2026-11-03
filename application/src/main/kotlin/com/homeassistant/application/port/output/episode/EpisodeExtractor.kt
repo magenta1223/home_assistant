@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.output.episode.analysis
+package com.homeassistant.application.port.output.episode
 
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDocument

@@ -1,6 +1,7 @@
 package com.homeassistant.application.usecase.episode.analysis
 
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
+import com.homeassistant.application.port.output.episode.EpisodeExtractor
 import com.homeassistant.domain.episode.*
 import com.homeassistant.application.port.output.source.SourceRecordRepository
 import com.homeassistant.application.port.output.source.SourceRecordSaveResult
@@ -22,7 +23,7 @@ class EpisodeAnalysisPersistenceTest {
             override fun findBySource(source: SourceDescriptor) = emptyList<SourceRecord>()
         }
         val service = EpisodeAnalysisService(
-            episodeExtractor = object : com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor {
+            episodeExtractor = object : EpisodeExtractor {
                 override suspend fun analyze(document: SourceDocument) = listOf(EpisodeProposal("title", "fact", listOf(1)))
             },
             sourceRecords = records,

@@ -4,7 +4,7 @@ import com.homeassistant.application.port.input.component.SearchComponents
 import com.homeassistant.application.port.input.component.ComponentMatch
 import com.homeassistant.application.port.input.component.ComponentMatchEpisode
 import com.homeassistant.application.port.output.group.GroupReader
-import com.homeassistant.application.port.output.episode.read.EpisodeReader
+import com.homeassistant.application.port.output.episode.EpisodeReader
 import com.homeassistant.application.port.output.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.output.component.ComponentReader
 import com.homeassistant.domain.group.GroupGeometry

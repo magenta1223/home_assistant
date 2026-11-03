@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.episode.analysis
 
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
+import com.homeassistant.application.port.output.episode.EpisodeExtractor
 import com.homeassistant.application.port.output.source.SourceReferenceInterpretation
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor

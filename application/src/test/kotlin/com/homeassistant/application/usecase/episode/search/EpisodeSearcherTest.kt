@@ -6,7 +6,7 @@ import com.homeassistant.application.port.output.component.EpisodeEmbeddingGener
 import com.homeassistant.application.port.output.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.output.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.output.component.QueryEmbeddingGenerator
-import com.homeassistant.application.port.output.episode.read.EpisodeReader
+import com.homeassistant.application.port.output.episode.EpisodeReader
 import com.homeassistant.application.port.output.group.EmbeddingSpace
 import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
 import com.homeassistant.domain.episode.Episode

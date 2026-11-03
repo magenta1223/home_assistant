@@ -8,8 +8,8 @@ import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
 import com.homeassistant.application.port.input.episode.analysis.InvalidEpisodeAudienceException
 import com.homeassistant.application.port.input.episode.analysis.InvalidKnowledgeReferenceException
 import com.homeassistant.application.port.input.episode.analysis.ConflictingSourceAudienceException
-import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
-import com.homeassistant.application.port.output.episode.write.EpisodeWriter
+import com.homeassistant.application.port.output.episode.EpisodeExtractor
+import com.homeassistant.application.port.output.episode.EpisodeWriter
 import com.homeassistant.application.port.output.source.SourceReferenceInterpreter
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy

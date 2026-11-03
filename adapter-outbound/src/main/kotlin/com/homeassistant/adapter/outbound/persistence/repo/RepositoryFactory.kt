@@ -21,7 +21,7 @@ object RepositoryFactory {
         val groups = GroupRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
-            canonicalEpisodeBatchWriter = canonicalEpisodes,
+            episodeWriter = canonicalEpisodes,
             canonicalEpisodes = canonicalEpisodes,
             componentMaintenance = components,
             pendingComponents = groups,

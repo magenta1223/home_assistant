@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.episode.analysis
 
 import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysisRequest
-import com.homeassistant.application.port.output.episode.write.CanonicalEpisodeBatchWriter
+import com.homeassistant.application.port.output.episode.write.EpisodeWriter
 import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.episode.*
@@ -29,7 +29,7 @@ class EpisodeAnalysisPersistenceTest {
                 override suspend fun analyze(document: SourceDocument) = listOf(EpisodeProposal("title", "fact", listOf(1)))
             },
             sourceRecords = records,
-            episodeSaver = EpisodeProposalsPersister(CanonicalEpisodeBatchWriter { _, _, _ ->
+            episodeSaver = EpisodeProposalsPersister(EpisodeWriter { _, _, _ ->
                 events += "commit"
                 emptyList()
             }),

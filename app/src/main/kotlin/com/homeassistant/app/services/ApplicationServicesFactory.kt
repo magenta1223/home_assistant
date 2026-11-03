@@ -74,7 +74,7 @@ object ApplicationServicesFactory {
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
         val episodeSaver = EpisodeProposalsPersister(
-            batchWriter = repositories.canonicalEpisodeBatchWriter,
+            batchWriter = repositories.episodeWriter,
         )
         val episodeAnalysisService = EpisodeAnalysisService(
             episodeExtractor = EpisodeExtractorFactory.create(completionClient),

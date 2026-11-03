@@ -7,7 +7,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTabl
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
 import com.homeassistant.application.port.output.episode.read.EpisodeReader
-import com.homeassistant.application.port.output.episode.write.CanonicalEpisodeBatchWriter
+import com.homeassistant.application.port.output.episode.write.EpisodeWriter
 import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
@@ -22,7 +22,7 @@ import java.time.Clock
 internal class EpisodeRepository(
     private val db: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : EpisodeReader, CanonicalEpisodeBatchWriter {
+) : EpisodeReader, EpisodeWriter {
 
     override fun getEpisodes(userId: UserId): List<Episode> = transaction(db) {
         EpisodeTable.selectAll()

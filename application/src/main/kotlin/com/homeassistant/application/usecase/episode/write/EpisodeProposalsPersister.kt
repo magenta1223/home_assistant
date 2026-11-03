@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.episode.write
 
-import com.homeassistant.application.port.output.episode.write.CanonicalEpisodeBatchWriter
+import com.homeassistant.application.port.output.episode.write.EpisodeWriter
 import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
@@ -11,7 +11,7 @@ import java.security.MessageDigest
 
 /** Persists flat episode proposals immediately without a review stage. */
 class EpisodeProposalsPersister(
-    private val batchWriter: CanonicalEpisodeBatchWriter,
+    private val batchWriter: EpisodeWriter,
 ) {
 
     fun persist(

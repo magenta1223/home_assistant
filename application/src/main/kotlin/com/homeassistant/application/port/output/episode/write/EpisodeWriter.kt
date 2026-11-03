@@ -16,7 +16,7 @@ data class IdempotentEpisodeProposal(
  * Implementations must persist episodes, evidence, indexing and Component-assignment outbox entries, and the
  * source-record status change in one transaction. External indexing must not happen inside this call.
  */
-fun interface CanonicalEpisodeBatchWriter {
+fun interface EpisodeWriter {
     fun commit(
         createdBy: UserId,
         proposals: List<IdempotentEpisodeProposal>,

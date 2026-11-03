@@ -10,7 +10,7 @@ import com.homeassistant.application.port.input.episode.analysis.EpisodeAnalysis
 import com.homeassistant.application.usecase.episode.analysis.EpisodeAnalysisService
 import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
 import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
-import com.homeassistant.application.port.output.episode.write.CanonicalEpisodeBatchWriter
+import com.homeassistant.application.port.output.episode.write.EpisodeWriter
 import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -268,7 +268,7 @@ class EpisodeAnalysisRetryTest {
 
     private class RecordingEpisodeWriter(
         private val failure: RuntimeException? = null,
-    ) : CanonicalEpisodeBatchWriter {
+    ) : EpisodeWriter {
         val episodes = mutableListOf<Episode>()
 
         override fun commit(

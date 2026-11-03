@@ -102,7 +102,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 content = content,
                 evidenceIds = listOf(evidence.id),
             )
-        return canonicalEpisodeBatchWriter.commit(
+        return episodeWriter.commit(
             userId,
             listOf(IdempotentEpisodeProposal("${userId.value}:$content", proposal)),
             listOf(evidence.id),

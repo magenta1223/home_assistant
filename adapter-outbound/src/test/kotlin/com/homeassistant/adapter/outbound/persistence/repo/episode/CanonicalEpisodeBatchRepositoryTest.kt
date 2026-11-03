@@ -2,9 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
@@ -40,8 +38,8 @@ class CanonicalEpisodeBatchRepositoryTest {
             repository.commit(
                 USER,
                 listOf(
-                    item("key-1", proposal("ok", records[0].id)),
-                    item("key-2", proposal("fail", records[1].id)),
+                    proposal("ok", records[0].id),
+                    proposal("fail", records[1].id),
                 ),
                 records.map { it.id },
             )
@@ -85,7 +83,7 @@ class CanonicalEpisodeBatchRepositoryTest {
             })
         }
 
-    private fun item(key: String, proposal: EpisodeProposal) = IdempotentEpisodeProposal(key, proposal)
+    private fun item(key: String, proposal: EpisodeProposal) = proposal
 
     private fun proposal(content: String, evidenceId: Int) = EpisodeProposal(
         title = "title",

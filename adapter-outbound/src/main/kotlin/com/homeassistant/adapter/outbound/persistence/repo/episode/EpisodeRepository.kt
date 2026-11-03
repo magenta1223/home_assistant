@@ -8,7 +8,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordView
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
 import com.homeassistant.application.port.output.episode.read.EpisodeReader
 import com.homeassistant.application.port.output.episode.write.EpisodeWriter
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -17,6 +16,9 @@ import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.nio.ByteBuffer
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.time.Clock
 
 internal class EpisodeRepository(
@@ -25,14 +27,15 @@ internal class EpisodeRepository(
 ) : EpisodeReader, EpisodeWriter {
 
     override fun getEpisodes(userId: UserId): List<Episode> = transaction(db) {
-        EpisodeTable.selectAll()
+        EpisodeTable
+            .selectAll()
             .map { it.toEpisode() }
             .filter { it.isVisibleTo(userId) }
     }
 
     override fun commit(
         createdBy: UserId,
-        proposals: List<IdempotentEpisodeProposal>,
+        proposals: List<EpisodeProposal>,
         analyzedSourceRecordIds: Collection<Int>,
     ): List<Episode> = transaction(db) {
         val recordIds = analyzedSourceRecordIds.distinct()
@@ -43,9 +46,8 @@ internal class EpisodeRepository(
         }
         require(existingRecordIds.size == recordIds.size) { "Analyzed source records do not all exist" }
         proposals.forEach { item ->
-            require(item.idempotencyKey.isNotBlank()) { "episode idempotency key is required" }
-            require(item.proposal.evidenceIds.isNotEmpty()) { "episode evidence is required" }
-            require(item.proposal.evidenceIds.all { it in existingRecordIds }) {
+            require(item.evidenceIds.isNotEmpty()) { "episode evidence is required" }
+            require(item.evidenceIds.all { it in existingRecordIds }) {
                 "Episode evidence must belong to the analyzed source batch"
             }
         }
@@ -55,25 +57,24 @@ internal class EpisodeRepository(
         val now = clock.millis()
         val episodes = proposals.map { item ->
             val existing = EpisodeTable.selectAll()
-                .where { EpisodeTable.idempotencyKey eq item.idempotencyKey }
+                .where { EpisodeTable.idempotencyKey eq item.toIdempotencyKey(createdBy) }
                 .singleOrNull()
             if (existing != null) {
                 ensureOutbox(existing[EpisodeTable.id], now)
                 existing.toEpisode()
             } else {
-                val proposal = item.proposal
                 val access = EpisodeAccess.intersection(
-                    proposal.evidenceIds.distinct().map(accessByRecordId::getValue),
+                    item.evidenceIds.distinct().map(accessByRecordId::getValue),
                 )
                 val episodeId = EpisodeTable.insert {
                     it[createdByUserId] = createdBy.value
-                    it[title] = proposal.title
-                    it[content] = proposal.content
+                    it[title] = item.title
+                    it[content] = item.content
                     it[visibility] = access.visibility.name
-                    it[idempotencyKey] = item.idempotencyKey
+                    it[idempotencyKey] = item.toIdempotencyKey(createdBy)
                     it[createdAt] = now
                 }[EpisodeTable.id]
-                proposal.evidenceIds.distinct().forEach { sourceRecordId ->
+                item.evidenceIds.distinct().forEach { sourceRecordId ->
                     EpisodeEvidenceTable.insert {
                         it[EpisodeEvidenceTable.episodeId] = episodeId
                         it[EpisodeEvidenceTable.sourceRecordId] = sourceRecordId
@@ -86,7 +87,7 @@ internal class EpisodeRepository(
                     }
                 }
                 ensureOutbox(episodeId, now)
-                proposal.toEpisode(createdBy, episodeId, now, access)
+                item.toEpisode(createdBy, episodeId, now, access)
             }
         }
         if (recordIds.isNotEmpty()) {
@@ -150,4 +151,24 @@ internal class EpisodeRepository(
         }
         return EpisodeAccess(visibility, viewers)
     }
+
+    /**
+     * Includes the creator, content and evidence set. Source access is immutable and is
+     * resolved from evidence by the atomic writer. Length-prefixing avoids
+     * delimiter ambiguity; sorting evidence makes extractor ordering irrelevant across retries.
+     */
+    private fun EpisodeProposal.toIdempotencyKey(createdBy: UserId): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        sequenceOf(
+            createdBy.value,
+            content.trim(),
+            evidenceIds.distinct().sorted().joinToString(","),
+        ).forEach { field ->
+            val bytes = field.toByteArray(StandardCharsets.UTF_8)
+            digest.update(ByteBuffer.allocate(Int.SIZE_BYTES).putInt(bytes.size).array())
+            digest.update(bytes)
+        }
+        return digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 0xff) }
+    }
+
 }

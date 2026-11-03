@@ -4,12 +4,6 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeProposal
 
-/** One proposed episode together with its stable retry identity. */
-data class IdempotentEpisodeProposal(
-    val idempotencyKey: String,
-    val proposal: EpisodeProposal,
-)
-
 /**
  * Atomically commits one completed source-analysis batch.
  *
@@ -19,7 +13,7 @@ data class IdempotentEpisodeProposal(
 fun interface EpisodeWriter {
     fun commit(
         createdBy: UserId,
-        proposals: List<IdempotentEpisodeProposal>,
+        proposals: List<EpisodeProposal>,
         analyzedSourceRecordIds: Collection<Int>,
     ): List<Episode>
 }

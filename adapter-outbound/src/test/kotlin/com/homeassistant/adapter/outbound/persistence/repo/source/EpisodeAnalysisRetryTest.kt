@@ -11,7 +11,6 @@ import com.homeassistant.application.usecase.episode.analysis.EpisodeAnalysisSer
 import com.homeassistant.application.port.output.episode.analysis.EpisodeExtractor
 import com.homeassistant.application.usecase.episode.write.EpisodeProposalsPersister
 import com.homeassistant.application.port.output.episode.write.EpisodeWriter
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
@@ -273,19 +272,18 @@ class EpisodeAnalysisRetryTest {
 
         override fun commit(
             createdBy: UserId,
-            proposals: List<IdempotentEpisodeProposal>,
+            proposals: List<EpisodeProposal>,
             analyzedSourceRecordIds: Collection<Int>,
         ): List<Episode> {
             failure?.let { throw it }
             val saved = proposals.map { item ->
-                val proposal = item.proposal
                 Episode(
                     id = episodes.size + 1,
                     createdByUserId = createdBy.value,
-                    title = proposal.title,
-                    content = proposal.content,
+                    title = item.title,
+                    content = item.content,
                     visibility = EpisodeVisibility.PUBLIC,
-                    evidenceRefs = proposal.evidenceIds,
+                    evidenceRefs = item.evidenceIds,
                     createdAt = (episodes.size + 1) * 1_000L,
                 ).also(episodes::add)
             }

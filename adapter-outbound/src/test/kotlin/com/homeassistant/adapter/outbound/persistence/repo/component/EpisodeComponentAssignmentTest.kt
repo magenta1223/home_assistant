@@ -8,7 +8,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeReposi
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.input.component.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.output.group.*
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.application.port.output.component.*
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.application.usecase.component.*
@@ -93,8 +92,8 @@ class EpisodeComponentAssignmentTest {
     private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
             access).recordsToAnalyze.single()
-        return EpisodeRepository(db).commit(user, contents.mapIndexed { index, content ->
-            IdempotentEpisodeProposal("$key-$index", EpisodeProposal("title", content, listOf(record.id)))
+        return EpisodeRepository(db).commit(user, contents.map { content ->
+            EpisodeProposal("title", content, listOf(record.id))
         }, listOf(record.id)).map { it.id }
     }
 

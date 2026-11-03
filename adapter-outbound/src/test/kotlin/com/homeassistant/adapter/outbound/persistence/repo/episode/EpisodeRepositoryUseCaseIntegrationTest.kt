@@ -3,7 +3,6 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.output.group.EmbeddingSpace
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.application.port.output.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.usecase.component.ComponentSearcher
 import com.homeassistant.application.usecase.component.ComponentStatementVectors
@@ -104,7 +103,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             )
         return episodeWriter.commit(
             userId,
-            listOf(IdempotentEpisodeProposal("${userId.value}:$content", proposal)),
+            listOf(proposal),
             listOf(evidence.id),
         ).single()
     }

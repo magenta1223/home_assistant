@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.application.port.output.component.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -78,8 +77,8 @@ class ComponentAssignmentOutboxRepositoryTest {
     private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
             EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
-        return EpisodeRepository(db).commit(user, contents.mapIndexed { index, content ->
-            IdempotentEpisodeProposal("$key-$index", EpisodeProposal("title", content, listOf(record.id)))
+        return EpisodeRepository(db).commit(user, contents.map { content ->
+           EpisodeProposal("title", content, listOf(record.id))
         }, listOf(record.id)).map { it.id }
     }
 

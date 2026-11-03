@@ -4,7 +4,6 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal
@@ -19,7 +18,6 @@ import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class EpisodeRepositoryTest {
     @Test
@@ -155,7 +153,7 @@ class EpisodeRepositoryTest {
 
     private fun EpisodeRepository.write(proposal: EpisodeProposal, createdBy: UserId) = commit(
         createdBy,
-        listOf(IdempotentEpisodeProposal("test:${proposal.evidenceIds}:${proposal.content}", proposal)),
+        listOf(proposal),
         proposal.evidenceIds,
     ).single()
 }

@@ -5,7 +5,6 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtract
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.episode.write.IdempotentEpisodeProposal
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -62,7 +61,7 @@ class ComponentRepositoryTest {
         ).recordsToAnalyze.single()
         return EpisodeRepository(db).commit(
             UserId("creator"),
-            listOf(IdempotentEpisodeProposal(name, EpisodeProposal("title", "fact-$name", listOf(record.id)))),
+            listOf(EpisodeProposal("title", "fact-$name", listOf(record.id))),
             listOf(record.id),
         ).single().id
     }

@@ -30,8 +30,7 @@ class HandleEpisodeConversation(
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun answer(request: EpisodeConversationRequest): EpisodeConversationResult {
-        val claimed = sessions.claimRequest(request.key, now())
-        if (claimed == null) return existingResult(request.key)
+        sessions.claimRequest(request.key, now()) ?: return existingResult(request.key)
 
         val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
             is EpisodeConversationSessionLease.Active -> lease.session

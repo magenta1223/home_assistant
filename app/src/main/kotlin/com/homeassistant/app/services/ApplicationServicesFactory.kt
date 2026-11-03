@@ -10,7 +10,7 @@ import com.homeassistant.configuration.Env
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
-import com.homeassistant.application.usecase.episode.conversation.HandleEpisodeConversation
+import com.homeassistant.application.usecase.episode.conversation.HandleConversation
 import com.homeassistant.application.usecase.episode.conversation.ExpireIdleEpisodeConversations
 import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
 import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
@@ -105,10 +105,10 @@ object ApplicationServicesFactory {
         val episodeConversation = conversationGateway?.let {
             val now = System.currentTimeMillis()
             repositories.episodeConversationSessions.failStaleProcessing(
-                before = now - HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+                before = now - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
                 now = now,
             )
-            HandleEpisodeConversation(
+            HandleConversation(
                 sessions = repositories.episodeConversationSessions,
                 contextProvider = EpisodeConversationContextProvider(componentSearch, episodeSearch),
                 conversationGateway = it,
@@ -126,7 +126,7 @@ object ApplicationServicesFactory {
             episodeAnalysis = episodeAnalysisService,
             organizeComponents = organizeComponents,
             organizeEpisodes = organizeEpisodes,
-            episodeConversation = episodeConversation,
+            conversation = episodeConversation,
             users = users,
             authentication = UserAuthenticationService(
                 repositories.userCredentials,

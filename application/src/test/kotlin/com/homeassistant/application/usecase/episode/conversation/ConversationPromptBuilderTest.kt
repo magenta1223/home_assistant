@@ -9,7 +9,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertTrue
 
-class EpisodeConversationPromptBuilderTest {
+class ConversationPromptBuilderTest {
     @Test
     fun `reference exposes storage order as ISO time without treating it as event time`() {
         val older = episodeMatch(1, "2026-01-01T00:00:00Z")

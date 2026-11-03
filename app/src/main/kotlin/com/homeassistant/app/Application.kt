@@ -57,7 +57,7 @@ fun Application.module() {
             httpApiKeys = httpApiKeys,
             users = services.users,
             authentication = services.authentication,
-            episodeConversation = services.episodeConversation,
+            conversation = services.conversation,
             readiness = { services.isReady },
         )
     } catch (failure: Exception) {

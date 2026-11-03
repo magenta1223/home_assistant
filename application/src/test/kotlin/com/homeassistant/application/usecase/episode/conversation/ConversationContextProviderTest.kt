@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class EpisodeConversationContextProviderTest {
+class ConversationContextProviderTest {
     @Test
     fun `reference holds one block per component with timestamps and score`() {
         val provider = provider(ComponentMatch(7, 0.9, listOf(ComponentMatchEpisode(1, "saved fact", 1_000L), ComponentMatchEpisode(2, "older fact", 0L))),

@@ -2,7 +2,7 @@ package com.homeassistant.application.port.inbound.episode
 
 import com.homeassistant.domain.identity.UserId
 
-data class EpisodeConversationParticipant(
+data class ConversationParticipant(
     val scopeId: String,
     val participantId: String,
     val userId: UserId,
@@ -13,7 +13,7 @@ data class EpisodeConversationParticipant(
     }
 }
 
-data class EpisodeConversationRequestKey(
+data class ConversationRequestKey(
     val streamId: String,
     val requestId: String,
 ) {
@@ -23,9 +23,9 @@ data class EpisodeConversationRequestKey(
     }
 }
 
-data class EpisodeConversationRequest(
-    val participant: EpisodeConversationParticipant,
-    val key: EpisodeConversationRequestKey,
+data class ConversationRequest(
+    val participant: ConversationParticipant,
+    val key: ConversationRequestKey,
     val question: String,
 ) {
     init {
@@ -33,8 +33,8 @@ data class EpisodeConversationRequest(
     }
 }
 
-sealed interface EpisodeConversationResult {
-    data class AnswerReady(val answer: String) : EpisodeConversationResult
-    data object AlreadyHandled : EpisodeConversationResult
-    data object Failed : EpisodeConversationResult
+sealed interface ConversationResult {
+    data class AnswerReady(val answer: String) : ConversationResult
+    data object AlreadyHandled : ConversationResult
+    data object Failed : ConversationResult
 }

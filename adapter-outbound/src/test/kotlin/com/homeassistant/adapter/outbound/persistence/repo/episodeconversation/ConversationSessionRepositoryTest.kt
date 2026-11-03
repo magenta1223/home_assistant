@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationParticipant
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.ConversationParticipant
+import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
@@ -15,7 +15,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertIs
 
-class EpisodeConversationSessionRepositoryTest {
+class ConversationSessionRepositoryTest {
     @Test
     fun `HTTP sessions and receipts in the existing schema survive removal of the channel adapter`() {
         val path = Files.createTempFile("existing-http-conversation", ".db")
@@ -48,8 +48,8 @@ class EpisodeConversationSessionRepositoryTest {
             }
 
             val store = RepositoryFactory.create(path.toString()).episodeConversationSessions
-            val key = EpisodeConversationRequestKey("http:member-1", "request-1")
-            val participant = EpisodeConversationParticipant("http", "member-1", UserId("member-1"))
+            val key = ConversationRequestKey("http:member-1", "request-1")
+            val participant = ConversationParticipant("http", "member-1", UserId("member-1"))
 
             assertNull(store.claimRequest(key, 101))
             assertEquals("saved answer", store.receipt(key)?.answerText)
@@ -117,11 +117,11 @@ class EpisodeConversationSessionRepositoryTest {
     }
 
     private companion object {
-        val PARTICIPANT = EpisodeConversationParticipant(
+        val PARTICIPANT = ConversationParticipant(
             scopeId = "scope-1",
             participantId = "participant-1",
             userId = UserId("member-1"),
         )
-        val KEY = EpisodeConversationRequestKey("stream-1", "request-1")
+        val KEY = ConversationRequestKey("stream-1", "request-1")
     }
 }

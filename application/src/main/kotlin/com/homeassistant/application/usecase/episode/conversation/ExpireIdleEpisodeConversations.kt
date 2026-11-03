@@ -13,10 +13,10 @@ class ExpireIdleEpisodeConversations(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /** Expires sessions idle for [HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS] and returns how many expired. */
+    /** Expires sessions idle for [HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS] and returns how many expired. */
     fun execute(): Int {
         val expired = sessions.expireIdle(
-            beforeInclusive = clock.millis() - HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+            beforeInclusive = clock.millis() - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
         )
         expired.forEach { session ->
             runCatching { conversationGateway.end(session.conversationId) }

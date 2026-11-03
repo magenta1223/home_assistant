@@ -1,9 +1,9 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationParticipant
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequest
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationResult
+import com.homeassistant.application.port.inbound.episode.ConversationParticipant
+import com.homeassistant.application.port.inbound.episode.ConversationRequest
+import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.ConversationResult
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class HandleEpisodeConversationTest {
+class HandleConversationTest {
     @Test
     fun `builds and stores an answer for HTTP request retries`() {
         val events = mutableListOf<String>()
@@ -35,7 +35,7 @@ class HandleEpisodeConversationTest {
 
         val result = handler.answer(REQUEST)
 
-        assertEquals(EpisodeConversationResult.AnswerReady("grounded answer"), result)
+        assertEquals(ConversationResult.AnswerReady("grounded answer"), result)
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
         assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
@@ -54,7 +54,7 @@ class HandleEpisodeConversationTest {
 
         val result = handler.answer(REQUEST)
 
-        assertEquals(EpisodeConversationResult.AnswerReady("stored answer"), result)
+        assertEquals(ConversationResult.AnswerReady("stored answer"), result)
         assertEquals(null, client.executedPrompt)
     }
 
@@ -69,7 +69,7 @@ class HandleEpisodeConversationTest {
         val result = handler.answer(REQUEST)
 
         assertEquals(
-            EpisodeConversationResult.AnswerReady(HandleEpisodeConversation.NO_MATCH_ANSWER),
+            ConversationResult.AnswerReady(HandleConversation.NO_MATCH_ANSWER),
             result,
         )
         assertEquals(null, client.executedPrompt)
@@ -85,7 +85,7 @@ class HandleEpisodeConversationTest {
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
 
-        assertIs<EpisodeConversationResult.AnswerReady>(handler.answer(REQUEST))
+        assertIs<ConversationResult.AnswerReady>(handler.answer(REQUEST))
 
         assertEquals("existing-thread", client.executedThreadId)
         assertEquals(emptyList(), client.createdThreadIds)
@@ -97,7 +97,7 @@ class HandleEpisodeConversationTest {
             createAndActivate(
                 PARTICIPANT,
                 ConversationId("expired-thread"),
-                NOW - HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+                NOW - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
             )
         }
         val client = RecordingConversationGateway()
@@ -105,7 +105,7 @@ class HandleEpisodeConversationTest {
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
 
-        assertIs<EpisodeConversationResult.AnswerReady>(handler.answer(REQUEST))
+        assertIs<ConversationResult.AnswerReady>(handler.answer(REQUEST))
 
         assertEquals(listOf("expired-thread"), client.endedThreadIds)
         assertEquals(listOf("new-thread-1"), client.createdThreadIds)
@@ -119,7 +119,7 @@ class HandleEpisodeConversationTest {
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
-        val secondParticipant = EpisodeConversationParticipant(
+        val secondParticipant = ConversationParticipant(
             scopeId = "workspace-1",
             participantId = "member-2",
             userId = UserId("user-2"),
@@ -127,23 +127,23 @@ class HandleEpisodeConversationTest {
 
         handler.answer(REQUEST)
         handler.answer(
-            EpisodeConversationRequest(
+            ConversationRequest(
                 secondParticipant,
-                EpisodeConversationRequestKey("stream-2", "request-1"),
+                ConversationRequestKey("stream-2", "request-1"),
                 "question",
             ),
         )
         handler.answer(
-            EpisodeConversationRequest(
+            ConversationRequest(
                 PARTICIPANT,
-                EpisodeConversationRequestKey("stream-1", "request-2"),
+                ConversationRequestKey("stream-1", "request-2"),
                 "follow up",
             ),
         )
         handler.answer(
-            EpisodeConversationRequest(
+            ConversationRequest(
                 secondParticipant,
-                EpisodeConversationRequestKey("stream-2", "request-2"),
+                ConversationRequestKey("stream-2", "request-2"),
                 "follow up",
             ),
         )
@@ -162,11 +162,11 @@ class HandleEpisodeConversationTest {
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(EpisodeConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertIs<EpisodeConversationSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(PARTICIPANT, NOW, HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -180,12 +180,12 @@ class HandleEpisodeConversationTest {
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(EpisodeConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
 
         assertEquals(emptyList(), client.createdThreadIds)
         assertEquals(listOf("existing-thread"), client.endedThreadIds)
         assertIs<EpisodeConversationSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(PARTICIPANT, NOW, HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -197,7 +197,7 @@ class HandleEpisodeConversationTest {
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(EpisodeConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
 
         assertEquals(null, client.executedThreadId)
         assertEquals(EpisodeConversationRequestStatus.FAILED, store.receipt(KEY)?.status)
@@ -211,12 +211,12 @@ class HandleEpisodeConversationTest {
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(EpisodeConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertEquals(null, client.executedThreadId)
         assertIs<EpisodeConversationSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, HandleEpisodeConversation.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(PARTICIPANT, NOW, HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -224,7 +224,7 @@ class HandleEpisodeConversationTest {
         store: RecordingSessionStore,
         client: RecordingConversationGateway,
         context: (UserId, String) -> EpisodeConversationContext,
-    ) = HandleEpisodeConversation(
+    ) = HandleConversation(
         sessions = store,
         contextProvider = EpisodeConversationContextSource(context),
         conversationGateway = client,
@@ -270,24 +270,24 @@ class HandleEpisodeConversationTest {
         private val failAttachSession: Boolean = false,
         private val events: MutableList<String>? = null,
     ) : EpisodeConversationSessionStore {
-        private val receipts = mutableMapOf<EpisodeConversationRequestKey, EpisodeConversationReceipt>()
-        private val activeSessions = mutableMapOf<EpisodeConversationParticipant, EpisodeConversationSession>()
+        private val receipts = mutableMapOf<ConversationRequestKey, EpisodeConversationReceipt>()
+        private val activeSessions = mutableMapOf<ConversationParticipant, EpisodeConversationSession>()
         private var nextSessionId = 1
 
-        override fun claimRequest(key: EpisodeConversationRequestKey, now: Long): EpisodeConversationReceipt? {
+        override fun claimRequest(key: ConversationRequestKey, now: Long): EpisodeConversationReceipt? {
             if (key in receipts) return null
             return receipt(key, EpisodeConversationRequestStatus.PROCESSING, now).also { receipts[key] = it }
         }
 
-        override fun receipt(key: EpisodeConversationRequestKey): EpisodeConversationReceipt? = receipts[key]
+        override fun receipt(key: ConversationRequestKey): EpisodeConversationReceipt? = receipts[key]
 
-        override fun attachSession(key: EpisodeConversationRequestKey, sessionId: Int, now: Long) {
+        override fun attachSession(key: ConversationRequestKey, sessionId: Int, now: Long) {
             events?.add("attachSession")
             if (failAttachSession) error("attach failed")
             receipts[key] = receipts.getValue(key).copy(sessionId = sessionId, updatedAt = now)
         }
 
-        override fun markAnswerReady(key: EpisodeConversationRequestKey, answer: String, now: Long) {
+        override fun markAnswerReady(key: ConversationRequestKey, answer: String, now: Long) {
             receipts[key] = receipts.getValue(key).copy(
                 status = EpisodeConversationRequestStatus.ANSWER_READY,
                 answerText = answer,
@@ -295,7 +295,7 @@ class HandleEpisodeConversationTest {
             )
         }
 
-        override fun markFailed(key: EpisodeConversationRequestKey, now: Long) {
+        override fun markFailed(key: ConversationRequestKey, now: Long) {
             receipts[key] = receipts.getValue(key).copy(
                 status = EpisodeConversationRequestStatus.FAILED,
                 updatedAt = now,
@@ -303,7 +303,7 @@ class HandleEpisodeConversationTest {
         }
 
         override fun createAndActivate(
-            participant: EpisodeConversationParticipant,
+            participant: ConversationParticipant,
             conversationId: ConversationId,
             now: Long,
         ): EpisodeConversationSession = EpisodeConversationSession(
@@ -318,7 +318,7 @@ class HandleEpisodeConversationTest {
         }
 
         override fun lease(
-            participant: EpisodeConversationParticipant,
+            participant: ConversationParticipant,
             now: Long,
             idleTimeoutMillis: Long,
         ): EpisodeConversationSessionLease {
@@ -332,11 +332,11 @@ class HandleEpisodeConversationTest {
             return EpisodeConversationSessionLease.Active(renewed)
         }
 
-        override fun clearActive(participant: EpisodeConversationParticipant) {
+        override fun clearActive(participant: ConversationParticipant) {
             activeSessions.remove(participant)
         }
 
-        override fun touch(participant: EpisodeConversationParticipant, sessionId: Int, now: Long) {
+        override fun touch(participant: ConversationParticipant, sessionId: Int, now: Long) {
             activeSessions[participant] = activeSessions.getValue(participant).copy(lastActiveAt = now)
         }
 
@@ -349,7 +349,7 @@ class HandleEpisodeConversationTest {
         override fun failStaleProcessing(before: Long, now: Long): Int = 0
 
         private fun receipt(
-            key: EpisodeConversationRequestKey,
+            key: ConversationRequestKey,
             status: EpisodeConversationRequestStatus,
             now: Long,
         ) = EpisodeConversationReceipt(
@@ -363,8 +363,8 @@ class HandleEpisodeConversationTest {
     private companion object {
         const val NOW = 1_000_000L
         val USER_ID = UserId("member-1")
-        val PARTICIPANT = EpisodeConversationParticipant("workspace-1", "member-1", USER_ID)
-        val KEY = EpisodeConversationRequestKey("stream-1", "request-1")
-        val REQUEST = EpisodeConversationRequest(PARTICIPANT, KEY, "question")
+        val PARTICIPANT = ConversationParticipant("workspace-1", "member-1", USER_ID)
+        val KEY = ConversationRequestKey("stream-1", "request-1")
+        val REQUEST = ConversationRequest(PARTICIPANT, KEY, "question")
     }
 }

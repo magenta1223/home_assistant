@@ -1,9 +1,9 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.inbound.episode.EpisodeConversation
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequest
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationResult
+import com.homeassistant.application.port.inbound.episode.Conversation
+import com.homeassistant.application.port.inbound.episode.ConversationRequest
+import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.ConversationResult
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
 import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
@@ -20,16 +20,16 @@ import java.time.Duration
  * while the participant was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
-class HandleEpisodeConversation(
+class HandleConversation(
     private val sessions: EpisodeConversationSessionStore,
     private val contextProvider: EpisodeConversationContextSource,
     private val conversationGateway: ConversationGateway,
     private val clock: Clock = Clock.systemUTC(),
     private val promptBuilder: EpisodeConversationPromptBuilder = EpisodeConversationPromptBuilder(),
-) : EpisodeConversation {
+) : Conversation {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun answer(request: EpisodeConversationRequest): EpisodeConversationResult {
+    override fun answer(request: ConversationRequest): ConversationResult {
         sessions.claimRequest(request.key, now()) ?: return existingResult(request.key)
 
         val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
@@ -50,7 +50,7 @@ class HandleEpisodeConversation(
                 elapsedMillis(contextStartedAt),
             )
             sessions.markFailed(request.key, now())
-            return EpisodeConversationResult.Failed
+            return ConversationResult.Failed
         }
         log.info(
             "Latency stage=episode-conversation-context elapsedMs={} hasMatches={} sessionMode={}",
@@ -61,7 +61,7 @@ class HandleEpisodeConversation(
         if (!context.hasMatches) return answerReady(request.key, NO_MATCH_ANSWER)
 
         val prompt = promptBuilder.build(context.reference, request.question)
-        val session = active ?: createSession(request) ?: return EpisodeConversationResult.Failed
+        val session = active ?: createSession(request) ?: return ConversationResult.Failed
         val turnStartedAt = System.nanoTime()
         val result = conversationGateway.continueConversation(session.conversationId, prompt)
         log.info(
@@ -76,7 +76,7 @@ class HandleEpisodeConversation(
                 conversationGateway.end(session.conversationId)
                 sessions.markFailed(request.key, now())
                 sessions.clearActive(request.participant)
-                EpisodeConversationResult.Failed
+                ConversationResult.Failed
             }
             is ConversationReply.Success -> {
                 sessions.touch(request.participant, session.id, now())
@@ -85,27 +85,27 @@ class HandleEpisodeConversation(
         }
     }
 
-    private fun existingResult(key: EpisodeConversationRequestKey): EpisodeConversationResult {
-        val receipt = sessions.receipt(key) ?: return EpisodeConversationResult.AlreadyHandled
+    private fun existingResult(key: ConversationRequestKey): ConversationResult {
+        val receipt = sessions.receipt(key) ?: return ConversationResult.AlreadyHandled
         return if (receipt.status == EpisodeConversationRequestStatus.ANSWER_READY) {
             receipt.answerText
                 ?.takeIf(String::isNotBlank)
-                ?.let(EpisodeConversationResult::AnswerReady)
-                ?: EpisodeConversationResult.AlreadyHandled
+                ?.let(ConversationResult::AnswerReady)
+                ?: ConversationResult.AlreadyHandled
         } else {
-            EpisodeConversationResult.AlreadyHandled
+            ConversationResult.AlreadyHandled
         }
     }
 
     private fun answerReady(
-        key: EpisodeConversationRequestKey,
+        key: ConversationRequestKey,
         answer: String,
-    ): EpisodeConversationResult.AnswerReady {
+    ): ConversationResult.AnswerReady {
         sessions.markAnswerReady(key, answer, now())
-        return EpisodeConversationResult.AnswerReady(answer)
+        return ConversationResult.AnswerReady(answer)
     }
 
-    private fun createSession(request: EpisodeConversationRequest): EpisodeConversationSession? {
+    private fun createSession(request: ConversationRequest): EpisodeConversationSession? {
         var conversationId: ConversationId? = null
         return try {
             conversationId = conversationGateway.begin().getOrThrow()

@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.episode.EpisodeConversation
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationParticipant
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequest
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.EpisodeConversationResult
+import com.homeassistant.application.port.inbound.episode.Conversation
+import com.homeassistant.application.port.inbound.episode.ConversationParticipant
+import com.homeassistant.application.port.inbound.episode.ConversationRequest
+import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
+import com.homeassistant.application.port.inbound.episode.ConversationResult
 import com.homeassistant.configuration.AppConfig
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -30,7 +30,7 @@ internal fun Route.episodeConversationPageRoute() {
 }
 
 internal fun Route.episodeConversationRoutes(
-    episodeConversation: EpisodeConversation?,
+    episodeConversation: Conversation?,
 ) {
     post(AppConfig.ROUTE_EPISODE_CONVERSATION) {
         val principal = call.principal<HttpUserPrincipal>()
@@ -59,13 +59,13 @@ internal fun Route.episodeConversationRoutes(
         val userId = principal.userId
         val result = withContext(Dispatchers.IO) {
             conversation.answer(
-                EpisodeConversationRequest(
-                    participant = EpisodeConversationParticipant(
+                ConversationRequest(
+                    participant = ConversationParticipant(
                         scopeId = HTTP_CONVERSATION_SCOPE,
                         participantId = userId.value,
                         userId = userId,
                     ),
-                    key = EpisodeConversationRequestKey(
+                    key = ConversationRequestKey(
                         streamId = "$HTTP_CONVERSATION_SCOPE:${userId.value}",
                         requestId = requestId,
                     ),
@@ -74,15 +74,15 @@ internal fun Route.episodeConversationRoutes(
             )
         }
         when (result) {
-            is EpisodeConversationResult.AnswerReady -> call.respond(
+            is ConversationResult.AnswerReady -> call.respond(
                 HttpStatusCode.OK,
                 HttpEpisodeConversationResponse(answer = result.answer),
             )
-            EpisodeConversationResult.AlreadyHandled -> call.respond(
+            ConversationResult.AlreadyHandled -> call.respond(
                 HttpStatusCode.Conflict,
                 mapOf("error" to "request already handled"),
             )
-            EpisodeConversationResult.Failed -> call.respond(
+            ConversationResult.Failed -> call.respond(
                 HttpStatusCode.ServiceUnavailable,
                 mapOf("error" to "episode conversation unavailable"),
             )

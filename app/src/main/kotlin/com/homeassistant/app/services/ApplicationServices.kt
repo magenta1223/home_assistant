@@ -4,7 +4,7 @@ import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
 import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.Conversation
 import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
 
 /** Provides the application's top-level use cases and managed runtimes. */
@@ -13,7 +13,7 @@ interface ApplicationServices : AutoCloseable {
     val episodeAnalysis: EpisodeAnalysis
 
     /** Provides episode-backed conversations when the selected agent backend CLI is available. */
-    val episodeConversation: EpisodeConversation?
+    val conversation: Conversation?
 
     /** Registered application users that may be selected as knowledge viewers. */
     val users: UserRegistry

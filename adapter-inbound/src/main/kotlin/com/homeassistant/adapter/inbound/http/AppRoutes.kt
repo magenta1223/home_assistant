@@ -3,7 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.episode.EpisodeConversation
+import com.homeassistant.application.port.inbound.episode.Conversation
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
@@ -14,7 +14,7 @@ fun Application.configureRoutes(
     httpApiKeys: Map<String, UserId> = emptyMap(),
     users: UserRegistry = UserRegistry.NONE,
     authentication: UserAuthentication = UserAuthentication.NONE,
-    episodeConversation: EpisodeConversation? = null,
+    conversation: Conversation? = null,
     readiness: () -> Boolean = { true },
 ) {
     validateHttpUsers(httpApiKeys.values, users)
@@ -28,7 +28,7 @@ fun Application.configureRoutes(
         authenticate(*HTTP_AUTHENTICATION_NAMES) {
             sessionStatusRoute()
             knowledgeInjectionRoutes(episodeAnalysis, users)
-            episodeConversationRoutes(episodeConversation)
+            episodeConversationRoutes(conversation)
         }
     }
 }

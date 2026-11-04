@@ -9,7 +9,7 @@ import com.homeassistant.llm.codex.transport.protocol.ClientInfo
 import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
 import com.homeassistant.llm.codex.transport.protocol.ThreadConfig
-import com.homeassistant.llm.conversation.ChatClient
+import com.homeassistant.llm.ChatClient
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi

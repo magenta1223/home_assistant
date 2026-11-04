@@ -4,8 +4,6 @@ import com.homeassistant.llm.claude.completion.ClaudeCliCompletionClient
 import com.homeassistant.llm.claude.chat.ClaudeConversationClientFactory
 import com.homeassistant.llm.codex.completion.CodexCliClient
 import com.homeassistant.llm.codex.conversation.CodexAppServerFactory
-import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.conversation.ChatClient
 import java.time.Duration
 
 /** Routes completion and conversation clients to the selected [AgentBackend]. */

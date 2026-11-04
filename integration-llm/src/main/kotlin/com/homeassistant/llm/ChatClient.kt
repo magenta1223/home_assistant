@@ -1,4 +1,4 @@
-package com.homeassistant.llm.conversation
+package com.homeassistant.llm
 
 /** Holds multi-turn conversations with the selected agent backend. Conversation ids are chosen by the backend. */
 interface ChatClient : AutoCloseable {

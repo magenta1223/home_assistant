@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.episodeanalysis
 
-import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionClient
+import com.homeassistant.llm.CompletionImage
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
@@ -18,7 +18,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class EpisodeExtractorTest {
     @Test

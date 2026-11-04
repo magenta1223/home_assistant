@@ -5,8 +5,8 @@ import com.homeassistant.application.port.outbound.source.SourceReferenceInterpr
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceReferenceDraft
-import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionClient
+import com.homeassistant.llm.CompletionImage
 import kotlinx.serialization.Serializable
 import org.apache.pdfbox.Loader
 import org.apache.pdfbox.pdmodel.PDDocument

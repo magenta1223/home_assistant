@@ -1,7 +1,7 @@
 package com.homeassistant.llm.codex.conversation
 
 import com.homeassistant.llm.codex.completion.CodexExecutableFactory
-import com.homeassistant.llm.conversation.ChatClient
+import com.homeassistant.llm.ChatClient
 import java.nio.file.Path
 import java.time.Duration
 

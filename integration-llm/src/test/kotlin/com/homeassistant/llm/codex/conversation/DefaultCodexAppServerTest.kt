@@ -8,7 +8,7 @@ import com.homeassistant.llm.codex.transport.protocol.AppServerTurn
 import com.homeassistant.llm.codex.transport.protocol.AppServerTurnReference
 import com.homeassistant.llm.codex.transport.protocol.ThreadResult
 import com.homeassistant.llm.codex.transport.protocol.TurnStartResult
-import com.homeassistant.llm.conversation.ChatClient
+import com.homeassistant.llm.ChatClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files

@@ -2,7 +2,7 @@ package com.homeassistant.llm.claude.chat
 
 import com.homeassistant.llm.claude.cli.ClaudeAvailability
 import com.homeassistant.llm.claude.cli.ClaudeCommandLine
-import com.homeassistant.llm.conversation.ChatClient
+import com.homeassistant.llm.ChatClient
 import java.nio.file.Path
 import java.time.Duration
 

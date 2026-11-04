@@ -4,8 +4,8 @@ import com.homeassistant.llm.claude.cli.ClaudeCommandLine
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
 import com.homeassistant.llm.claude.cli.ClaudeStreamJson
 import com.homeassistant.llm.claude.cli.SystemClaudeProcessRunner
-import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionClient
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.json.Json

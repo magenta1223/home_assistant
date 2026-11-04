@@ -4,7 +4,7 @@ import com.homeassistant.llm.claude.cli.ClaudeCommandLine
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
 import com.homeassistant.llm.claude.cli.ClaudeStreamJson
 import com.homeassistant.llm.claude.cli.SystemClaudeProcessRunner
-import com.homeassistant.llm.conversation.ChatClient
+import com.homeassistant.llm.ChatClient
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap

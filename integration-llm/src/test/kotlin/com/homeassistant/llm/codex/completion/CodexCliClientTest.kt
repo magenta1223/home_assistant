@@ -8,7 +8,7 @@ import com.homeassistant.llm.codex.transport.protocol.AppServerTurn
 import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.LocalImageUserInput
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch

@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.component.ComponentKnowledgeE
 import com.homeassistant.application.port.outbound.component.PendingEpisode
 import com.homeassistant.common.json.JsonSerializer.decodeFromString
 import com.homeassistant.common.json.JsonSerializer.encodeToString
-import com.homeassistant.llm.completion.CompletionClient
+import com.homeassistant.llm.CompletionClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 

@@ -8,8 +8,8 @@ import com.homeassistant.llm.codex.transport.protocol.ClientInfo
 import com.homeassistant.llm.codex.transport.protocol.LocalImageUserInput
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
 import com.homeassistant.llm.codex.transport.protocol.ThreadConfig
-import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionClient
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
 import kotlinx.serialization.json.Json

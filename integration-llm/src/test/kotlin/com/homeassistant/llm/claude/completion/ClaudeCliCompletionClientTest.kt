@@ -2,7 +2,7 @@ package com.homeassistant.llm.claude.completion
 
 import com.homeassistant.llm.claude.cli.ClaudeProcessOutput
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import java.nio.file.Path

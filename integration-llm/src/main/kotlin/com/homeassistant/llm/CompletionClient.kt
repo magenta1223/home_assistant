@@ -1,4 +1,4 @@
-package com.homeassistant.llm.completion
+package com.homeassistant.llm
 
 /** Completes a single structured prompt with the selected agent backend. */
 interface CompletionClient {

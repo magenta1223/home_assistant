@@ -1,6 +1,6 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.usecase.episode.chat.ExpireIdleChats
+import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit

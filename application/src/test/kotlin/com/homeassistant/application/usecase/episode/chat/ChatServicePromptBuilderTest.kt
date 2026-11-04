@@ -2,6 +2,8 @@ package com.homeassistant.application.usecase.episode.chat
 
 import com.homeassistant.application.port.inbound.component.ComponentMatch
 import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
+import com.homeassistant.application.usecase.chatservice.ChatPromptBuilder
+import com.homeassistant.application.usecase.chatservice.componentReferenceLines
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertContains

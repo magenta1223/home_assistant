@@ -5,6 +5,7 @@ import com.homeassistant.application.port.inbound.component.ComponentMatch
 import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
 import com.homeassistant.application.port.inbound.episode.EpisodeMatch
 import com.homeassistant.application.port.inbound.episode.SearchEpisodes
+import com.homeassistant.application.usecase.chatservice.ChatContextProvider
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -81,18 +82,19 @@ class ChatServiceContextProviderTest {
         assertEquals("", context.reference)
     }
 
-    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()) = ChatContextProvider(
-        SearchComponents { userId, query ->
-            assertEquals(USER_ID, userId)
-            assertEquals("question", query)
-            matches.toList()
-        },
-        SearchEpisodes { userId, query ->
-            assertEquals(USER_ID, userId)
-            assertEquals("question", query)
-            episodes
-        },
-    )
+    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()) =
+        ChatContextProvider(
+            SearchComponents { userId, query ->
+                assertEquals(USER_ID, userId)
+                assertEquals("question", query)
+                matches.toList()
+            },
+            SearchEpisodes { userId, query ->
+                assertEquals(USER_ID, userId)
+                assertEquals("question", query)
+                episodes
+            },
+        )
 
     private companion object {
         val USER_ID = UserId("member-1")

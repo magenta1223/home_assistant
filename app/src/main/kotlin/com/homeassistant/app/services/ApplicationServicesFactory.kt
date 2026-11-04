@@ -10,9 +10,9 @@ import com.homeassistant.configuration.Env
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
-import com.homeassistant.application.usecase.episode.chat.ChatServiceImpl
-import com.homeassistant.application.usecase.episode.chat.ExpireIdleChats
-import com.homeassistant.application.usecase.episode.chat.ChatContextProvider
+import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
+import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
+import com.homeassistant.application.usecase.chatservice.ChatContextProvider
 import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService

@@ -9,7 +9,7 @@ import com.homeassistant.application.usecase.component.ComponentStatementVectors
 import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.episode.chat.ChatContextProvider
+import com.homeassistant.application.usecase.chatservice.ChatContextProvider
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId

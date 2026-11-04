@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.episode.chat
+package com.homeassistant.application.usecase.chatservice
 
 import java.time.Clock
 import java.time.Instant

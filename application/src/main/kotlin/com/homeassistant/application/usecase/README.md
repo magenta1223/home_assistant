@@ -13,7 +13,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `component` | Episode에서 장기 지식을 Component로 추출한 뒤 Group 정리까지 이어가고, 대화용 Component 검색을 읽을 수 있는 출처 Episode로 거른다. | [component](component/README.md) |
 | `episode/search` | 대화용으로 질문에 가까운, 사용자가 읽을 수 있는 Episode를 찾는다. | - |
 | `episode/analysis` | source record를 분석해 canonical episode로 저장하고 후처리를 요청한다. | [analysis](episode/analysis/README.md) |
-| `episode/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](episode/chat/README.md) |
+| `episode/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](chatservice/README.md) |
 | `episode/write` | proposal을 원자적으로 저장하고 Component 할당 outbox를 같은 transaction으로 남긴다. | [write](episode/write/README.md) |
 
 ## 전체 episode 쓰기 흐름

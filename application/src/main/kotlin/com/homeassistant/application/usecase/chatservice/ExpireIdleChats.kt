@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.episode.chat
+package com.homeassistant.application.usecase.chatservice
 
 import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore

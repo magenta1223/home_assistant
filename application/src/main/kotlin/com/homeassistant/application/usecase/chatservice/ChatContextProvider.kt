@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.episode.chat
+package com.homeassistant.application.usecase.chatservice
 
 import com.homeassistant.application.port.inbound.component.SearchComponents
 import com.homeassistant.application.port.inbound.component.ComponentMatch

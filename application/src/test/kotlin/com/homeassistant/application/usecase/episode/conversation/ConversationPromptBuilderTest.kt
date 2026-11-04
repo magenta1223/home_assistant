@@ -15,12 +15,9 @@ class ConversationPromptBuilderTest {
         val older = episodeMatch(1, "2026-01-01T00:00:00Z")
         val newer = episodeMatch(2, "2026-08-01T12:30:00Z")
         val reference = componentReferenceLines(ComponentMatch(1, 0.9, listOf(older, newer))).joinToString("\n")
-        val prompt = EpisodeConversationPromptBuilder(
-            Clock.fixed(Instant.parse("2026-08-08T10:00:00Z"), ZoneOffset.UTC),
-        ).build(reference, "Which one is current?")
+        val prompt = ConversationPromptBuilder.build(reference, "Which one is current?")
 
         assertTrue(reference.indexOf("2026-01-01T00:00:00Z") < reference.indexOf("2026-08-01T12:30:00Z"))
-        assertContains(prompt, "Current time is 2026-08-08T10:00:00Z")
         assertContains(prompt, "savedAt is when it was stored, not necessarily when its event happened")
         assertContains(prompt, "instead of claiming that one is the latest")
         assertContains(prompt, "<USER_MESSAGE>")

@@ -25,8 +25,8 @@ class HandleConversation(
     private val contextProvider: EpisodeConversationContextSource,
     private val conversationGateway: ConversationGateway,
     private val clock: Clock = Clock.systemUTC(),
-    private val promptBuilder: EpisodeConversationPromptBuilder = EpisodeConversationPromptBuilder(),
 ) : Conversation {
+    private val promptBuilder = ConversationPromptBuilder
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun answer(request: ConversationRequest): ConversationResult {

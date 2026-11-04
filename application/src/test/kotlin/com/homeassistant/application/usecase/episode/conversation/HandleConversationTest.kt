@@ -4,9 +4,9 @@ import com.homeassistant.application.port.inbound.episode.ConversationParticipan
 import com.homeassistant.application.port.inbound.episode.ConversationRequest
 import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
 import com.homeassistant.application.port.inbound.episode.ConversationResult
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
+import com.homeassistant.application.port.outbound.episode.conversation.ChatId
+import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
@@ -26,7 +26,7 @@ class HandleConversationTest {
     fun `builds and stores an answer for HTTP request retries`() {
         val events = mutableListOf<String>()
         val store = RecordingSessionStore(events = events)
-        val client = RecordingConversationGateway(events = events)
+        val client = RecordingChatGateway(events = events)
         val seenUsers = mutableListOf<UserId>()
         val handler = handler(store, client) { userId, _ ->
             seenUsers += userId
@@ -49,7 +49,7 @@ class HandleConversationTest {
             claimRequest(KEY, NOW)
             markAnswerReady(KEY, "stored answer", NOW)
         }
-        val client = RecordingConversationGateway()
+        val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ -> error("context must not be rebuilt") }
 
         val result = handler.answer(REQUEST)
@@ -61,7 +61,7 @@ class HandleConversationTest {
     @Test
     fun `returns no-match answer without starting a model conversation`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationGateway()
+        val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("", hasMatches = false)
         }
@@ -78,9 +78,9 @@ class HandleConversationTest {
     @Test
     fun `executes on the participant active session within its idle lease`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(PARTICIPANT, ConversationId("existing-thread"), NOW - 1)
+            createAndActivate(PARTICIPANT, ChatId("existing-thread"), NOW - 1)
         }
-        val client = RecordingConversationGateway()
+        val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -96,11 +96,11 @@ class HandleConversationTest {
         val store = RecordingSessionStore().apply {
             createAndActivate(
                 PARTICIPANT,
-                ConversationId("expired-thread"),
+                ChatId("expired-thread"),
                 NOW - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
             )
         }
-        val client = RecordingConversationGateway()
+        val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -115,7 +115,7 @@ class HandleConversationTest {
     @Test
     fun `keeps different participants on different conversation threads`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationGateway()
+        val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -157,7 +157,7 @@ class HandleConversationTest {
     @Test
     fun `ends a newly created thread when its turn fails`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationGateway(turnResult = ConversationReply.Failure)
+        val client = RecordingChatGateway(turnResult = ChatResult.Failure)
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -173,9 +173,9 @@ class HandleConversationTest {
     @Test
     fun `ends an active thread when its turn fails`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(PARTICIPANT, ConversationId("existing-thread"), NOW - 1)
+            createAndActivate(PARTICIPANT, ChatId("existing-thread"), NOW - 1)
         }
-        val client = RecordingConversationGateway(turnResult = ConversationReply.Failure)
+        val client = RecordingChatGateway(turnResult = ChatResult.Failure)
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -192,7 +192,7 @@ class HandleConversationTest {
     @Test
     fun `does not execute a turn when thread creation fails`() {
         val store = RecordingSessionStore()
-        val client = RecordingConversationGateway(createFailure = IllegalStateException("create failed"))
+        val client = RecordingChatGateway(createFailure = IllegalStateException("create failed"))
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -206,7 +206,7 @@ class HandleConversationTest {
     @Test
     fun `ends a created thread when session attachment fails`() {
         val store = RecordingSessionStore(failAttachSession = true)
-        val client = RecordingConversationGateway()
+        val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             EpisodeConversationContext("saved episode", hasMatches = true)
         }
@@ -222,20 +222,20 @@ class HandleConversationTest {
 
     private fun handler(
         store: RecordingSessionStore,
-        client: RecordingConversationGateway,
+        client: RecordingChatGateway,
         context: (UserId, String) -> EpisodeConversationContext,
     ) = HandleConversation(
         sessions = store,
         contextProvider = EpisodeConversationContextSource(context),
-        conversationGateway = client,
+        chatGateway = client,
         clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     )
 
-    private class RecordingConversationGateway(
-        private val turnResult: ConversationReply = ConversationReply.Success("grounded answer"),
+    private class RecordingChatGateway(
+        private val turnResult: ChatResult = ChatResult.Success("grounded answer"),
         private val createFailure: Exception? = null,
         private val events: MutableList<String>? = null,
-    ) : ConversationGateway {
+    ) : ChatGateway {
         var executedPrompt: String? = null
         var executedThreadId: String? = null
         val createdThreadIds = mutableListOf<String>()
@@ -243,24 +243,24 @@ class HandleConversationTest {
         val endedThreadIds = mutableListOf<String>()
         private var nextThreadId = 1
 
-        override fun begin(): Result<ConversationId> {
+        override fun begin(): Result<ChatId> {
             createFailure?.let { return Result.failure(it) }
             events?.add("begin")
             return Result.success(
-                ConversationId("new-thread-${nextThreadId++}").also { createdThreadIds += it.value },
+                ChatId("new-thread-${nextThreadId++}").also { createdThreadIds += it.value },
             )
         }
 
-        override fun continueConversation(conversationId: ConversationId, prompt: String): ConversationReply {
+        override fun chat(chatId: ChatId, prompt: String): ChatResult {
             events?.add("continue")
             executedPrompt = prompt
-            executedThreadId = conversationId.value
-            executedThreadIds += conversationId.value
+            executedThreadId = chatId.value
+            executedThreadIds += chatId.value
             return turnResult
         }
 
-        override fun end(conversationId: ConversationId) {
-            endedThreadIds += conversationId.value
+        override fun end(chatId: ChatId) {
+            endedThreadIds += chatId.value
         }
 
         override fun close() = Unit
@@ -304,12 +304,12 @@ class HandleConversationTest {
 
         override fun createAndActivate(
             participant: ConversationParticipant,
-            conversationId: ConversationId,
+            chatId: ChatId,
             now: Long,
         ): EpisodeConversationSession = EpisodeConversationSession(
             id = nextSessionId++,
             participant = participant,
-            conversationId = conversationId,
+            chatId = chatId,
             createdAt = now,
             lastActiveAt = now,
         ).also {

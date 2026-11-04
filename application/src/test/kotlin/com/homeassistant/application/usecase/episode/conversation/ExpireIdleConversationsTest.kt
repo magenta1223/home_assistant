@@ -2,9 +2,9 @@ package com.homeassistant.application.usecase.episode.conversation
 
 import com.homeassistant.application.port.inbound.episode.ConversationParticipant
 import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
+import com.homeassistant.application.port.outbound.episode.conversation.ChatId
+import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
@@ -29,21 +29,21 @@ class ExpireIdleConversationsTest {
         val client = EndingClient()
         val useCase = ExpireIdleEpisodeConversations(
             sessions = store,
-            conversationGateway = client,
+            chatGateway = client,
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
         )
 
         assertEquals(2, useCase.execute())
         assertEquals(listOf("thread-a", "thread-b"), client.ended)
-        assertEquals(listOf("thread-c"), store.remaining.map { it.conversationId.value })
+        assertEquals(listOf("thread-c"), store.remaining.map { it.chatId.value })
     }
 
-    private class EndingClient : ConversationGateway {
+    private class EndingClient : ChatGateway {
         val ended = mutableListOf<String>()
-        override fun begin(): Result<ConversationId> = error("unused")
-        override fun continueConversation(conversationId: ConversationId, prompt: String): ConversationReply = error("unused")
-        override fun end(conversationId: ConversationId) {
-            ended += conversationId.value
+        override fun begin(): Result<ChatId> = error("unused")
+        override fun chat(chatId: ChatId, prompt: String): ChatResult = error("unused")
+        override fun end(chatId: ChatId) {
+            ended += chatId.value
         }
         override fun close() = Unit
     }
@@ -64,7 +64,7 @@ class ExpireIdleConversationsTest {
         override fun markFailed(key: ConversationRequestKey, now: Long) = error("unused")
         override fun createAndActivate(
             participant: ConversationParticipant,
-            conversationId: ConversationId,
+            chatId: ChatId,
             now: Long,
         ): EpisodeConversationSession = error("unused")
         override fun lease(
@@ -84,7 +84,7 @@ class ExpireIdleConversationsTest {
         fun session(id: Int, threadId: String, lastActiveAt: Long) = EpisodeConversationSession(
             id = id,
             participant = ConversationParticipant("scope", "participant-$id", UserId("user-$id")),
-            conversationId = ConversationId(threadId),
+            chatId = ChatId(threadId),
             createdAt = 0,
             lastActiveAt = lastActiveAt,
         )

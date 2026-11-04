@@ -7,7 +7,7 @@ import com.homeassistant.application.port.outbound.episode.conversation.EpisodeC
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
+import com.homeassistant.application.port.outbound.episode.conversation.ChatId
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeConversationActiveSessionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeConversationSessionTable
@@ -74,14 +74,14 @@ internal class EpisodeConversationSessionRepository(
 
     override fun createAndActivate(
         participant: ConversationParticipant,
-        conversationId: ConversationId,
+        chatId: ChatId,
         now: Long,
     ): EpisodeConversationSession = transaction(db) {
         val id = EpisodeConversationSessionTable.insert {
             it[scopeId] = participant.scopeId
             it[participantId] = participant.participantId
             it[userId] = participant.userId.value
-            it[EpisodeConversationSessionTable.conversationId] = conversationId.value
+            it[EpisodeConversationSessionTable.conversationId] = chatId.value
             it[createdAt] = now
             it[lastActiveAt] = now
         }[EpisodeConversationSessionTable.id]
@@ -215,7 +215,7 @@ internal class EpisodeConversationSessionRepository(
                 participantId = this[EpisodeConversationSessionTable.participantId],
                 userId = UserId(this[EpisodeConversationSessionTable.userId]),
             ),
-            conversationId = ConversationId(this[EpisodeConversationSessionTable.conversationId]),
+            chatId = ChatId(this[EpisodeConversationSessionTable.conversationId]),
             createdAt = this[EpisodeConversationSessionTable.createdAt],
             lastActiveAt = this[EpisodeConversationSessionTable.lastActiveAt],
         )

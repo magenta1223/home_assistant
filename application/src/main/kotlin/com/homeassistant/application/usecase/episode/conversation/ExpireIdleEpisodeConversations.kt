@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.episode.conversation
 
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -8,7 +8,7 @@ import java.time.Clock
 /** Expires idle user sessions and releases their provider conversations. */
 class ExpireIdleEpisodeConversations(
     private val sessions: EpisodeConversationSessionStore,
-    private val conversationGateway: ConversationGateway,
+    private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
@@ -19,7 +19,7 @@ class ExpireIdleEpisodeConversations(
             beforeInclusive = clock.millis() - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
         )
         expired.forEach { session ->
-            runCatching { conversationGateway.end(session.conversationId) }
+            runCatching { chatGateway.end(session.chatId) }
                 .onFailure {
                     log.warn(
                         "Failed to release expired conversation category={}",

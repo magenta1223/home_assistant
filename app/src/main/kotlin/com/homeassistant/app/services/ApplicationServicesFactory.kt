@@ -1,6 +1,6 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.outbound.conversation.AgentConversationGateway
+import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
 import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
@@ -96,7 +96,7 @@ object ApplicationServicesFactory {
         val conversationGateway = AgentClientFactory.conversation(
             backend = agentBackend,
             timeout = Duration.ofSeconds(agentTimeoutSeconds),
-        )?.let(::AgentConversationGateway)
+        )?.let(::AgentChatGateway)
         log.info(
             "Agent backend={} conversation={}",
             agentBackend,
@@ -111,14 +111,14 @@ object ApplicationServicesFactory {
             HandleConversation(
                 sessions = repositories.episodeConversationSessions,
                 contextProvider = EpisodeConversationContextProvider(componentSearch, episodeSearch),
-                conversationGateway = it,
+                chatGateway = it,
             )
         }
         val conversationExpiryWorker = conversationGateway?.let {
             EpisodeConversationExpiryWorker(
                 ExpireIdleEpisodeConversations(
                     sessions = repositories.episodeConversationSessions,
-                    conversationGateway = it,
+                    chatGateway = it,
                 ),
             )
         } ?: ConversationExpiryWorker.NONE

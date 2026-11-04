@@ -4,9 +4,9 @@ import com.homeassistant.application.port.inbound.episode.Conversation
 import com.homeassistant.application.port.inbound.episode.ConversationRequest
 import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
 import com.homeassistant.application.port.inbound.episode.ConversationResult
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationId
-import com.homeassistant.application.port.outbound.episode.conversation.ConversationReply
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
+import com.homeassistant.application.port.outbound.episode.conversation.ChatId
+import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
@@ -23,7 +23,7 @@ import java.time.Duration
 class HandleConversation(
     private val sessions: EpisodeConversationSessionStore,
     private val contextProvider: EpisodeConversationContextSource,
-    private val conversationGateway: ConversationGateway,
+    private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) : Conversation {
     private val promptBuilder = ConversationPromptBuilder
@@ -35,7 +35,7 @@ class HandleConversation(
         val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
             is EpisodeConversationSessionLease.Active -> lease.session
             is EpisodeConversationSessionLease.Expired -> {
-                conversationGateway.end(lease.session.conversationId)
+                chatGateway.end(lease.session.chatId)
                 null
             }
             EpisodeConversationSessionLease.None -> null
@@ -63,22 +63,22 @@ class HandleConversation(
         val prompt = promptBuilder.build(context.reference, request.question)
         val session = active ?: createSession(request) ?: return ConversationResult.Failed
         val turnStartedAt = System.nanoTime()
-        val result = conversationGateway.continueConversation(session.conversationId, prompt)
+        val result = chatGateway.chat(session.chatId, prompt)
         log.info(
             "Latency stage=episode-conversation-turn elapsedMs={} sessionMode={} result={}",
             elapsedMillis(turnStartedAt),
             if (active == null) "start" else "resume",
-            if (result is ConversationReply.Success) "success" else "failure",
+            if (result is ChatResult.Success) "success" else "failure",
         )
 
         return when (result) {
-            ConversationReply.Failure -> {
-                conversationGateway.end(session.conversationId)
+            ChatResult.Failure -> {
+                chatGateway.end(session.chatId)
                 sessions.markFailed(request.key, now())
                 sessions.clearActive(request.participant)
                 ConversationResult.Failed
             }
-            is ConversationReply.Success -> {
+            is ChatResult.Success -> {
                 sessions.touch(request.participant, session.id, now())
                 answerReady(request.key, result.answer)
             }
@@ -106,16 +106,16 @@ class HandleConversation(
     }
 
     private fun createSession(request: ConversationRequest): EpisodeConversationSession? {
-        var conversationId: ConversationId? = null
+        var chatId: ChatId? = null
         return try {
-            conversationId = conversationGateway.begin().getOrThrow()
-            sessions.createAndActivate(request.participant, conversationId, now()).also { session ->
+            chatId = chatGateway.begin().getOrThrow()
+            sessions.createAndActivate(request.participant, chatId, now()).also { session ->
                 sessions.attachSession(request.key, session.id, now())
             }
         } catch (error: Exception) {
             log.warn("Episode conversation session start failed category={}", error.javaClass.simpleName)
-            conversationId?.let {
-                conversationGateway.end(it)
+            chatId?.let {
+                chatGateway.end(it)
                 sessions.clearActive(request.participant)
             }
             sessions.markFailed(request.key, now())

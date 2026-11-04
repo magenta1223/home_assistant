@@ -14,7 +14,7 @@ enum class EpisodeConversationRequestStatus {
 data class EpisodeConversationSession(
     val id: Int,
     val participant: ConversationParticipant,
-    val conversationId: ConversationId,
+    val chatId: ChatId,
     val createdAt: Long,
     val lastActiveAt: Long,
 )
@@ -44,7 +44,7 @@ interface EpisodeConversationSessionStore {
 
     fun createAndActivate(
         participant: ConversationParticipant,
-        conversationId: ConversationId,
+        chatId: ChatId,
         now: Long,
     ): EpisodeConversationSession
 

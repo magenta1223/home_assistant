@@ -1,8 +1,8 @@
-package com.homeassistant.application.port.inbound.episode
+package com.homeassistant.application.port.inbound.chatservice
 
 import com.homeassistant.domain.identity.UserId
 
-data class ConversationParticipant(
+data class ChatParticipant(
     val scopeId: String,
     val participantId: String,
     val userId: UserId,
@@ -13,7 +13,7 @@ data class ConversationParticipant(
     }
 }
 
-data class ConversationRequestKey(
+data class ChatRequestKey(
     val streamId: String,
     val requestId: String,
 ) {
@@ -23,9 +23,9 @@ data class ConversationRequestKey(
     }
 }
 
-data class ConversationRequest(
-    val participant: ConversationParticipant,
-    val key: ConversationRequestKey,
+data class ChatRequest(
+    val participant: ChatParticipant,
+    val key: ChatRequestKey,
     val question: String,
 ) {
     init {
@@ -33,8 +33,8 @@ data class ConversationRequest(
     }
 }
 
-sealed interface ConversationResult {
-    data class AnswerReady(val answer: String) : ConversationResult
-    data object AlreadyHandled : ConversationResult
-    data object Failed : ConversationResult
+sealed interface ChatResult {
+    data class AnswerReady(val answer: String) : ChatResult
+    data object AlreadyHandled : ChatResult
+    data object Failed : ChatResult
 }

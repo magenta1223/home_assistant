@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.episode.Conversation
-import com.homeassistant.application.port.inbound.episode.ConversationParticipant
-import com.homeassistant.application.port.inbound.episode.ConversationRequest
-import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.ConversationResult
+import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
+import com.homeassistant.application.port.inbound.chatservice.ChatRequest
+import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
+import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.configuration.AppConfig
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -30,7 +30,7 @@ internal fun Route.episodeConversationPageRoute() {
 }
 
 internal fun Route.episodeConversationRoutes(
-    episodeConversation: Conversation?,
+    episodeChatService: ChatService?,
 ) {
     post(AppConfig.ROUTE_EPISODE_CONVERSATION) {
         val principal = call.principal<HttpUserPrincipal>()
@@ -38,7 +38,7 @@ internal fun Route.episodeConversationRoutes(
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "authentication required"))
             return@post
         }
-        val conversation = episodeConversation
+        val conversation = episodeChatService
         if (conversation == null) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "episode conversation unavailable"))
             return@post
@@ -59,13 +59,13 @@ internal fun Route.episodeConversationRoutes(
         val userId = principal.userId
         val result = withContext(Dispatchers.IO) {
             conversation.answer(
-                ConversationRequest(
-                    participant = ConversationParticipant(
+                ChatRequest(
+                    participant = ChatParticipant(
                         scopeId = HTTP_CONVERSATION_SCOPE,
                         participantId = userId.value,
                         userId = userId,
                     ),
-                    key = ConversationRequestKey(
+                    key = ChatRequestKey(
                         streamId = "$HTTP_CONVERSATION_SCOPE:${userId.value}",
                         requestId = requestId,
                     ),
@@ -74,15 +74,15 @@ internal fun Route.episodeConversationRoutes(
             )
         }
         when (result) {
-            is ConversationResult.AnswerReady -> call.respond(
+            is ChatResult.AnswerReady -> call.respond(
                 HttpStatusCode.OK,
                 HttpEpisodeConversationResponse(answer = result.answer),
             )
-            ConversationResult.AlreadyHandled -> call.respond(
+            ChatResult.AlreadyHandled -> call.respond(
                 HttpStatusCode.Conflict,
                 mapOf("error" to "request already handled"),
             )
-            ConversationResult.Failed -> call.respond(
+            ChatResult.Failed -> call.respond(
                 HttpStatusCode.ServiceUnavailable,
                 mapOf("error" to "episode conversation unavailable"),
             )

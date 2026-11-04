@@ -10,9 +10,9 @@ import com.homeassistant.configuration.Env
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
 import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
-import com.homeassistant.application.usecase.episode.conversation.HandleConversation
-import com.homeassistant.application.usecase.episode.conversation.ExpireIdleEpisodeConversations
-import com.homeassistant.application.usecase.episode.conversation.EpisodeConversationContextProvider
+import com.homeassistant.application.usecase.episode.chat.ChatServiceImpl
+import com.homeassistant.application.usecase.episode.chat.ExpireIdleChats
+import com.homeassistant.application.usecase.episode.chat.ChatContextProvider
 import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
@@ -105,18 +105,18 @@ object ApplicationServicesFactory {
         val episodeConversation = conversationGateway?.let {
             val now = System.currentTimeMillis()
             repositories.episodeConversationSessions.failStaleProcessing(
-                before = now - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+                before = now - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
                 now = now,
             )
-            HandleConversation(
+            ChatServiceImpl(
                 sessions = repositories.episodeConversationSessions,
-                contextProvider = EpisodeConversationContextProvider(componentSearch, episodeSearch),
+                contextProvider = ChatContextProvider(componentSearch, episodeSearch),
                 chatGateway = it,
             )
         }
         val conversationExpiryWorker = conversationGateway?.let {
             EpisodeConversationExpiryWorker(
-                ExpireIdleEpisodeConversations(
+                ExpireIdleChats(
                     sessions = repositories.episodeConversationSessions,
                     chatGateway = it,
                 ),
@@ -126,7 +126,7 @@ object ApplicationServicesFactory {
             episodeAnalysis = episodeAnalysisService,
             organizeComponents = organizeComponents,
             organizeEpisodes = organizeEpisodes,
-            conversation = episodeConversation,
+            chatService = episodeConversation,
             users = users,
             authentication = UserAuthenticationService(
                 repositories.userCredentials,

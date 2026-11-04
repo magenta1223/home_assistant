@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.conversation
 
 import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
 import com.homeassistant.llm.ChatClient
 import org.slf4j.LoggerFactory
 
@@ -14,12 +14,12 @@ class AgentChatGateway(
 
     override fun begin(): Result<ChatId> = client.begin().map(::ChatId)
 
-    override fun chat(chatId: ChatId, prompt: String): ChatResult =
+    override fun chat(chatId: ChatId, prompt: String): ChatGatewayResult =
         client.send(chatId.value, prompt).fold(
-            onSuccess = ChatResult::Success,
+            onSuccess = ChatGatewayResult::Success,
             onFailure = { error ->
                 log.warn("Conversation turn failed category={}", error.message ?: error.javaClass.simpleName)
-                ChatResult.Failure
+                ChatGatewayResult.Failure
             },
         )
 

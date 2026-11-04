@@ -1,7 +1,7 @@
 package com.homeassistant.application.port.outbound.episode.conversation
 
-import com.homeassistant.application.port.inbound.episode.ConversationParticipant
-import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
+import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
+import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 
 enum class EpisodeConversationRequestStatus {
     PROCESSING,
@@ -13,7 +13,7 @@ enum class EpisodeConversationRequestStatus {
 
 data class EpisodeConversationSession(
     val id: Int,
-    val participant: ConversationParticipant,
+    val participant: ChatParticipant,
     val chatId: ChatId,
     val createdAt: Long,
     val lastActiveAt: Long,
@@ -26,7 +26,7 @@ sealed interface EpisodeConversationSessionLease {
 }
 
 data class EpisodeConversationReceipt(
-    val key: ConversationRequestKey,
+    val key: ChatRequestKey,
     val status: EpisodeConversationRequestStatus,
     val sessionId: Int? = null,
     val answerText: String? = null,
@@ -36,27 +36,27 @@ data class EpisodeConversationReceipt(
 
 /** Stores request receipts and each participant's active model conversation. */
 interface EpisodeConversationSessionStore {
-    fun claimRequest(key: ConversationRequestKey, now: Long): EpisodeConversationReceipt?
-    fun receipt(key: ConversationRequestKey): EpisodeConversationReceipt?
-    fun attachSession(key: ConversationRequestKey, sessionId: Int, now: Long)
-    fun markAnswerReady(key: ConversationRequestKey, answer: String, now: Long)
-    fun markFailed(key: ConversationRequestKey, now: Long)
+    fun claimRequest(key: ChatRequestKey, now: Long): EpisodeConversationReceipt?
+    fun receipt(key: ChatRequestKey): EpisodeConversationReceipt?
+    fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long)
+    fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long)
+    fun markFailed(key: ChatRequestKey, now: Long)
 
     fun createAndActivate(
-        participant: ConversationParticipant,
+        participant: ChatParticipant,
         chatId: ChatId,
         now: Long,
     ): EpisodeConversationSession
 
     /** Claims and renews this participant's active session, or removes and returns an expired one. */
     fun lease(
-        participant: ConversationParticipant,
+        participant: ChatParticipant,
         now: Long,
         idleTimeoutMillis: Long,
     ): EpisodeConversationSessionLease
 
-    fun clearActive(participant: ConversationParticipant)
-    fun touch(participant: ConversationParticipant, sessionId: Int, now: Long)
+    fun clearActive(participant: ChatParticipant)
+    fun touch(participant: ChatParticipant, sessionId: Int, now: Long)
     fun expireIdle(beforeInclusive: Long): List<EpisodeConversationSession>
     fun failStaleProcessing(before: Long, now: Long): Int
 }

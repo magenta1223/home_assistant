@@ -1,6 +1,6 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.usecase.episode.conversation.ExpireIdleEpisodeConversations
+import com.homeassistant.application.usecase.episode.chat.ExpireIdleChats
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -17,7 +17,7 @@ internal interface ConversationExpiryWorker : AutoCloseable {
 }
 
 internal class EpisodeConversationExpiryWorker(
-    private val expireIdle: ExpireIdleEpisodeConversations,
+    private val expireIdle: ExpireIdleChats,
 ) : ConversationExpiryWorker {
     private val log = LoggerFactory.getLogger(javaClass)
     private val executor = Executors.newSingleThreadScheduledExecutor { task ->

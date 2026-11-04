@@ -1,10 +1,10 @@
-package com.homeassistant.application.usecase.episode.conversation
+package com.homeassistant.application.usecase.episode.chat
 
 import java.time.Clock
 import java.time.Instant
 
 /** Builds the provider prompt that answers only from an episode reference, treated as untrusted data. */
-object ConversationPromptBuilder {
+object ChatPromptBuilder {
     private val clock: Clock = Clock.systemUTC()
 
     /** The prompt for [userText] answered from [context], with the current time to judge how recent each episode is. */

@@ -7,9 +7,9 @@ value class ChatId(val value: String) {
     }
 }
 
-sealed interface ChatResult {
-    data class Success(val answer: String) : ChatResult
-    data object Failure : ChatResult
+sealed interface ChatGatewayResult {
+    data class Success(val answer: String) : ChatGatewayResult
+    data object Failure : ChatGatewayResult
 }
 
 /** Starts, continues, and ends provider-neutral conversations. */
@@ -19,7 +19,7 @@ interface ChatGateway : AutoCloseable {
     fun chat(
         chatId: ChatId,
         prompt: String,
-    ): ChatResult
+    ): ChatGatewayResult
 
     fun end(chatId: ChatId)
 }

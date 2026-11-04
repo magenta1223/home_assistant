@@ -1,10 +1,10 @@
-package com.homeassistant.application.usecase.episode.conversation
+package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.episode.ConversationParticipant
-import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
+import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
+import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
@@ -27,7 +27,7 @@ class ExpireIdleConversationsTest {
             ),
         )
         val client = EndingClient()
-        val useCase = ExpireIdleEpisodeConversations(
+        val useCase = ExpireIdleChats(
             sessions = store,
             chatGateway = client,
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
@@ -41,7 +41,7 @@ class ExpireIdleConversationsTest {
     private class EndingClient : ChatGateway {
         val ended = mutableListOf<String>()
         override fun begin(): Result<ChatId> = error("unused")
-        override fun chat(chatId: ChatId, prompt: String): ChatResult = error("unused")
+        override fun chat(chatId: ChatId, prompt: String): ChatGatewayResult = error("unused")
         override fun end(chatId: ChatId) {
             ended += chatId.value
         }
@@ -57,33 +57,33 @@ class ExpireIdleConversationsTest {
             return expired
         }
 
-        override fun claimRequest(key: ConversationRequestKey, now: Long): EpisodeConversationReceipt? = error("unused")
-        override fun receipt(key: ConversationRequestKey): EpisodeConversationReceipt? = error("unused")
-        override fun attachSession(key: ConversationRequestKey, sessionId: Int, now: Long) = error("unused")
-        override fun markAnswerReady(key: ConversationRequestKey, answer: String, now: Long) = error("unused")
-        override fun markFailed(key: ConversationRequestKey, now: Long) = error("unused")
+        override fun claimRequest(key: ChatRequestKey, now: Long): EpisodeConversationReceipt? = error("unused")
+        override fun receipt(key: ChatRequestKey): EpisodeConversationReceipt? = error("unused")
+        override fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long) = error("unused")
+        override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) = error("unused")
+        override fun markFailed(key: ChatRequestKey, now: Long) = error("unused")
         override fun createAndActivate(
-            participant: ConversationParticipant,
+            participant: ChatParticipant,
             chatId: ChatId,
             now: Long,
         ): EpisodeConversationSession = error("unused")
         override fun lease(
-            participant: ConversationParticipant,
+            participant: ChatParticipant,
             now: Long,
             idleTimeoutMillis: Long,
         ): EpisodeConversationSessionLease = error("unused")
-        override fun clearActive(participant: ConversationParticipant) = error("unused")
-        override fun touch(participant: ConversationParticipant, sessionId: Int, now: Long) = error("unused")
+        override fun clearActive(participant: ChatParticipant) = error("unused")
+        override fun touch(participant: ChatParticipant, sessionId: Int, now: Long) = error("unused")
         override fun failStaleProcessing(before: Long, now: Long): Int = error("unused")
     }
 
     private companion object {
         const val NOW = 1_000_000L
-        const val TIMEOUT = HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS
+        const val TIMEOUT = ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS
 
         fun session(id: Int, threadId: String, lastActiveAt: Long) = EpisodeConversationSession(
             id = id,
-            participant = ConversationParticipant("scope", "participant-$id", UserId("user-$id")),
+            participant = ChatParticipant("scope", "participant-$id", UserId("user-$id")),
             chatId = ChatId(threadId),
             createdAt = 0,
             lastActiveAt = lastActiveAt,

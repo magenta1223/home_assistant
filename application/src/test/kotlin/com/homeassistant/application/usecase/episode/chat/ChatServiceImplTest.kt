@@ -1,12 +1,12 @@
-package com.homeassistant.application.usecase.episode.conversation
+package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.episode.ConversationParticipant
-import com.homeassistant.application.port.inbound.episode.ConversationRequest
-import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.ConversationResult
+import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
+import com.homeassistant.application.port.inbound.chatservice.ChatRequest
+import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
+import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
@@ -21,7 +21,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class HandleConversationTest {
+class ChatServiceImplTest {
     @Test
     fun `builds and stores an answer for HTTP request retries`() {
         val events = mutableListOf<String>()
@@ -30,12 +30,12 @@ class HandleConversationTest {
         val seenUsers = mutableListOf<UserId>()
         val handler = handler(store, client) { userId, _ ->
             seenUsers += userId
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         val result = handler.answer(REQUEST)
 
-        assertEquals(ConversationResult.AnswerReady("grounded answer"), result)
+        assertEquals(ChatResult.AnswerReady("grounded answer"), result)
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
         assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
@@ -54,7 +54,7 @@ class HandleConversationTest {
 
         val result = handler.answer(REQUEST)
 
-        assertEquals(ConversationResult.AnswerReady("stored answer"), result)
+        assertEquals(ChatResult.AnswerReady("stored answer"), result)
         assertEquals(null, client.executedPrompt)
     }
 
@@ -63,13 +63,13 @@ class HandleConversationTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("", hasMatches = false)
+            ChatContext("", hasMatches = false)
         }
 
         val result = handler.answer(REQUEST)
 
         assertEquals(
-            ConversationResult.AnswerReady(HandleConversation.NO_MATCH_ANSWER),
+            ChatResult.AnswerReady(ChatServiceImpl.NO_MATCH_ANSWER),
             result,
         )
         assertEquals(null, client.executedPrompt)
@@ -82,10 +82,10 @@ class HandleConversationTest {
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
-        assertIs<ConversationResult.AnswerReady>(handler.answer(REQUEST))
+        assertIs<ChatResult.AnswerReady>(handler.answer(REQUEST))
 
         assertEquals("existing-thread", client.executedThreadId)
         assertEquals(emptyList(), client.createdThreadIds)
@@ -97,15 +97,15 @@ class HandleConversationTest {
             createAndActivate(
                 PARTICIPANT,
                 ChatId("expired-thread"),
-                NOW - HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS,
+                NOW - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
             )
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
-        assertIs<ConversationResult.AnswerReady>(handler.answer(REQUEST))
+        assertIs<ChatResult.AnswerReady>(handler.answer(REQUEST))
 
         assertEquals(listOf("expired-thread"), client.endedThreadIds)
         assertEquals(listOf("new-thread-1"), client.createdThreadIds)
@@ -117,9 +117,9 @@ class HandleConversationTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
-        val secondParticipant = ConversationParticipant(
+        val secondParticipant = ChatParticipant(
             scopeId = "workspace-1",
             participantId = "member-2",
             userId = UserId("user-2"),
@@ -127,23 +127,23 @@ class HandleConversationTest {
 
         handler.answer(REQUEST)
         handler.answer(
-            ConversationRequest(
+            ChatRequest(
                 secondParticipant,
-                ConversationRequestKey("stream-2", "request-1"),
+                ChatRequestKey("stream-2", "request-1"),
                 "question",
             ),
         )
         handler.answer(
-            ConversationRequest(
+            ChatRequest(
                 PARTICIPANT,
-                ConversationRequestKey("stream-1", "request-2"),
+                ChatRequestKey("stream-1", "request-2"),
                 "follow up",
             ),
         )
         handler.answer(
-            ConversationRequest(
+            ChatRequest(
                 secondParticipant,
-                ConversationRequestKey("stream-2", "request-2"),
+                ChatRequestKey("stream-2", "request-2"),
                 "follow up",
             ),
         )
@@ -157,16 +157,16 @@ class HandleConversationTest {
     @Test
     fun `ends a newly created thread when its turn fails`() {
         val store = RecordingSessionStore()
-        val client = RecordingChatGateway(turnResult = ChatResult.Failure)
+        val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertIs<EpisodeConversationSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -175,17 +175,17 @@ class HandleConversationTest {
         val store = RecordingSessionStore().apply {
             createAndActivate(PARTICIPANT, ChatId("existing-thread"), NOW - 1)
         }
-        val client = RecordingChatGateway(turnResult = ChatResult.Failure)
+        val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(emptyList(), client.createdThreadIds)
         assertEquals(listOf("existing-thread"), client.endedThreadIds)
         assertIs<EpisodeConversationSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -194,10 +194,10 @@ class HandleConversationTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway(createFailure = IllegalStateException("create failed"))
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(null, client.executedThreadId)
         assertEquals(EpisodeConversationRequestStatus.FAILED, store.receipt(KEY)?.status)
@@ -208,31 +208,31 @@ class HandleConversationTest {
         val store = RecordingSessionStore(failAttachSession = true)
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            EpisodeConversationContext("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
-        assertEquals(ConversationResult.Failed, handler.answer(REQUEST))
+        assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertEquals(null, client.executedThreadId)
         assertIs<EpisodeConversationSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, HandleConversation.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
     private fun handler(
         store: RecordingSessionStore,
         client: RecordingChatGateway,
-        context: (UserId, String) -> EpisodeConversationContext,
-    ) = HandleConversation(
+        context: (UserId, String) -> ChatContext,
+    ) = ChatServiceImpl(
         sessions = store,
-        contextProvider = EpisodeConversationContextSource(context),
+        contextProvider = ChatContextSource(context),
         chatGateway = client,
         clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     )
 
     private class RecordingChatGateway(
-        private val turnResult: ChatResult = ChatResult.Success("grounded answer"),
+        private val turnResult: ChatGatewayResult = ChatGatewayResult.Success("grounded answer"),
         private val createFailure: Exception? = null,
         private val events: MutableList<String>? = null,
     ) : ChatGateway {
@@ -251,7 +251,7 @@ class HandleConversationTest {
             )
         }
 
-        override fun chat(chatId: ChatId, prompt: String): ChatResult {
+        override fun chat(chatId: ChatId, prompt: String): ChatGatewayResult {
             events?.add("continue")
             executedPrompt = prompt
             executedThreadId = chatId.value
@@ -270,24 +270,24 @@ class HandleConversationTest {
         private val failAttachSession: Boolean = false,
         private val events: MutableList<String>? = null,
     ) : EpisodeConversationSessionStore {
-        private val receipts = mutableMapOf<ConversationRequestKey, EpisodeConversationReceipt>()
-        private val activeSessions = mutableMapOf<ConversationParticipant, EpisodeConversationSession>()
+        private val receipts = mutableMapOf<ChatRequestKey, EpisodeConversationReceipt>()
+        private val activeSessions = mutableMapOf<ChatParticipant, EpisodeConversationSession>()
         private var nextSessionId = 1
 
-        override fun claimRequest(key: ConversationRequestKey, now: Long): EpisodeConversationReceipt? {
+        override fun claimRequest(key: ChatRequestKey, now: Long): EpisodeConversationReceipt? {
             if (key in receipts) return null
             return receipt(key, EpisodeConversationRequestStatus.PROCESSING, now).also { receipts[key] = it }
         }
 
-        override fun receipt(key: ConversationRequestKey): EpisodeConversationReceipt? = receipts[key]
+        override fun receipt(key: ChatRequestKey): EpisodeConversationReceipt? = receipts[key]
 
-        override fun attachSession(key: ConversationRequestKey, sessionId: Int, now: Long) {
+        override fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long) {
             events?.add("attachSession")
             if (failAttachSession) error("attach failed")
             receipts[key] = receipts.getValue(key).copy(sessionId = sessionId, updatedAt = now)
         }
 
-        override fun markAnswerReady(key: ConversationRequestKey, answer: String, now: Long) {
+        override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) {
             receipts[key] = receipts.getValue(key).copy(
                 status = EpisodeConversationRequestStatus.ANSWER_READY,
                 answerText = answer,
@@ -295,7 +295,7 @@ class HandleConversationTest {
             )
         }
 
-        override fun markFailed(key: ConversationRequestKey, now: Long) {
+        override fun markFailed(key: ChatRequestKey, now: Long) {
             receipts[key] = receipts.getValue(key).copy(
                 status = EpisodeConversationRequestStatus.FAILED,
                 updatedAt = now,
@@ -303,7 +303,7 @@ class HandleConversationTest {
         }
 
         override fun createAndActivate(
-            participant: ConversationParticipant,
+            participant: ChatParticipant,
             chatId: ChatId,
             now: Long,
         ): EpisodeConversationSession = EpisodeConversationSession(
@@ -318,7 +318,7 @@ class HandleConversationTest {
         }
 
         override fun lease(
-            participant: ConversationParticipant,
+            participant: ChatParticipant,
             now: Long,
             idleTimeoutMillis: Long,
         ): EpisodeConversationSessionLease {
@@ -332,11 +332,11 @@ class HandleConversationTest {
             return EpisodeConversationSessionLease.Active(renewed)
         }
 
-        override fun clearActive(participant: ConversationParticipant) {
+        override fun clearActive(participant: ChatParticipant) {
             activeSessions.remove(participant)
         }
 
-        override fun touch(participant: ConversationParticipant, sessionId: Int, now: Long) {
+        override fun touch(participant: ChatParticipant, sessionId: Int, now: Long) {
             activeSessions[participant] = activeSessions.getValue(participant).copy(lastActiveAt = now)
         }
 
@@ -349,7 +349,7 @@ class HandleConversationTest {
         override fun failStaleProcessing(before: Long, now: Long): Int = 0
 
         private fun receipt(
-            key: ConversationRequestKey,
+            key: ChatRequestKey,
             status: EpisodeConversationRequestStatus,
             now: Long,
         ) = EpisodeConversationReceipt(
@@ -363,8 +363,8 @@ class HandleConversationTest {
     private companion object {
         const val NOW = 1_000_000L
         val USER_ID = UserId("member-1")
-        val PARTICIPANT = ConversationParticipant("workspace-1", "member-1", USER_ID)
-        val KEY = ConversationRequestKey("stream-1", "request-1")
-        val REQUEST = ConversationRequest(PARTICIPANT, KEY, "question")
+        val PARTICIPANT = ChatParticipant("workspace-1", "member-1", USER_ID)
+        val KEY = ChatRequestKey("stream-1", "request-1")
+        val REQUEST = ChatRequest(PARTICIPANT, KEY, "question")
     }
 }

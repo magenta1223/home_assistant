@@ -3,10 +3,10 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.episode.Conversation
-import com.homeassistant.application.port.inbound.episode.ConversationRequest
-import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.ConversationResult
+import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.ChatRequest
+import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
+import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.RegisteredUser
@@ -27,11 +27,11 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ConversationRoutesTest {
+class ChatServiceRoutesTest {
     @Test
     fun `conversation page is hosted without authentication or embedded credentials`() = testApplication {
         application {
-            configureTestRoutes(RecordingConversation(ConversationResult.AnswerReady("unused")))
+            configureTestRoutes(RecordingChatService(ChatResult.AnswerReady("unused")))
         }
 
         val response = client.get(AppConfig.ROUTE_EPISODE_CONVERSATION_PAGE)
@@ -47,7 +47,7 @@ class ConversationRoutesTest {
 
     @Test
     fun `authenticated user owns the HTTP conversation identity`() = testApplication {
-        val conversation = RecordingConversation(ConversationResult.AnswerReady("기억 기반 답변"))
+        val conversation = RecordingChatService(ChatResult.AnswerReady("기억 기반 답변"))
         application {
             configureTestRoutes(conversation)
         }
@@ -70,13 +70,13 @@ class ConversationRoutesTest {
         assertEquals("http", captured.participant.scopeId)
         assertEquals("member-1", captured.participant.participantId)
         assertEquals(UserId("member-1"), captured.participant.userId)
-        assertEquals(ConversationRequestKey("http:member-1", REQUEST_ID), captured.key)
+        assertEquals(ChatRequestKey("http:member-1", REQUEST_ID), captured.key)
         assertEquals("무엇을 기억하고 있어?", captured.question)
     }
 
     @Test
     fun `different bearer tokens create different HTTP participants`() = testApplication {
-        val conversation = RecordingConversation(ConversationResult.AnswerReady("answer"))
+        val conversation = RecordingChatService(ChatResult.AnswerReady("answer"))
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
@@ -89,7 +89,7 @@ class ConversationRoutesTest {
                     RegisteredUser(UserId("member-1"), "첫째"),
                     RegisteredUser(UserId("member-2"), "둘째"),
                 ),
-                conversation = conversation,
+                chatService = conversation,
             )
         }
 
@@ -106,7 +106,7 @@ class ConversationRoutesTest {
     @Test
     fun `episode conversation requires authentication`() = testApplication {
         application {
-            configureTestRoutes(RecordingConversation(ConversationResult.AnswerReady("unused")))
+            configureTestRoutes(RecordingChatService(ChatResult.AnswerReady("unused")))
         }
 
         assertEquals(
@@ -121,7 +121,7 @@ class ConversationRoutesTest {
     @Test
     fun `unavailable conversation runtime returns service unavailable`() = testApplication {
         application {
-            configureTestRoutes(conversation = null)
+            configureTestRoutes(chatService = null)
         }
 
         assertEquals(
@@ -133,7 +133,7 @@ class ConversationRoutesTest {
     @Test
     fun `already handled request returns conflict`() = testApplication {
         application {
-            configureTestRoutes(RecordingConversation(ConversationResult.AlreadyHandled))
+            configureTestRoutes(RecordingChatService(ChatResult.AlreadyHandled))
         }
 
         assertEquals(HttpStatusCode.Conflict, postConversation(API_TOKEN, REQUEST_ID).status)
@@ -142,7 +142,7 @@ class ConversationRoutesTest {
     @Test
     fun `failed conversation returns service unavailable`() = testApplication {
         application {
-            configureTestRoutes(RecordingConversation(ConversationResult.Failed))
+            configureTestRoutes(RecordingChatService(ChatResult.Failed))
         }
 
         assertEquals(HttpStatusCode.ServiceUnavailable, postConversation(API_TOKEN, REQUEST_ID).status)
@@ -150,7 +150,7 @@ class ConversationRoutesTest {
 
     @Test
     fun `invalid request id is rejected before conversation`() = testApplication {
-        val conversation = RecordingConversation(ConversationResult.AnswerReady("unused"))
+        val conversation = RecordingChatService(ChatResult.AnswerReady("unused"))
         application {
             configureTestRoutes(conversation)
         }
@@ -166,14 +166,14 @@ class ConversationRoutesTest {
     }
 
     private fun io.ktor.server.application.Application.configureTestRoutes(
-        conversation: Conversation?,
+        chatService: ChatService?,
     ) {
         install(ContentNegotiation) { json(JsonSerializer.json) }
         configureRoutes(
             episodeAnalysis = unusedEpisodeAnalysis(),
             httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("member-1")),
             users = FixedUserRegistry(RegisteredUser(UserId("member-1"), "첫째")),
-            conversation = conversation,
+            chatService = chatService,
         )
     }
 
@@ -187,12 +187,12 @@ class ConversationRoutesTest {
             setBody("""{"requestId":"$requestId","question":"질문"}""")
         }
 
-    private class RecordingConversation(
-        private val result: ConversationResult,
-    ) : Conversation {
-        val requests = mutableListOf<ConversationRequest>()
+    private class RecordingChatService(
+        private val result: ChatResult,
+    ) : ChatService {
+        val requests = mutableListOf<ChatRequest>()
 
-        override fun answer(request: ConversationRequest): ConversationResult {
+        override fun answer(request: ChatRequest): ChatResult {
             requests += request
             return result
         }

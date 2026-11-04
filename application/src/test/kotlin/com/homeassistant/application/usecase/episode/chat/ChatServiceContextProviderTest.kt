@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.episode.conversation
+package com.homeassistant.application.usecase.episode.chat
 
 import com.homeassistant.application.port.inbound.component.SearchComponents
 import com.homeassistant.application.port.inbound.component.ComponentMatch
@@ -11,7 +11,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ConversationContextProviderTest {
+class ChatServiceContextProviderTest {
     @Test
     fun `reference holds one block per component with timestamps and score`() {
         val provider = provider(ComponentMatch(7, 0.9, listOf(ComponentMatchEpisode(1, "saved fact", 1_000L), ComponentMatchEpisode(2, "older fact", 0L))),
@@ -81,7 +81,7 @@ class ConversationContextProviderTest {
         assertEquals("", context.reference)
     }
 
-    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()) = EpisodeConversationContextProvider(
+    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()) = ChatContextProvider(
         SearchComponents { userId, query ->
             assertEquals(USER_ID, userId)
             assertEquals("question", query)

@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.conversation
 
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
 import com.homeassistant.llm.ChatClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -15,7 +15,7 @@ class AgentChatGatewayTest {
         val gateway = AgentChatGateway(client)
 
         val conversationId = gateway.begin().getOrThrow()
-        val reply = assertIs<ChatResult.Success>(
+        val reply = assertIs<ChatGatewayResult.Success>(
             gateway.chat(conversationId, "prompt"),
         )
         gateway.end(conversationId)
@@ -35,7 +35,7 @@ class AgentChatGatewayTest {
         )
 
         assertEquals(
-            ChatResult.Failure,
+            ChatGatewayResult.Failure,
             gateway.chat(ChatId("conversation-1"), "prompt"),
         )
     }

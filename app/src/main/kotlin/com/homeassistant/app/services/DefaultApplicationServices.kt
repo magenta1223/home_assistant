@@ -5,14 +5,14 @@ import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
 import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.Conversation
+import com.homeassistant.application.port.inbound.chatservice.ChatService
 import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
 
 internal class DefaultApplicationServices(
     override val episodeAnalysis: EpisodeAnalysis,
     override val organizeComponents: OrganizePendingComponents,
     override val organizeEpisodes: OrganizePendingEpisodes,
-    override val conversation: Conversation? = null,
+    override val chatService: ChatService? = null,
     override val users: UserRegistry = UserRegistry.NONE,
     override val authentication: UserAuthentication = UserAuthentication.NONE,
     private val embeddingRuntime: EmbeddingServerRuntime,

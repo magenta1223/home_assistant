@@ -1,12 +1,12 @@
-package com.homeassistant.application.usecase.episode.conversation
+package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.episode.Conversation
-import com.homeassistant.application.port.inbound.episode.ConversationRequest
-import com.homeassistant.application.port.inbound.episode.ConversationRequestKey
-import com.homeassistant.application.port.inbound.episode.ConversationResult
+import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.ChatRequest
+import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
+import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
+import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
@@ -20,16 +20,17 @@ import java.time.Duration
  * while the participant was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
-class HandleConversation(
+class ChatServiceImpl(
     private val sessions: EpisodeConversationSessionStore,
-    private val contextProvider: EpisodeConversationContextSource,
+    private val contextProvider: ChatContextSource,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
-) : Conversation {
-    private val promptBuilder = ConversationPromptBuilder
+) : ChatService {
+    private val promptBuilder = ChatPromptBuilder
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun answer(request: ConversationRequest): ConversationResult {
+    override fun answer(request: ChatRequest): ChatResult {
+        // TODO: ORCHESTRATION
         sessions.claimRequest(request.key, now()) ?: return existingResult(request.key)
 
         val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
@@ -50,7 +51,7 @@ class HandleConversation(
                 elapsedMillis(contextStartedAt),
             )
             sessions.markFailed(request.key, now())
-            return ConversationResult.Failed
+            return ChatResult.Failed
         }
         log.info(
             "Latency stage=episode-conversation-context elapsedMs={} hasMatches={} sessionMode={}",
@@ -61,51 +62,51 @@ class HandleConversation(
         if (!context.hasMatches) return answerReady(request.key, NO_MATCH_ANSWER)
 
         val prompt = promptBuilder.build(context.reference, request.question)
-        val session = active ?: createSession(request) ?: return ConversationResult.Failed
+        val session = active ?: createSession(request) ?: return ChatResult.Failed
         val turnStartedAt = System.nanoTime()
         val result = chatGateway.chat(session.chatId, prompt)
         log.info(
             "Latency stage=episode-conversation-turn elapsedMs={} sessionMode={} result={}",
             elapsedMillis(turnStartedAt),
             if (active == null) "start" else "resume",
-            if (result is ChatResult.Success) "success" else "failure",
+            if (result is ChatGatewayResult.Success) "success" else "failure",
         )
 
         return when (result) {
-            ChatResult.Failure -> {
+            ChatGatewayResult.Failure -> {
                 chatGateway.end(session.chatId)
                 sessions.markFailed(request.key, now())
                 sessions.clearActive(request.participant)
-                ConversationResult.Failed
+                ChatResult.Failed
             }
-            is ChatResult.Success -> {
+            is ChatGatewayResult.Success -> {
                 sessions.touch(request.participant, session.id, now())
                 answerReady(request.key, result.answer)
             }
         }
     }
 
-    private fun existingResult(key: ConversationRequestKey): ConversationResult {
-        val receipt = sessions.receipt(key) ?: return ConversationResult.AlreadyHandled
+    private fun existingResult(key: ChatRequestKey): ChatResult {
+        val receipt = sessions.receipt(key) ?: return ChatResult.AlreadyHandled
         return if (receipt.status == EpisodeConversationRequestStatus.ANSWER_READY) {
             receipt.answerText
                 ?.takeIf(String::isNotBlank)
-                ?.let(ConversationResult::AnswerReady)
-                ?: ConversationResult.AlreadyHandled
+                ?.let(ChatResult::AnswerReady)
+                ?: ChatResult.AlreadyHandled
         } else {
-            ConversationResult.AlreadyHandled
+            ChatResult.AlreadyHandled
         }
     }
 
     private fun answerReady(
-        key: ConversationRequestKey,
+        key: ChatRequestKey,
         answer: String,
-    ): ConversationResult.AnswerReady {
+    ): ChatResult.AnswerReady {
         sessions.markAnswerReady(key, answer, now())
-        return ConversationResult.AnswerReady(answer)
+        return ChatResult.AnswerReady(answer)
     }
 
-    private fun createSession(request: ConversationRequest): EpisodeConversationSession? {
+    private fun createSession(request: ChatRequest): EpisodeConversationSession? {
         var chatId: ChatId? = null
         return try {
             chatId = chatGateway.begin().getOrThrow()

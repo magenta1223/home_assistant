@@ -1,8 +1,8 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.port.inbound.group.GroupMergeOutcome
-import com.homeassistant.application.port.inbound.component.EpisodeAssignmentOutcome
-import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
+import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService

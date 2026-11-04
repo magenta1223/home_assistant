@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.outbound.identity.PasswordHash
 import com.homeassistant.application.port.outbound.identity.PasswordHasher
 import com.homeassistant.application.port.outbound.identity.StoredCredential

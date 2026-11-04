@@ -1,7 +1,24 @@
 package com.homeassistant.application.usecase.group
 
-import com.homeassistant.application.port.inbound.group.*
-import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.GroupOrganizationResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
+import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import java.util.concurrent.CancellationException
 import kotlin.test.*
@@ -60,8 +77,10 @@ class OrganizePendingComponentsTest {
 
     @Test fun `dimension change stops batch and cancellation propagates`() {
         val fixture = Fixture()
-        fixture.snapshot = GroupSnapshot(listOf(StoredGroup(Group(4, setOf(9)), 1, vector)),
-            mapOf(9 to ComponentEmbedding(PendingComponent(9, "9").embeddingKey(space), vector)))
+        fixture.snapshot = GroupSnapshot(
+            listOf(StoredGroup(Group(4, setOf(9)), 1, vector)),
+            mapOf(9 to ComponentEmbedding(PendingComponent(9, "9").embeddingKey(space), vector))
+        )
         fixture.generate = { ComponentVector.normalized(listOf(1.0)) }
         assertIs<GroupOrganizationResult.RebuildRequired>(fixture.service.execute(1))
         val cancelled = Fixture()
@@ -71,7 +90,8 @@ class OrganizePendingComponentsTest {
 
     @Test fun `attachment and split are one change preserving the old group id`() {
         val fixture = Fixture(maxComponents = 2)
-        fixture.snapshot = GroupSnapshot(listOf(StoredGroup(Group(4, setOf(8, 9)), 7, vector)),
+        fixture.snapshot = GroupSnapshot(
+            listOf(StoredGroup(Group(4, setOf(8, 9)), 7, vector)),
             (8..9).associateWith { ComponentEmbedding(PendingComponent(it, "$it").embeddingKey(space), vector) })
         val result = fixture.service.execute(1)
         assertIs<GroupSplit.Divided>(assertIs<ComponentOrganizationOutcome.Organized>(result.components.single().outcome).split)
@@ -104,10 +124,16 @@ class OrganizePendingComponentsTest {
         private val writer = object : GroupChangeWriter {
             override fun apply(change: GroupChange): GroupWriteResult { writes.add(change); return write(change) }
         }
-        val service = OrganizePendingComponentsService(object : PendingComponentSource {
-            override fun pending(limit: Int) = (1..3).take(limit).map { PendingComponent(it, "$it") }
-        }, OrganizeComponent(reader, writer, PrepareComponentEmbedding(generator, store),
-            GroupOrganizationPlanner(GroupPlacementPolicy(GroupPolicySettings(maxComponents = maxComponents)),
-                GroupSplitPolicy(GroupPolicySettings(maxComponents = maxComponents)))))
+        val service = OrganizePendingComponentsService(
+            object : PendingComponentSource {
+                override fun pending(limit: Int) = (1..3).take(limit).map { PendingComponent(it, "$it") }
+            }, OrganizeComponent(
+                reader, writer, PrepareComponentEmbedding(generator, store),
+                GroupOrganizationPlanner(
+                    GroupPlacementPolicy(GroupPolicySettings(maxComponents = maxComponents)),
+                    GroupSplitPolicy(GroupPolicySettings(maxComponents = maxComponents))
+                )
+            )
+        )
     }
 }

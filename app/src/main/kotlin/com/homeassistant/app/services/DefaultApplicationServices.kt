@@ -3,10 +3,10 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.chatservice.ChatService
-import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 
 internal class DefaultApplicationServices(
     override val episodeAnalysis: EpisodeAnalysis,

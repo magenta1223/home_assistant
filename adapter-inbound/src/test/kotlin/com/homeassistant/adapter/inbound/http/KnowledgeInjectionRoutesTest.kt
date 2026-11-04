@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisResult
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig

@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.component.*
+import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal
@@ -24,7 +24,14 @@ class ComponentAssignmentOutboxRepositoryTest {
     @Test fun `saving an episode queues it for assignment`() = withDatabase { db ->
         val (episode) = seedEpisodes(db, "first", "화분 물주기")
         val task = ComponentAssignmentOutboxRepository(db).claimReady(10, now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5).single()
-        assertEquals(PendingEpisode(episode, "title", "화분 물주기", EpisodeAccess.restricted(listOf(user)), listOf("화분 물주기")), task.episode)
+        assertEquals(
+            PendingEpisode(
+                episode,
+                "title",
+                "화분 물주기",
+                EpisodeAccess.restricted(listOf(user)),
+                listOf("화분 물주기")
+            ), task.episode)
         assertEquals(1, task.attempt)
         assertEquals(OutboxRow("PROCESSING", 1, null), outboxRow(db, episode))
     }

@@ -1,8 +1,8 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.port.inbound.group.GroupOrganizationResult
-import com.homeassistant.application.port.inbound.component.EpisodeOrganizationResult
-import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
+import com.homeassistant.application.port.inbound.memoryextraction.GroupOrganizationResult
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeOrganizationResult
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.componentextraction
 
-import com.homeassistant.application.port.outbound.component.PendingEpisode
+import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.llm.CompletionImage

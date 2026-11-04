@@ -2,13 +2,13 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.port.outbound.group.EmbeddingSpace
-import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.component.ComponentStatementVectors
-import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
+import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
-import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessPolicy

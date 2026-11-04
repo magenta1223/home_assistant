@@ -1,10 +1,11 @@
 package com.homeassistant.application.usecase.episode.analysis
 
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
-import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.domain.episode.*
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
+import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.domain.source.*
 import kotlinx.coroutines.runBlocking
 import kotlin.test.*
@@ -24,7 +25,8 @@ class EpisodeAnalysisPersistenceTest {
         }
         val service = EpisodeAnalysisService(
             episodeExtractor = object : EpisodeExtractor {
-                override suspend fun analyze(document: SourceDocument) = listOf(EpisodeProposal("title", "fact", listOf(1)))
+                override suspend fun analyze(document: SourceDocument) =
+                    listOf(EpisodeProposal("title", "fact", listOf(1)))
             },
             sourceRecords = records,
             episodeWriter = { _, _, _ ->

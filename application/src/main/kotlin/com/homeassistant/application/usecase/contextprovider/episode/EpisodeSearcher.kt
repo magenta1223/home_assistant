@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.contextprovider.episode
 
-import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
-import com.homeassistant.application.port.outbound.episode.EpisodeReader
-import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
+import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy

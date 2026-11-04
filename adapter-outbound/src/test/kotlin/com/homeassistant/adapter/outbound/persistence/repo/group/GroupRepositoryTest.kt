@@ -5,9 +5,22 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.group.*
-import com.homeassistant.application.port.inbound.group.*
-import com.homeassistant.application.usecase.group.*
+import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
+import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
+import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
+import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -166,7 +179,11 @@ class GroupRepositoryTest {
         assertEquals(embeddings.getValue(1), restarted.find(embeddings.getValue(1).key))
         // The first vector for a cache key wins even if another embedding request returns different coordinates.
         assertEquals(embeddings.getValue(1), restarted.save(embeddings.getValue(1).copy(vector = ComponentVector.normalized(listOf(0.0, 1.0)))))
-        val replacement = restarted.save(embeddings.getValue(2).let { it.copy(key = it.key.copy(space = EmbeddingSpace("new", "v1"))) })
+        val replacement = restarted.save(embeddings.getValue(2).let { it.copy(key = it.key.copy(space = EmbeddingSpace(
+            "new",
+            "v1"
+        )
+        )) })
         assertFailsWith<GroupRebuildRequired> {
             repository.apply(change("mixed", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = mapOf(2 to replacement)))
         }
@@ -184,7 +201,13 @@ class GroupRepositoryTest {
         return episodes.associate { episode ->
             val statement = "knowledge of ${episode.content}"
             val id = components.saveExtraction(episode.id, listOf(statement)).single()
-            id to store.save(ComponentEmbedding(PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(space), vector))
+            id to store.save(
+                ComponentEmbedding(
+                    PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(
+                        space
+                    ), vector
+                )
+            )
         }
     }
 
@@ -196,8 +219,10 @@ class GroupRepositoryTest {
         embeddings: Map<Int, ComponentEmbedding>,
         retain: Int? = null,
     ): GroupChange = GroupChange(key, expected, incoming, parts.mapIndexed { index, ids ->
-        ResultingGroup(if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created("$index"),
-            ids, GroupGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector }))
+        ResultingGroup(
+            if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created("$index"),
+            ids, GroupGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector })
+        )
     }, embeddings.filterKeys { it in parts.flatten() })
 
     private fun service(db: Database, maxComponents: Int): OrganizePendingComponentsService {
@@ -207,9 +232,13 @@ class GroupRepositoryTest {
             override fun generate(component: PendingComponent) = vector
         }
         val settings = GroupPolicySettings(maxComponents = maxComponents)
-        return OrganizePendingComponentsService(repository, OrganizeComponent(repository, repository,
-            PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
-            GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))))
+        return OrganizePendingComponentsService(
+            repository, OrganizeComponent(
+                repository, repository,
+                PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
+                GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
+            )
+        )
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

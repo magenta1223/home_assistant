@@ -3,9 +3,11 @@ package com.homeassistant.adapter.outbound.persistence.repo.component
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
-import com.homeassistant.application.port.outbound.group.EmbeddingSpace
-import com.homeassistant.application.port.outbound.group.descriptionFingerprint
-import com.homeassistant.application.port.outbound.component.*
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import org.jetbrains.exposed.sql.*
@@ -39,8 +41,10 @@ internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmb
         }.toString()
 
         fun decode(row: ResultRow): EpisodeEmbedding = EpisodeEmbedding(
-            EpisodeEmbeddingKey(row[EpisodeEmbeddingTable.episodeId], row[EpisodeEmbeddingTable.contentHash],
-                EmbeddingSpace(row[EpisodeEmbeddingTable.model], row[EpisodeEmbeddingTable.inputFormat])),
+            EpisodeEmbeddingKey(
+                row[EpisodeEmbeddingTable.episodeId], row[EpisodeEmbeddingTable.contentHash],
+                EmbeddingSpace(row[EpisodeEmbeddingTable.model], row[EpisodeEmbeddingTable.inputFormat])
+            ),
             GroupStorageCodec.vector(row[EpisodeEmbeddingTable.vector]),
         )
     }

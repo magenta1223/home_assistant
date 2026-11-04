@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
 import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.application.usecase.episode.analysis.EpisodeAnalysisService
+import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
@@ -18,9 +18,15 @@ import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.episode.EpisodeEmbeddingAdapter
 import com.homeassistant.adapter.outbound.embedding.episode.QueryEmbeddingAdapter
-import com.homeassistant.application.usecase.component.*
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.group.*
+import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
+import com.homeassistant.application.usecase.memoryextraction.component.ExtractComponents
+import com.homeassistant.application.usecase.memoryextraction.component.OrganizePendingEpisodesService
+import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.llm.AgentBackend
 import com.homeassistant.llm.AgentClientFactory

@@ -1,10 +1,10 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
-import com.homeassistant.application.port.inbound.component.OrganizePendingEpisodes
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

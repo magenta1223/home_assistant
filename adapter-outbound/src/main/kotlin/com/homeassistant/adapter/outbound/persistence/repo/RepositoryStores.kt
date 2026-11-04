@@ -1,14 +1,20 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
-import com.homeassistant.application.port.outbound.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeWriter
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.port.outbound.identity.UserStore
-import com.homeassistant.application.port.outbound.component.*
-import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,

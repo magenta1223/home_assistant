@@ -1,18 +1,34 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
-import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
+import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.domain.group.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class GroupRepository(private val db: Database) : PendingComponentSource, GroupReader, GroupSnapshotReader, GroupChangeWriter {
+internal class GroupRepository(private val db: Database) : PendingComponentSource, GroupReader, GroupSnapshotReader,
+    GroupChangeWriter {
     override fun pending(limit: Int): List<PendingComponent> = transaction(db) {
         require(limit > 0)
         ComponentTable.selectAll().where {
             notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
-        }.orderBy(ComponentTable.id).limit(limit).map { PendingComponent(it[ComponentTable.id], ComponentEmbeddingRepository.version(it)) }
+        }.orderBy(ComponentTable.id).limit(limit).map {
+            PendingComponent(
+                it[ComponentTable.id],
+                ComponentEmbeddingRepository.version(it)
+            )
+        }
     }
 
     override fun groups(): List<StoredGroup> = transaction(db) { storedGroups(GroupMembershipTable.selectAll().toList()) }
@@ -30,9 +46,13 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
     private fun storedGroups(memberships: List<ResultRow>): List<StoredGroup> {
         val byGroup = memberships.groupBy { it[GroupMembershipTable.groupId] }
         return GroupTable.selectAll().orderBy(GroupTable.id).map { row ->
-            StoredGroup(Group(row[GroupTable.id], byGroup[row[GroupTable.id]].orEmpty()
-                .map { it[GroupMembershipTable.componentId] }.toSet()), row[GroupTable.revision],
-                GroupStorageCodec.vector(row[GroupTable.centroid]))
+            StoredGroup(
+                Group(
+                    row[GroupTable.id], byGroup[row[GroupTable.id]].orEmpty()
+                    .map { it[GroupMembershipTable.componentId] }.toSet()
+                ), row[GroupTable.revision],
+                GroupStorageCodec.vector(row[GroupTable.centroid])
+            )
         }
     }
 

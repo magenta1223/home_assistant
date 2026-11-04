@@ -1,12 +1,32 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.inbound.group.GroupOrganizationResult
-import com.homeassistant.application.port.inbound.group.OrganizePendingComponents
-import com.homeassistant.application.port.inbound.component.*
-import com.homeassistant.application.port.outbound.group.*
-import com.homeassistant.application.port.outbound.component.*
-import com.homeassistant.application.usecase.group.MergeSmallGroups
-import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
+import com.homeassistant.application.port.inbound.memoryextraction.GroupOrganizationResult
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
+import com.homeassistant.application.usecase.memoryextraction.component.ExtractComponents
+import com.homeassistant.application.usecase.memoryextraction.component.OrganizePendingEpisodesService
+import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -135,7 +155,8 @@ class OrganizePendingEpisodesTest {
             }
         }
         private val componentCache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
-        private val componentEmbeddings = PrepareComponentEmbedding(ComponentStatementVectors(store, texts), object : ComponentEmbeddingStore {
+        private val componentEmbeddings = PrepareComponentEmbedding(ComponentStatementVectors(store, texts), object :
+            ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: ComponentEmbedding) = componentCache.getOrPut(embedding.key) { embedding }
         })
@@ -150,23 +171,41 @@ class OrganizePendingEpisodesTest {
 
         val service = OrganizePendingEpisodesService(
             object : ComponentAssignmentOutbox {
-                override fun claimReady(limit: Int, now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int):
-                    List<ComponentAssignmentTask> {
+                override fun claimReady(
+                    limit: Int,
+                    now: Long,
+                    retryBefore: Long,
+                    staleProcessingBefore: Long,
+                    maxAttempts: Int
+                ):
+                        List<ComponentAssignmentTask> {
                     claims.add(Claim(limit, retryBefore, staleProcessingBefore, maxAttempts))
                     return (1..claimable).take(limit).map {
-                        ComponentAssignmentTask(it, 1, PendingEpisode(it, "title $it", "$it", EpisodeAccess.PUBLIC, listOf("message $it")))
+                        ComponentAssignmentTask(
+                            it,
+                            1,
+                            PendingEpisode(it, "title $it", "$it", EpisodeAccess.PUBLIC, listOf("message $it"))
+                        )
                     }
                 }
+
                 override fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long) =
                     outboxMarks.add("completed:$outboxId:$expectedAttempt")
+
                 override fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long) =
                     outboxMarks.add("failed:$outboxId:$expectedAttempt")
+
                 override fun enqueueUnassigned(now: Long) = 3
             },
             ExtractComponents(store, episodeEmbeddings, componentEmbeddings, extractor, knownLimit),
             OrganizePendingComponents { order.add("groups"); placement },
             MergeSmallGroups(object : GroupSnapshotReader {
-                override fun snapshot(): GroupSnapshot { order.add("merge"); return GroupSnapshot(emptyList(), emptyMap()) }
+                override fun snapshot(): GroupSnapshot {
+                    order.add("merge"); return GroupSnapshot(
+                        emptyList(),
+                        emptyMap()
+                    )
+                }
             }, groupWriter, GroupMergePolicy(GroupPolicySettings())),
             Clock.fixed(Instant.ofEpochMilli(1_000_000L), ZoneOffset.UTC),
         )

@@ -1,6 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
-import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
 import com.homeassistant.domain.group.ComponentVector
 import kotlinx.serialization.json.*
 

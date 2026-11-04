@@ -1,14 +1,14 @@
 package com.homeassistant.application.usecase.episode.search
 
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
-import com.homeassistant.application.port.outbound.component.EpisodeEmbedding
-import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingGenerator
-import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingStore
-import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
-import com.homeassistant.application.port.outbound.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.group.EmbeddingSpace
-import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeVisibility

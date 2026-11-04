@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.embedding.episode
 
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
-import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
 import com.homeassistant.domain.group.ComponentVector
 
 /** Same model as [EpisodeEmbeddingAdapter]; e5 models expect `query: ` for questions and `passage: ` for stored text. */

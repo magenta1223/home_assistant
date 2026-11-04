@@ -6,11 +6,20 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.inbound.component.EpisodeAssignmentOutcome
-import com.homeassistant.application.port.outbound.group.*
-import com.homeassistant.application.port.outbound.component.*
-import com.homeassistant.application.usecase.group.*
-import com.homeassistant.application.usecase.component.*
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
+import com.homeassistant.application.usecase.memoryextraction.component.ExtractComponents
+import com.homeassistant.application.usecase.memoryextraction.component.OrganizePendingEpisodesService
+import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
@@ -110,13 +119,20 @@ class EpisodeComponentAssignmentTest {
             override fun generate(content: String) = vectors.getValue(content)
         }
         val episodeEmbeddings = PrepareEpisodeEmbedding(texts, EpisodeEmbeddingRepository(db))
-        val componentEmbeddings = PrepareComponentEmbedding(ComponentStatementVectors(ComponentRepository(db), texts), ComponentEmbeddingRepository(db))
+        val componentEmbeddings = PrepareComponentEmbedding(
+            ComponentStatementVectors(ComponentRepository(db), texts),
+            ComponentEmbeddingRepository(db)
+        )
         val settings = GroupPolicySettings()
         return OrganizePendingEpisodesService(
             ComponentAssignmentOutboxRepository(db),
             ExtractComponents(store, episodeEmbeddings, componentEmbeddings, extractor),
-            OrganizePendingComponentsService(groups, OrganizeComponent(groups, groups, componentEmbeddings,
-                GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)))),
+            OrganizePendingComponentsService(
+                groups, OrganizeComponent(
+                    groups, groups, componentEmbeddings,
+                    GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
+                )
+            ),
             MergeSmallGroups(groups, groups, GroupMergePolicy(settings)),
             retryDelayMillis = 0,
         )

@@ -1,16 +1,16 @@
 package com.homeassistant.application.usecase.contextprovider.component
 
-import com.homeassistant.application.port.outbound.group.GroupReader
-import com.homeassistant.application.port.outbound.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
-import com.homeassistant.application.port.outbound.component.ComponentReader
-import com.homeassistant.application.usecase.component.pending
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
+import com.homeassistant.application.usecase.memoryextraction.component.pending
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.retrieval.BackboneSelection
 

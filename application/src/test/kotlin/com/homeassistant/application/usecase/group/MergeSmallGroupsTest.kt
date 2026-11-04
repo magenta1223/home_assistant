@@ -1,7 +1,17 @@
 package com.homeassistant.application.usecase.group
 
-import com.homeassistant.application.port.inbound.group.GroupMergeOutcome
-import com.homeassistant.application.port.outbound.group.*
+import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
+import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
+import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.domain.group.*
 import kotlin.test.*
 
@@ -40,8 +50,21 @@ class MergeSmallGroupsTest {
 
         override fun snapshot(): GroupSnapshot {
             reads++
-            val embeddings = groups.values.flatten().associateWith { ComponentEmbedding(PendingComponent(it, "1").embeddingKey(space), east) }
-            return GroupSnapshot(groups.map { (id, components) -> StoredGroup(Group(id, components), revisions.getValue(id), east) }, embeddings)
+            val embeddings = groups.values.flatten().associateWith {
+                ComponentEmbedding(
+                    PendingComponent(
+                        it,
+                        "1"
+                    ).embeddingKey(space), east
+                )
+            }
+            return GroupSnapshot(groups.map { (id, components) ->
+                StoredGroup(
+                    Group(id, components),
+                    revisions.getValue(id),
+                    east
+                )
+            }, embeddings)
         }
 
         override fun apply(change: GroupChange): GroupWriteResult {

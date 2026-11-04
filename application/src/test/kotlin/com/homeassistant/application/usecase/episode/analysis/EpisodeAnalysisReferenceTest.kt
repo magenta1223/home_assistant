@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.episode.analysis
 
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysisRequest
-import com.homeassistant.application.port.outbound.episode.EpisodeExtractor
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
@@ -12,6 +12,7 @@ import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
+import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.domain.source.SourceReference
 import com.homeassistant.domain.source.SourceReferenceDraft
 import kotlinx.coroutines.runBlocking

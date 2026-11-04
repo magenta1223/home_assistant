@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.episode.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.chatservice.ChatService

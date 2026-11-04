@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.component
 
-import com.homeassistant.application.port.inbound.component.ComponentMatch
-import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
+import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
+import com.homeassistant.application.usecase.contextprovider.component.ComponentMatchEpisode
 import com.homeassistant.application.port.outbound.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.group.ComponentEmbeddingStore
@@ -12,6 +12,8 @@ import com.homeassistant.application.port.outbound.episode.EpisodeReader
 import com.homeassistant.application.port.outbound.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.outbound.component.ComponentReader
+import com.homeassistant.application.usecase.contextprovider.component.ComponentSearchSettings
+import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.group.ComponentVector
@@ -139,21 +141,33 @@ class ComponentSearcherTest {
             },
         )
 
-        fun searcher(settings: ComponentSearchSettings = ComponentSearchSettings(), authorized: Boolean = true) = ComponentSearcher(
-            reader,
-            GroupReader { groups.toList() },
-            QueryEmbeddingGenerator { queries.add(it); east },
-            object : EpisodeReader {
-                override fun getEpisodes(userId: UserId) = byId.values
-                    .filter { it.isVisibleTo(userId) }
-                    .map { it.sourceEpisodeId }
-                    .distinct()
-                    .filter { visible == null || it in visible!! }
-                    .map { Episode(it, "creator", "title $it", "episode $it", EpisodeAccess.PUBLIC.visibility, emptySet(), listOf(1), it.toLong()) }
-            },
-            componentEmbeddings,
-            UserAccessPolicy { authorized },
-            settings,
-        )
+        fun searcher(settings: ComponentSearchSettings = ComponentSearchSettings(), authorized: Boolean = true) =
+            ComponentSearcher(
+                reader,
+                GroupReader { groups.toList() },
+                QueryEmbeddingGenerator { queries.add(it); east },
+                object : EpisodeReader {
+                    override fun getEpisodes(userId: UserId) = byId.values
+                        .filter { it.isVisibleTo(userId) }
+                        .map { it.sourceEpisodeId }
+                        .distinct()
+                        .filter { visible == null || it in visible!! }
+                        .map {
+                            Episode(
+                                it,
+                                "creator",
+                                "title $it",
+                                "episode $it",
+                                EpisodeAccess.PUBLIC.visibility,
+                                emptySet(),
+                                listOf(1),
+                                it.toLong()
+                            )
+                        }
+                },
+                componentEmbeddings,
+                UserAccessPolicy { authorized },
+                settings,
+            )
     }
 }

@@ -13,12 +13,13 @@ import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledge
 import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
 import com.homeassistant.application.usecase.contextprovider.ContextProvider
-import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
+import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
 import com.homeassistant.adapter.outbound.embedding.episode.EpisodeEmbeddingAdapter
 import com.homeassistant.adapter.outbound.embedding.episode.QueryEmbeddingAdapter
 import com.homeassistant.application.usecase.component.*
+import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.group.*
 import com.homeassistant.domain.group.*
 import com.homeassistant.llm.AgentBackend

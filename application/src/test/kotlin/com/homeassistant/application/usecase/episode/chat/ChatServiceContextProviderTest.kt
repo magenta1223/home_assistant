@@ -1,12 +1,14 @@
 package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.component.SearchComponents
-import com.homeassistant.application.port.inbound.component.ComponentMatch
-import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
-import com.homeassistant.application.port.inbound.episode.EpisodeMatch
-import com.homeassistant.application.port.inbound.episode.SearchEpisodes
+import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
+import com.homeassistant.application.usecase.contextprovider.component.ComponentMatchEpisode
+import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
+import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
 import com.homeassistant.application.usecase.contextprovider.ContextProvider
+import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.identity.UserId
+import io.mockk.every
+import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -82,19 +84,20 @@ class ChatServiceContextProviderTest {
         assertEquals("", context.reference)
     }
 
-    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()) =
-        ContextProvider(
-            SearchComponents { userId, query ->
-                assertEquals(USER_ID, userId)
-                assertEquals("question", query)
-                matches.toList()
-            },
-            SearchEpisodes { userId, query ->
-                assertEquals(USER_ID, userId)
-                assertEquals("question", query)
-                episodes
-            },
+    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()): ContextProvider {
+        val episodeSearcher = mockk<EpisodeSearcher>()
+        every { episodeSearcher.search(USER_ID, "question") } returns episodes
+
+        val componentSearcher = mockk<ComponentSearcher>()
+        every { componentSearcher.search(USER_ID, "question") } returns matches.toList()
+
+
+        return ContextProvider(
+            componentSearcher,
+            episodeSearcher
         )
+    }
+
 
     private companion object {
         val USER_ID = UserId("member-1")

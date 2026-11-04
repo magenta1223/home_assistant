@@ -1,12 +1,10 @@
-package com.homeassistant.application.usecase.component
+package com.homeassistant.application.usecase.contextprovider.component
 
-import com.homeassistant.application.port.inbound.component.SearchComponents
-import com.homeassistant.application.port.inbound.component.ComponentMatch
-import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
 import com.homeassistant.application.port.outbound.group.GroupReader
 import com.homeassistant.application.port.outbound.episode.EpisodeReader
 import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.outbound.component.ComponentReader
+import com.homeassistant.application.usecase.component.pending
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
@@ -15,23 +13,6 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.retrieval.BackboneSelection
-
-/**
- * How wide each level of [ComponentSearcher] looks and how many it keeps. [groupCandidates] caps the nearest
- * [groupPool] Groups plus their neighbors, as xMemory's Stage I pool of 20 does.
- */
-data class ComponentSearchSettings(
-    val groupPool: Int = 5,
-    val groupCandidates: Int = 20,
-    val groupLimit: Int = 3,
-    val componentPool: Int = 20,
-    val componentLimit: Int = 5,
-) {
-    init {
-        require(groupPool > 0 && groupLimit > 0 && componentPool > 0 && componentLimit > 0)
-        require(groupCandidates >= groupPool)
-    }
-}
 
 /**
  * xMemory-style search. Candidate Groups are the nearest Groups and their kNN neighbor Groups, which reach context
@@ -49,8 +30,8 @@ class ComponentSearcher(
     private val accessPolicy: UserAccessPolicy,
     private val settings: ComponentSearchSettings = ComponentSearchSettings(),
     private val backbone: BackboneSelection = BackboneSelection(),
-) : SearchComponents {
-    override fun search(userId: UserId, query: String): List<ComponentMatch> {
+) {
+    fun search(userId: UserId, query: String): List<ComponentMatch> {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val vectors = components.all().associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
         if (vectors.isEmpty()) return emptyList()

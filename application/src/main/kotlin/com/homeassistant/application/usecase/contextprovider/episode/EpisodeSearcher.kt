@@ -1,7 +1,5 @@
-package com.homeassistant.application.usecase.episode.search
+package com.homeassistant.application.usecase.contextprovider.episode
 
-import com.homeassistant.application.port.inbound.episode.EpisodeMatch
-import com.homeassistant.application.port.inbound.episode.SearchEpisodes
 import com.homeassistant.application.port.outbound.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.outbound.episode.EpisodeReader
 import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
@@ -13,6 +11,7 @@ import com.homeassistant.domain.identity.UserId
 /**
  * Ranks the episodes the requester can read by cosine to the question. Components hold only long-term knowledge, so
  * this is how a one-time event that left no Component is still found.
+ * TODO: Interface for searcher like interface Searcher<T>
  */
 class EpisodeSearcher(
     private val episodes: EpisodeReader,
@@ -20,10 +19,10 @@ class EpisodeSearcher(
     private val embeddings: PrepareEpisodeEmbedding,
     private val accessPolicy: UserAccessPolicy,
     private val limit: Int = DEFAULT_LIMIT,
-) : SearchEpisodes {
+) {
     init { require(limit > 0) { "limit must be positive" } }
 
-    override fun search(userId: UserId, query: String): List<EpisodeMatch> {
+    fun search(userId: UserId, query: String): List<EpisodeMatch> {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val readable = episodes.getEpisodes(userId).associateBy { it.id }
         if (readable.isEmpty()) return emptyList()

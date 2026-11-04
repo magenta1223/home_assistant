@@ -1,9 +1,9 @@
 package com.homeassistant.application.usecase.contextprovider
 
-import com.homeassistant.application.port.inbound.component.SearchComponents
-import com.homeassistant.application.port.inbound.component.ComponentMatch
-import com.homeassistant.application.port.inbound.episode.EpisodeMatch
-import com.homeassistant.application.port.inbound.episode.SearchEpisodes
+import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
+import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
+import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
+import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.identity.UserId
 import java.time.Instant
 
@@ -13,8 +13,8 @@ import java.time.Instant
  * [MAX_CONTEXT_CHARS], and a header is never left without an episode under it.
  */
 class ContextProvider(
-    private val componentSearch: SearchComponents,
-    private val episodeSearch: SearchEpisodes,
+    private val componentSearch: ComponentSearcher,
+    private val episodeSearch: EpisodeSearcher,
 ) : ContextSource {
     override fun context(userId: UserId, question: String): Context {
         val components = componentSearch.search(userId, question)

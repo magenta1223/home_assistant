@@ -5,7 +5,7 @@ import com.homeassistant.application.port.inbound.component.ComponentMatch
 import com.homeassistant.application.port.inbound.component.ComponentMatchEpisode
 import com.homeassistant.application.port.inbound.episode.EpisodeMatch
 import com.homeassistant.application.port.inbound.episode.SearchEpisodes
-import com.homeassistant.application.usecase.chatservice.ChatContextProvider
+import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -83,7 +83,7 @@ class ChatServiceContextProviderTest {
     }
 
     private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()) =
-        ChatContextProvider(
+        ContextProvider(
             SearchComponents { userId, query ->
                 assertEquals(USER_ID, userId)
                 assertEquals("question", query)

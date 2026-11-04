@@ -11,6 +11,7 @@ import com.homeassistant.application.port.outbound.episode.conversation.EpisodeC
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
 import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.usecase.contextprovider.ContextSource
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
@@ -22,7 +23,7 @@ import java.time.Duration
  */
 class ChatServiceImpl(
     private val sessions: EpisodeConversationSessionStore,
-    private val contextProvider: ChatContextSource,
+    private val contextProvider: ContextSource,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) : ChatService {

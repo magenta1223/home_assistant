@@ -9,7 +9,7 @@ import com.homeassistant.application.usecase.component.ComponentStatementVectors
 import com.homeassistant.application.usecase.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.episode.search.EpisodeSearcher
 import com.homeassistant.application.usecase.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.chatservice.ChatContextProvider
+import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -56,7 +56,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 stores.canonicalEpisodes, { east }, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
             )
 
-            val conversationContext = ChatContextProvider(search, episodeSearch).context(member, "question")
+            val conversationContext = ContextProvider(search, episodeSearch).context(member, "question")
 
             assertTrue(conversationContext.hasMatches)
             assertTrue(conversationContext.reference.contains(publicEpisode.content))

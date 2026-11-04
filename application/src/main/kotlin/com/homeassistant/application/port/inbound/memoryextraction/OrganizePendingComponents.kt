@@ -2,7 +2,9 @@ package com.homeassistant.application.port.inbound.memoryextraction
 
 import com.homeassistant.domain.group.GroupSplit
 
-/** Organizes Components not yet placed in a Group. */
+/** Organizes Components not yet placed in a Group.
+ * TODO: RENAME. Pending은 구현에 의존하는 이름. 입출력이 명확하지 않음. 출력물이 뭔지 이름에서 드러나지 않음.
+ * */
 fun interface OrganizePendingComponents {
     /**
      * Places up to [limit] pending Components in Component id order and returns each Component's outcome.

@@ -1,6 +1,8 @@
 package com.homeassistant.application.port.inbound.memoryextraction
 
-/** Extracts the Components of each queued Episode, then organizes Components into Groups. */
+/** Extracts the Components of each queued Episode, then organizes Components into Groups.
+ * TODO: RENAME. Pending은 구현에 의존하는 이름. 입출력이 명확하지 않음. 출력물이 뭔지 이름에서 드러나지 않음. Group관련과 구현 분리 필요
+ * */
 interface OrganizePendingEpisodes {
     /** True when the services assignment calls are available; a caller skips [execute] otherwise. */
     fun isReady(): Boolean

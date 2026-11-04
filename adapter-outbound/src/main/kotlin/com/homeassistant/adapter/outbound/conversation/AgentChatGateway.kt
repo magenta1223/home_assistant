@@ -3,12 +3,12 @@ package com.homeassistant.adapter.outbound.conversation
 import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
 import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
-import com.homeassistant.llm.conversation.ConversationClient
+import com.homeassistant.llm.conversation.ChatClient
 import org.slf4j.LoggerFactory
 
-/** Adapts an agent backend [ConversationClient] to the application conversation port. */
+/** Adapts an agent backend [ChatClient] to the application conversation port. */
 class AgentChatGateway(
-    private val client: ConversationClient,
+    private val client: ChatClient,
 ) : ChatGateway {
     private val log = LoggerFactory.getLogger(javaClass)
 

@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.conversation
 
 import com.homeassistant.application.port.outbound.episode.conversation.ChatId
 import com.homeassistant.application.port.outbound.episode.conversation.ChatResult
-import com.homeassistant.llm.conversation.ConversationClient
+import com.homeassistant.llm.conversation.ChatClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -42,20 +42,20 @@ class AgentChatGatewayTest {
 
     private class RecordingClient(
         private val turnResult: Result<String> = Result.success("answer"),
-    ) : ConversationClient {
+    ) : ChatClient {
         val turns = mutableListOf<Pair<String, String>>()
         val ended = mutableListOf<String>()
         var closed = false
 
         override fun begin(): Result<String> = Result.success("conversation-1")
 
-        override fun send(conversationId: String, prompt: String): Result<String> {
-            turns += conversationId to prompt
+        override fun send(chatId: String, prompt: String): Result<String> {
+            turns += chatId to prompt
             return turnResult
         }
 
-        override fun end(conversationId: String) {
-            ended += conversationId
+        override fun end(chatId: String) {
+            ended += chatId
         }
 
         override fun close() {

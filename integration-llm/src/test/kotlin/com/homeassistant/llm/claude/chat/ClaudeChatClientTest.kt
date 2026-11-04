@@ -1,4 +1,4 @@
-package com.homeassistant.llm.claude.conversation
+package com.homeassistant.llm.claude.chat
 
 import com.homeassistant.llm.claude.cli.ClaudeProcessOutput
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
@@ -14,7 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class ClaudeConversationClientTest {
+class ClaudeChatClientTest {
     private val temporaryDirectory: Path = Files.createTempDirectory("claude-conversation-test")
 
     @AfterTest
@@ -66,17 +66,17 @@ class ClaudeConversationClientTest {
     fun `invalid requests and failed results are reported by category`() {
         val runner = RecordingRunner(ClaudeProcessOutput(1, """{"type":"result","is_error":true}""", ""))
         val client = client(runner)
-        val conversation = client.begin().getOrThrow()
+        val chatId = client.begin().getOrThrow()
 
-        assertEquals("INVALID_CONVERSATION_ID", client.send("not-a-uuid", "hi").failureCategory())
-        assertEquals("EMPTY_PROMPT", client.send(conversation, " ").failureCategory())
-        assertEquals("TURN_FAILED", client.send(conversation, "hi").failureCategory())
+        assertEquals("INVALID_CHAT_ID", client.send("not-a-uuid", "hi").failureCategory())
+        assertEquals("EMPTY_PROMPT", client.send(chatId, " ").failureCategory())
+        assertEquals("TURN_FAILED", client.send(chatId, "hi").failureCategory())
         runner.output = ClaudeProcessOutput(0, "", "")
-        assertEquals("NO_RESULT", client.send(conversation, "hi").failureCategory())
+        assertEquals("NO_RESULT", client.send(chatId, "hi").failureCategory())
         runner.output = ClaudeProcessOutput(0, """{"type":"result","is_error":false,"result":" "}""", "")
-        assertEquals("EMPTY_ANSWER", client.send(conversation, "hi").failureCategory())
+        assertEquals("EMPTY_ANSWER", client.send(chatId, "hi").failureCategory())
         client.close()
-        assertEquals("CLOSED", client.send(conversation, "hi").failureCategory())
+        assertEquals("CLOSED", client.send(chatId, "hi").failureCategory())
         assertTrue(client.begin().isFailure)
     }
 
@@ -94,18 +94,18 @@ class ClaudeConversationClientTest {
         val first = thread { client.send(conversation, "first") }
 
         assertTrue(entered.await(5, TimeUnit.SECONDS))
-        assertEquals("CONVERSATION_BUSY", client.send(conversation, "second").failureCategory())
+        assertEquals("CHAT_BUSY", client.send(conversation, "second").failureCategory())
         release.countDown()
         first.join()
     }
 
 
-    private fun config() = ClaudeConversationConfig.local(Duration.ofSeconds(5), "claude-test", temporaryDirectory)!!
+    private fun config() = ClaudeChatConfig.local(Duration.ofSeconds(5), "claude-test", temporaryDirectory)!!
 
-    private fun client(runner: ClaudeProcessRunner) = ClaudeConversationClient(config(), runner)
+    private fun client(runner: ClaudeProcessRunner) = ClaudeChatClient(config(), runner)
 
     private fun Result<String>.failureCategory(): String? =
-        (exceptionOrNull() as? ClaudeConversationException)?.category
+        (exceptionOrNull() as? ClaudeChatException)?.category
 
     private fun List<String>.after(flag: String): String = this[indexOf(flag) + 1]
 

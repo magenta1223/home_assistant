@@ -1,7 +1,7 @@
 package com.homeassistant.llm.codex.conversation
 
 import com.homeassistant.llm.codex.completion.CodexExecutableFactory
-import com.homeassistant.llm.conversation.ConversationClient
+import com.homeassistant.llm.conversation.ChatClient
 import java.nio.file.Path
 import java.time.Duration
 
@@ -12,7 +12,7 @@ internal object CodexAppServerFactory {
         temporaryDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
         model: String = CodexConversationConfig.DEFAULT_MODEL,
         reasoningEffort: String = CodexConversationConfig.DEFAULT_REASONING_EFFORT,
-    ): ConversationClient? {
+    ): ChatClient? {
         val config = CodexConversationConfig.local(
             timeout = timeout,
             executable = executable,
@@ -24,7 +24,7 @@ internal object CodexAppServerFactory {
     }
 
     /** Returns [server] once it is available and initialized; otherwise closes it and returns null. */
-    internal fun prepare(server: DefaultCodexAppServer): ConversationClient? =
+    internal fun prepare(server: DefaultCodexAppServer): ChatClient? =
         server.takeIf { runCatching(it::prepare).getOrDefault(false) }
             ?: run {
                 server.close()

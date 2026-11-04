@@ -1,8 +1,8 @@
-package com.homeassistant.llm.claude.conversation
+package com.homeassistant.llm.claude.chat
 
 import com.homeassistant.llm.claude.cli.ClaudeAvailability
 import com.homeassistant.llm.claude.cli.ClaudeCommandLine
-import com.homeassistant.llm.conversation.ConversationClient
+import com.homeassistant.llm.conversation.ChatClient
 import java.nio.file.Path
 import java.time.Duration
 
@@ -12,12 +12,12 @@ internal object ClaudeConversationClientFactory {
         timeout: Duration,
         executable: String = ClaudeCommandLine.executable(),
         temporaryDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
-        model: String = ClaudeConversationConfig.DEFAULT_MODEL,
-        effort: String = ClaudeConversationConfig.DEFAULT_EFFORT,
-    ): ConversationClient? {
-        val config = ClaudeConversationConfig.local(timeout, executable, temporaryDirectory, model, effort)
+        model: String = ClaudeChatConfig.DEFAULT_MODEL,
+        effort: String = ClaudeChatConfig.DEFAULT_EFFORT,
+    ): ChatClient? {
+        val config = ClaudeChatConfig.local(timeout, executable, temporaryDirectory, model, effort)
             ?: return null
         if (!ClaudeAvailability.probe(executable)) return null
-        return ClaudeConversationClient(config)
+        return ClaudeChatClient(config)
     }
 }

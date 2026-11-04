@@ -1,10 +1,10 @@
-package com.homeassistant.llm.claude.conversation
+package com.homeassistant.llm.claude.chat
 
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
 
-internal data class ClaudeConversationConfig(
+internal data class ClaudeChatConfig(
     val executable: String,
     /** Claude Code stores sessions per working directory, so every turn must run in this one directory. */
     val workDir: Path,
@@ -28,12 +28,12 @@ internal data class ClaudeConversationConfig(
             temporaryDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
             model: String = DEFAULT_MODEL,
             effort: String = DEFAULT_EFFORT,
-        ): ClaudeConversationConfig? {
+        ): ClaudeChatConfig? {
             if (timeout.isZero || timeout.isNegative) return null
             val workDir = temporaryDirectory.toAbsolutePath()
                 .normalize()
-                .resolve("homeassistant-claude-conversation")
-            val config = ClaudeConversationConfig(executable, workDir, timeout, model, effort)
+                .resolve("homeassistant-claude-chat")
+            val config = ClaudeChatConfig(executable, workDir, timeout, model, effort)
             return config.takeIf {
                 runCatching {
                     Files.createDirectories(workDir)

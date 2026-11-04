@@ -1,11 +1,11 @@
 package com.homeassistant.llm
 
 import com.homeassistant.llm.claude.completion.ClaudeCliCompletionClient
-import com.homeassistant.llm.claude.conversation.ClaudeConversationClientFactory
+import com.homeassistant.llm.claude.chat.ClaudeConversationClientFactory
 import com.homeassistant.llm.codex.completion.CodexCliClient
 import com.homeassistant.llm.codex.conversation.CodexAppServerFactory
 import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.conversation.ConversationClient
+import com.homeassistant.llm.conversation.ChatClient
 import java.time.Duration
 
 /** Routes completion and conversation clients to the selected [AgentBackend]. */
@@ -16,7 +16,7 @@ object AgentClientFactory {
     }
 
     /** Returns null when the backend's local CLI is unavailable or [timeout] is invalid. */
-    fun conversation(backend: AgentBackend, timeout: Duration): ConversationClient? = when (backend) {
+    fun conversation(backend: AgentBackend, timeout: Duration): ChatClient? = when (backend) {
         AgentBackend.CODEX -> CodexAppServerFactory.create(timeout)
         AgentBackend.CLAUDE -> ClaudeConversationClientFactory.create(timeout)
     }

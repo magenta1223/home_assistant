@@ -4,13 +4,13 @@ import com.homeassistant.application.port.inbound.chatservice.ChatService
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
+import com.homeassistant.application.port.outbound.chatgateway.ChatId
+import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
+import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
+import com.homeassistant.application.port.outbound.chatgateway.ChatSession
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.usecase.contextprovider.ContextSource
 import org.slf4j.LoggerFactory
 import java.time.Clock
@@ -22,7 +22,7 @@ import java.time.Duration
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
 class ChatServiceImpl(
-    private val sessions: EpisodeConversationSessionStore,
+    private val sessions: ChatSessionStore,
     private val contextProvider: ContextSource,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
@@ -35,12 +35,12 @@ class ChatServiceImpl(
         sessions.claimRequest(request.key, now()) ?: return existingResult(request.key)
 
         val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
-            is EpisodeConversationSessionLease.Active -> lease.session
-            is EpisodeConversationSessionLease.Expired -> {
+            is ChatSessionLease.Active -> lease.session
+            is ChatSessionLease.Expired -> {
                 chatGateway.end(lease.session.chatId)
                 null
             }
-            EpisodeConversationSessionLease.None -> null
+            ChatSessionLease.None -> null
         }
         val contextStartedAt = System.nanoTime()
         val context = try {
@@ -89,7 +89,7 @@ class ChatServiceImpl(
 
     private fun existingResult(key: ChatRequestKey): ChatResult {
         val receipt = sessions.receipt(key) ?: return ChatResult.AlreadyHandled
-        return if (receipt.status == EpisodeConversationRequestStatus.ANSWER_READY) {
+        return if (receipt.status == ChatRequestStatus.ANSWER_READY) {
             receipt.answerText
                 ?.takeIf(String::isNotBlank)
                 ?.let(ChatResult::AnswerReady)
@@ -107,7 +107,7 @@ class ChatServiceImpl(
         return ChatResult.AnswerReady(answer)
     }
 
-    private fun createSession(request: ChatRequest): EpisodeConversationSession? {
+    private fun createSession(request: ChatRequest): ChatSession? {
         var chatId: ChatId? = null
         return try {
             chatId = chatGateway.begin().getOrThrow()

@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.outbound.episode.conversation
+package com.homeassistant.application.port.outbound.chatgateway
 
 @JvmInline
 value class ChatId(val value: String) {

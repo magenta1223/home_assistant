@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
-import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.EpisodeConversationSessionRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
@@ -31,7 +31,7 @@ object RepositoryFactory {
             groupChanges = groups,
             componentAssignmentOutbox = ComponentAssignmentOutboxRepository(db),
             episodeEmbeddings = EpisodeEmbeddingRepository(db),
-            episodeConversationSessions = EpisodeConversationSessionRepository(db),
+            episodeConversationSessions = ChatSessionRepository(db),
             users = UserRepository(db),
             userCredentials = UserCredentialRepository(db),
             userSessions = UserSessionRepository(db),

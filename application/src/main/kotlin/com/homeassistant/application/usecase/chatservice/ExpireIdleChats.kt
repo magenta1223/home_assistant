@@ -1,13 +1,13 @@
 package com.homeassistant.application.usecase.chatservice
 
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import org.slf4j.LoggerFactory
 import java.time.Clock
 
 /** Expires idle user sessions and releases their provider conversations. */
 class ExpireIdleChats(
-    private val sessions: EpisodeConversationSessionStore,
+    private val sessions: ChatSessionStore,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) {

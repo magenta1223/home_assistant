@@ -3,9 +3,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.outbound.episode.conversation.ChatId
+import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
+import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import java.sql.DriverManager
@@ -53,9 +53,9 @@ class ChatServiceSessionRepositoryTest {
 
             assertNull(store.claimRequest(key, 101))
             assertEquals("saved answer", store.receipt(key)?.answerText)
-            val lease = assertIs<EpisodeConversationSessionLease.Active>(store.lease(participant, 101, 600_000))
+            val lease = assertIs<ChatSessionLease.Active>(store.lease(participant, 101, 600_000))
             assertEquals(ChatId("saved-thread"), lease.session.chatId)
-            assertIs<EpisodeConversationSessionLease.Expired>(store.lease(participant, 600_101, 600_000))
+            assertIs<ChatSessionLease.Expired>(store.lease(participant, 600_101, 600_000))
         } finally {
             Files.deleteIfExists(path)
         }
@@ -74,9 +74,9 @@ class ChatServiceSessionRepositoryTest {
             store.markAnswerReady(KEY, "answer", 104)
 
             val ready = store.receipt(KEY)
-            assertEquals(EpisodeConversationRequestStatus.ANSWER_READY, ready?.status)
+            assertEquals(ChatRequestStatus.ANSWER_READY, ready?.status)
             assertEquals("answer", ready?.answerText)
-            val lease = assertIs<EpisodeConversationSessionLease.Active>(
+            val lease = assertIs<ChatSessionLease.Active>(
                 store.lease(PARTICIPANT, 105, 600_000),
             )
             assertEquals(ChatId("thread-1"), lease.session.chatId)
@@ -96,7 +96,7 @@ class ChatServiceSessionRepositoryTest {
             val expired = store.expireIdle(100)
 
             assertEquals(listOf(ChatId("expired-thread")), expired.map { it.chatId })
-            assertIs<EpisodeConversationSessionLease.None>(store.lease(PARTICIPANT, 101, 600_000))
+            assertIs<ChatSessionLease.None>(store.lease(PARTICIPANT, 101, 600_000))
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -110,7 +110,7 @@ class ChatServiceSessionRepositoryTest {
             store.createAndActivate(PARTICIPANT, ChatId("private-thread"), 100)
             val impostor = PARTICIPANT.copy(userId = UserId("different-user"))
 
-            assertIs<EpisodeConversationSessionLease.None>(store.lease(impostor, 101, 600_000))
+            assertIs<ChatSessionLease.None>(store.lease(impostor, 101, 600_000))
         } finally {
             Files.deleteIfExists(databasePath)
         }

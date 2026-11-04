@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.episode.EpisodeReader
 import com.homeassistant.application.port.outbound.episode.EpisodeWriter
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.port.outbound.identity.UserStore
@@ -22,7 +22,7 @@ data class RepositoryStores(
     val groupChanges: GroupChangeWriter,
     val componentAssignmentOutbox: ComponentAssignmentOutbox,
     val episodeEmbeddings: EpisodeEmbeddingStore,
-    val episodeConversationSessions: EpisodeConversationSessionStore,
+    val episodeConversationSessions: ChatSessionStore,
     val users: UserStore,
     val userCredentials: UserCredentialStore,
     val userSessions: UserSessionStore,

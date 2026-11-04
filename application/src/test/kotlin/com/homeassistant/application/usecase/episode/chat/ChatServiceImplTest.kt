@@ -4,14 +4,14 @@ import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationRequestStatus
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
+import com.homeassistant.application.port.outbound.chatgateway.ChatId
+import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
+import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
+import com.homeassistant.application.port.outbound.chatgateway.ChatSession
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.usecase.contextprovider.Context
 import com.homeassistant.application.usecase.contextprovider.ContextSource
 import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
@@ -42,7 +42,7 @@ class ChatServiceImplTest {
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
         assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
-        assertEquals(EpisodeConversationRequestStatus.ANSWER_READY, store.receipt(KEY)?.status)
+        assertEquals(ChatRequestStatus.ANSWER_READY, store.receipt(KEY)?.status)
 
     }
 
@@ -168,7 +168,7 @@ class ChatServiceImplTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
-        assertIs<EpisodeConversationSessionLease.None>(
+        assertIs<ChatSessionLease.None>(
             store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
@@ -187,7 +187,7 @@ class ChatServiceImplTest {
 
         assertEquals(emptyList(), client.createdThreadIds)
         assertEquals(listOf("existing-thread"), client.endedThreadIds)
-        assertIs<EpisodeConversationSessionLease.None>(
+        assertIs<ChatSessionLease.None>(
             store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
@@ -203,7 +203,7 @@ class ChatServiceImplTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(null, client.executedThreadId)
-        assertEquals(EpisodeConversationRequestStatus.FAILED, store.receipt(KEY)?.status)
+        assertEquals(ChatRequestStatus.FAILED, store.receipt(KEY)?.status)
     }
 
     @Test
@@ -218,7 +218,7 @@ class ChatServiceImplTest {
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertEquals(null, client.executedThreadId)
-        assertIs<EpisodeConversationSessionLease.None>(
+        assertIs<ChatSessionLease.None>(
             store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
@@ -272,17 +272,17 @@ class ChatServiceImplTest {
     private class RecordingSessionStore(
         private val failAttachSession: Boolean = false,
         private val events: MutableList<String>? = null,
-    ) : EpisodeConversationSessionStore {
-        private val receipts = mutableMapOf<ChatRequestKey, EpisodeConversationReceipt>()
-        private val activeSessions = mutableMapOf<ChatParticipant, EpisodeConversationSession>()
+    ) : ChatSessionStore {
+        private val receipts = mutableMapOf<ChatRequestKey, ChatReceipt>()
+        private val activeSessions = mutableMapOf<ChatParticipant, ChatSession>()
         private var nextSessionId = 1
 
-        override fun claimRequest(key: ChatRequestKey, now: Long): EpisodeConversationReceipt? {
+        override fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt? {
             if (key in receipts) return null
-            return receipt(key, EpisodeConversationRequestStatus.PROCESSING, now).also { receipts[key] = it }
+            return receipt(key, ChatRequestStatus.PROCESSING, now).also { receipts[key] = it }
         }
 
-        override fun receipt(key: ChatRequestKey): EpisodeConversationReceipt? = receipts[key]
+        override fun receipt(key: ChatRequestKey): ChatReceipt? = receipts[key]
 
         override fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long) {
             events?.add("attachSession")
@@ -292,7 +292,7 @@ class ChatServiceImplTest {
 
         override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) {
             receipts[key] = receipts.getValue(key).copy(
-                status = EpisodeConversationRequestStatus.ANSWER_READY,
+                status = ChatRequestStatus.ANSWER_READY,
                 answerText = answer,
                 updatedAt = now,
             )
@@ -300,7 +300,7 @@ class ChatServiceImplTest {
 
         override fun markFailed(key: ChatRequestKey, now: Long) {
             receipts[key] = receipts.getValue(key).copy(
-                status = EpisodeConversationRequestStatus.FAILED,
+                status = ChatRequestStatus.FAILED,
                 updatedAt = now,
             )
         }
@@ -309,7 +309,7 @@ class ChatServiceImplTest {
             participant: ChatParticipant,
             chatId: ChatId,
             now: Long,
-        ): EpisodeConversationSession = EpisodeConversationSession(
+        ): ChatSession = ChatSession(
             id = nextSessionId++,
             participant = participant,
             chatId = chatId,
@@ -324,15 +324,15 @@ class ChatServiceImplTest {
             participant: ChatParticipant,
             now: Long,
             idleTimeoutMillis: Long,
-        ): EpisodeConversationSessionLease {
-            val session = activeSessions[participant] ?: return EpisodeConversationSessionLease.None
+        ): ChatSessionLease {
+            val session = activeSessions[participant] ?: return ChatSessionLease.None
             if (now - session.lastActiveAt >= idleTimeoutMillis) {
                 activeSessions.remove(participant)
-                return EpisodeConversationSessionLease.Expired(session)
+                return ChatSessionLease.Expired(session)
             }
             val renewed = session.copy(lastActiveAt = now)
             activeSessions[participant] = renewed
-            return EpisodeConversationSessionLease.Active(renewed)
+            return ChatSessionLease.Active(renewed)
         }
 
         override fun clearActive(participant: ChatParticipant) {
@@ -343,7 +343,7 @@ class ChatServiceImplTest {
             activeSessions[participant] = activeSessions.getValue(participant).copy(lastActiveAt = now)
         }
 
-        override fun expireIdle(beforeInclusive: Long): List<EpisodeConversationSession> {
+        override fun expireIdle(beforeInclusive: Long): List<ChatSession> {
             val expired = activeSessions.values.filter { it.lastActiveAt <= beforeInclusive }
             expired.forEach { activeSessions.remove(it.participant) }
             return expired
@@ -353,9 +353,9 @@ class ChatServiceImplTest {
 
         private fun receipt(
             key: ChatRequestKey,
-            status: EpisodeConversationRequestStatus,
+            status: ChatRequestStatus,
             now: Long,
-        ) = EpisodeConversationReceipt(
+        ) = ChatReceipt(
             key = key,
             status = status,
             createdAt = now,

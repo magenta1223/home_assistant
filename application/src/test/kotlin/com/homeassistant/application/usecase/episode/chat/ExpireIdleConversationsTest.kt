@@ -2,13 +2,13 @@ package com.homeassistant.application.usecase.episode.chat
 
 import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationReceipt
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSession
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionLease
-import com.homeassistant.application.port.outbound.episode.conversation.EpisodeConversationSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
+import com.homeassistant.application.port.outbound.chatgateway.ChatId
+import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
+import com.homeassistant.application.port.outbound.chatgateway.ChatSession
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
 import com.homeassistant.domain.identity.UserId
@@ -50,17 +50,17 @@ class ExpireIdleConversationsTest {
         override fun close() = Unit
     }
 
-    private class ExpiringStore(sessions: List<EpisodeConversationSession>) : EpisodeConversationSessionStore {
+    private class ExpiringStore(sessions: List<ChatSession>) : ChatSessionStore {
         val remaining = sessions.toMutableList()
 
-        override fun expireIdle(beforeInclusive: Long): List<EpisodeConversationSession> {
+        override fun expireIdle(beforeInclusive: Long): List<ChatSession> {
             val expired = remaining.filter { it.lastActiveAt <= beforeInclusive }
             remaining.removeAll(expired)
             return expired
         }
 
-        override fun claimRequest(key: ChatRequestKey, now: Long): EpisodeConversationReceipt? = error("unused")
-        override fun receipt(key: ChatRequestKey): EpisodeConversationReceipt? = error("unused")
+        override fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt? = error("unused")
+        override fun receipt(key: ChatRequestKey): ChatReceipt? = error("unused")
         override fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long) = error("unused")
         override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) = error("unused")
         override fun markFailed(key: ChatRequestKey, now: Long) = error("unused")
@@ -68,12 +68,12 @@ class ExpireIdleConversationsTest {
             participant: ChatParticipant,
             chatId: ChatId,
             now: Long,
-        ): EpisodeConversationSession = error("unused")
+        ): ChatSession = error("unused")
         override fun lease(
             participant: ChatParticipant,
             now: Long,
             idleTimeoutMillis: Long,
-        ): EpisodeConversationSessionLease = error("unused")
+        ): ChatSessionLease = error("unused")
         override fun clearActive(participant: ChatParticipant) = error("unused")
         override fun touch(participant: ChatParticipant, sessionId: Int, now: Long) = error("unused")
         override fun failStaleProcessing(before: Long, now: Long): Int = error("unused")
@@ -83,7 +83,7 @@ class ExpireIdleConversationsTest {
         const val NOW = 1_000_000L
         const val TIMEOUT = ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS
 
-        fun session(id: Int, threadId: String, lastActiveAt: Long) = EpisodeConversationSession(
+        fun session(id: Int, threadId: String, lastActiveAt: Long) = ChatSession(
             id = id,
             participant = ChatParticipant("scope", "participant-$id", UserId("user-$id")),
             chatId = ChatId(threadId),

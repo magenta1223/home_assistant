@@ -1,9 +1,9 @@
-package com.homeassistant.application.port.outbound.episode.conversation
+package com.homeassistant.application.port.outbound.chatgateway
 
 import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 
-enum class EpisodeConversationRequestStatus {
+enum class ChatRequestStatus {
     PROCESSING,
     ANSWER_READY,
     /** Read compatibility for previously completed requests; HTTP writes ANSWER_READY. */
@@ -11,7 +11,7 @@ enum class EpisodeConversationRequestStatus {
     FAILED,
 }
 
-data class EpisodeConversationSession(
+data class ChatSession(
     val id: Int,
     val participant: ChatParticipant,
     val chatId: ChatId,
@@ -19,25 +19,25 @@ data class EpisodeConversationSession(
     val lastActiveAt: Long,
 )
 
-sealed interface EpisodeConversationSessionLease {
-    data object None : EpisodeConversationSessionLease
-    data class Active(val session: EpisodeConversationSession) : EpisodeConversationSessionLease
-    data class Expired(val session: EpisodeConversationSession) : EpisodeConversationSessionLease
+sealed interface ChatSessionLease {
+    data object None : ChatSessionLease
+    data class Active(val session: ChatSession) : ChatSessionLease
+    data class Expired(val session: ChatSession) : ChatSessionLease
 }
 
-data class EpisodeConversationReceipt(
+data class ChatReceipt(
     val key: ChatRequestKey,
-    val status: EpisodeConversationRequestStatus,
+    val status: ChatRequestStatus,
     val sessionId: Int? = null,
     val answerText: String? = null,
     val createdAt: Long,
     val updatedAt: Long,
 )
 
-/** Stores request receipts and each participant's active model conversation. */
-interface EpisodeConversationSessionStore {
-    fun claimRequest(key: ChatRequestKey, now: Long): EpisodeConversationReceipt?
-    fun receipt(key: ChatRequestKey): EpisodeConversationReceipt?
+/** Stores request receipts and each participant's active model chat. */
+interface ChatSessionStore {
+    fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt?
+    fun receipt(key: ChatRequestKey): ChatReceipt?
     fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long)
     fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long)
     fun markFailed(key: ChatRequestKey, now: Long)
@@ -46,17 +46,17 @@ interface EpisodeConversationSessionStore {
         participant: ChatParticipant,
         chatId: ChatId,
         now: Long,
-    ): EpisodeConversationSession
+    ): ChatSession
 
     /** Claims and renews this participant's active session, or removes and returns an expired one. */
     fun lease(
         participant: ChatParticipant,
         now: Long,
         idleTimeoutMillis: Long,
-    ): EpisodeConversationSessionLease
+    ): ChatSessionLease
 
     fun clearActive(participant: ChatParticipant)
     fun touch(participant: ChatParticipant, sessionId: Int, now: Long)
-    fun expireIdle(beforeInclusive: Long): List<EpisodeConversationSession>
+    fun expireIdle(beforeInclusive: Long): List<ChatSession>
     fun failStaleProcessing(before: Long, now: Long): Int
 }

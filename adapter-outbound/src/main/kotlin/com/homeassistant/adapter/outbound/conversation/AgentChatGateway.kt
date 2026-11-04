@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.conversation
 
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGateway
-import com.homeassistant.application.port.outbound.episode.conversation.ChatId
-import com.homeassistant.application.port.outbound.episode.conversation.ChatGatewayResult
+import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
+import com.homeassistant.application.port.outbound.chatgateway.ChatId
+import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
 import com.homeassistant.llm.ChatClient
 import org.slf4j.LoggerFactory
 

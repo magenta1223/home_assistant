@@ -22,6 +22,7 @@ internal interface ComponentAssignmentWorker : AutoCloseable {
 /**
  * Drains the Component-assignment outbox. A round runs only when [OrganizePendingEpisodes.isReady] reports
  * that the services assignment calls are available, so a missing service never uses up assignment attempts.
+ * TODO: To inbound-adapter
  */
 internal class EpisodeComponentAssignmentWorker(
     private val organize: OrganizePendingEpisodes,

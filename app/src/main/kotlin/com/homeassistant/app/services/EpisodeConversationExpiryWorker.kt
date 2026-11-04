@@ -15,7 +15,7 @@ internal interface ConversationExpiryWorker : AutoCloseable {
         }
     }
 }
-
+// TODO: to inbound adapter
 internal class EpisodeConversationExpiryWorker(
     private val expireIdle: ExpireIdleChats,
 ) : ConversationExpiryWorker {

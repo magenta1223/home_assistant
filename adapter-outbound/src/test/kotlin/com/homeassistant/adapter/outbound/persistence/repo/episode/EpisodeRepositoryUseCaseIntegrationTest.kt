@@ -39,7 +39,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             )
             val hiddenEpisode = stores.saveEpisode(UserId("member-2"), "hidden", EpisodeAccess.restricted(listOf(UserId("member-2"))))
             listOf(publicEpisode, otherRestrictedEpisode, hiddenEpisode).forEach {
-                stores.componentMaintenance.saveExtraction(it.id, listOf("fact of ${it.content}"))
+                stores.componentWriter.writeComponents(it.id, listOf("fact of ${it.content}"))
             }
             val texts = object : EpisodeEmbeddingGenerator {
                 override val space = EmbeddingSpace("test", "passage:v1")
@@ -47,13 +47,13 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 override fun generate(content: String) = east
             }
             val search = ComponentSearcher(
-                stores.componentMaintenance, stores.groups, { east }, stores.canonicalEpisodes,
-                PrepareComponentEmbedding(ComponentStatementVectors(stores.componentMaintenance, texts), stores.componentEmbeddings),
+                stores.componentReader, stores.groups, { east }, stores.episodeReader,
+                PrepareComponentEmbedding(ComponentStatementVectors(stores.componentReader, texts), stores.componentEmbeddings),
                 UserAccessPolicy { it == member },
             )
 
             val episodeSearch = EpisodeSearcher(
-                stores.canonicalEpisodes, { east }, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
+                stores.episodeReader, { east }, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
             )
 
             val conversationContext = ContextProvider(search, episodeSearch).context(member, "question")
@@ -71,10 +71,10 @@ class EpisodeRepositoryUseCaseIntegrationTest {
         withRepositories("component-placement-integration") { stores ->
             val access = EpisodeAccess.restricted(listOf(UserId("other")))
             val episode = stores.saveEpisode(member, "incoming", access)
-            val before = stores.canonicalEpisodes.getEpisodes(UserId("other"))
-            val (componentId) = stores.componentMaintenance.saveExtraction(episode.id, listOf("fact"))
-            assertEquals(access, stores.componentMaintenance.read(listOf(componentId)).single().access)
-            assertEquals(before, stores.canonicalEpisodes.getEpisodes(UserId("other")))
+            val before = stores.episodeReader.getEpisodes(UserId("other"))
+            val (componentId) = stores.componentWriter.writeComponents(episode.id, listOf("fact"))
+            assertEquals(access, stores.componentReader.read(listOf(componentId)).single().access)
+            assertEquals(before, stores.episodeReader.getEpisodes(UserId("other")))
         }
     }
     private inline fun <T> withRepositories(prefix: String, block: (RepositoryStores) -> T): T {

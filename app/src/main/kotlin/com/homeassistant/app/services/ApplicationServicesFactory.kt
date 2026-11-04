@@ -55,7 +55,7 @@ object ApplicationServicesFactory {
             repositories.episodeEmbeddings,
         )
         val componentEmbeddings = PrepareComponentEmbedding(
-            ComponentStatementVectors(repositories.componentMaintenance, passageEmbedder),
+            ComponentStatementVectors(repositories.componentReader, passageEmbedder),
             repositories.componentEmbeddings,
         )
         val organizeComponents = OrganizePendingComponentsService(
@@ -70,7 +70,8 @@ object ApplicationServicesFactory {
         val organizeEpisodes = OrganizePendingEpisodesService(
             repositories.componentAssignmentOutbox,
             ExtractComponents(
-                repositories.componentMaintenance,
+                repositories.componentReader,
+                repositories.componentWriter,
                 episodeEmbeddings,
                 componentEmbeddings,
                 ComponentKnowledgeExtractorFactory.create(completionClient),
@@ -89,14 +90,14 @@ object ApplicationServicesFactory {
         )
         val queryEmbedder = QueryEmbeddingAdapter(textEmbedder)
         val componentSearch = ComponentSearcher(
-            components = repositories.componentMaintenance,
+            components = repositories.componentReader,
             groups = repositories.groups,
             queries = queryEmbedder,
-            episodes = repositories.canonicalEpisodes,
+            episodes = repositories.episodeReader,
             componentEmbeddings = componentEmbeddings,
             accessPolicy = users,
         )
-        val episodeSearch = EpisodeSearcher(repositories.canonicalEpisodes, queryEmbedder, episodeEmbeddings, users)
+        val episodeSearch = EpisodeSearcher(repositories.episodeReader, queryEmbedder, episodeEmbeddings, users)
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS

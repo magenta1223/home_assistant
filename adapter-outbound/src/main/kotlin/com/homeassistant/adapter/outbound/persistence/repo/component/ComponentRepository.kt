@@ -4,14 +4,15 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtract
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeViewerTable
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeVisibility
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class ComponentRepository(private val db: Database) : ComponentMaintenanceStore {
+internal class ComponentRepository(private val db: Database) : ComponentReader, ComponentWriter {
     override fun all(): List<Component> = transaction(db) { components(ComponentTable.selectAll()) }
 
     override fun read(componentIds: Collection<Int>): List<Component> = transaction(db) {
@@ -20,7 +21,7 @@ internal class ComponentRepository(private val db: Database) : ComponentMaintena
     }
 
     /** A second extraction of the same episode violates the extraction key and rolls back the whole write. */
-    override fun saveExtraction(episodeId: Int, statements: List<String>): List<Int> = transaction(db) {
+    override fun writeComponents(episodeId: Int, statements: List<String>): List<Int> = transaction(db) {
         require(statements.none(String::isBlank)) { "a component statement must not be blank" }
         require(EpisodeTable.select(EpisodeTable.id).where { EpisodeTable.id eq episodeId }.any()) { "episode reference does not exist" }
         ComponentExtractionTable.insert { it[ComponentExtractionTable.episodeId] = episodeId }

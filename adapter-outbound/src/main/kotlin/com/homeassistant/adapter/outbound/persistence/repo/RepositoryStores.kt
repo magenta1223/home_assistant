@@ -8,7 +8,8 @@ import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentMaintenanceStore
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
@@ -19,8 +20,9 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Pendin
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,
     val episodeWriter: EpisodeWriter,
-    val canonicalEpisodes: EpisodeReader,
-    val componentMaintenance: ComponentMaintenanceStore,
+    val episodeReader: EpisodeReader,
+    val componentReader: ComponentReader,
+    val componentWriter: ComponentWriter,
     val pendingComponents: PendingComponentSource,
     val componentEmbeddings: ComponentEmbeddingStore,
     val groups: GroupReader,

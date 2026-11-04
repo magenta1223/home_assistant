@@ -22,8 +22,9 @@ object RepositoryFactory {
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodeWriter = canonicalEpisodes,
-            canonicalEpisodes = canonicalEpisodes,
-            componentMaintenance = components,
+            episodeReader = canonicalEpisodes,
+            componentReader = components,
+            componentWriter = components,
             pendingComponents = groups,
             componentEmbeddings = ComponentEmbeddingRepository(db),
             groups = groups,

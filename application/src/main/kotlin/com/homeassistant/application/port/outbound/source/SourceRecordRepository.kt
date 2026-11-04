@@ -5,7 +5,9 @@ import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 
-/** Stores and retrieves source records while hiding the persistence mechanism. */
+/** Stores and retrieves source records while hiding the persistence mechanism.
+ * TODO: 다른 객체 저장소와 유사하게 read, write분리
+ * */
 interface SourceRecordRepository {
 
     /** Stores new drafts and returns both new and previously pending records for analysis. */

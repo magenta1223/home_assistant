@@ -27,7 +27,7 @@ class ComponentRepositoryTest {
     @Test
     fun `an extraction stores its statements with the source episode's access across restarts`() = withDatabase { db, path ->
         val episode = createEpisode(db, "a", ab)
-        val ids = ComponentRepository(db).saveExtraction(episode, listOf("first fact", "second fact"))
+        val ids = ComponentRepository(db).writeComponents(episode, listOf("first fact", "second fact"))
 
         val expected = listOf(Component(ids[0], "first fact", episode, ab), Component(ids[1], "second fact", episode, ab))
         assertEquals(expected, ComponentRepository(db).all())
@@ -38,7 +38,7 @@ class ComponentRepositoryTest {
     fun `an episode without long-term knowledge is still marked extracted`() = withDatabase { db, _ ->
         val episode = createEpisode(db, "a")
 
-        assertTrue(ComponentRepository(db).saveExtraction(episode, emptyList()).isEmpty())
+        assertTrue(ComponentRepository(db).writeComponents(episode, emptyList()).isEmpty())
         assertEquals(1L, transaction(db) { ComponentExtractionTable.selectAll().count() })
     }
 
@@ -46,10 +46,10 @@ class ComponentRepositoryTest {
     fun `a second extraction or a missing episode rolls the write back`() = withDatabase { db, _ ->
         val episode = createEpisode(db, "a")
         val repository = ComponentRepository(db)
-        repository.saveExtraction(episode, listOf("fact"))
+        repository.writeComponents(episode, listOf("fact"))
 
-        assertFails { repository.saveExtraction(episode, listOf("again")) }
-        assertFailsWith<IllegalArgumentException> { repository.saveExtraction(999, listOf("orphan")) }
+        assertFails { repository.writeComponents(episode, listOf("again")) }
+        assertFailsWith<IllegalArgumentException> { repository.writeComponents(999, listOf("orphan")) }
         assertEquals(listOf("fact"), repository.all().map { it.statement })
         assertEquals(1L, transaction(db) { ComponentTable.selectAll().count() })
         assertTrue(repository.read(emptyList()).isEmpty())

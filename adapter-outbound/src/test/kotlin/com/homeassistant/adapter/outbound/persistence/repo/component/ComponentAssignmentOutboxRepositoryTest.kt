@@ -59,7 +59,7 @@ class ComponentAssignmentOutboxRepositoryTest {
 
     @Test fun `an episode extracted before its outbox completed is completed on claim`() = withDatabase { db ->
         val (episode) = seedEpisodes(db, "first", "a")
-        ComponentRepository(db).saveExtraction(episode, emptyList())
+        ComponentRepository(db).writeComponents(episode, emptyList())
         assertTrue(ComponentAssignmentOutboxRepository(db).claimReady(10, now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5).isEmpty())
         assertEquals(OutboxRow("COMPLETED", 0, null), outboxRow(db, episode))
     }

@@ -39,7 +39,8 @@ class GroupRepositoryTest {
     private val space = EmbeddingSpace("test", "passage:v1")
     private val vector = ComponentVector.normalized(listOf(1.0, 0.0))
 
-    @Test fun `create attach split restart and repeat preserve all component state`() = withDatabase { db, path ->
+    @Test
+    fun `create attach split restart and repeat preserve all component state`() = withDatabase { db, path ->
         val sources = SourceRecordRepositoryImpl(db)
         val episodes = EpisodeRepository(db)
         val source = SourceDescriptor("test", "private")
@@ -49,7 +50,7 @@ class GroupRepositoryTest {
         val committed = episodes.commit(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id))
         val components = ComponentRepository(db)
-        val ids = committed.map { components.saveExtraction(it.id, listOf("knowledge of ${it.content}")).single() }.toSet()
+        val ids = committed.map { components.writeComponents(it.id, listOf("knowledge of ${it.content}")).single() }.toSet()
         val beforeComponents = components.read(ids)
         val beforeEpisodes = episodes.getEpisodes(user)
         val beforeSources = sources.findBySource(source)
@@ -200,7 +201,7 @@ class GroupRepositoryTest {
         val store = ComponentEmbeddingRepository(db)
         return episodes.associate { episode ->
             val statement = "knowledge of ${episode.content}"
-            val id = components.saveExtraction(episode.id, listOf(statement)).single()
+            val id = components.writeComponents(episode.id, listOf(statement)).single()
             id to store.save(
                 ComponentEmbedding(
                     PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(

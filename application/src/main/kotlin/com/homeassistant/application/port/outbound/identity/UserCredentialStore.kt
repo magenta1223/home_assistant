@@ -8,6 +8,7 @@ interface UserCredentialStore {
     /** Atomically registers [user] only when its display name is free. */
     fun register(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration
 
+    /** The credential of the user whose display name is exactly [name], or null when there is none. */
     fun findByName(name: String): StoredCredential?
 }
 

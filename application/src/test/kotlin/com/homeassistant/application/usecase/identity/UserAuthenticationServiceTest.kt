@@ -1,14 +1,14 @@
 package com.homeassistant.application.usecase.identity
 
-import com.homeassistant.application.port.input.identity.InvalidCredentialsException
-import com.homeassistant.application.port.input.identity.UserNameTakenException
-import com.homeassistant.application.port.output.identity.PasswordHash
-import com.homeassistant.application.port.output.identity.PasswordHasher
-import com.homeassistant.application.port.output.identity.StoredCredential
-import com.homeassistant.application.port.output.identity.StoredSession
-import com.homeassistant.application.port.output.identity.UserCredentialStore
-import com.homeassistant.application.port.output.identity.UserRegistration
-import com.homeassistant.application.port.output.identity.UserSessionStore
+import com.homeassistant.application.port.inbound.identity.InvalidCredentialsException
+import com.homeassistant.application.port.inbound.identity.UserNameTakenException
+import com.homeassistant.application.port.outbound.identity.PasswordHash
+import com.homeassistant.application.port.outbound.identity.PasswordHasher
+import com.homeassistant.application.port.outbound.identity.StoredCredential
+import com.homeassistant.application.port.outbound.identity.StoredSession
+import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId

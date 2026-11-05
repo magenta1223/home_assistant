@@ -6,10 +6,10 @@ sealed interface GroupPlacement {
 }
 
 class GroupPlacementPolicy(private val settings: GroupPolicySettings) {
-    fun decide(topic: TopicVector, centroids: Map<Int, TopicVector>): GroupPlacement {
-        val nearest = centroids.entries.sortedBy { it.key }.maxByOrNull { GroupGeometry.cosine(topic, it.value) }
+    fun decide(component: ComponentVector, centroids: Map<Int, ComponentVector>): GroupPlacement {
+        val nearest = centroids.entries.sortedBy { it.key }.maxByOrNull { GroupGeometry.cosine(component, it.value) }
             ?: return GroupPlacement.Create
-        return if (GroupGeometry.cosine(topic, nearest.value) > settings.attachThreshold) {
+        return if (GroupGeometry.cosine(component, nearest.value) > settings.attachThreshold) {
             GroupPlacement.Attach(nearest.key)
         } else GroupPlacement.Create
     }

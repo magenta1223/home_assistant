@@ -21,7 +21,7 @@ port는 application 관점의 능력을 표현한다. Qdrant, SQLite, Codex 등 
 
 1. 현재 application interface와 구현체를 input port, output port, use case 구현으로 분류한다.
 2. `application/port/input`과 `application/port/output`을 기능 영역별 하위 package로 구성한다.
-3. `MemorySearcher`, `MemoryAnalysisService`, Slack conversation orchestration 등 use case 구현을 `application/usecase`로 이동한다.
+3. `EpisodeSearcher`, `EpisodeAnalysisService`, Slack conversation orchestration 등 use case 구현을 `application/usecase`로 이동한다.
 4. inbound adapter는 input port에만 의존하도록 변경한다.
 5. outbound adapter는 output port를 구현하도록 import와 composition root wiring을 정리한다.
 6. 요청·결과 모델은 해당 input port 가까이에 두고 domain model은 domain에 유지한다.
@@ -39,7 +39,7 @@ port는 application 관점의 능력을 표현한다. Qdrant, SQLite, Codex 등 
 ## 완료 내용
 
 - application 코드를 기능별 `port/input`, `port/output`, `usecase` package로 재배치했다.
-- memory analysis, answer, search, placement와 Slack conversation에 명시적인 input port를 두고 use case 구현체가 이를 구현하도록 했다.
+- episode analysis, answer, search, placement와 Slack conversation에 명시적인 input port를 두고 use case 구현체가 이를 구현하도록 했다.
 - persistence, semantic search, extraction, placement, conversation session 계약을 output port로 분리했다.
 - inbound runtime의 use case 조립을 composition root로 이동해 adapter가 use case 구현 package를 import하지 않도록 했다.
 - output port의 `Codex` 명칭을 기술 중립적인 conversation session/turn 용어로 바꾸고 구체 기술명은 adapter에만 남겼다.

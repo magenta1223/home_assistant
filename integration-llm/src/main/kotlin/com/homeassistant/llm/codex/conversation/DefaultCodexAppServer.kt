@@ -9,7 +9,7 @@ import com.homeassistant.llm.codex.transport.protocol.ClientInfo
 import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
 import com.homeassistant.llm.codex.transport.protocol.ThreadConfig
-import com.homeassistant.llm.conversation.ConversationClient
+import com.homeassistant.llm.ChatClient
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -33,7 +33,7 @@ internal class DefaultCodexAppServer(
         StdioProcessTransport(appServerCommand(config), config.workDir),
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
-) : ConversationClient, CodexAppServerTransport.Listener {
+) : ChatClient, CodexAppServerTransport.Listener {
     private val log = LoggerFactory.getLogger(javaClass)
     private val activeTurns = ConcurrentHashMap<String, TurnState>()
     private val loadedThreads = ConcurrentHashMap.newKeySet<String>()
@@ -103,8 +103,8 @@ internal class DefaultCodexAppServer(
         threadId
     }
 
-    override fun send(conversationId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
-        val threadIdValue = conversationId
+    override fun send(chatId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
+        val threadIdValue = chatId
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) {
             throw CodexConversationException("INVALID_THREAD_ID")
         }
@@ -115,8 +115,8 @@ internal class DefaultCodexAppServer(
         runTurn(threadIdValue, prompt, deadline)
     }
 
-    override fun end(conversationId: String) {
-        val threadIdValue = conversationId
+    override fun end(chatId: String) {
+        val threadIdValue = chatId
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
         loadedThreads.remove(threadIdValue)
         if (!ready.get()) return

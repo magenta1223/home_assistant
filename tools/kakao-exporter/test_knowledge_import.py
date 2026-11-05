@@ -46,7 +46,7 @@ class SendExportTest(unittest.TestCase):
         StubImportApi.body = body
 
     def test_posts_the_whole_export_as_a_kakao_source_with_its_audience(self):
-        self.answer(200, {"memories": []})
+        self.answer(200, {"episodes": []})
 
         send_export(self.base_url, "secret", SOURCE, "exported text")
 
@@ -65,7 +65,7 @@ class SendExportTest(unittest.TestCase):
         )
 
     def test_ok_means_new_messages_were_analyzed(self):
-        self.answer(200, {"memories": []})
+        self.answer(200, {"episodes": []})
 
         self.assertEqual(ImportOutcome.ANALYZED, send_export(self.base_url, "secret", SOURCE, "text"))
 

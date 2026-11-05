@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.reference
 
 import com.homeassistant.domain.source.SourceReferenceDraft
-import com.homeassistant.llm.completion.CompletionClient
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionClient
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.runBlocking
 import org.apache.pdfbox.pdmodel.PDDocument
 import org.apache.pdfbox.pdmodel.PDPage

@@ -27,7 +27,7 @@ response tracking, so an abandoned request is not retained when the app-server n
 
 ## Completion
 
-`CodexCliClient` implements `com.homeassistant.llm.completion.CompletionClient` with the
+`CodexCliClient` implements `com.homeassistant.llm.CompletionClient` with the
 `CodexAppServerTransport` initialization, thread/start, and turn/start operations. Each call opens and closes its own
 app-server. Completion uses an ephemeral thread, a caller-provided output schema, and text/local-image
 inputs; temporary image files are removed on success, failure, or cancellation.

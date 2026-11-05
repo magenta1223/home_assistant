@@ -2,6 +2,7 @@ package com.homeassistant.adapter.inbound.kakao
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -42,9 +43,20 @@ class KakaoExportParserTest {
     fun `bracket date separator is preserved and distinguishes equal messages on different dates`() {
         val records = parseFixture("bracket-export.txt").records
 
-        assertTrue(records[0].content.contains("2025년 1월 2일 오전 9:03"))
-        assertTrue(records[2].content.contains("2025년 1월 3일 오전 9:03"))
+        assertEquals(Instant.parse("2025-01-02T00:03:00Z").toEpochMilli(), records[0].recordedAt)
+        assertEquals(Instant.parse("2025-01-03T00:03:00Z").toEpochMilli(), records[2].recordedAt)
         assertNotEquals(records[0].deduplicationKey, records[2].deduplicationKey)
+    }
+
+    @Test
+    fun `a message keeps its sender in the content and is recorded at its send time in Korean local time`() {
+        val record = KakaoExportParser.parse(
+            "kakao-export.txt",
+            "2025년 1월 2일 오전 9:03, 민수 : 아침 약은 먹었어?",
+        ).records.single()
+
+        assertEquals("민수: 아침 약은 먹었어?", record.content)
+        assertEquals(Instant.parse("2025-01-02T00:03:00Z").toEpochMilli(), record.recordedAt)
     }
 
     @Test
@@ -83,8 +95,6 @@ class KakaoExportParserTest {
             """.trimIndent(),
         ).records
 
-        assertTrue(records[0].content.contains("오전 12:05"))
-        assertTrue(records[1].content.contains("오후 12:05"))
         assertEquals(sha256("민수\u001F2025-01-02T00:05\u001F자정 직후"), records[0].deduplicationKey)
         assertEquals(sha256("민수\u001F2025-01-02T12:05\u001F정오 직후"), records[1].deduplicationKey)
     }

@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.identity.InvalidCredentialsException
-import com.homeassistant.application.port.input.identity.LoginSession
-import com.homeassistant.application.port.input.identity.UserAuthentication
-import com.homeassistant.application.port.input.identity.UserNameTakenException
+import com.homeassistant.application.port.inbound.identity.InvalidCredentialsException
+import com.homeassistant.application.port.inbound.identity.LoginSession
+import com.homeassistant.application.port.inbound.identity.UserAuthentication
+import com.homeassistant.application.port.inbound.identity.UserNameTakenException
 import com.homeassistant.domain.identity.Password
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.ApplicationCall

@@ -58,7 +58,7 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
 ## 제외 범위
 
 - 현재 port/use case 전체의 일괄적인 이름 변경
-- DB schema 또는 memory domain 모델의 기능 변경
+- DB schema 또는 episode domain 모델의 기능 변경
 - 새로운 logging/observability 제품 도입
 - MQTT 등 현재 존재하지 않는 외부 채널 추가
 

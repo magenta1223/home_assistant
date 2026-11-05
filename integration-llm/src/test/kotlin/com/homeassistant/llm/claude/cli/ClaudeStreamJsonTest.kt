@@ -1,6 +1,6 @@
 package com.homeassistant.llm.claude.cli
 
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionImage
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject

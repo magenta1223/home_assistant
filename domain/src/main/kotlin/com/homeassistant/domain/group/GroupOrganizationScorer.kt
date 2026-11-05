@@ -9,9 +9,9 @@ data class OrganizationScore(val sparsity: Double, val semantics: Double) {
 
 /** xMemory equations 1-3; sparsity measures size balance, not a penalty on the group count. */
 class GroupOrganizationScorer {
-    fun score(parts: List<Set<Int>>, vectors: Map<Int, TopicVector>): OrganizationScore {
+    fun score(parts: List<Set<Int>>, vectors: Map<Int, ComponentVector>): OrganizationScore {
         if (parts.isEmpty()) return OrganizationScore(0.0, 0.0)
-        TopicPartition(parts)
+        ComponentPartition(parts)
         val sizes = parts.map { it.size.toDouble() }
         val count = sizes.sum()
         val sparsity = count * count / (parts.size * sizes.sumOf { it * it })

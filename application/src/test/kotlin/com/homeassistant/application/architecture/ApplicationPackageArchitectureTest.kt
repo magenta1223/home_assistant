@@ -19,8 +19,8 @@ class ApplicationPackageArchitectureTest {
             val packageName = packageName(source)
             val applicationSuffix = packageName.removePrefix(APPLICATION_PACKAGE_PREFIX)
             assertTrue(
-                applicationSuffix.startsWith("port.input.") ||
-                    applicationSuffix.startsWith("port.output.") ||
+                applicationSuffix.startsWith("port.inbound.") ||
+                    applicationSuffix.startsWith("port.outbound.") ||
                     applicationSuffix.startsWith("usecase."),
                 "$source is not assigned to an explicit application layer",
             )
@@ -46,7 +46,7 @@ class ApplicationPackageArchitectureTest {
 
     @Test
     fun `output ports do not expose implementation technology names`() {
-        val outputPorts = applicationSourceRoot.resolve("com/homeassistant/application/port/output")
+        val outputPorts = applicationSourceRoot.resolve("com/homeassistant/application/port/outbound")
         val implementationNames = Regex("\\b(qdrant|sqlite|codex|ollama)\\b", RegexOption.IGNORE_CASE)
 
         kotlinSources(outputPorts).forEach { source ->
@@ -59,7 +59,7 @@ class ApplicationPackageArchitectureTest {
 
     @Test
     fun `application exceptions are usecase contracts with module restricted constructors`() {
-        val inputPortPath = "com/homeassistant/application/port/input"
+        val inputPortPath = "com/homeassistant/application/port/inbound"
         val usecasePath = "com/homeassistant/application/usecase"
         val exceptionDeclaration = Regex("class\\s+(\\w+Exception)\\b")
         val exceptions = mutableListOf<Pair<String, Path>>()

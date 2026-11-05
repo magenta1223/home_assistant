@@ -2,21 +2,21 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.inbound.text.PlainTextSourceParser
-import com.homeassistant.application.port.input.memory.analysis.ConflictingSourceAudienceException
-import com.homeassistant.application.port.input.memory.analysis.DuplicateSourceRecordsException
-import com.homeassistant.application.port.input.memory.analysis.InvalidMemoryAudienceException
-import com.homeassistant.application.port.input.memory.analysis.InvalidKnowledgeReferenceException
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisResult
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisUnavailableException
-import com.homeassistant.application.port.input.identity.UserRegistry
+import com.homeassistant.application.port.inbound.memoryextraction.ConflictingSourceAudienceException
+import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidEpisodeAudienceException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidKnowledgeReferenceException
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
+import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryAccess
-import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.memory.MemoryVisibility
+import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.episode.EpisodeProposal
+import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -42,7 +42,7 @@ internal fun Route.knowledgePageRoute() {
 }
 
 internal fun Route.knowledgeInjectionRoutes(
-    memoryAnalysis: MemoryAnalysis,
+    episodeAnalysis: EpisodeAnalysis,
     users: UserRegistry,
 ) {
     get(AppConfig.ROUTE_KNOWLEDGE_USERS) {
@@ -70,9 +70,9 @@ internal fun Route.knowledgeInjectionRoutes(
         val access = try {
             if (request.isPublic) {
                 require(request.allowedUserIds.isEmpty()) { "PUBLIC must not include allowedUserIds" }
-                MemoryAccess.PUBLIC
+                EpisodeAccess.PUBLIC
             } else {
-                MemoryAccess.restricted(request.allowedUserIds.map(::UserId))
+                EpisodeAccess.restricted(request.allowedUserIds.map(::UserId))
             }
         } catch (error: IllegalArgumentException) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (error.message ?: "invalid audience")))
@@ -107,8 +107,8 @@ internal fun Route.knowledgeInjectionRoutes(
         try {
             call.respond(
                 HttpStatusCode.OK,
-                memoryAnalysis.execute(
-                    MemoryAnalysisRequest(
+                episodeAnalysis.execute(
+                    EpisodeAnalysisRequest(
                         userId = principal.userId.value,
                         source = source,
                         access = access,
@@ -125,14 +125,14 @@ internal fun Route.knowledgeInjectionRoutes(
             )
         } catch (error: ConflictingSourceAudienceException) {
             call.respond(HttpStatusCode.Conflict, mapOf("error" to error.message))
-        } catch (error: InvalidMemoryAudienceException) {
+        } catch (error: InvalidEpisodeAudienceException) {
             call.respond(
                 HttpStatusCode.BadRequest,
                 mapOf("error" to error.message, "userIds" to error.userIds.sorted()),
             )
         } catch (error: InvalidKnowledgeReferenceException) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to error.message))
-        } catch (error: MemoryAnalysisUnavailableException) {
+        } catch (error: EpisodeAnalysisUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: UserAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "user access denied"))
@@ -205,19 +205,19 @@ private data class KnowledgeImportResponse(
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,
-    val visibility: MemoryVisibility,
+    val visibility: EpisodeVisibility,
     val allowedUserIds: Set<String>,
-    val memoryCount: Int,
-    val memories: List<KnowledgeMemoryResponse>,
+    val episodeCount: Int,
+    val episodes: List<KnowledgeEpisodeResponse>,
 )
 
 @Serializable
-private data class KnowledgeMemoryResponse(
+private data class KnowledgeEpisodeResponse(
     val text: String,
     val evidenceRefs: List<Int>,
 )
 
-private fun MemoryAnalysisResult.toResponse() = KnowledgeImportResponse(
+private fun EpisodeAnalysisResult.toResponse() = KnowledgeImportResponse(
     sourceType = sourceType,
     sourceName = sourceName,
     importedRecordCount = importedRecordCount,
@@ -225,11 +225,11 @@ private fun MemoryAnalysisResult.toResponse() = KnowledgeImportResponse(
     alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
     visibility = visibility,
     allowedUserIds = allowedUserIds,
-    memoryCount = memoryCount,
-    memories = memories.map { it.toResponse() },
+    episodeCount = episodeCount,
+    episodes = episodes.map { it.toResponse() },
 )
 
-private fun MemoryProposal.toResponse() = KnowledgeMemoryResponse(
+private fun EpisodeProposal.toResponse() = KnowledgeEpisodeResponse(
     text = content,
     evidenceRefs = evidenceIds,
 )

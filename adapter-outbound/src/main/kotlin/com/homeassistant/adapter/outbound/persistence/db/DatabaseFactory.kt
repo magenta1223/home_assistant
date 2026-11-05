@@ -9,26 +9,24 @@ internal object DatabaseFactory {
         val db = Database.connect("jdbc:sqlite:$dbPath", driver = "org.sqlite.JDBC")
         transaction(db) {
             migrateLegacyTableNames()
-            migrateTopicMembershipKey()
             SchemaUtils.createMissingTablesAndColumns(
-                MemoryTable,
-                MemoryEvidenceTable,
-                MemoryViewerTable,
-                TopicTable,
-                TopicMembershipTable,
-                TopicDescriptionTable,
-                MemoryEmbeddingTable,
-                TopicEmbeddingTable,
+                EpisodeTable,
+                EpisodeEvidenceTable,
+                EpisodeViewerTable,
+                ComponentTable,
+                ComponentExtractionTable,
+                EpisodeEmbeddingTable,
+                ComponentEmbeddingTable,
                 GroupTable,
                 GroupMembershipTable,
                 GroupReceiptTable,
                 SourceReferenceTable,
                 SourceRecordTable,
                 SourceRecordViewerTable,
-                TopicAssignmentOutboxTable,
-                MemoryConversationSessionTable,
-                MemoryConversationActiveSessionTable,
-                MemoryConversationReceiptTable,
+                ComponentAssignmentOutboxTable,
+                EpisodeConversationSessionTable,
+                EpisodeConversationActiveSessionTable,
+                EpisodeConversationReceiptTable,
                 UserTable,
                 UserCredentialTable,
                 UserSessionTable,
@@ -47,39 +45,26 @@ internal object DatabaseFactory {
         exec("ALTER TABLE \"$legacyName\" RENAME TO \"$currentName\"")
     }
 
-    /** Memberships were keyed by memory alone (one Topic per memory). SQLite cannot change a key in place. */
-    private fun Transaction.migrateTopicMembershipKey() {
-        if (!tableExists("topic_memberships")) return
-        val keyColumns = exec("PRAGMA table_info(\"topic_memberships\")") { result ->
-            buildList { while (result.next()) if (result.getInt("pk") > 0) add(result.getString("name")) }
-        }
-        if (keyColumns != listOf("memory_id")) return
-        exec("ALTER TABLE topic_memberships RENAME TO topic_memberships_single")
-        SchemaUtils.create(TopicMembershipTable)
-        exec("INSERT INTO topic_memberships (topic_id, memory_id) SELECT topic_id, memory_id FROM topic_memberships_single")
-        exec("DROP TABLE topic_memberships_single")
-    }
-
     private fun Transaction.tableExists(name: String): Boolean =
         exec(
             "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = '${name.replace("'", "''")}'",
         ) { result -> result.next() } ?: false
 
     private fun migrateLegacyPrivateAccess() {
-        val legacyPrivateMemories = MemoryTable.selectAll()
-            .where { MemoryTable.visibility eq "PRIVATE" }
+        val legacyPrivateEpisodes = EpisodeTable.selectAll()
+            .where { EpisodeTable.visibility eq "PRIVATE" }
             .toList()
-        legacyPrivateMemories.forEach { memory ->
-            val memoryId = memory[MemoryTable.id]
-            val creator = memory[MemoryTable.createdByUserId]
-            MemoryViewerTable.insertIgnore {
-                it[MemoryViewerTable.memoryId] = memoryId
+        legacyPrivateEpisodes.forEach { episode ->
+            val episodeId = episode[EpisodeTable.id]
+            val creator = episode[EpisodeTable.createdByUserId]
+            EpisodeViewerTable.insertIgnore {
+                it[EpisodeViewerTable.episodeId] = episodeId
                 it[userId] = creator
             }
-            MemoryEvidenceTable.select(MemoryEvidenceTable.sourceRecordId)
-                .where { MemoryEvidenceTable.memoryId eq memoryId }
+            EpisodeEvidenceTable.select(EpisodeEvidenceTable.sourceRecordId)
+                .where { EpisodeEvidenceTable.episodeId eq episodeId }
                 .forEach { evidence ->
-                    val sourceRecordId = evidence[MemoryEvidenceTable.sourceRecordId]
+                    val sourceRecordId = evidence[EpisodeEvidenceTable.sourceRecordId]
                     SourceRecordTable.update({ SourceRecordTable.id eq sourceRecordId }) {
                         it[visibility] = "RESTRICTED"
                     }
@@ -89,8 +74,8 @@ internal object DatabaseFactory {
                     }
                 }
         }
-        if (legacyPrivateMemories.isNotEmpty()) {
-            MemoryTable.update({ MemoryTable.visibility eq "PRIVATE" }) {
+        if (legacyPrivateEpisodes.isNotEmpty()) {
+            EpisodeTable.update({ EpisodeTable.visibility eq "PRIVATE" }) {
                 it[visibility] = "RESTRICTED"
             }
         }

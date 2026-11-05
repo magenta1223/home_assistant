@@ -97,9 +97,9 @@ object KakaoExportParser {
                 .joinToString("")
             return KakaoMessageRecord.record(
                 sender = sender,
-                displayTime = timestamp.display,
                 canonicalTime = timestamp.canonical,
                 text = content(),
+                recordedAt = timestamp.recordedAt,
                 deduplicationAliases = setOf(KakaoMessageRecord.sha256(legacyFingerprintText)),
             )
         }
@@ -108,8 +108,8 @@ object KakaoExportParser {
     }
 
     private data class ParsedTimestamp(
-        val display: String,
         val canonical: String,
+        val recordedAt: Long,
         val legacyDisplay: String,
     )
 
@@ -127,7 +127,7 @@ object KakaoExportParser {
     private fun bracketTimestamp(date: LocalDate?, period: String, time: String): ParsedTimestamp {
         if (date == null) {
             val display = "$period $time"
-            return ParsedTimestamp(display, "UNKNOWN_DATE|$display", display)
+            return ParsedTimestamp("UNKNOWN_DATE|$display", System.currentTimeMillis(), display)
         }
         return timestamp(
             date,
@@ -165,8 +165,8 @@ object KakaoExportParser {
         val hourOfDay = (hour % 12) + if (period == "오후") 12 else 0
         val time = LocalDateTime.of(date, LocalTime.of(hourOfDay, minute))
         return ParsedTimestamp(
-            display = KakaoMessageRecord.displayTime(time),
             canonical = KakaoMessageRecord.canonicalTime(time),
+            recordedAt = KakaoMessageRecord.recordedAt(time),
             legacyDisplay = legacyDisplay,
         )
     }

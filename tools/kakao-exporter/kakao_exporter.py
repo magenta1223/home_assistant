@@ -1,6 +1,6 @@
 """Exports allowlisted KakaoTalk PC chats with KakaoTalk's own "save chat" and sends each to the app's import API.
 
-It drives the KakaoTalk window only: it never reads KakaoTalk's local DB files or process memory.
+It drives the KakaoTalk window only: it never reads KakaoTalk's local DB files or process episode.
 Each export is kept as runtime/kakao/exports/<chatKey>.txt and posted whole; the app analyzes only new messages.
 
 Usage (Windows, unlocked desktop, KakaoTalk signed in):

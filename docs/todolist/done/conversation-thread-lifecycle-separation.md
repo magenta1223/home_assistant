@@ -3,7 +3,7 @@
 - 상태: DONE
 - 우선순위: P0
 - 완료일: 2026-09-06
-- 범위: memory conversation의 application port와 use case orchestration
+- 범위: episode conversation의 application port와 use case orchestration
 
 ## 문제
 
@@ -17,13 +17,13 @@
 
 ## 설계 결론
 
-`MemoryConversation` input port의 책임과 공개 API는 바뀌지 않는다. 이 port를 구현하는 memory
+`EpisodeConversation` input port의 책임과 공개 API는 바뀌지 않는다. 이 port를 구현하는 episode
 conversation use case가 thread를 언제 생성하고 종료할지 결정하는 lifecycle 정책을 소유한다.
 
-- memory conversation use case: session 상태에 따라 thread 생성·재사용·종료 시점을 결정한다.
+- episode conversation use case: session 상태에 따라 thread 생성·재사용·종료 시점을 결정한다.
 - `ConversationThreadLifecycle`: 결정된 thread 생성과 종료를 수행한다.
 - `ConversationTurnExecutor`: 주어진 thread에서 turn을 실행한다.
-- `MemoryConversationSessionStore`: thread ID와 활성 session 관계를 저장한다.
+- `EpisodeConversationSessionStore`: thread ID와 활성 session 관계를 저장한다.
 
 AS-IS에서도 use case가 `start`, `resume`, `end`를 호출하므로 lifecycle에 전혀 관여하지 않았던 것은
 아니다. 다만 thread 생성이 `start(prompt, callback)` 내부에 포함되어 생성 시점과 저장 순서가
@@ -34,8 +34,8 @@ orchestration에 명시적으로 나타난다.
 
 ```mermaid
 flowchart LR
-    Conversation[MemoryConversation]
-    Sessions[MemoryConversationSessionStore]
+    Conversation[EpisodeConversation]
+    Sessions[EpisodeConversationSessionStore]
     Client[ConversationTurnClient<br/><br/>start prompt, callback<br/>resume threadId, prompt<br/>end threadId]
     Result[ConversationTurnResult<br/><br/>Success answer<br/>Failure category]
 
@@ -48,9 +48,9 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant Conversation as MemoryConversation
+    participant Conversation as EpisodeConversation
     participant Client as ConversationTurnClient
-    participant Sessions as MemoryConversationSessionStore
+    participant Sessions as EpisodeConversationSessionStore
 
     alt 활성 session 없음
         Conversation->>Client: start(prompt, callback)
@@ -64,7 +64,7 @@ sequenceDiagram
     end
 ```
 
-AS-IS에서는 memory conversation use case가 새 thread와 기존 thread를 `start`와 `resume`으로
+AS-IS에서는 episode conversation use case가 새 thread와 기존 thread를 `start`와 `resume`으로
 구분하지만, 실제 thread 생성은 `start` 내부에서 일어나고 callback 시점에 session을 기록한다.
 `ConversationTurnClient`는 이름과 달리 thread lifecycle까지 함께 담당한다.
 
@@ -72,8 +72,8 @@ AS-IS에서는 memory conversation use case가 새 thread와 기존 thread를 `s
 
 ```mermaid
 flowchart LR
-    Conversation[MemoryConversation]
-    Sessions[MemoryConversationSessionStore]
+    Conversation[EpisodeConversation]
+    Sessions[EpisodeConversationSessionStore]
     Lifecycle[ConversationThreadLifecycle<br/><br/>create<br/>end threadId]
     Executor[ConversationTurnExecutor<br/><br/>execute threadId, prompt]
     Result[ConversationTurnResult<br/><br/>Success answer<br/>Failure]
@@ -87,9 +87,9 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    participant Conversation as MemoryConversation
+    participant Conversation as EpisodeConversation
     participant Lifecycle as ConversationThreadLifecycle
-    participant Sessions as MemoryConversationSessionStore
+    participant Sessions as EpisodeConversationSessionStore
     participant Executor as ConversationTurnExecutor
 
     alt 활성 session 없음
@@ -110,7 +110,7 @@ sequenceDiagram
     end
 ```
 
-TO-BE에서는 memory conversation use case가 lifecycle을 명시적으로 관리한다. 활성 session이 없으면
+TO-BE에서는 episode conversation use case가 lifecycle을 명시적으로 관리한다. 활성 session이 없으면
 `create` 후 session을 기록하고, 활성 session이 있으면 저장된 thread ID를 선택한다. 새 thread인지
 기존 thread인지와 관계없이 turn 실행은 항상 `execute`로 표현한다. 외부 시스템에 thread를 다시
 로드해야 하는지는 `ConversationTurnExecutor` 계약 밖의 세부사항이다.
@@ -172,7 +172,7 @@ sealed interface ConversationTurnResult {
 - 이미 사용 가능한 thread의 turn 실행에는 불필요한 재로드가 발생하지 않는다.
 - 재로드가 필요한 thread도 application에서는 동일한 `execute` 호출로 처리된다.
 
-### 3. Memory conversation lifecycle orchestration 명시
+### 3. Episode conversation lifecycle orchestration 명시
 
 - 활성 session이 없으면 `create → createAndActivate → attachSession → execute` 순서로 처리한다.
 - 활성 session이 있으면 저장된 thread ID로 `execute`만 호출한다.
@@ -199,7 +199,7 @@ sealed interface ConversationTurnResult {
 ### 5. Outbound adapter와 조립부 갱신
 
 - 하나의 outbound adapter가 두 application port를 구현하게 한다.
-- memory conversation use case에는 lifecycle과 executor 역할을 각각 주입한다.
+- episode conversation use case에는 lifecycle과 executor 역할을 각각 주입한다.
 - 관리 runtime 시작, availability 확인, 종료 방식은 유지한다.
 
 검증 기준:
@@ -226,7 +226,7 @@ sealed interface ConversationTurnResult {
 
 ## 완료 조건
 
-- memory conversation use case에서 thread lifecycle 순서가 코드만 읽어도 드러난다.
+- episode conversation use case에서 thread lifecycle 순서가 코드만 읽어도 드러난다.
 - `start(prompt, callback)`과 application 수준의 `resume`이 제거된다.
 - thread lifecycle과 turn 실행이 서로 다른 application port로 표현된다.
 - turn 성공·실패, session lease, idempotency 등 기존 사용자 동작은 유지된다.
@@ -244,7 +244,7 @@ sealed interface ConversationTurnResult {
 ## 구현 결과
 
 - application output port를 `ConversationThreadLifecycle`과 `ConversationTurnExecutor`로 분리했다.
-- memory conversation use case가 `create → session 기록 → execute` 순서를 명시적으로 조정한다.
+- episode conversation use case가 `create → session 기록 → execute` 순서를 명시적으로 조정한다.
 - application 수준의 `start`, `resume`과 thread ID callback을 제거했다.
 - Codex conversation integration은 `execute`할 thread가 로드되지 않았을 때만 내부적으로 다시 로드한다.
 - `ConversationTurnResult.Failure`에서 사용하지 않던 문자열 category를 제거했다.

@@ -17,14 +17,14 @@
 
 ## 현재 상태
 
-- 최근 구현 완료: [Topic 중심 벡터·ACL slice와 Topic 검색](p1/topic-centroid-acl-search.md) — cosine 단일 배정, 대화 context를 Topic 검색으로 구성 (2026-10-20, 실데이터 임계값 조정 남음)
-- 다음 후보: [Topic·Group 병합과 kNN 연결](p1/topic-group-merge-and-knn-links.md) — Group 병합 완료, kNN 이웃은 검색 시 계산, Topic 분할·병합 보류
+- 최근 구현 완료: [Component 중심 벡터·ACL slice와 Component 검색](p1/component-centroid-acl-search.md) — cosine 단일 배정, 대화 context를 Component 검색으로 구성 (2026-10-20, 실데이터 임계값 조정 남음)
+- 다음 후보: [Component·Group 병합과 kNN 연결](p1/component-group-merge-and-knn-links.md) — Group 병합 완료, kNN 이웃은 검색 시 계산, Component 분할·병합 보류
 - 별도 구현 후보: 최소 가족 Task 서비스 1개
-- Memory 구조 전환: Topic은 중심 벡터와 ACL slice, Group 구성·분할·병합 구현, Topic 검색 연결. Topic 자체 분할·병합은 보류, UI는 후속 범위
+- Episode 구조 전환: Component는 중심 벡터와 ACL slice, Group 구성·분할·병합 구현, Component 검색 연결. Component 자체 분할·병합은 보류, UI는 후속 범위
 - 활성 기반 작업: Core 기술 경계 강화 P2 1개
 - 기술 선택 보류: ONNX 전환과 연계 모듈 분리 3개
 - 제품 결정 보류: Notification·Review 2개, 외부 제품화 2개
-- 사용자 학습 과제 보류: Memory DB 조회 최적화 1개
+- 사용자 학습 과제 보류: Episode DB 조회 최적화 1개
 - 사용자 진입점: HTTP만 지원. Slack adapter·전용 workflow·SDK·운영 도구 제거 (2026-10-10)
 
 ## 운영 리스크와 기반 작업
@@ -43,8 +43,8 @@
 
 | 문서 | 목적 |
 |---|---|
-| [topic-assignment-outbox.md](p1/topic-assignment-outbox.md) | Memory 저장 시 Topic 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
-| [topic-centroid-acl-search.md](p1/topic-centroid-acl-search.md) | Topic을 중심 벡터와 ACL별 Memory 목록으로 바꾸고 cosine 할당과 ACL 필터 Topic 검색을 연결 |
+| [component-assignment-outbox.md](p1/component-assignment-outbox.md) | Episode 저장 시 Component 할당 outbox를 기록하고, 준비된 환경에서만 worker가 재시도와 함께 처리 |
+| [component-centroid-acl-search.md](p1/component-centroid-acl-search.md) | Component를 중심 벡터와 ACL별 Episode 목록으로 바꾸고 cosine 할당과 ACL 필터 Component 검색을 연결 |
 | [semantic-index-integration-module-extraction.md](p1/semantic-index-integration-module-extraction.md) | DROPPED: Qdrant semantic index 제거 (2026-10-20) |
 | [runtime-distribution-module-extraction.md](p1/runtime-distribution-module-extraction.md) | HOLD: 두 번째 실제 consumer가 생길 때 독립 기반 모듈 필요를 재평가 |
 
@@ -53,15 +53,15 @@
 | 문서 | 목적 |
 |---|---|
 | [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | Domain/Application의 serialization 결합과 library 모듈의 concrete logging binding을 정리 |
-| [entropy-based-group-saturation.md](p2/entropy-based-group-saturation.md) | Topic·Group 배정 이후, 크기 상한 대신 entropy로 Group 분할 검토 시점을 판단 |
+| [entropy-based-group-saturation.md](p2/entropy-based-group-saturation.md) | Component·Group 배정 이후, 크기 상한 대신 entropy로 Group 분할 검토 시점을 판단 |
 | [external-service-failure-handling.md](p2/external-service-failure-handling.md) | 외부 서비스 장애를 실패 분류·circuit breaker·재시도 상한으로 다루는 표준 절차를 outbox worker에 적용 |
-| [memory-analysis-outbox-pipeline.md](p2/memory-analysis-outbox-pipeline.md) | 첨부 해석·Memory 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
-| [memory-query-performance.md](p2/memory-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Memory query 성능 학습 과제 |
+| [episode-analysis-outbox-pipeline.md](p2/episode-analysis-outbox-pipeline.md) | 첨부 해석·Episode 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
+| [episode-query-performance.md](p2/episode-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Episode query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
-| [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Topic이 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
+| [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Component가 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |
 | [result-outcome-naming.md](p2/result-outcome-naming.md) | `XxResult`·`XxOutcome` 이름 규칙을 정하고 섞여 있는 타입 이름을 맞춤 |
-| [topic-policy-settings.md](p2/topic-policy-settings.md) | Topic policy 임계값을 Group처럼 settings 객체로 묶어 factory에서 주입 |
-| [xmemory-stage2-entropy.md](p2/xmemory-stage2-entropy.md) | HOLD: proxy 모델로 reader entropy를 재서 줄어들 때만 Memory를 context에 더하는 xMemory Stage II |
+| [component-policy-settings.md](p2/component-policy-settings.md) | Component policy 임계값을 Group처럼 settings 객체로 묶어 factory에서 주입 |
+| [xmemory-stage2-entropy.md](p2/xmemory-stage2-entropy.md) | HOLD: proxy 모델로 reader entropy를 재서 줄어들 때만 Episode를 context에 더하는 xMemory Stage II |
 
 ## 제품 기능 계획
 
@@ -69,7 +69,7 @@
 독립적으로 우선순위를 매기되, 해당 기능이 P0/P1 리스크를 유발하면 먼저 리스크 작업을 추가한다.
 
 - **Feature P0**: 현재 가정에서 바로 사용할 다음 핵심 기능
-- **Feature P1**: P0 기능과 Memory를 종합해 능동적인 운영 경험을 완성하는 기능
+- **Feature P1**: P0 기능과 Episode를 종합해 능동적인 운영 경험을 완성하는 기능
 - **Feature P2**: 외부 제품화 결정 후 필요한 고객·과금·규모 확장
 
 ### Feature P0
@@ -94,7 +94,7 @@
 
 ## 완료된 작업
 
-최근 완료: [Topic → Group 생성·배치·분할](done/topic-group-construction.md). 원자 저장·재시도·후속 병합 저장 계약을 포함하며 내부 호출 전용이다. 전체 테스트 통과.
+최근 완료: [Component → Group 생성·배치·분할](done/component-group-construction.md). 원자 저장·재시도·후속 병합 저장 계약을 포함하며 내부 호출 전용이다. 전체 테스트 통과.
 
 완료·취소 문서는 [done](done/)에서 지속적으로 찾아볼 수 있는 단일 이력과 release note로 사용한다.
 완료 시 원래 계획 문서를 이곳으로 이동하고, 완료일·실제 변경·검증·남은 제약(취소 시 사유)을 기록한다.
@@ -102,32 +102,32 @@
 | 문서 | 결과 |
 |---|---|
 | [remove-slack.md](done/remove-slack.md) | Slack adapter·전용 workflow·SDK·설정·운영 도구 제거; HTTP·기존 사용자·세션 유지, 전체 테스트 통과 |
-| [remove-lm-topic-generation.md](done/remove-lm-topic-generation.md) | LM Topic 생성·자동 배치·worker 삭제, Topic 모델·명시적 저장 유지, 전체 테스트 통과 |
-| [memory-topic-graph.md](done/memory-topic-graph.md) | Topic 모델·원자 저장·legacy tree 제거; 당시 LM 생성·자동 배치는 2026-10-10 삭제로 대체 |
-| [visible-memory-tree-page.md](done/visible-memory-tree-page.md) | 인증 사용자별 ACL을 지키는 Memory Tree API와 읽기 전용 웹 화면 추가 |
+| [remove-lm-component-generation.md](done/remove-lm-component-generation.md) | LM Component 생성·자동 배치·worker 삭제, Component 모델·명시적 저장 유지, 전체 테스트 통과 |
+| [episode-component-graph.md](done/episode-component-graph.md) | Component 모델·원자 저장·legacy tree 제거; 당시 LM 생성·자동 배치는 2026-10-10 삭제로 대체 |
+| [visible-episode-tree-page.md](done/visible-episode-tree-page.md) | 인증 사용자별 ACL을 지키는 Episode Tree API와 읽기 전용 웹 화면 추가 |
 | [deploy-runtime-shutdown-reliability.md](done/deploy-runtime-shutdown-reliability.md) | 종료 경쟁과 실패 복구 경로가 자동 배포에서 실행되어 production 재기동·health·성공 SHA 기록 검증 완료 |
 | [slack-freeze-and-http-access.md](done/slack-freeze-and-http-access.md) | Slack을 동결하고 인증된 HTTP knowledge·conversation과 웹 UI를 production에 배포 |
 | [slack-integration-module-extraction.md](done/slack-integration-module-extraction.md) | 제거 예정인 frozen Slack의 integration 모듈 분리를 사용자 가치 없는 작업으로 취소 |
-| [conversation-thread-lifecycle-separation.md](done/conversation-thread-lifecycle-separation.md) | Memory conversation이 thread 생성·재사용·종료 시점을 명시적으로 관리하고 turn 실행을 별도 port로 분리 |
+| [conversation-thread-lifecycle-separation.md](done/conversation-thread-lifecycle-separation.md) | Episode conversation이 thread 생성·재사용·종료 시점을 명시적으로 관리하고 turn 실행을 별도 port로 분리 |
 | [codex-integration-module-extraction.md](done/codex-integration-module-extraction.md) | Codex 저수준 통신을 독립 integration 모듈로 분리하고 outbound에는 기능별 port 변환만 유지 |
-| [atomic-memory-analysis-persistence.md](done/atomic-memory-analysis-persistence.md) | 분석 batch 원자 저장, 안정적 idempotency key, durable indexing outbox와 전체 reindex 복구 |
+| [atomic-episode-analysis-persistence.md](done/atomic-episode-analysis-persistence.md) | 분석 batch 원자 저장, 안정적 idempotency key, durable indexing outbox와 전체 reindex 복구 |
 | [explicit-knowledge-audience.md](done/explicit-knowledge-audience.md) | 명시적 PUBLIC/열람자 ACL, 로컬 지식 주입 페이지, Slack 쓰기 경로 제거 |
 | [managed-embedding-server.md](done/managed-embedding-server.md) | Windows standalone Ollama 설치·모델 준비·managed server lifecycle 구현 |
-| [memory-read-transaction-boundary.md](done/memory-read-transaction-boundary.md) | repository 소유 transaction으로 검색·답변·Slack 문맥·배치 읽기 경로 복구 |
-| [memory-search-ranking-and-limit.md](done/memory-search-ranking-and-limit.md) | 검색된 memory 자체, score 순서와 limit 적용 |
-| [retryable-memory-analysis.md](done/retryable-memory-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
-| [model-inferred-memory-visibility.md](done/model-inferred-memory-visibility.md) | 과거 모델 추론 방식 기록; 명시적 source audience로 대체됨 |
+| [episode-read-transaction-boundary.md](done/episode-read-transaction-boundary.md) | repository 소유 transaction으로 검색·답변·Slack 문맥·배치 읽기 경로 복구 |
+| [episode-search-ranking-and-limit.md](done/episode-search-ranking-and-limit.md) | 검색된 episode 자체, score 순서와 limit 적용 |
+| [retryable-episode-analysis.md](done/retryable-episode-analysis.md) | Codex 분석 실패 후 같은 import 재시도 |
+| [model-inferred-episode-visibility.md](done/model-inferred-episode-visibility.md) | 과거 모델 추론 방식 기록; 명시적 source audience로 대체됨 |
 | [kakao-import-integrity.md](done/kakao-import-integrity.md) | 파일명 독립 dedup, 날짜 보존, 검증된 증분 문맥, 제한된 대용량 분석 |
-| [memory-created-at-context.md](done/memory-created-at-context.md) | memory 생성 일자를 응답 context에 제공 |
-| [simplify-memory-placement.md](done/simplify-memory-placement.md) | 의미 없는 정렬·부모 재인덱싱·attach 응답 제거 |
-| [tree-aware-memory-context-expansion.md](done/tree-aware-memory-context-expansion.md) | 직접 검색 seed를 유지하며 관련 하위 memory를 제한적으로 context에 확장 |
+| [episode-created-at-context.md](done/episode-created-at-context.md) | episode 생성 일자를 응답 context에 제공 |
+| [simplify-episode-placement.md](done/simplify-episode-placement.md) | 의미 없는 정렬·부모 재인덱싱·attach 응답 제거 |
+| [tree-aware-episode-context-expansion.md](done/tree-aware-episode-context-expansion.md) | 직접 검색 seed를 유지하며 관련 하위 episode를 제한적으로 context에 확장 |
 | [explicit-application-ports.md](done/explicit-application-ports.md) | application의 input/output port와 use case 구현 경계 명시화 |
 | [usecase-specific-application-exceptions.md](done/usecase-specific-application-exceptions.md) | application 예외 생성과 노출을 use case별 input 계약으로 제한 |
-| [unified-evidence-grounded-answer.md](done/unified-evidence-grounded-answer.md) | HTTP 답변 경로 폐기 결정에 따라 통합 계획 취소; Slack은 공통 memory conversation 유스케이스를 중개 |
-| [slack-memory-answer-application-boundary.md](done/slack-memory-answer-application-boundary.md) | 사용자 등록·최초 질문 재개·memory 답변 routing을 application으로 이동하고 Slack을 변환·렌더링 adapter로 제한 |
+| [unified-evidence-grounded-answer.md](done/unified-evidence-grounded-answer.md) | HTTP 답변 경로 폐기 결정에 따라 통합 계획 취소; Slack은 공통 episode conversation 유스케이스를 중개 |
+| [slack-episode-answer-application-boundary.md](done/slack-episode-answer-application-boundary.md) | 사용자 등록·최초 질문 재개·episode 답변 routing을 application으로 이동하고 Slack을 변환·렌더링 adapter로 제한 |
 | [regression-test-baseline.md](done/regression-test-baseline.md) | 데이터 손실·권한 누출·검색 결과 소실을 막는 최소 회귀 테스트 기준선 확립 |
 | [slack-operational-channel-architecture.md](done/slack-operational-channel-architecture.md) | 범용 운영 채널 계획은 취소하고 작은 slash-command registry 경계만 도입 |
-| [slack-knowledge-injection.md](done/slack-knowledge-injection.md) | `/knowledge` modal을 기존 `MemoryAnalysis` 흐름에 연결 |
+| [slack-knowledge-injection.md](done/slack-knowledge-injection.md) | `/knowledge` modal을 기존 `EpisodeAnalysis` 흐름에 연결 |
 | [operational-feature-plugin-expansion.md](done/operational-feature-plugin-expansion.md) | manifest·명령 registry까지만 도입하고 범용 plugin 일반화는 보류 |
-| [explicit-memory-placement-model.md](done/explicit-memory-placement-model.md) | 실제 필요가 확인되지 않은 Topic·Tag·Container 재설계를 제품 원칙에 따라 취소 |
+| [explicit-episode-placement-model.md](done/explicit-episode-placement-model.md) | 실제 필요가 확인되지 않은 Component·Tag·Container 재설계를 제품 원칙에 따라 취소 |
 | [qdrant-windows-app-control-reliability.md](done/qdrant-windows-app-control-reliability.md) | 초기화와 production 원격 기동의 실사용 확인으로 운영 P0 종료; 오류 4551 원인은 잔여 위험으로 기록 |

@@ -14,7 +14,7 @@
   process lifecycle만 다루는 저수준 integration
 - `ConversationThreadLifecycle`, `ConversationTurnExecutor` 같은 application output port를 구현하는
   outbound adapter
-- memory analysis, memory placement와 source reference 해석 adapter가 공유하는 structured completion
+- episode analysis, episode placement와 source reference 해석 adapter가 공유하는 structured completion
   client
 
 이 때문에 `adapter.outbound.codex`가 독립된 application outbound port처럼 보이며,
@@ -27,7 +27,7 @@ parsing과 lifecycle을 함께 소유할 만큼 크다.
 - application/domain을 모르는 독립 `integration-codex` 모듈에 Codex CLI 통신 책임을 모은다.
 - `adapter-outbound`에는 application output port를 구현하고 Codex integration을 기능 의미로
   변환하는 adapter만 남긴다.
-- memory analysis, placement, reference interpretation과 conversation이 저수준 Codex 통신을
+- episode analysis, placement, reference interpretation과 conversation이 저수준 Codex 통신을
   재사용하되 서로의 기능 package에 의존하지 않게 한다.
 - 현재 prompt, schema, image, timeout와 conversation 동작을 바꾸지 않는 구조 분리로 제한한다.
 - 새 모듈의 public API가 application port를 복제하거나 범용 LLM abstraction으로 커지지 않게 한다.
@@ -41,9 +41,9 @@ integration-codex/
   appserver/       # 장기 process transport와 Codex protocol
 
 adapter-outbound/
-  memoryanalysis/codex/   # MemoryExtractor, MemoryPlacementExtractor 구현
+  episodeanalysis/codex/   # EpisodeExtractor, EpisodePlacementExtractor 구현
   reference/codex/        # SourceReferenceInterpreter 구현
-  memoryconversation/     # integration 결과를 thread lifecycle과 turn executor port로 변환하는 adapter
+  episodeconversation/     # integration 결과를 thread lifecycle과 turn executor port로 변환하는 adapter
 ```
 
 의존 방향은 다음으로 고정한다.
@@ -56,7 +56,7 @@ integration-codex -X-> application/domain
 ```
 
 `integration-codex`의 API는 Codex라는 외부 시스템의 기능과 protocol을 표현한다.
-`adapter-outbound`가 이를 application의 `MemoryExtractor`, `SourceReferenceInterpreter`,
+`adapter-outbound`가 이를 application의 `EpisodeExtractor`, `SourceReferenceInterpreter`,
 `ConversationThreadLifecycle`, `ConversationTurnExecutor` 계약으로 변환한다.
 
 ## 범위
@@ -73,7 +73,7 @@ integration-codex -X-> application/domain
 
 ### `adapter-outbound`에 유지
 
-- `MemoryExtractor`, `MemoryPlacementExtractor` 구현과 prompt/output mapping
+- `EpisodeExtractor`, `EpisodePlacementExtractor` 구현과 prompt/output mapping
 - `SourceReferenceInterpreter` 구현과 PDF/image 전처리
 - `ConversationThreadLifecycle`, `ConversationTurnExecutor` 구현과 `ConversationTurnResult` mapping
 - application/domain 모델을 사용하는 factory와 조립 코드
@@ -85,7 +85,7 @@ integration-codex -X-> application/domain
 - application에 prompt, JSON schema나 Codex thread protocol 노출
 - prompt 내용, 모델 선택 정책 또는 reasoning effort 변경
 - Codex CLI를 hosted API나 다른 provider로 교체
-- memory analysis/reference/conversation 동작 변경
+- episode analysis/reference/conversation 동작 변경
 - ONNX embedding 전환과 결합
 
 ## 구현 순서
@@ -93,7 +93,7 @@ integration-codex -X-> application/domain
 ### 1. 현재 dependency와 행위 기준선 고정
 
 1. `adapter.outbound.codex`의 각 type을 저수준 integration과 application adapter로 분류한다.
-2. memory analysis, placement, reference와 conversation의 호출 관계를 기록한다.
+2. episode analysis, placement, reference와 conversation의 호출 관계를 기록한다.
 3. 기존 테스트가 보장하는 command 인자, stdin, schema/output 파일, image, timeout, app-server
    재시작과 conversation 결과 mapping을 기준선으로 고정한다.
 4. application/domain import가 필요한 type은 새 integration 모듈로 이동하지 않는다는 규칙을
@@ -111,9 +111,9 @@ integration-codex -X-> application/domain
 
 1. `CompletionClient`, `CodexCliClient`, `CodexImage`, process executor와 결과 type을 새 모듈로
    이동한다.
-2. `MEMORY_GENERATION_MODEL`처럼 특정 기능 이름을 가진 기본값은 저수준 client에서 제거하거나
+2. `EPISODE_GENERATION_MODEL`처럼 특정 기능 이름을 가진 기본값은 저수준 client에서 제거하거나
    Codex 요청 configuration으로 전달한다.
-3. memory analysis, placement와 reference adapter가 새 모듈의 completion API를 주입받게 한다.
+3. episode analysis, placement와 reference adapter가 새 모듈의 completion API를 주입받게 한다.
 4. 임시 파일 정리, command 구성, timeout와 image 전달 기존 테스트를 새 모듈로 이동한다.
 
 ### 4. app-server integration과 conversation adapter 분리
@@ -145,7 +145,7 @@ integration-codex -X-> application/domain
    검증한다.
 3. module dependency report 또는 build 설정 검사로 `integration-codex`가 application/domain을
    참조하지 않는지 확인한다.
-4. memory analysis, source reference interpretation과 Slack memory conversation의 기존 회귀 테스트를
+4. episode analysis, source reference interpretation과 Slack episode conversation의 기존 회귀 테스트를
    모두 실행한다.
 5. 전체 `gradlew test`를 통과시킨다.
 
@@ -159,7 +159,7 @@ integration-codex -X-> application/domain
 - `adapter.outbound.codex`라는 모호한 최상위 package가 남지 않는다.
 - application에는 Codex CLI command, prompt transport, schema 파일이나 app-server protocol type이
   노출되지 않는다.
-- memory analysis, placement, reference interpretation과 conversation의 기존 동작과 failure mapping이
+- episode analysis, placement, reference interpretation과 conversation의 기존 동작과 failure mapping이
   유지된다.
 - 새 모듈 API가 단일 provider만 존재하는 상황에서 불필요한 범용 LLM abstraction을 만들지 않는다.
 - 관련 단위·통합 테스트와 전체 `gradlew test`가 통과한다.

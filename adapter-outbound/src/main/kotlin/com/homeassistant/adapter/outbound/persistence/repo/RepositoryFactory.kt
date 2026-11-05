@@ -2,38 +2,37 @@ package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
-import com.homeassistant.adapter.outbound.persistence.repo.memoryconversation.MemoryConversationSessionRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
-import com.homeassistant.adapter.outbound.persistence.repo.topic.MemoryEmbeddingRepository
-import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicAssignmentOutboxRepository
-import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicDescriptionRepository
-import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
+import com.homeassistant.adapter.outbound.persistence.repo.component.EpisodeEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
+import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
-import com.homeassistant.adapter.outbound.persistence.repo.group.TopicEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
-        val canonicalMemories = MemoryRepository(db)
-        val topics = TopicRepository(db)
+        val canonicalEpisodes = EpisodeRepository(db)
+        val components = ComponentRepository(db)
         val groups = GroupRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
-            canonicalMemoryBatchWriter = canonicalMemories,
-            canonicalMemories = canonicalMemories,
-            topicMaintenance = topics,
-            topicDescriptions = TopicDescriptionRepository(db),
-            pendingTopics = groups,
-            topicEmbeddings = TopicEmbeddingRepository(db),
+            episodeWriter = canonicalEpisodes,
+            episodeReader = canonicalEpisodes,
+            componentReader = components,
+            componentWriter = components,
+            pendingComponents = groups,
+            componentEmbeddings = ComponentEmbeddingRepository(db),
             groups = groups,
             groupSnapshots = groups,
             groupChanges = groups,
-            topicAssignmentOutbox = TopicAssignmentOutboxRepository(db),
-            memoryEmbeddings = MemoryEmbeddingRepository(db),
-            memoryConversationSessions = MemoryConversationSessionRepository(db),
+            componentAssignmentOutbox = ComponentAssignmentOutboxRepository(db),
+            episodeEmbeddings = EpisodeEmbeddingRepository(db),
+            episodeConversationSessions = ChatSessionRepository(db),
             users = UserRepository(db),
             userCredentials = UserCredentialRepository(db),
             userSessions = UserSessionRepository(db),

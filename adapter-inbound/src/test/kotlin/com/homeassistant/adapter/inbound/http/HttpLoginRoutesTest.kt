@@ -1,15 +1,15 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.port.output.identity.PasswordHash
-import com.homeassistant.application.port.output.identity.PasswordHasher
-import com.homeassistant.application.port.output.identity.StoredCredential
-import com.homeassistant.application.port.output.identity.StoredSession
-import com.homeassistant.application.port.output.identity.UserCredentialStore
-import com.homeassistant.application.port.output.identity.UserRegistration
-import com.homeassistant.application.port.output.identity.UserSessionStore
+import com.homeassistant.application.port.inbound.identity.UserRegistry
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.outbound.identity.PasswordHash
+import com.homeassistant.application.port.outbound.identity.PasswordHasher
+import com.homeassistant.application.port.outbound.identity.StoredCredential
+import com.homeassistant.application.port.outbound.identity.StoredSession
+import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.common.json.JsonSerializer
 import com.homeassistant.configuration.AppConfig
@@ -22,7 +22,6 @@ import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
@@ -126,7 +125,7 @@ class HttpLoginRoutesTest {
             testApplication {
                 application {
                     configureRoutes(
-                        memoryAnalysis = unusedMemoryAnalysis(),
+                        episodeAnalysis = unusedEpisodeAnalysis(),
                         httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_KEY) to UserId("not-registered")),
                     )
                 }
@@ -138,7 +137,7 @@ class HttpLoginRoutesTest {
     private fun Application.configure() {
         install(ContentNegotiation) { json(JsonSerializer.json) }
         configureRoutes(
-            memoryAnalysis = unusedMemoryAnalysis(),
+            episodeAnalysis = unusedEpisodeAnalysis(),
             httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_KEY) to MACHINE.userId),
             users = object : UserRegistry {
                 override fun list() = listOf(MACHINE)
@@ -159,8 +158,8 @@ class HttpLoginRoutesTest {
     private fun sessionCookie(login: HttpResponse): String =
         login.headers[HttpHeaders.SetCookie].orEmpty().substringBefore(';')
 
-    private fun unusedMemoryAnalysis() = object : MemoryAnalysis {
-        override suspend fun execute(request: MemoryAnalysisRequest) = error("unused")
+    private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
+        override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
     }
 
     private object PlainHasher : PasswordHasher {

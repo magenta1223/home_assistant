@@ -1,10 +1,10 @@
 package com.homeassistant.domain.retrieval
 
-import com.homeassistant.domain.group.TopicVector
+import com.homeassistant.domain.group.ComponentVector
 import kotlin.test.*
 
 class BackboneSelectionTest {
-    private fun vector(vararg values: Double) = TopicVector.normalized(values.toList())
+    private fun vector(vararg values: Double) = ComponentVector.normalized(values.toList())
 
     @Test fun `a near duplicate of a pick loses to a less relevant candidate elsewhere`() {
         val vectors = mapOf(

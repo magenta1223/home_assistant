@@ -34,58 +34,58 @@ class GroupPoliciesTest {
     }
 
     @Test fun `graph candidates preserve separated semantic clusters`() {
-        val topics = mapOf(1 to x, 2 to x, 3 to y, 4 to y)
-        val candidates = GroupSplitCandidateGenerator(GroupPolicySettings(maxTopics = 2)).generate(topics)
-        assertTrue(TopicPartition(listOf(setOf(1, 2), setOf(3, 4))) in candidates)
-        val split = assertIs<GroupSplit.Divided>(GroupSplitPolicy(GroupPolicySettings(maxTopics = 2)).decide(topics.keys, emptyList(), topics))
+        val components = mapOf(1 to x, 2 to x, 3 to y, 4 to y)
+        val candidates = GroupSplitCandidateGenerator(GroupPolicySettings(maxComponents = 2)).generate(components)
+        assertTrue(ComponentPartition(listOf(setOf(1, 2), setOf(3, 4))) in candidates)
+        val split = assertIs<GroupSplit.Divided>(GroupSplitPolicy(GroupPolicySettings(maxComponents = 2)).decide(components.keys, emptyList(), components))
         assertEquals(listOf(setOf(1, 2), setOf(3, 4)), split.partition.parts)
         assertTrue(split.after.total > split.before.total)
     }
 
     @Test fun `identical vectors terminate deterministically and enforce cap without score gain`() {
-        val topics = (1..13).associateWith { x }
-        val policy = GroupSplitPolicy(GroupPolicySettings(maxTopics = 12))
-        val split = assertIs<GroupSplit.Divided>(policy.decide(topics.keys, emptyList(), topics))
-        split.partition.requireConserves(topics.keys)
+        val components = (1..13).associateWith { x }
+        val policy = GroupSplitPolicy(GroupPolicySettings(maxComponents = 12))
+        val split = assertIs<GroupSplit.Divided>(policy.decide(components.keys, emptyList(), components))
+        split.partition.requireConserves(components.keys)
         assertTrue(split.partition.parts.all { it.size <= 12 })
         assertEquals(listOf(7, 6), split.partition.parts.map { it.size })
         assertTrue(split.forced)
-        assertEquals(split, policy.decide(topics.keys.reversed().toSet(), emptyList(), topics.toList().reversed().toMap()))
+        assertEquals(split, policy.decide(components.keys.reversed().toSet(), emptyList(), components.toList().reversed().toMap()))
     }
 
     @Test fun `recursive fallback conserves membership down to singleton cap`() {
-        val topics = (1..40).associateWith { x }
-        val candidates = GroupSplitCandidateGenerator(GroupPolicySettings(maxTopics = 1)).generate(topics)
+        val components = (1..40).associateWith { x }
+        val candidates = GroupSplitCandidateGenerator(GroupPolicySettings(maxComponents = 1)).generate(components)
         candidates.forEach { partition ->
-            partition.requireConserves(topics.keys)
+            partition.requireConserves(components.keys)
             assertTrue(partition.parts.all { it.size == 1 })
         }
     }
 
     @Test fun `under cap is never split for score alone`() {
-        assertEquals(GroupSplit.Unchanged, GroupSplitPolicy(GroupPolicySettings(maxTopics = 2))
+        assertEquals(GroupSplit.Unchanged, GroupSplitPolicy(GroupPolicySettings(maxComponents = 2))
             .decide(setOf(1, 2), emptyList(), mapOf(1 to x, 2 to y)))
     }
 
     @Test fun `invalid vectors dimensions and partitions fail explicitly`() {
         listOf(emptyList(), listOf(0.0, 0.0), listOf(Double.NaN), listOf(Double.POSITIVE_INFINITY)).forEach {
-            assertFailsWith<IllegalArgumentException> { TopicVector.normalized(it) }
+            assertFailsWith<IllegalArgumentException> { ComponentVector.normalized(it) }
         }
         assertFailsWith<IllegalArgumentException> { GroupGeometry.cosine(x, vector(1.0)) }
         assertFailsWith<IllegalArgumentException> { GroupGeometry.centroid(listOf(x, vector(-1.0, 0.0))) }
-        assertFailsWith<IllegalArgumentException> { TopicPartition(listOf(setOf(1), setOf(1))) }
-        assertFailsWith<IllegalArgumentException> { TopicPartition(listOf(emptySet())) }
-        assertFailsWith<IllegalArgumentException> { TopicPartition(listOf(setOf(1))).requireConserves(setOf(1, 2)) }
-        assertFailsWith<IllegalArgumentException> { GroupPolicySettings(maxTopics = 0) }
+        assertFailsWith<IllegalArgumentException> { ComponentPartition(listOf(setOf(1), setOf(1))) }
+        assertFailsWith<IllegalArgumentException> { ComponentPartition(listOf(emptySet())) }
+        assertFailsWith<IllegalArgumentException> { ComponentPartition(listOf(setOf(1))).requireConserves(setOf(1, 2)) }
+        assertFailsWith<IllegalArgumentException> { GroupPolicySettings(maxComponents = 0) }
     }
 
     @Test fun `normalization supports large finite inputs and protects input from mutation`() {
         val original = mutableListOf(Double.MAX_VALUE, Double.MAX_VALUE)
-        val vector = TopicVector.normalized(original)
+        val vector = ComponentVector.normalized(original)
         original[0] = 0.0
         assertEquals(kotlin.math.sqrt(0.5), vector.values().first(), 1e-12)
-        assertEquals(vector, TopicVector.restore(vector.values()))
+        assertEquals(vector, ComponentVector.restore(vector.values()))
     }
 
-    private fun vector(vararg values: Double) = TopicVector.normalized(values.toList())
+    private fun vector(vararg values: Double) = ComponentVector.normalized(values.toList())
 }

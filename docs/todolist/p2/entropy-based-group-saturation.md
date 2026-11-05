@@ -2,7 +2,7 @@
 
 - 상태: TODO
 - 우선순위: P2
-- 선행 작업: Memory → Topic → Group 배정 (2026-10-19)
+- 선행 작업: Episode → Component → Group 배정 (2026-10-19)
 
 ## 문제
 
@@ -26,5 +26,5 @@ Group이 의미적으로 포화됐는지 entropy로 판단해 분할 검토 시�
 
 - xMemory v4에서 entropy는 Group 할당이 아니라 검색 Stage II 원문 확장(§3.2 식 5, Appendix A.3)에만 쓰인다.
   Group 조직은 §3.1 식 1~3뿐이다.
-- [Talebirad 외 2026, Toward a Theory of Hierarchical Memory for Language Agents](https://arxiv.org/html/2603.21564) §2.3 식 1 Self-Sufficiency. 분석 지표로만 쓰고 분할 트리거로는 쓰지 않는다.
+- [Talebirad 외 2026, Toward a Theory of Hierarchical Episode for Language Agents](https://arxiv.org/html/2603.21564) §2.3 식 1 Self-Sufficiency. 분석 지표로만 쓰고 분할 트리거로는 쓰지 않는다.
 - [Cobweb (Lian·Varma·MacLellan 2024)](https://arxiv.org/pdf/2403.03835): entropy 기반 category utility로 add/new/merge/split 선택. 이산 속성 기준.

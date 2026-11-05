@@ -149,10 +149,10 @@
     <a href="/knowledge">지식 주입</a>
   </nav>
   <header>
-    <h1>Memory Conversation</h1>
+    <h1>Episode Conversation</h1>
     <p>내가 볼 수 있는 기억을 바탕으로 second brain에 질문합니다.</p>
   </header>
-  <section class="panel" aria-label="메모리 대화">
+  <section class="panel" aria-label="에피소드 대화">
     <div id="auth" class="auth" hidden>
       <div>
         <label for="login-name">이름</label>
@@ -236,7 +236,7 @@
     setConnection('ready', '응답 대기');
 
     try {
-      const response = await fetch('/api/memory/conversation', {
+      const response = await fetch('/api/episode/conversation', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

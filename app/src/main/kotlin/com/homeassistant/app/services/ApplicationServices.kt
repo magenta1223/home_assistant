@@ -1,20 +1,19 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.port.input.identity.UserAuthentication
-import com.homeassistant.application.port.input.identity.UserRegistry
-import com.homeassistant.application.port.input.group.OrganizePendingTopics
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.port.input.memory.conversation.MemoryConversation
-import com.homeassistant.application.port.input.topic.DescribeTopic
-import com.homeassistant.application.port.input.topic.OrganizePendingMemories
+import com.homeassistant.application.port.inbound.identity.UserAuthentication
+import com.homeassistant.application.port.inbound.identity.UserRegistry
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 
 /** Provides the application's top-level use cases and managed runtimes. */
 interface ApplicationServices : AutoCloseable {
-    /** Provides the memory-analysis use case. */
-    val memoryAnalysis: MemoryAnalysis
+    /** Provides the episode-analysis use case. */
+    val episodeAnalysis: EpisodeAnalysis
 
-    /** Provides memory-backed conversations when the selected agent backend CLI is available. */
-    val memoryConversation: MemoryConversation?
+    /** Provides episode-backed conversations when the selected agent backend CLI is available. */
+    val chatService: ChatService?
 
     /** Registered application users that may be selected as knowledge viewers. */
     val users: UserRegistry
@@ -23,13 +22,12 @@ interface ApplicationServices : AutoCloseable {
     val authentication: UserAuthentication
 
     /** Explicit trusted maintenance; starting the application does not run this use case. */
-    val organizeTopics: OrganizePendingTopics
+    val organizeComponents: OrganizePendingComponents
 
-    /** Memory → Topic assignment from the outbox, then Topic → Group; the started worker runs it periodically. */
-    val organizeMemories: OrganizePendingMemories
+    /** Episode → Component assignment from the outbox, then Component → Group; the started worker runs it periodically. */
+    val organizeEpisodes: OrganizePendingEpisodes
 
-    /** Describes a Topic per viewer on demand; nothing is generated ahead of a request. */
-    val describeTopic: DescribeTopic
+    /** Describes a Component per viewer on demand; nothing is generated ahead of a request. */
 
     /** Reports whether required managed runtimes are available. */
     val isReady: Boolean

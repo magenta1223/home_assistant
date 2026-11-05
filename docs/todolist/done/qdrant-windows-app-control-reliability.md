@@ -121,4 +121,4 @@ App Control for Business 정책에서 구성해야 하며, 현재 Windows Home/C
 - 원인 증거 없이 Smart App Control 또는 Windows 보안 기능 전체를 영구 비활성화하는 변경
 - 자체 서명 인증서를 로컬 trusted root에 추가하는 방식으로 SAC를 우회하는 시도
 - Qdrant storage 삭제 또는 빈 collection으로의 재초기화
-- 이번 장애와 무관한 Qdrant 검색, embedding 또는 memory domain 동작 변경
+- 이번 장애와 무관한 Qdrant 검색, embedding 또는 episode domain 동작 변경

@@ -1,11 +1,10 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysis
-import com.homeassistant.application.port.input.memory.analysis.MemoryAnalysisRequest
-import com.homeassistant.application.port.input.group.OrganizePendingTopics
-import com.homeassistant.application.port.input.topic.DescribeTopic
-import com.homeassistant.application.port.input.topic.OrganizePendingMemories
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
+import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -18,16 +17,15 @@ class DefaultApplicationServicesTest {
         val events = mutableListOf<String>()
         val embedding = RecordingEmbeddingRuntime(events)
         val expiry = RecordingConversationExpiryWorker(events)
-        val assignment = RecordingTopicAssignmentWorker(events)
+        val assignment = RecordingComponentAssignmentWorker(events)
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
-            memoryAnalysis = unusedMemoryAnalysis(),
-            organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
-            organizeMemories = unusedOrganizeMemories(),
-            describeTopic = DescribeTopic { _, _ -> error("must only run on request") },
+            episodeAnalysis = unusedEpisodeAnalysis(),
+            organizeComponents = OrganizePendingComponents { error("must only run on explicit invocation") },
+            organizeEpisodes = unusedOrganizeEpisodes(),
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
-            topicAssignmentWorker = assignment,
+            componentAssignmentWorker = assignment,
             conversationGateway = codex,
         )
 
@@ -64,10 +62,9 @@ class DefaultApplicationServicesTest {
         }
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
-            memoryAnalysis = unusedMemoryAnalysis(),
-            organizeTopics = OrganizePendingTopics { error("must only run on explicit invocation") },
-            organizeMemories = unusedOrganizeMemories(),
-            describeTopic = DescribeTopic { _, _ -> error("must only run on request") },
+            episodeAnalysis = unusedEpisodeAnalysis(),
+            organizeComponents = OrganizePendingComponents { error("must only run on explicit invocation") },
+            organizeEpisodes = unusedOrganizeEpisodes(),
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,
@@ -89,15 +86,15 @@ class DefaultApplicationServicesTest {
         assertFalse(embedding.isReady)
     }
 
-    private fun unusedOrganizeMemories() = object : OrganizePendingMemories {
-        override fun isReady() = error("must only run from the topic assignment worker")
-        override fun execute(limit: Int) = error("must only run from the topic assignment worker")
-        override fun enqueueUnassigned() = error("must only run from the topic assignment worker")
+    private fun unusedOrganizeEpisodes() = object : OrganizePendingEpisodes {
+        override fun isReady() = error("must only run from the component assignment worker")
+        override fun execute(limit: Int) = error("must only run from the component assignment worker")
+        override fun enqueueUnassigned() = error("must only run from the component assignment worker")
     }
 
-    private class RecordingTopicAssignmentWorker(
+    private class RecordingComponentAssignmentWorker(
         private val events: MutableList<String>,
-    ) : TopicAssignmentWorker {
+    ) : ComponentAssignmentWorker {
         override fun start() {
             events += "assignment.start"
         }
@@ -107,8 +104,8 @@ class DefaultApplicationServicesTest {
         }
     }
 
-    private fun unusedMemoryAnalysis() = object : MemoryAnalysis {
-        override suspend fun execute(request: MemoryAnalysisRequest) = error("unused")
+    private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
+        override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
     }
 
     private class RecordingEmbeddingRuntime(

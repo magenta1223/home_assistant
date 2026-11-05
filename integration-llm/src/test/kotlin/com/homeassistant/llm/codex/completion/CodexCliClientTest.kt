@@ -8,7 +8,7 @@ import com.homeassistant.llm.codex.transport.protocol.AppServerTurn
 import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.LocalImageUserInput
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
@@ -34,9 +34,9 @@ class CodexCliClientTest {
     @Test
     fun `completion uses existing transport with sol high schema and an ephemeral thread`() = runBlocking {
         val process = RecordingProcess()
-        val schema = """{"type":"object","properties":{"memories":{"type":"array"}}}"""
+        val schema = """{"type":"object","properties":{"episodes":{"type":"array"}}}"""
 
-        assertEquals("{\"memories\":[]}", client(process).complete("system prompt", "source records", schema))
+        assertEquals("{\"episodes\":[]}", client(process).complete("system prompt", "source records", schema))
 
         assertEquals(listOf("codex-test", "app-server", "--stdio"), process.command)
         assertEquals(listOf("initialize", "initialized", "thread/start", "turn/start"), process.methods)
@@ -153,7 +153,7 @@ class CodexCliClientTest {
         fun finish(status: String = "completed") {
             val event = AppServerProtocol.TurnCompleted(
                 "thread-1",
-                AppServerTurn("turn-1", status, listOf(AppServerThreadItem("agentMessage", "{\"memories\":[]}")), null),
+                AppServerTurn("turn-1", status, listOf(AppServerThreadItem("agentMessage", "{\"episodes\":[]}")), null),
             )
             listener.onMessage(buildJsonObject {
                 put("method", AppServerProtocol.TurnCompleted.METHOD)

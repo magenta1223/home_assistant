@@ -2,19 +2,29 @@ package com.homeassistant.adapter.outbound.persistence.repo.group
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
-import com.homeassistant.adapter.outbound.persistence.repo.topic.TopicRepository
-import com.homeassistant.adapter.outbound.persistence.repo.memory.MemoryRepository
+import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.output.group.*
-import com.homeassistant.application.port.output.topic.*
-import com.homeassistant.application.port.output.memory.write.IdempotentMemoryProposal
-import com.homeassistant.application.port.input.group.*
-import com.homeassistant.application.usecase.group.*
+import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingGenerator
+import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
+import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
+import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
+import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.memory.MemoryAccess
-import com.homeassistant.domain.memory.MemoryProposal
-import com.homeassistant.domain.topic.TopicCentroid
+import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.*
@@ -27,38 +37,39 @@ import kotlin.test.*
 
 class GroupRepositoryTest {
     private val space = EmbeddingSpace("test", "passage:v1")
-    private val vector = TopicVector.normalized(listOf(1.0, 0.0))
+    private val vector = ComponentVector.normalized(listOf(1.0, 0.0))
 
-    @Test fun `create attach split restart and repeat preserve all topic state`() = withDatabase { db, path ->
+    @Test
+    fun `create attach split restart and repeat preserve all component state`() = withDatabase { db, path ->
         val sources = SourceRecordRepositoryImpl(db)
-        val memories = MemoryRepository(db)
+        val episodes = EpisodeRepository(db)
         val source = SourceDescriptor("test", "private")
         val user = UserId("owner")
-        val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), MemoryAccess.restricted(listOf(user)))
+        val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
             .recordsToAnalyze.single()
-        val committed = memories.commit(user, (1..5).map { IdempotentMemoryProposal("m$it", MemoryProposal("fact $it", listOf(record.id))) },
+        val committed = episodes.commit(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id))
-        val topics = TopicRepository(db)
-        val ids = committed.map { topics.create(it.id, TopicCentroid.of(vector)) }.toSet()
-        val beforeTopics = topics.read(ids)
-        val beforeMemories = memories.getMemories(user)
+        val components = ComponentRepository(db)
+        val ids = committed.map { components.writeComponents(it.id, listOf("knowledge of ${it.content}")).single() }.toSet()
+        val beforeComponents = components.read(ids)
+        val beforeEpisodes = episodes.getEpisodes(user)
         val beforeSources = sources.findBySource(source)
         val first = service(db, 2).execute(3)
-        assertEquals(3, first.topics.size)
-        assertTrue(first.topics.all { it.outcome is TopicOrganizationOutcome.Organized })
-        assertTrue(first.topics.any { (it.outcome as TopicOrganizationOutcome.Organized).split is GroupSplit.Divided })
+        assertEquals(3, first.components.size)
+        assertTrue(first.components.all { it.outcome is ComponentOrganizationOutcome.Organized })
+        assertTrue(first.components.any { (it.outcome as ComponentOrganizationOutcome.Organized).split is GroupSplit.Divided })
         val restarted = DatabaseFactory.init(path)
         val remaining = service(restarted, 2).execute(10)
-        assertEquals(2, remaining.topics.size)
-        assertTrue(remaining.topics.all { it.outcome is TopicOrganizationOutcome.Organized })
-        assertTrue(service(restarted, 2).execute(10).topics.isEmpty())
+        assertEquals(2, remaining.components.size)
+        assertTrue(remaining.components.all { it.outcome is ComponentOrganizationOutcome.Organized })
+        assertTrue(service(restarted, 2).execute(10).components.isEmpty())
         val snapshot = GroupRepository(restarted).snapshot()
-        assertEquals(ids, snapshot.groups.flatMap { it.group.topicIds }.toSet())
-        assertEquals(ids.size, snapshot.groups.sumOf { it.group.topicIds.size })
-        assertTrue(snapshot.groups.all { it.group.topicIds.size <= 2 })
+        assertEquals(ids, snapshot.groups.flatMap { it.group.componentIds }.toSet())
+        assertEquals(ids.size, snapshot.groups.sumOf { it.group.componentIds.size })
+        assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(snapshot.groups, GroupRepository(restarted).groups())
-        assertEquals(beforeTopics, topics.read(ids))
-        assertEquals(beforeMemories, memories.getMemories(user))
+        assertEquals(beforeComponents, components.read(ids))
+        assertEquals(beforeEpisodes, episodes.getEpisodes(user))
         assertEquals(beforeSources, sources.findBySource(source))
     }
 
@@ -70,8 +81,8 @@ class GroupRepositoryTest {
         assertEquals(GroupWriteResult.AlreadyApplied(listOf(id)), repository.apply(create))
         repository.apply(change("attach", mapOf(id to 1), setOf(2), listOf(setOf(1, 2)), embeddings, id))
         assertEquals(GroupWriteResult.AlreadyApplied(listOf(id)), repository.apply(create))
-        assertFailsWith<IllegalArgumentException> { repository.apply(create.copy(incomingTopicIds = setOf(2))) }
-        assertEquals(setOf(1, 2), repository.snapshot().groups.single().group.topicIds)
+        assertFailsWith<IllegalArgumentException> { repository.apply(create.copy(incomingComponentIds = setOf(2))) }
+        assertEquals(setOf(1, 2), repository.snapshot().groups.single().group.componentIds)
     }
 
     @Test fun `stale revision and already assigned incoming reject without reserving operation keys`() = withDatabase { db, _ ->
@@ -98,7 +109,7 @@ class GroupRepositoryTest {
         assertEquals(GroupWriteResult.AlreadyApplied(listOf(first)), repository.apply(merge))
     }
 
-    @Test fun `a single-topic group merges into its neighbor and is deleted`() = withDatabase { db, _ ->
+    @Test fun `a single-component group merges into its neighbor and is deleted`() = withDatabase { db, _ ->
         val embeddings = seed(db, 3)
         val repository = GroupRepository(db)
         val pair = assertIs<GroupWriteResult.Applied>(repository.apply(change("a", incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings))).groupIds.single()
@@ -110,7 +121,7 @@ class GroupRepositoryTest {
         assertEquals(listOf(Group(pair, setOf(1, 2, 3))), repository.snapshot().groups.map { it.group })
     }
 
-    @Test fun `missing stolen omitted topics and incorrect centroid roll back receipt and groups`() = withDatabase { db, _ ->
+    @Test fun `missing stolen omitted components and incorrect centroid roll back receipt and groups`() = withDatabase { db, _ ->
         val embeddings = seed(db, 3)
         val repository = GroupRepository(db)
         val id = assertIs<GroupWriteResult.Applied>(repository.apply(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings))).groupIds.single()
@@ -119,13 +130,13 @@ class GroupRepositoryTest {
             change("steal", incoming = setOf(2), parts = listOf(setOf(1, 2)), embeddings = embeddings),
             change("extra", incoming = setOf(2), parts = listOf(setOf(2, 3)), embeddings = embeddings),
             change("wrong-centroid", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = embeddings).let {
-                it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = TopicVector.normalized(listOf(0.0, 1.0))) })
+                it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = ComponentVector.normalized(listOf(0.0, 1.0))) })
             },
             change("missing", incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
-                mapOf(999 to TopicEmbedding(PendingTopic(999, "1").embeddingKey(space), vector))),
+                mapOf(999 to ComponentEmbedding(PendingComponent(999, "1").embeddingKey(space), vector))),
         )
         invalid.forEach { assertFailsWith<IllegalArgumentException> { repository.apply(it) } }
-        assertEquals(setOf(1), repository.snapshot().groups.single().group.topicIds)
+        assertEquals(setOf(1), repository.snapshot().groups.single().group.componentIds)
         assertEquals(1L, transaction(db) { GroupReceiptTable.selectAll().count() })
     }
 
@@ -134,7 +145,7 @@ class GroupRepositoryTest {
         val repository = GroupRepository(db)
         val id = assertIs<GroupWriteResult.Applied>(repository.apply(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings))).groupIds.single()
         val before = repository.snapshot()
-        transaction(db) { exec("CREATE TRIGGER fail_group BEFORE INSERT ON topic_group_memberships BEGIN SELECT RAISE(ABORT, 'forced'); END") }
+        transaction(db) { exec("CREATE TRIGGER fail_group BEFORE INSERT ON component_group_memberships BEGIN SELECT RAISE(ABORT, 'forced'); END") }
         val attach = change("b", mapOf(id to 1), setOf(2), listOf(setOf(1, 2)), embeddings, id)
         assertFails { repository.apply(attach) }
         assertEquals(before, repository.snapshot())
@@ -143,7 +154,7 @@ class GroupRepositoryTest {
         assertIs<GroupWriteResult.Applied>(repository.apply(attach))
     }
 
-    @Test fun `concurrent assignment of one topic has one winner and one conflict`() = withDatabase { db, _ ->
+    @Test fun `concurrent assignment of one component has one winner and one conflict`() = withDatabase { db, _ ->
         val embeddings = seed(db, 1)
         val repository = GroupRepository(db)
         val start = CountDownLatch(1)
@@ -165,28 +176,39 @@ class GroupRepositoryTest {
         val embeddings = seed(db, 2)
         val repository = GroupRepository(db)
         repository.apply(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings))
-        val restarted = TopicEmbeddingRepository(DatabaseFactory.init(path))
+        val restarted = ComponentEmbeddingRepository(DatabaseFactory.init(path))
         assertEquals(embeddings.getValue(1), restarted.find(embeddings.getValue(1).key))
         // The first vector for a cache key wins even if another embedding request returns different coordinates.
-        assertEquals(embeddings.getValue(1), restarted.save(embeddings.getValue(1).copy(vector = TopicVector.normalized(listOf(0.0, 1.0)))))
-        val replacement = restarted.save(embeddings.getValue(2).let { it.copy(key = it.key.copy(space = EmbeddingSpace("new", "v1"))) })
+        assertEquals(embeddings.getValue(1), restarted.save(embeddings.getValue(1).copy(vector = ComponentVector.normalized(listOf(0.0, 1.0)))))
+        val replacement = restarted.save(embeddings.getValue(2).let { it.copy(key = it.key.copy(space = EmbeddingSpace(
+            "new",
+            "v1"
+        )
+        )) })
         assertFailsWith<GroupRebuildRequired> {
             repository.apply(change("mixed", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = mapOf(2 to replacement)))
         }
         assertEquals(1, repository.snapshot().groups.size)
     }
 
-    private fun seed(db: Database, count: Int): Map<Int, TopicEmbedding> {
+    private fun seed(db: Database, count: Int): Map<Int, ComponentEmbedding> {
         val user = UserId("owner")
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", "seed"), listOf(SourceRecordDraft("seed", "seed")),
-            MemoryAccess.restricted(listOf(user))).recordsToAnalyze.single()
-        val memories = MemoryRepository(db).commit(user, (1..count).map { IdempotentMemoryProposal("seed-$it", MemoryProposal("fact $it", listOf(record.id))) },
+            EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
+        val episodes = EpisodeRepository(db).commit(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id))
-        val topics = TopicRepository(db)
-        val store = TopicEmbeddingRepository(db)
-        return memories.associate { memory ->
-            val id = topics.create(memory.id, TopicCentroid.of(vector))
-            id to store.save(TopicEmbedding(PendingTopic(id, "1").embeddingKey(space), vector))
+        val components = ComponentRepository(db)
+        val store = ComponentEmbeddingRepository(db)
+        return episodes.associate { episode ->
+            val statement = "knowledge of ${episode.content}"
+            val id = components.writeComponents(episode.id, listOf(statement)).single()
+            id to store.save(
+                ComponentEmbedding(
+                    PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(
+                        space
+                    ), vector
+                )
+            )
         }
     }
 
@@ -195,23 +217,29 @@ class GroupRepositoryTest {
         expected: Map<Int, Long> = emptyMap(),
         incoming: Set<Int>,
         parts: List<Set<Int>>,
-        embeddings: Map<Int, TopicEmbedding>,
+        embeddings: Map<Int, ComponentEmbedding>,
         retain: Int? = null,
     ): GroupChange = GroupChange(key, expected, incoming, parts.mapIndexed { index, ids ->
-        ResultingGroup(if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created("$index"),
-            ids, GroupGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector }))
+        ResultingGroup(
+            if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created("$index"),
+            ids, GroupGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector })
+        )
     }, embeddings.filterKeys { it in parts.flatten() })
 
-    private fun service(db: Database, maxTopics: Int): OrganizePendingTopicsService {
+    private fun service(db: Database, maxComponents: Int): OrganizePendingComponentsService {
         val repository = GroupRepository(db)
-        val generator = object : TopicEmbeddingGenerator {
+        val generator = object : ComponentEmbeddingGenerator {
             override val space = this@GroupRepositoryTest.space
-            override fun generate(topic: PendingTopic) = vector
+            override fun generate(component: PendingComponent) = vector
         }
-        val settings = GroupPolicySettings(maxTopics = maxTopics)
-        return OrganizePendingTopicsService(repository, OrganizeTopic(repository, repository,
-            PrepareTopicEmbedding(generator, TopicEmbeddingRepository(db)),
-            GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))))
+        val settings = GroupPolicySettings(maxComponents = maxComponents)
+        return OrganizePendingComponentsService(
+            repository, OrganizeComponent(
+                repository, repository,
+                PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
+                GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
+            )
+        )
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

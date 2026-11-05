@@ -3,10 +3,10 @@ package com.homeassistant.adapter.outbound.persistence.repo.identity
 import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.port.output.identity.PasswordHash
-import com.homeassistant.application.port.output.identity.StoredCredential
-import com.homeassistant.application.port.output.identity.StoredSession
-import com.homeassistant.application.port.output.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.PasswordHash
+import com.homeassistant.application.port.outbound.identity.StoredCredential
+import com.homeassistant.application.port.outbound.identity.StoredSession
+import com.homeassistant.application.port.outbound.identity.UserRegistration
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId

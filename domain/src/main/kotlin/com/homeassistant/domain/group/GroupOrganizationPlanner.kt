@@ -2,7 +2,7 @@ package com.homeassistant.domain.group
 
 data class GroupOrganizationPlan(
     val consumedGroupIds: Set<Int>,
-    val partition: TopicPartition,
+    val partition: ComponentPartition,
     val split: GroupSplit,
 )
 
@@ -12,21 +12,21 @@ class GroupOrganizationPlanner(
     private val splitting: GroupSplitPolicy,
 ) {
     fun plan(
-        incomingTopicId: Int,
+        incomingComponentId: Int,
         groups: List<Group>,
-        centroids: Map<Int, TopicVector>,
-        vectors: Map<Int, TopicVector>,
+        centroids: Map<Int, ComponentVector>,
+        vectors: Map<Int, ComponentVector>,
     ): GroupOrganizationPlan {
-        require(groups.none { incomingTopicId in it.topicIds }) { "incoming topic is already grouped" }
-        val consumed = when (val choice = placement.decide(vectors.getValue(incomingTopicId), centroids)) {
+        require(groups.none { incomingComponentId in it.componentIds }) { "incoming component is already grouped" }
+        val consumed = when (val choice = placement.decide(vectors.getValue(incomingComponentId), centroids)) {
             GroupPlacement.Create -> emptySet()
             is GroupPlacement.Attach -> setOf(choice.groupId)
         }
-        val target = groups.filter { it.id in consumed }.flatMap { it.topicIds }.toSet() + incomingTopicId
-        val surrounding = groups.filter { it.id !in consumed }.map { it.topicIds }
+        val target = groups.filter { it.id in consumed }.flatMap { it.componentIds }.toSet() + incomingComponentId
+        val surrounding = groups.filter { it.id !in consumed }.map { it.componentIds }
         val split = splitting.decide(target, surrounding, vectors)
         val partition = when (split) {
-            GroupSplit.Unchanged -> TopicPartition(listOf(target))
+            GroupSplit.Unchanged -> ComponentPartition(listOf(target))
             is GroupSplit.Divided -> split.partition
         }.canonical()
         return GroupOrganizationPlan(consumed, partition, split)

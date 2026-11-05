@@ -2,15 +2,14 @@ package com.homeassistant.adapter.outbound.persistence.repo.identity
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.UserCredentialTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.UserTable
-import com.homeassistant.application.port.output.identity.PasswordHash
-import com.homeassistant.application.port.output.identity.StoredCredential
-import com.homeassistant.application.port.output.identity.UserCredentialStore
-import com.homeassistant.application.port.output.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.PasswordHash
+import com.homeassistant.application.port.outbound.identity.StoredCredential
+import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserRegistration
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.JoinType
-import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.transactions.transaction

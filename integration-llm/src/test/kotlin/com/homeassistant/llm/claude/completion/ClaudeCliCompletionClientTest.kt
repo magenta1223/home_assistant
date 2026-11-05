@@ -2,7 +2,7 @@ package com.homeassistant.llm.claude.completion
 
 import com.homeassistant.llm.claude.cli.ClaudeProcessOutput
 import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
-import com.homeassistant.llm.completion.CompletionImage
+import com.homeassistant.llm.CompletionImage
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import java.nio.file.Path
@@ -26,7 +26,7 @@ class ClaudeCliCompletionClientTest {
                 """{ "type": "object" }""",
             )
 
-            assertEquals("""{"memories":[]}""", response)
+            assertEquals("""{"episodes":[]}""", response)
             val command = runner.command
             assertEquals("claude-test", command.first())
             assertEquals("claude-opus-5-5", command.after("--model"))
@@ -104,6 +104,6 @@ class ClaudeCliCompletionClientTest {
     }
 
     private companion object {
-        const val RESULT = """{"type":"result","is_error":false,"result":"","structured_output":{"memories":[]}}"""
+        const val RESULT = """{"type":"result","is_error":false,"result":"","structured_output":{"episodes":[]}}"""
     }
 }

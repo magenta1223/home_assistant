@@ -53,11 +53,11 @@ fun Application.module() {
     try {
         services.start()
         configureRoutes(
-            memoryAnalysis = services.memoryAnalysis,
+            episodeAnalysis = services.episodeAnalysis,
             httpApiKeys = httpApiKeys,
             users = services.users,
             authentication = services.authentication,
-            memoryConversation = services.memoryConversation,
+            chatService = services.chatService,
             readiness = { services.isReady },
         )
     } catch (failure: Exception) {

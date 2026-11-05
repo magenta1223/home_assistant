@@ -28,9 +28,9 @@ Bracket export의 날짜 구분자가 message 시각에 결합되지 않아 날�
 ## 사용자에게 보이는 변화
 
 - 파일명만 바꾼 같은 Kakao export는 다시 저장되지 않는다.
-- bracket export memory 분석 입력에 실제 날짜가 보존된다.
+- bracket export episode 분석 입력에 실제 날짜가 보존된다.
 - 이전 export에 새 메시지가 추가된 증분 업로드는 직전 대화 문맥을 참고하되 신규·재시도 record만
-  memory evidence로 저장한다.
+  episode evidence로 저장한다.
 - 큰 export도 Codex chunk 호출과 merge 입력 크기에 상한이 있다.
 
 ## 검증 결과

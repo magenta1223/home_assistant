@@ -1,37 +1,37 @@
 package com.homeassistant.domain.group
 
 class GroupSplitCandidateGenerator(private val settings: GroupPolicySettings) {
-    fun generate(topics: Map<Int, TopicVector>): List<TopicPartition> {
-        require(topics.isNotEmpty())
-        val connected = connectedComponents(topics).flatMap { bound(it, topics) }
-        val binary = bound(topics.keys, topics)
-        return listOf(TopicPartition(connected).canonical(), TopicPartition(binary).canonical()).distinct()
+    fun generate(components: Map<Int, ComponentVector>): List<ComponentPartition> {
+        require(components.isNotEmpty())
+        val connected = connectedComponents(components).flatMap { bound(it, components) }
+        val binary = bound(components.keys, components)
+        return listOf(ComponentPartition(connected).canonical(), ComponentPartition(binary).canonical()).distinct()
     }
 
-    private fun connectedComponents(topics: Map<Int, TopicVector>): List<Set<Int>> {
-        val remaining = topics.keys.toSortedSet()
-        val components = mutableListOf<Set<Int>>()
+    private fun connectedComponents(components: Map<Int, ComponentVector>): List<Set<Int>> {
+        val remaining = components.keys.toSortedSet()
+        val parts = mutableListOf<Set<Int>>()
         while (remaining.isNotEmpty()) {
-            val component = sortedSetOf(remaining.first())
+            val part = sortedSetOf(remaining.first())
             val queue = ArrayDeque<Int>()
             queue.add(remaining.first())
             remaining.remove(remaining.first())
             while (queue.isNotEmpty()) {
                 val current = queue.removeFirst()
                 val neighbors = remaining.filter {
-                    GroupGeometry.cosine(topics.getValue(current), topics.getValue(it)) >= settings.splitThreshold
+                    GroupGeometry.cosine(components.getValue(current), components.getValue(it)) >= settings.splitThreshold
                 }
                 remaining.removeAll(neighbors.toSet())
-                component.addAll(neighbors)
+                part.addAll(neighbors)
                 queue.addAll(neighbors)
             }
-            components.add(component)
+            parts.add(part)
         }
-        return components
+        return parts
     }
 
-    private fun bound(ids: Set<Int>, vectors: Map<Int, TopicVector>): List<Set<Int>> {
-        if (ids.size <= settings.maxTopics) return listOf(ids)
+    private fun bound(ids: Set<Int>, vectors: Map<Int, ComponentVector>): List<Set<Int>> {
+        if (ids.size <= settings.maxComponents) return listOf(ids)
         val sorted = ids.sorted()
         val seeds = sorted.flatMapIndexed { index, a -> sorted.drop(index + 1).map { b -> a to b } }
             .minBy { (a, b) -> GroupGeometry.cosine(vectors.getValue(a), vectors.getValue(b)) }

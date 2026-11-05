@@ -12,7 +12,7 @@
 이번 작업의 목표는 두 가지뿐이다.
 
 1. 현재 Slack 기능은 유지하되 더 이상 추가 개발하지 않도록 deprecated 상태로 표시한다.
-2. knowledge 주입과 memory conversation을 인증된 사용자 기준으로 HTTP에서 실행할 수 있게 한다.
+2. knowledge 주입과 episode conversation을 인증된 사용자 기준으로 HTTP에서 실행할 수 있게 한다.
 
 웹페이지 변경, Tailscale, PWA, Web Push와 Notification Service는 다루지 않는다. 웹페이지가 HTTP API를
 호출하는 작업은 이 계획이 끝난 다음 별도로 진행한다.
@@ -22,11 +22,11 @@
 - `/api/knowledge/users`와 `/api/knowledge/import/analyze`는 이미 Bearer 인증을 사용한다.
 - Bearer token은 `HTTP_MEMBER_API_KEYS_JSON`을 통해 application `UserId`로 변환된다.
 - knowledge import의 caller는 request body가 아니라 인증 principal에서 결정된다.
-- `MemoryConversation` application input port와 10분 session lease는 이미 구현되어 있다.
-- memory conversation을 호출하는 실제 inbound adapter는 현재 Slack뿐이다.
+- `EpisodeConversation` application input port와 10분 session lease는 이미 구현되어 있다.
+- episode conversation을 호출하는 실제 inbound adapter는 현재 Slack뿐이다.
 
 따라서 새 인증 체계나 새 conversation use case를 만들 필요는 없다. 기존 HTTP principal과
-`MemoryConversation`을 연결하면 된다.
+`EpisodeConversation`을 연결하면 된다.
 
 ## 1. Slack 개발 동결
 
@@ -76,15 +76,15 @@ Bearer token
 - configured HTTP user가 등록 사용자인지 startup에서 검증한다.
 - caller 위조, 미등록 사용자와 PUBLIC/RESTRICTED audience 회귀 test를 보강한다.
 
-source의 `allowedUserIds`는 Memory 열람 범위이므로 계속 request body로 받는다. 이것은 knowledge를
+source의 `allowedUserIds`는 Episode 열람 범위이므로 계속 request body로 받는다. 이것은 knowledge를
 주입하는 caller의 identity와 별개다.
 
-## 4. Memory conversation HTTP route
+## 4. Episode conversation HTTP route
 
 다음 endpoint를 추가한다.
 
 ```http
-POST /api/memory/conversation
+POST /api/episode/conversation
 Authorization: Bearer <token>
 Content-Type: application/json
 
@@ -115,7 +115,7 @@ client는 `UserId`, participant, scope나 Codex thread ID를 전달할 수 없�
 - 잘못된 UUID, 빈 질문 또는 과도한 request: `400 Bad Request`
 - 인증 실패: `401 Unauthorized`
 
-기존 `MemoryConversationResult`를 그대로 사용한다. `AnswerReady`는 `200`, `AlreadyHandled`는 `409`,
+기존 `EpisodeConversationResult`를 그대로 사용한다. `AnswerReady`는 `200`, `AlreadyHandled`는 `409`,
 `Failed`는 `503`으로 adapter에서 변환한다. 처리 중 상태를 더 세분화하기 위해 application 계약을
 변경하지 않는다.
 
@@ -134,10 +134,10 @@ client는 `UserId`, participant, scope나 Codex thread ID를 전달할 수 없�
 - 인증 principal과 audience 분리 test 추가
 - verify: 등록/미등록 사용자, caller 위조와 ACL test 통과
 
-### 3. HTTP memory conversation
+### 3. HTTP episode conversation
 
-- `ApplicationServices`에서 기존 `MemoryConversation?` 노출
-- `MemoryConversationRoutes`와 route test 추가
+- `ApplicationServices`에서 기존 `EpisodeConversation?` 노출
+- `EpisodeConversationRoutes`와 route test 추가
 - `AppRoutes`에서 기존 Bearer 인증 아래 route 연결
 - verify: 사용자별 ACL/session 격리, request dedup, 10분 lease와 unavailable runtime test 통과
 
@@ -153,8 +153,8 @@ client는 `UserId`, participant, scope나 Codex thread ID를 전달할 수 없�
 - 새 Slack 기능 또는 구조 개선 계획이 활성 상태에 남아 있지 않다.
 - 모든 HTTP caller가 Bearer principal의 등록된 `UserId`로 해석된다.
 - knowledge import caller는 request body로 위조할 수 없다.
-- 인증 사용자가 HTTP에서 자신의 ACL로 memory conversation을 수행한다.
-- HTTP 사용자 사이에 restricted Memory나 conversation thread가 섞이지 않는다.
+- 인증 사용자가 HTTP에서 자신의 ACL로 episode conversation을 수행한다.
+- HTTP 사용자 사이에 restricted Episode나 conversation thread가 섞이지 않는다.
 - 같은 request ID가 중복 Codex turn을 만들지 않는다.
 - HTTP conversation도 10분 idle lease를 지킨다.
 - 기존 Slack 기능과 전체 build가 통과한다.
@@ -174,9 +174,9 @@ client는 `UserId`, participant, scope나 Codex thread ID를 전달할 수 없�
 
 - Slack package에 FROZEN README를 추가하고 `SlackRuntimeFactory`를 `@Deprecated(WARNING)`로 표시했다.
 - 기존 Bearer principal과 등록 application 사용자의 일치를 route 구성 시 검증한다.
-- `POST /api/memory/conversation`을 추가하고 사용자 identity, request key와 결과 mapping을 HTTP adapter가
+- `POST /api/episode/conversation`을 추가하고 사용자 identity, request key와 결과 mapping을 HTTP adapter가
   담당하게 했다.
-- `ApplicationServices`에는 기존 `MemoryConversation?`을 route로 전달하는 wiring만 추가했다.
+- `ApplicationServices`에는 기존 `EpisodeConversation?`을 route로 전달하는 wiring만 추가했다.
 - application, domain과 adapter-outbound 계약은 변경하지 않았다.
 - `./gradlew test`와 `./gradlew build`가 통과했다.
 
@@ -189,14 +189,14 @@ token 값과 사용자 mapping은 저장소에 commit하지 않는다.
 - production HTTPS에서 두 token의 knowledge API 인증, 무인증 차단과 conversation route를 smoke test했다.
 - 원래 제외 범위였던 웹 UI는 후속 사용자 요청으로 `/conversation` 페이지에 별도 구현했다.
 - UI는 token을 브라우저 저장소에 보존하지 않고, client UUID와 질문만 기존
-  `/api/memory/conversation`에 전송한다.
+  `/api/episode/conversation`에 전송한다.
 - `/knowledge`와 `/conversation` 사이에 이동 링크를 추가했다.
 - route test와 전체 `test`, `build`, production 배포와 Tailnet HTTPS smoke test가 통과했다.
 
 ## 사용자에게 보이는 변화
 
 - 등록 사용자는 Slack 없이 `/knowledge`에서 지식을 입력하고 `/conversation`에서 자신의 ACL로
-  Memory를 조회할 수 있다.
+  Episode를 조회할 수 있다.
 - 인증 token은 브라우저 저장소에 남지 않으며 사용자별 conversation과 10분 idle lease가 유지된다.
 
 ## 남은 제약

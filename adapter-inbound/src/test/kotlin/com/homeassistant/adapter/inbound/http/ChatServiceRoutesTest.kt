@@ -7,7 +7,7 @@ import com.homeassistant.application.port.inbound.chatservice.ChatService
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId

@@ -1,10 +1,9 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import io.ktor.client.request.get
 import io.ktor.http.HttpStatusCode
-import io.ktor.server.application.application
 import io.ktor.server.application.install
 import io.ktor.server.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.server.routing.routing

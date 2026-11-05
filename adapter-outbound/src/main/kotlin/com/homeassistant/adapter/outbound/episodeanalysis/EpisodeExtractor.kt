@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.episodeanalysis
 
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.llm.CompletionClient
-import com.homeassistant.common.json.JsonSerializer.encodeToString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.encodeToString
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord

@@ -4,7 +4,7 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalys
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser

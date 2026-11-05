@@ -1,10 +1,9 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.adapter.outbound.embedding.TextEmbedder
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import org.slf4j.LoggerFactory
 import java.net.URI
 import java.net.http.HttpClient

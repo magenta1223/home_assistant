@@ -4,7 +4,7 @@ import com.homeassistant.adapter.inbound.http.configureRoutes
 import com.homeassistant.adapter.inbound.http.HttpApiKeyConfig
 import com.homeassistant.app.services.ApplicationServicesFactory
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationStopped

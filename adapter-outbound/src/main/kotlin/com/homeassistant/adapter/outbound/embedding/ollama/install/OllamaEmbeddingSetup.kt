@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.embedding.ollama.install
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEndpoint
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaServerRuntime
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
 import com.homeassistant.configuration.AppConfig
 import kotlinx.serialization.Serializable
 import java.net.URI

@@ -1,8 +1,9 @@
 package com.homeassistant.adapter.outbound.episodeanalysis
 
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
-import com.homeassistant.common.json.JsonSerializer.encodeToString
-import com.homeassistant.common.json.JsonSerializer.parseToJsonElement
+import com.homeassistant.infrastructure.serialization.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.encodeToString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.parseToJsonElement
 import kotlinx.schema.Schema
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.SerialDescription
@@ -48,7 +49,7 @@ internal data class EpisodeLlmResponse(
 @OptIn(ExperimentalSerializationApi::class)
 internal object EpisodeAnalysisOutputContract {
     val schema = SerializationClassJsonSchemaGenerator(
-        json = com.homeassistant.common.json.JsonSerializer.json,
+        json = JsonSerializer.json,
         jsonSchemaConfig = JsonSchemaConfig.Strict,
     )
         .generateSchemaString(EpisodeAnalysisLlmResponse.serializer().descriptor)

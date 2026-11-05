@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.reference
 
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceReferenceDraft
 import com.homeassistant.llm.CompletionClient

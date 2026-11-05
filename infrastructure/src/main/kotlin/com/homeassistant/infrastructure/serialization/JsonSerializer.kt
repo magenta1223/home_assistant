@@ -1,14 +1,13 @@
-package com.homeassistant.common.json
+package com.homeassistant.infrastructure.serialization
 
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 @OptIn(ExperimentalSerializationApi::class)
 object JsonSerializer {

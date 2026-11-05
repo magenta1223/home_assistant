@@ -24,11 +24,11 @@ tasks.register<JavaExec>("setupEmbedding") {
 dependencies {
     implementation(project(":adapter-inbound"))
     implementation(project(":adapter-outbound"))
-    implementation(project(":common"))
     implementation(project(":configuration"))
     implementation(project(":application"))
     implementation(project(":domain"))
     implementation(project(":integration-llm"))
+    implementation(project(":infrastructure"))
 
     // Ktor server
     implementation(libs.ktor.server.core)

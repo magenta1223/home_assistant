@@ -5,7 +5,7 @@ import com.homeassistant.llm.CompletionImage
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import java.util.concurrent.atomic.AtomicInteger

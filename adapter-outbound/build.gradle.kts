@@ -7,9 +7,10 @@ dependencies {
     api(project(":application"))
     api(project(":domain"))
 
-    implementation(project(":common"))
     implementation(project(":configuration"))
     implementation(project(":integration-llm"))
+    implementation(project(":infrastructure"))
+
 
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.kotlinx.coroutines.core)

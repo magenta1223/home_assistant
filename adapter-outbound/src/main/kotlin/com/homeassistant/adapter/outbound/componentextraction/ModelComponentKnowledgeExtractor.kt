@@ -2,8 +2,8 @@ package com.homeassistant.adapter.outbound.componentextraction
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
-import com.homeassistant.common.json.JsonSerializer.decodeFromString
-import com.homeassistant.common.json.JsonSerializer.encodeToString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
+import com.homeassistant.infrastructure.serialization.JsonSerializer.encodeToString
 import com.homeassistant.llm.CompletionClient
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable

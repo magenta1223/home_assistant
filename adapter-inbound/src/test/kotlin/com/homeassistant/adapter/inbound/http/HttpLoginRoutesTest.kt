@@ -11,7 +11,7 @@ import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserRegistration
 import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
-import com.homeassistant.common.json.JsonSerializer
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser

@@ -12,7 +12,8 @@ import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFa
 import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
 import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
-import com.homeassistant.application.usecase.contextprovider.ContextProvider
+import com.homeassistant.application.usecase.contextprovider.ContextAssembler
+import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
@@ -110,7 +111,7 @@ object ApplicationServicesFactory {
             )
             ChatServiceImpl(
                 sessions = repositories.episodeConversationSessions,
-                contextProvider = ContextProvider(componentSearch, episodeSearch),
+                contextProvider = ContextAssembler(listOf(MemoryContextProvider(componentSearch, episodeSearch))),
                 chatGateway = it,
             )
         }

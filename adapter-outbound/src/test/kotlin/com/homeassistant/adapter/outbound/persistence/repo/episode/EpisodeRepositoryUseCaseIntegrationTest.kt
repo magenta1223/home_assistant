@@ -10,7 +10,8 @@ import com.homeassistant.application.usecase.contextprovider.component.Component
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.contextprovider.ContextProvider
+import com.homeassistant.application.usecase.contextprovider.ContextAssembler
+import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -58,7 +59,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 stores.episodes, texts, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
             )
 
-            val conversationContext = ContextProvider(search, episodeSearch).context(member, "question")
+            val conversationContext = ContextAssembler(listOf(MemoryContextProvider(search, episodeSearch))).context(member, "question")
 
             assertTrue(conversationContext.hasMatches)
             assertTrue(conversationContext.reference.contains(publicEpisode.content))

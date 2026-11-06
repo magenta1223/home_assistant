@@ -1,7 +1,7 @@
 package com.homeassistant.application.usecase.contextprovider.component
 
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.domain.group.GroupGeometry
@@ -24,7 +24,7 @@ import com.homeassistant.domain.retrieval.BackboneSelection
  */
 class ComponentSearcher(
     private val components: ComponentRepository,
-    private val groups: GroupReader,
+    private val groups: GroupRepository,
     private val queries: EmbeddingGenerator,
     private val episodes: EpisodeRepository,
     private val componentEmbeddings: PrepareComponentEmbedding,
@@ -39,7 +39,7 @@ class ComponentSearcher(
         if (vectors.isEmpty()) return emptyList()
         val question = queries.embedQuery(query.trim())
         val sources = sourcesOf(userId, readable)
-        val kept = backbone.select(candidateComponents(question, vectors) intersect sources.keys, vectors, question,
+        val kept = backbone.select(candidateComponents(userId, question, vectors) intersect sources.keys, vectors, question,
             settings.componentLimit)
         return matches(kept, sources, vectors, question)
     }
@@ -48,14 +48,13 @@ class ComponentSearcher(
      * The readable Components of the backbone candidate Groups, and the nearest [ComponentSearchSettings.componentPool]
      * readable Components.
      */
-    private fun candidateComponents(question: ComponentVector, vectors: Map<Int, ComponentVector>): Set<Int> {
-        val byId = groups.groups().associateBy { it.group.id }
+    private fun candidateComponents(userId: UserId, question: ComponentVector, vectors: Map<Int, ComponentVector>): Set<Int> {
+        val byId = groups.findVisibleTo(userId).associateBy { it.group.id }
         val groupCentroids = byId.mapValues { it.value.centroid }
         val candidates = candidateGroups(question, groupCentroids)
         val backboneGroups = backbone.select(candidates, groupCentroids, question, settings.groupLimit)
         return backboneGroups
-            .flatMap { byId.getValue(it).group.componentIds }
-            .filter { it in vectors }.toSet() +
+            .flatMap { byId.getValue(it).group.componentIds }.toSet() +
                 nearest(question, vectors, settings.componentPool)
     }
 

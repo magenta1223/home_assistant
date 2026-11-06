@@ -54,8 +54,7 @@ object ApplicationServicesFactory {
             repositories.componentEmbeddings,
         )
         val organizeComponent = OrganizeComponentIntoGroups(
-            repositories.groupSnapshots,
-            repositories.groupChanges,
+            repositories.groups,
             componentEmbeddings,
             GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
         )
@@ -65,7 +64,7 @@ object ApplicationServicesFactory {
             componentEmbeddings,
             ComponentKnowledgeExtractorFactory.create(completionClient),
         )
-        val mergeSmallGroups = MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings))
+        val mergeSmallGroups = MergeSmallGroups(repositories.groups, GroupMergePolicy(groupSettings))
         val updateHierarchy = UpdateMemoryHierarchyService(
             repositories.componentAssignmentOutbox,
             repositories.pendingComponents,

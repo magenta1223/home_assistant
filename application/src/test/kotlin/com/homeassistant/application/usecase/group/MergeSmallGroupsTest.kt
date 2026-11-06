@@ -1,14 +1,14 @@
 package com.homeassistant.application.usecase.group
 
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
@@ -39,16 +39,18 @@ class MergeSmallGroupsTest {
         assertEquals(3, store.writes.map { it.operationKey }.distinct().size)
     }
 
-    private fun merger(store: Store) = MergeSmallGroups(store, store, GroupMergePolicy(GroupPolicySettings()))
+    private fun merger(store: Store) = MergeSmallGroups(store, GroupMergePolicy(GroupPolicySettings()))
 
-    private inner class Store(initial: Map<Int, Set<Int>>) : GroupSnapshotReader, GroupChangeWriter {
+    private inner class Store(initial: Map<Int, Set<Int>>) : GroupRepository {
         val groups = initial.toMutableMap()
         private val revisions = initial.keys.associateWith { 1L }.toMutableMap()
         var conflicts = 0
         var reads = 0
         val writes = mutableListOf<GroupChange>()
 
-        override fun snapshot(): GroupSnapshot {
+        override fun findVisibleTo(userId: UserId) = error("merging never searches Groups")
+
+        override fun findSnapshot(): GroupSnapshot {
             reads++
             val embeddings = groups.values.flatten().associateWith {
                 ComponentEmbedding(
@@ -67,9 +69,9 @@ class MergeSmallGroupsTest {
             }, embeddings)
         }
 
-        override fun apply(change: GroupChange): GroupWriteResult {
+        override fun save(change: GroupChange): List<Group> {
             writes += change
-            if (conflicts-- > 0) return GroupWriteResult.Conflict
+            if (conflicts-- > 0) throw GroupChangeConflict("lost")
             change.expectedGroups.keys.forEach { groups.remove(it); revisions.remove(it) }
             val ids = change.resultingGroups.map { result ->
                 val id = (result.target as GroupTarget.Existing).id
@@ -77,7 +79,7 @@ class MergeSmallGroupsTest {
                 revisions[id] = change.expectedGroups.getValue(id) + 1
                 id
             }
-            return GroupWriteResult.Applied(ids)
+            return ids.map { Group(it, groups.getValue(it)) }
         }
     }
 }

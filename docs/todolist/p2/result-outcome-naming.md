@@ -13,7 +13,7 @@
   - ID와 Outcome의 짝: `EpisodeAssignmentResult`, `ComponentOrganizationResult`
   - 호출 하나의 묶음: `EpisodeOrganizationResult`, `EpisodeAnalysisResult`, `SearchEpisodesResult`, `SourceRecordSaveResult`,
     `EpisodeIndexingRunResult`
-  - Outcome과 같은 의미의 sealed 변형: `GroupOrganizationResult`, `GroupWriteResult`, `ComponentDescriptionResult`,
+  - Outcome과 같은 의미의 sealed 변형: `GroupOrganizationResult`, `ComponentDescriptionResult`,
     `ConversationTurnResult`, `EpisodeConversationResult`, `KakaoChatSyncResult`
 
 ## 목표

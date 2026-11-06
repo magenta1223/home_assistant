@@ -2,6 +2,7 @@ package com.homeassistant.application.usecase
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
@@ -20,10 +21,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Compon
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
@@ -171,13 +169,12 @@ class UpdateMemoryHierarchyServiceTest {
             override fun findVisibleTo(userId: UserId) = (1..unplaced).map(::unplacedComponent)
             override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
         }
-        private val snapshots = object : GroupSnapshotReader {
-            override fun snapshot() = this@Fixture.snapshot
-        }
-        private val groupWriter = object : GroupChangeWriter {
-            override fun apply(change: GroupChange): GroupWriteResult {
+        private val groups = object : GroupRepository {
+            override fun findVisibleTo(userId: UserId) = error("organization never searches Groups")
+            override fun findSnapshot() = snapshot
+            override fun save(change: GroupChange): List<Group> {
                 groupWrites += change
-                return GroupWriteResult.Applied(listOf(groupWrites.size))
+                return change.resultingGroups.map { Group(groupWrites.size, it.componentIds) }
             }
         }
         private val settings = GroupPolicySettings()
@@ -189,12 +186,11 @@ class UpdateMemoryHierarchyServiceTest {
             },
             assignEpisode = assignEpisode,
             organizeComponent = OrganizeComponentIntoGroups(
-                snapshots,
-                groupWriter,
+                groups,
                 PrepareComponentEmbedding(unplacedComponents, texts, ComponentCache()),
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)),
             ),
-            mergeSmallGroups = MergeSmallGroups(snapshots, groupWriter, GroupMergePolicy(settings)),
+            mergeSmallGroups = MergeSmallGroups(groups, GroupMergePolicy(settings)),
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
         )
 

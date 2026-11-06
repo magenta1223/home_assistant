@@ -3,12 +3,11 @@ package com.homeassistant.application.usecase.memoryextraction.group
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
 import com.homeassistant.domain.group.*
@@ -19,8 +18,7 @@ import java.util.UUID
  * [maxAttempts] times when a concurrent change wins the write.
  */
 class OrganizeComponentIntoGroups(
-    private val snapshots: GroupSnapshotReader,
-    private val writer: GroupChangeWriter,
+    private val groups: GroupRepository,
     private val embeddings: PrepareComponentEmbedding,
     private val planner: GroupOrganizationPlanner,
     private val maxAttempts: Int = 3,
@@ -32,12 +30,12 @@ class OrganizeComponentIntoGroups(
      * @throws GroupRebuildRequired when stored Group vectors are outdated or come from another embedding space or dimension.
      */
     fun organize(component: PendingComponent): ComponentOrganizationOutcome {
-        val initial = snapshots.snapshot()
+        val initial = groups.findSnapshot()
         validateSpace(initial)
         if (initial.embeddings.containsKey(component.id)) return ComponentOrganizationOutcome.AlreadyOrganized
         val embedding = embeddings.prepare(component)
         repeat(maxAttempts) { attempt ->
-            val snapshot = if (attempt == 0) initial else snapshots.snapshot()
+            val snapshot = if (attempt == 0) initial else groups.findSnapshot()
             validateSpace(snapshot)
             if (snapshot.embeddings.containsKey(component.id)) return ComponentOrganizationOutcome.AlreadyOrganized
             validateDimension(snapshot, embedding)
@@ -45,11 +43,10 @@ class OrganizeComponentIntoGroups(
             val decision = planner.plan(component.id, snapshot.groups.map { it.group },
                 snapshot.groups.associate { it.group.id to it.centroid }, allEmbeddings.mapValues { it.value.vector })
             val change = changeFor(snapshot, embedding, decision)
-            when (val result = writer.apply(change)) {
-                is GroupWriteResult.Applied -> return ComponentOrganizationOutcome.Organized(result.groupIds, decision.split)
-                is GroupWriteResult.AlreadyApplied -> return ComponentOrganizationOutcome.Organized(result.groupIds, decision.split)
-                GroupWriteResult.Conflict -> Unit
-            }
+            runCatching { groups.save(change) }.fold(
+                onSuccess = { saved -> return ComponentOrganizationOutcome.Organized(saved.map { it.id }, decision.split) },
+                onFailure = { error -> if (error !is GroupChangeConflict) throw error },
+            )
         }
         return ComponentOrganizationOutcome.ConflictExhausted
     }

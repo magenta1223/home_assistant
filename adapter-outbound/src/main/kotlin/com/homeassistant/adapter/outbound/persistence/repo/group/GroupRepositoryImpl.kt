@@ -1,14 +1,15 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAccessCondition
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
@@ -17,8 +18,7 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class GroupRepository(private val db: Database) : PendingComponentSource, GroupReader, GroupSnapshotReader,
-    GroupChangeWriter {
+internal class GroupRepositoryImpl(private val db: Database) : PendingComponentSource, GroupRepository {
     override fun pending(limit: Int): List<PendingComponent> = transaction(db) {
         require(limit > 0)
         ComponentTable.selectAll().where {
@@ -31,9 +31,7 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         }
     }
 
-    override fun groups(): List<StoredGroup> = transaction(db) { storedGroups(GroupMembershipTable.selectAll().toList()) }
-
-    override fun snapshot(): GroupSnapshot = transaction(db) {
+    override fun findSnapshot(): GroupSnapshot = transaction(db) {
         val memberships = GroupMembershipTable.selectAll().toList()
         val keys = memberships.map { it[GroupMembershipTable.embeddingKey] }
         val embeddings = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList keys }
@@ -43,12 +41,20 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         GroupSnapshot(groups, embeddings)
     }
 
+    override fun findVisibleTo(userId: UserId): List<StoredGroup> = transaction(db) {
+        storedGroups(GroupMembershipTable.selectAll().where {
+            GroupMembershipTable.componentId inSubQuery ComponentTable.select(ComponentTable.id)
+                .where(ComponentRepositoryImpl.sourcedFrom(EpisodeAccessCondition.visibleTo(userId)))
+        }.toList())
+    }
+
+    /** The Groups of [memberships], each holding only its Components among them; a Group without one is left out. */
     private fun storedGroups(memberships: List<ResultRow>): List<StoredGroup> {
         val byGroup = memberships.groupBy { it[GroupMembershipTable.groupId] }
-        return GroupTable.selectAll().orderBy(GroupTable.id).map { row ->
+        return GroupTable.selectAll().where { GroupTable.id inList byGroup.keys }.orderBy(GroupTable.id).map { row ->
             StoredGroup(
                 Group(
-                    row[GroupTable.id], byGroup[row[GroupTable.id]].orEmpty()
+                    row[GroupTable.id], byGroup.getValue(row[GroupTable.id])
                     .map { it[GroupMembershipTable.componentId] }.toSet()
                 ), row[GroupTable.revision],
                 GroupStorageCodec.vector(row[GroupTable.centroid])
@@ -56,13 +62,12 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         }
     }
 
-    override fun apply(change: GroupChange): GroupWriteResult = try {
-        transaction(db) { applyAtomically(change) }
-    } catch (_: StaleGroupChange) {
-        GroupWriteResult.Conflict
+    override fun save(change: GroupChange): List<Group> = transaction(db) {
+        applyAtomically(change).zip(change.resultingGroups) { id, result -> Group(id, result.componentIds) }
     }
 
-    private fun applyAtomically(change: GroupChange): GroupWriteResult {
+    /** The ids of the resulting Groups; a change saved before returns the ids it was saved with. */
+    private fun applyAtomically(change: GroupChange): List<Int> {
         val request = GroupStorageCodec.request(change)
         // The first statement is a write: SQLite serializes writers before reading revisions.
         // A rejected change rolls this reservation back together with every other write.
@@ -74,7 +79,7 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         val receipt = GroupReceiptTable.selectAll().where { GroupReceiptTable.operationKey eq change.operationKey }.single()
         require(receipt[GroupReceiptTable.request] == request) { "operation key reused with different content" }
         if (receipt[GroupReceiptTable.groupIds].isNotEmpty()) {
-            return GroupWriteResult.AlreadyApplied(GroupStorageCodec.ids(receipt[GroupReceiptTable.groupIds]))
+            return GroupStorageCodec.ids(receipt[GroupReceiptTable.groupIds])
         }
         verifyRevisionAndPartition(change)
         verifyEmbeddings(change)
@@ -82,17 +87,17 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         GroupReceiptTable.update({ GroupReceiptTable.operationKey eq change.operationKey }) {
             it[groupIds] = GroupStorageCodec.ids(ids)
         }
-        return GroupWriteResult.Applied(ids)
+        return ids
     }
 
     private fun verifyRevisionAndPartition(change: GroupChange) {
         val revisions = GroupTable.selectAll().where { GroupTable.id inList change.expectedGroups.keys }
             .associate { it[GroupTable.id] to it[GroupTable.revision] }
-        if (revisions != change.expectedGroups) throw StaleGroupChange()
+        if (revisions != change.expectedGroups) throw concurrentChange()
         val consumed = GroupMembershipTable.selectAll().where { GroupMembershipTable.groupId inList revisions.keys }
             .map { it[GroupMembershipTable.componentId] }.toSet()
         val assignedIncoming = GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId inList change.incomingComponentIds }.any()
-        if (assignedIncoming) throw StaleGroupChange()
+        if (assignedIncoming) throw concurrentChange()
         require(consumed.intersect(change.incomingComponentIds).isEmpty())
         ComponentPartition(change.resultingGroups.map { it.componentIds }).requireConserves(consumed + change.incomingComponentIds)
         val components = ComponentTable.select(ComponentTable.id).where { ComponentTable.id inList change.embeddings.keys }
@@ -107,7 +112,7 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         require(stored == change.embeddings) { "expected immutable vectors are missing or changed" }
         val versions = ComponentTable.selectAll().where { ComponentTable.id inList stored.keys }
             .associate { it[ComponentTable.id] to ComponentEmbeddingRepository.version(it) }
-        if (stored.values.any { versions[it.key.componentId] != it.key.version }) throw StaleGroupChange()
+        if (stored.values.any { versions[it.key.componentId] != it.key.version }) throw concurrentChange()
         val activeKeys = GroupMembershipTable.selectAll().map { it[GroupMembershipTable.embeddingKey] }
         val active = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList activeKeys }
             .map { ComponentEmbeddingRepository.decode(it) }
@@ -150,5 +155,5 @@ internal class GroupRepository(private val db: Database) : PendingComponentSourc
         return ids
     }
 
-    private class StaleGroupChange : RuntimeException()
+    private fun concurrentChange() = GroupChangeConflict("a concurrent change updated the expected Groups")
 }

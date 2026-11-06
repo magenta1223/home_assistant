@@ -2,11 +2,10 @@ package com.homeassistant.application.usecase.memoryextraction.group
 
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.GroupMerge
@@ -19,8 +18,7 @@ import java.util.UUID
  * It must run after Group vectors were refreshed: scores from outdated Component vectors would merge the wrong Groups.
  */
 class MergeSmallGroups(
-    private val snapshots: GroupSnapshotReader,
-    private val writer: GroupChangeWriter,
+    private val groups: GroupRepository,
     private val policy: GroupMergePolicy,
     private val maxConflicts: Int = 3,
 ) {
@@ -35,20 +33,22 @@ class MergeSmallGroups(
         val outcomes = mutableListOf<GroupMergeOutcome>()
         var conflicts = 0
         while (true) {
-            val snapshot = snapshots.snapshot()
+            val snapshot = groups.findSnapshot()
             val merge = policy.decide(
                 snapshot.groups.map { it.group },
                 snapshot.groups.associate { it.group.id to it.centroid },
                 snapshot.embeddings.mapValues { it.value.vector },
             ) ?: break
-            when (writer.apply(changeFor(snapshot, merge))) {
-                is GroupWriteResult.Applied, is GroupWriteResult.AlreadyApplied ->
-                    outcomes += GroupMergeOutcome.Merged(merge.survivor, merge.absorbed)
-                GroupWriteResult.Conflict -> if (++conflicts == maxConflicts) {
-                    outcomes += GroupMergeOutcome.ConflictExhausted
-                    break
-                }
-            }
+            runCatching { groups.save(changeFor(snapshot, merge)) }.fold(
+                onSuccess = { outcomes += GroupMergeOutcome.Merged(merge.survivor, merge.absorbed) },
+                onFailure = { error ->
+                    if (error !is GroupChangeConflict) throw error
+                    if (++conflicts == maxConflicts) {
+                        outcomes += GroupMergeOutcome.ConflictExhausted
+                        break
+                    }
+                },
+            )
         }
         return outcomes
     }

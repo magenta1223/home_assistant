@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.component
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
-import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
+import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
@@ -54,7 +54,7 @@ class EpisodeComponentAssignmentTest {
             Component(2, "월세 이체일은 25일이다", rent, access),
         ), ComponentRepositoryImpl(db).findByIds(listOf(1, 2)))
         assertEquals(listOf(listOf(1), listOf(2)), first)
-        assertEquals(setOf(1, 2), GroupRepository(db).snapshot().groups.flatMap { it.group.componentIds }.toSet())
+        assertEquals(setOf(1, 2), GroupRepositoryImpl(db).findSnapshot().groups.flatMap { it.group.componentIds }.toSet())
 
         seedEpisodes(db, "second", "보일러 수리비 12만 원")
         vectors["보일러 수리비 12만 원"] = nearEast
@@ -116,7 +116,7 @@ class EpisodeComponentAssignmentTest {
         vectors: Map<String, ComponentVector>,
         extractor: ComponentKnowledgeExtractor,
     ): List<List<Int>> {
-        val groups = GroupRepository(db)
+        val groups = GroupRepositoryImpl(db)
         val store = ComponentRepositoryImpl(db)
         val texts = object : EmbeddingGenerator {
             override val space = this@EpisodeComponentAssignmentTest.space
@@ -137,7 +137,7 @@ class EpisodeComponentAssignmentTest {
             assign.assign(task.episode).also { outbox.markCompleted(task.outboxId, task.attempt, NOW) }
         }
         val organizer = OrganizeComponentIntoGroups(
-            groups, groups, componentEmbeddings,
+            groups, componentEmbeddings,
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
         groups.pending(10).forEach(organizer::organize)

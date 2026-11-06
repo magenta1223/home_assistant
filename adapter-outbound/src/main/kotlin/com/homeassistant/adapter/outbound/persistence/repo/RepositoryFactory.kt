@@ -10,13 +10,13 @@ import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionR
 import com.homeassistant.adapter.outbound.persistence.repo.component.EpisodeEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
+import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
-        val groups = GroupRepository(db)
+        val groups = GroupRepositoryImpl(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
@@ -24,8 +24,6 @@ object RepositoryFactory {
             pendingComponents = groups,
             componentEmbeddings = ComponentEmbeddingRepository(db),
             groups = groups,
-            groupSnapshots = groups,
-            groupChanges = groups,
             componentAssignmentOutbox = ComponentAssignmentOutboxRepository(db),
             episodeEmbeddings = EpisodeEmbeddingRepository(db),
             episodeConversationSessions = ChatSessionRepository(db),

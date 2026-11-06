@@ -10,9 +10,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 
 data class RepositoryStores(
@@ -21,9 +19,7 @@ data class RepositoryStores(
     val components: ComponentRepository,
     val pendingComponents: PendingComponentSource,
     val componentEmbeddings: ComponentEmbeddingStore,
-    val groups: GroupReader,
-    val groupSnapshots: GroupSnapshotReader,
-    val groupChanges: GroupChangeWriter,
+    val groups: GroupRepository,
     val componentAssignmentOutbox: ComponentAssignmentOutbox,
     val episodeEmbeddings: EpisodeEmbeddingStore,
     val episodeConversationSessions: ChatSessionStore,

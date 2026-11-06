@@ -12,6 +12,7 @@ import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepository {
@@ -42,9 +43,7 @@ internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepo
     private fun withIds(ids: Collection<Int>): List<Component> =
         if (ids.isEmpty()) emptyList() else components(ComponentTable.selectAll().where { ComponentTable.id inList ids })
 
-    private fun fromEpisodes(episodes: Op<Boolean>): List<Component> = components(ComponentTable.selectAll().where {
-        ComponentTable.sourceEpisodeId inSubQuery EpisodeTable.select(EpisodeTable.id).where(episodes)
-    })
+    private fun fromEpisodes(episodes: Op<Boolean>): List<Component> = components(ComponentTable.selectAll().where(sourcedFrom(episodes)))
 
     private fun components(query: Query): List<Component> {
         val rows = query.orderBy(ComponentTable.id).toList()
@@ -64,5 +63,11 @@ internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepo
             val visibility = EpisodeVisibility.valueOf(row[EpisodeTable.visibility])
             id to EpisodeAccess(visibility, if (visibility == EpisodeVisibility.PUBLIC) emptySet() else viewers[id].orEmpty().toSet())
         }
+    }
+
+    companion object {
+        /** Components whose source episode matches [episodes]; a Component's access is its source episode's. */
+        fun sourcedFrom(episodes: Op<Boolean>): Op<Boolean> =
+            ComponentTable.sourceEpisodeId inSubQuery EpisodeTable.select(EpisodeTable.id).where(episodes)
     }
 }

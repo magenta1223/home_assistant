@@ -1,5 +1,6 @@
 package com.homeassistant.application.port.outbound.memoryextraction.group
 
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.group.ComponentPartition
 import com.homeassistant.domain.group.ComponentVector
@@ -12,17 +13,6 @@ data class GroupSnapshot(
     val groups: List<StoredGroup>,
     val embeddings: Map<Int, ComponentEmbedding>,
 )
-
-/** Trusted internal metadata only; this is not an ACL-filtered user projection. */
-fun interface GroupReader {
-    /** Every Group with its member Components and centroid. */
-    fun groups(): List<StoredGroup>
-}
-
-/** Trusted internal metadata only; this is not an ACL-filtered user projection. */
-interface GroupSnapshotReader {
-    fun snapshot(): GroupSnapshot
-}
 
 sealed interface GroupTarget {
     data class Existing(val id: Int) : GroupTarget { init { require(id > 0) } }
@@ -51,13 +41,29 @@ data class GroupChange(
     }
 }
 
-sealed interface GroupWriteResult {
-    data class Applied(val groupIds: List<Int>) : GroupWriteResult
-    data class AlreadyApplied(val groupIds: List<Int>) : GroupWriteResult
-    data object Conflict : GroupWriteResult
-}
+/** A [GroupChange] lost to a concurrent change: an expected Group revision no longer matches. */
+class GroupChangeConflict(message: String) : IllegalStateException(message)
 
-interface GroupChangeWriter {
-    /** Atomic revision check, exact partition validation, membership/centroid update and receipt. */
-    fun apply(change: GroupChange): GroupWriteResult
+/** Stored Groups. Trusted internal metadata only; this is not an ACL-filtered user projection. */
+interface GroupRepository {
+    /**
+     * Every Group with its revision, centroid and the Component vectors it used, read at one point in time.
+     * It has no condition: placement takes the nearest centroid of every Group, and split and merge score the whole
+     * partition, so every Group is an input to the decision.
+     */
+    fun findSnapshot(): GroupSnapshot
+
+    /**
+     * Every Group holding a Component [userId] can read, with only those Components and its stored centroid, for search.
+     * A Group with no such Component is left out, since nothing in it could be returned.
+     */
+    fun findVisibleTo(userId: UserId): List<StoredGroup>
+
+    /**
+     * Atomically checks revisions, validates the exact partition and replaces membership and centroids; returns the
+     * resulting Groups in [GroupChange.resultingGroups] order. A change whose operation key was saved before returns
+     * the Groups as that change saved them.
+     * @throws GroupChangeConflict when an expected Group revision changed.
+     */
+    fun save(change: GroupChange): List<Group>
 }

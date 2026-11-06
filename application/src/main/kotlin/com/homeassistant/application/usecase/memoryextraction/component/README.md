@@ -66,7 +66,7 @@ sequenceDiagram
     actor Caller as 대화 context
     participant Search as ComponentSearcher
     participant Query as EmbeddingGenerator
-    participant Groups as GroupReader
+    participant Groups as GroupRepository
     participant Components as ComponentRepository
     participant Episodes as EpisodeRepository
     Caller->>Search: 1. search(userId, question)
@@ -74,8 +74,8 @@ sequenceDiagram
     Search->>Components: 3. findVisibleTo(userId): 사용자가 읽을 수 있는 Component와 문장 벡터
     Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
     Search->>Episodes: 5. findVisibleTo(userId): 사용자가 읽을 수 있는 Episode
-    Search->>Groups: 6. 모든 Group 중심과 소속 Component
-    Search->>Search: 7. 가까운 Group 5개와 kNN 이웃 Group(합쳐 20개까지) 중 backbone 3개의 읽을 수 있는 Component ∪ 가까운 Component 20개
+    Search->>Groups: 6. findVisibleTo(userId): 읽을 수 있는 소속이 있는 Group의 중심과 그 소속 Component
+    Search->>Search: 7. 가까운 Group 5개와 kNN 이웃 Group(합쳐 20개까지) 중 backbone 3개의 Component ∪ 가까운 Component 20개
     Search->>Search: 8. 출처 Episode가 보이는 후보 중 backbone Component 5개
     Search-->>Caller: 9. Component별 출처 Episode(앞 Component에 나온 Episode는 빼고)
 ```
@@ -91,7 +91,8 @@ sequenceDiagram
   Group·Component가 수만 개를 넘으면 같은 질의를 벡터 색인(pgvector)에 맡긴다.
 - 가까운 Component를 직접 후보에 더하므로 아직 Group에 들어가지 않은 Component도 찾힌다.
 - 한 Episode는 먼저 고른 Component 하나에만 싣는다. 출처 Episode가 앞 Component에 실린 Component는 결과에서 빠진다.
-- Group 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Component가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+- Group 순위는 저장된 중심으로 정한다. 중심은 모든 소속의 평균이라 남의 Component가 순위에 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+  읽을 수 있는 소속이 없는 Group은 꺼낼 Component가 없으므로 후보에서 뺀다.
   Component의 후보·이웃·순위는 사용자가 읽을 수 있는 Component만으로 정한다. 뽑힐 수 없는 Component가 이웃 자리를 차지해
   coverage를 깎지 않게 하기 위해서다.
 - 논문의 Stage II(reader entropy가 줄 때만 하위 텍스트 추가)는 하지 않는다([후속 작업](../../../../../../../../../docs/todolist/p2/xmemory-stage2-entropy.md)). 대화 context가 Episode를 순서대로 8,000자 안에서

@@ -16,17 +16,17 @@ sequenceDiagram
     participant Update as UpdateMemoryHierarchyService
     participant Pending as PendingComponentSource
     participant One as OrganizeComponentIntoGroups
-    participant Snapshots as GroupSnapshotReader
+    participant Snapshots as GroupRepository
     participant Embedding as PrepareComponentEmbedding
     participant Cache as ComponentEmbeddingStore
     participant Components as ComponentRepository
     participant Generator as EmbeddingGenerator
     participant Policy as GroupOrganizationPlanner
-    participant Writer as GroupChangeWriter
+    participant Writer as GroupRepository
     Update->>Pending: pending(limit)
     loop Component ID 순서, 최대 limit개
         Update->>One: organize(component)
-        One->>Snapshots: snapshot()
+        One->>Snapshots: findSnapshot()
         One->>One: 이미 배치됨 / 모델·규약 확인
         One->>Embedding: prepare(component)
         Embedding->>Cache: find(key)
@@ -37,12 +37,12 @@ sequenceDiagram
         end
         One->>Policy: plan(component, groups, vectors)
         Policy-->>One: consumed groups + partition + split scores
-        One->>Writer: apply(change)
+        One->>Writer: save(change)
         alt revision 또는 소속 충돌
-            Writer-->>One: Conflict
+            Writer-->>One: GroupChangeConflict
             One->>Snapshots: 최신 snapshot 재조회 (최대 3회 시도)
         else 확정 또는 같은 요청 재전송
-            Writer-->>One: Applied / AlreadyApplied
+            Writer-->>One: 결과 Group (같은 요청 재전송이면 그때 저장한 Group)
         end
         One-->>Update: Organized / AlreadyOrganized / ConflictExhausted
     end

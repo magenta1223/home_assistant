@@ -9,7 +9,8 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Compon
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
@@ -150,7 +151,14 @@ class ComponentSearcherTest {
         fun searcher(settings: ComponentSearchSettings = ComponentSearchSettings(), authorized: Boolean = true) =
             ComponentSearcher(
                 reader,
-                GroupReader { groups.toList() },
+                object : GroupRepository {
+                    override fun findSnapshot() = error("search never reads the snapshot")
+                    override fun findVisibleTo(userId: UserId) = groups.mapNotNull { stored ->
+                        val visible = stored.group.componentIds.filter { byId.getValue(it).isVisibleTo(userId) }.toSet()
+                        if (visible.isEmpty()) null else stored.copy(group = Group(stored.group.id, visible))
+                    }
+                    override fun save(change: GroupChange) = error("search never saves Groups")
+                },
                 embeddings,
                 object : EpisodeRepository {
                     override fun findVisibleTo(userId: UserId) = byId.values

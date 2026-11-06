@@ -2,6 +2,8 @@ package com.homeassistant.application.usecase.group
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
+import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
@@ -10,11 +12,8 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Compon
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshotReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.GroupWriteResult
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
@@ -39,7 +38,7 @@ class OrganizeComponentIntoGroupsTest {
 
     @Test fun `conflict rereads snapshot and replans with a new key without regenerating embedding`() {
         val fixture = Fixture()
-        fixture.write = { if (fixture.writes.size == 1) GroupWriteResult.Conflict else GroupWriteResult.Applied(listOf(10)) }
+        fixture.write = { if (fixture.writes.size == 1) throw GroupChangeConflict("lost") else saved(it) }
         assertIs<ComponentOrganizationOutcome.Organized>(fixture.organize(1))
         assertEquals(2, fixture.reads)
         assertEquals(1, fixture.generated)
@@ -48,7 +47,7 @@ class OrganizeComponentIntoGroupsTest {
 
     @Test fun `conflicts are bounded and cached vectors survive retry calls`() {
         val fixture = Fixture()
-        fixture.write = { GroupWriteResult.Conflict }
+        fixture.write = { throw GroupChangeConflict("lost") }
         repeat(2) { assertIs<ComponentOrganizationOutcome.ConflictExhausted>(fixture.organize(1)) }
         assertEquals(6, fixture.writes.size)
         assertEquals(1, fixture.generated)
@@ -59,7 +58,7 @@ class OrganizeComponentIntoGroupsTest {
         fixture.write = {
             val embedding = fixture.cache.values.single()
             fixture.snapshot = GroupSnapshot(listOf(StoredGroup(Group(4, setOf(1)), 1, vector)), mapOf(1 to embedding))
-            GroupWriteResult.Conflict
+            throw GroupChangeConflict("lost")
         }
         assertIs<ComponentOrganizationOutcome.AlreadyOrganized>(fixture.organize(1))
         assertEquals(1, fixture.writes.size)
@@ -107,7 +106,7 @@ class OrganizeComponentIntoGroupsTest {
         var reads = 0
         var generated = 0
         var generate: (String) -> ComponentVector = { vector }
-        var write: (GroupChange) -> GroupWriteResult = { GroupWriteResult.Applied(listOf(10)) }
+        var write: (GroupChange) -> List<Group> = ::saved
         private val components = object : ComponentRepository {
             override fun findByIds(ids: Collection<Int>) = ids.map { Component(it, "$it", it, EpisodeAccess.PUBLIC) }
             override fun findCovering(access: EpisodeAccess) = emptyList<Component>()
@@ -124,14 +123,13 @@ class OrganizeComponentIntoGroupsTest {
             override fun find(key: ComponentEmbeddingKey) = cache[key]
             override fun save(embedding: ComponentEmbedding) = cache.getOrPut(embedding.key) { embedding }
         }
-        private val reader = object : GroupSnapshotReader {
-            override fun snapshot(): GroupSnapshot { reads++; return snapshot }
-        }
-        private val writer = object : GroupChangeWriter {
-            override fun apply(change: GroupChange): GroupWriteResult { writes.add(change); return write(change) }
+        private val groups = object : GroupRepository {
+            override fun findVisibleTo(userId: UserId) = error("organization never searches Groups")
+            override fun findSnapshot(): GroupSnapshot { reads++; return snapshot }
+            override fun save(change: GroupChange): List<Group> { writes.add(change); return write(change) }
         }
         private val service = OrganizeComponentIntoGroups(
-            reader, writer, PrepareComponentEmbedding(components, generator, store),
+            groups, PrepareComponentEmbedding(components, generator, store),
             GroupOrganizationPlanner(
                 GroupPlacementPolicy(GroupPolicySettings(maxComponents = maxComponents)),
                 GroupSplitPolicy(GroupPolicySettings(maxComponents = maxComponents))
@@ -140,4 +138,6 @@ class OrganizeComponentIntoGroupsTest {
 
         fun organize(id: Int) = service.organize(PendingComponent(id, "$id"))
     }
+
+    private fun saved(change: GroupChange) = change.resultingGroups.mapIndexed { index, result -> Group(10 + index, result.componentIds) }
 }

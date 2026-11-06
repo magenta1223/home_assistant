@@ -1,7 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
 import com.homeassistant.application.port.inbound.memoryextraction.ConflictingSourceAudienceException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
@@ -9,7 +10,7 @@ import com.homeassistant.application.port.inbound.memoryextraction.InvalidEpisod
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -40,7 +41,7 @@ class EpisodeAnalysisRetryTest {
             sourceRecords.saveAll(request.source.source, request.source.records, EpisodeAccess.PUBLIC)
 
             val failure = assertFailsWith<ConflictingSourceAudienceException> {
-                service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeWriter())
+                service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeRepository())
                     .execute(request)
             }
 
@@ -62,7 +63,7 @@ class EpisodeAnalysisRetryTest {
             )
 
             assertFailsWith<InvalidEpisodeAudienceException> {
-                service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeWriter())
+                service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeRepository())
                     .execute(request)
             }
 
@@ -84,7 +85,7 @@ class EpisodeAnalysisRetryTest {
             val extractor = RecordingExtractor { document ->
                 listOf(proposal(document))
             }
-            val service = service(sourceRecords, db, extractor, RecordingEpisodeWriter())
+            val service = service(sourceRecords, db, extractor, RecordingEpisodeRepository())
             val renamed = original.copy(name = "renamed.txt")
 
             val result = service.execute(
@@ -119,7 +120,7 @@ class EpisodeAnalysisRetryTest {
                 listOf(proposal(document))
             }
             val failure = IllegalStateException("persistence failed")
-            val service = service(sourceRecords, db, extractor, RecordingEpisodeWriter(failure))
+            val service = service(sourceRecords, db, extractor, RecordingEpisodeRepository(failure))
             val request = request("a")
 
             val unavailable = assertFailsWith<EpisodeAnalysisUnavailableException> { service.execute(request) }
@@ -147,7 +148,7 @@ class EpisodeAnalysisRetryTest {
                 }
                 listOf(proposal(document))
             }
-            val writer = RecordingEpisodeWriter()
+            val writer = RecordingEpisodeRepository()
             val service = service(sourceRecords, db, extractor, writer)
             val request = request("a", EpisodeAccess.restricted(listOf(USER_ID)))
 
@@ -194,7 +195,7 @@ class EpisodeAnalysisRetryTest {
                     proposal(document.copy(records = listOf(document.records[1]))),
                 )
             }
-            val service = service(sourceRecords, db, extractor, RecordingEpisodeWriter())
+            val service = service(sourceRecords, db, extractor, RecordingEpisodeRepository())
 
             val result = service.execute(
                 EpisodeAnalysisRequest(
@@ -222,13 +223,13 @@ class EpisodeAnalysisRetryTest {
         sourceRecords: SourceRecordRepositoryImpl,
         db: Database,
         extractor: EpisodeExtractor,
-        writer: RecordingEpisodeWriter,
+        writer: RecordingEpisodeRepository,
     ) = EpisodeAnalysisService(
         episodeExtractor = extractor,
         sourceRecords = sourceRecords,
-        episodeWriter = { createdBy, proposals, recordIds ->
-            writer.commit(createdBy, proposals, recordIds).also {
-                markAnalyzed(db, recordIds)
+        episodes = object : EpisodeRepository by writer {
+            override fun save(batch: EpisodeBatch) = writer.save(batch).also {
+                markAnalyzed(db, batch.analyzedSourceRecordIds)
             }
         },
         accessPolicy = { it == USER_ID },
@@ -243,7 +244,7 @@ class EpisodeAnalysisRetryTest {
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
     private fun markAnalyzed(db: Database, recordIds: Collection<Int>) {
-        EpisodeRepository(db).commit(USER_ID, emptyList(), recordIds)
+        EpisodeRepositoryImpl(db).save(EpisodeBatch(USER_ID, emptyList(), recordIds))
     }
 
     private fun proposal(document: SourceDocument): EpisodeProposal = EpisodeProposal(
@@ -263,16 +264,15 @@ class EpisodeAnalysisRetryTest {
         }
     }
 
-    private class RecordingEpisodeWriter(
+    private class RecordingEpisodeRepository(
         private val failure: RuntimeException? = null,
-    ) : EpisodeWriter {
+    ) : EpisodeRepository {
         val episodes = mutableListOf<Episode>()
 
-        override fun commit(
-            createdBy: UserId,
-            proposals: List<EpisodeProposal>,
-            analyzedSourceRecordIds: Collection<Int>,
-        ): List<Episode> {
+        override fun findVisibleTo(userId: UserId) = episodes.toList()
+
+        override fun save(batch: EpisodeBatch): List<Episode> {
+            val (createdBy, proposals) = batch
             failure?.let { throw it }
             val saved = proposals.map { item ->
                 Episode(

@@ -6,8 +6,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeViewerTab
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -21,23 +21,20 @@ import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Clock
 
-internal class EpisodeRepository(
+internal class EpisodeRepositoryImpl(
     private val db: Database,
     private val clock: Clock = Clock.systemUTC(),
-) : EpisodeReader, EpisodeWriter {
+) : EpisodeRepository {
 
-    override fun getEpisodes(userId: UserId): List<Episode> = transaction(db) {
-        EpisodeTable
-            .selectAll()
+    override fun findVisibleTo(userId: UserId): List<Episode> = transaction(db) {
+        EpisodeTable.selectAll()
+            .where(EpisodeAccessCondition.visibleTo(userId))
+            .orderBy(EpisodeTable.id)
             .map { it.toEpisode() }
-            .filter { it.isVisibleTo(userId) }
     }
 
-    override fun commit(
-        createdBy: UserId,
-        proposals: List<EpisodeProposal>,
-        analyzedSourceRecordIds: Collection<Int>,
-    ): List<Episode> = transaction(db) {
+    override fun save(batch: EpisodeBatch): List<Episode> = transaction(db) {
+        val (createdBy, proposals, analyzedSourceRecordIds) = batch
         val recordIds = analyzedSourceRecordIds.distinct()
         val existingRecordIds = if (recordIds.isEmpty()) emptySet() else {
             SourceRecordTable.select(SourceRecordTable.id)

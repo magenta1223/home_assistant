@@ -68,7 +68,7 @@ sequenceDiagram
     participant Query as EmbeddingGenerator
     participant Groups as GroupReader
     participant Components as ComponentReader
-    participant Episodes as EpisodeReader
+    participant Episodes as EpisodeRepository
     Caller->>Search: 1. search(userId, question)
     Search->>Search: 2. 사용자 인가 확인
     Search->>Components: 3. 모든 Component와 문장 벡터

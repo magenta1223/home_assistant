@@ -8,8 +8,9 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalys
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
 import com.homeassistant.application.port.inbound.memoryextraction.InvalidEpisodeAudienceException
 import com.homeassistant.application.port.inbound.memoryextraction.InvalidKnowledgeReferenceException
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
@@ -28,7 +29,7 @@ import org.slf4j.LoggerFactory
 class EpisodeAnalysisService(
     private val episodeExtractor: EpisodeExtractor,
     private val sourceRecords: SourceRecordRepository,
-    private val episodeWriter: EpisodeWriter,
+    private val episodes: EpisodeRepository,
     private val accessPolicy: UserAccessPolicy,
     private val referenceInterpreter: SourceReferenceInterpreter? = null,
 ) : EpisodeAnalysis {
@@ -56,7 +57,7 @@ class EpisodeAnalysisService(
             )
         }
         rethrowAsUnavailable {
-            episodeWriter.commit(userId, proposals, recordsToAnalyze.map { it.id })
+            episodes.save(EpisodeBatch(userId, proposals, recordsToAnalyze.map { it.id }))
         }
         return EpisodeAnalysisResult(
             sourceType = parsedSource.source.type,

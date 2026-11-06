@@ -79,7 +79,7 @@ object ApplicationServicesFactory {
         val episodeAnalysisService = EpisodeAnalysisService(
             episodeExtractor = EpisodeExtractorFactory.create(completionClient),
             sourceRecords = repositories.sourceRecords,
-            episodeWriter = repositories.episodeWriter,
+            episodes = repositories.episodes,
             accessPolicy = users,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
@@ -87,11 +87,11 @@ object ApplicationServicesFactory {
             components = repositories.componentReader,
             groups = repositories.groups,
             queries = ollamaEmbedding,
-            episodes = repositories.episodeReader,
+            episodes = repositories.episodes,
             componentEmbeddings = componentEmbeddings,
             accessPolicy = users,
         )
-        val episodeSearch = EpisodeSearcher(repositories.episodeReader, ollamaEmbedding, episodeEmbeddings, users)
+        val episodeSearch = EpisodeSearcher(repositories.episodes, ollamaEmbedding, episodeEmbeddings, users)
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS

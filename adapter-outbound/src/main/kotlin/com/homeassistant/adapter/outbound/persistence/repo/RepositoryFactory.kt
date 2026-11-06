@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
@@ -16,13 +16,11 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbedd
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
-        val canonicalEpisodes = EpisodeRepository(db)
         val components = ComponentRepository(db)
         val groups = GroupRepository(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
-            episodeWriter = canonicalEpisodes,
-            episodeReader = canonicalEpisodes,
+            episodes = EpisodeRepositoryImpl(db),
             componentReader = components,
             componentWriter = components,
             pendingComponents = groups,

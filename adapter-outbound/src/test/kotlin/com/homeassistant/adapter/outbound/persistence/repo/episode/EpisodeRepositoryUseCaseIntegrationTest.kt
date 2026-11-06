@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
@@ -47,13 +48,13 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 override fun embedQuery(text: String) = east
             }
             val search = ComponentSearcher(
-                stores.componentReader, stores.groups, texts, stores.episodeReader,
+                stores.componentReader, stores.groups, texts, stores.episodes,
                 PrepareComponentEmbedding(stores.componentReader, texts, stores.componentEmbeddings),
                 UserAccessPolicy { it == member },
             )
 
             val episodeSearch = EpisodeSearcher(
-                stores.episodeReader, texts, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
+                stores.episodes, texts, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
             )
 
             val conversationContext = ContextProvider(search, episodeSearch).context(member, "question")
@@ -71,10 +72,10 @@ class EpisodeRepositoryUseCaseIntegrationTest {
         withRepositories("component-placement-integration") { stores ->
             val access = EpisodeAccess.restricted(listOf(UserId("other")))
             val episode = stores.saveEpisode(member, "incoming", access)
-            val before = stores.episodeReader.getEpisodes(UserId("other"))
+            val before = stores.episodes.findVisibleTo(UserId("other"))
             val (componentId) = stores.componentWriter.writeComponents(episode.id, listOf("fact"))
             assertEquals(access, stores.componentReader.read(listOf(componentId)).single().access)
-            assertEquals(before, stores.episodeReader.getEpisodes(UserId("other")))
+            assertEquals(before, stores.episodes.findVisibleTo(UserId("other")))
         }
     }
     private inline fun <T> withRepositories(prefix: String, block: (RepositoryStores) -> T): T {
@@ -101,10 +102,10 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 content = content,
                 evidenceIds = listOf(evidence.id),
             )
-        return episodeWriter.commit(
+        return episodes.save(EpisodeBatch(
             userId,
             listOf(proposal),
             listOf(evidence.id),
-        ).single()
+        )).single()
     }
 }

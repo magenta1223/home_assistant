@@ -1,8 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeWriter
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserSessionStore
@@ -19,8 +18,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Pendin
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,
-    val episodeWriter: EpisodeWriter,
-    val episodeReader: EpisodeReader,
+    val episodes: EpisodeRepository,
     val componentReader: ComponentReader,
     val componentWriter: ComponentWriter,
     val pendingComponents: PendingComponentSource,

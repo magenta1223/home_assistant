@@ -1,9 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtractionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.identity.UserId
@@ -59,11 +60,11 @@ class ComponentRepositoryTest {
         val record = SourceRecordRepositoryImpl(db).saveAll(
             SourceDescriptor("test", name), listOf(SourceRecordDraft(name, "source-$name")), access,
         ).recordsToAnalyze.single()
-        return EpisodeRepository(db).commit(
+        return EpisodeRepositoryImpl(db).save(EpisodeBatch(
             UserId("creator"),
             listOf(EpisodeProposal("title", "fact-$name", listOf(record.id))),
             listOf(record.id),
-        ).single().id
+        )).single().id
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

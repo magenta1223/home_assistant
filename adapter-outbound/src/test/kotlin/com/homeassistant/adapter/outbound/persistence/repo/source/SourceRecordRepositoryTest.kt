@@ -1,8 +1,9 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.source.SourceDescriptor
@@ -247,6 +248,6 @@ class SourceRecordRepositoryTest {
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
     private fun markAnalyzed(db: org.jetbrains.exposed.sql.Database, recordIds: Collection<Int>) {
-        EpisodeRepository(db).commit(UserId("test-member"), emptyList(), recordIds)
+        EpisodeRepositoryImpl(db).save(EpisodeBatch(UserId("test-member"), emptyList(), recordIds))
     }
 }

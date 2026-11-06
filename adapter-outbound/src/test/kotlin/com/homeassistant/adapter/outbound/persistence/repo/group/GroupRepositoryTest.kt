@@ -1,9 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
@@ -41,17 +42,17 @@ class GroupRepositoryTest {
     @Test
     fun `create attach split restart and repeat preserve all component state`() = withDatabase { db, path ->
         val sources = SourceRecordRepositoryImpl(db)
-        val episodes = EpisodeRepository(db)
+        val episodes = EpisodeRepositoryImpl(db)
         val source = SourceDescriptor("test", "private")
         val user = UserId("owner")
         val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
             .recordsToAnalyze.single()
-        val committed = episodes.commit(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
-            listOf(record.id))
+        val committed = episodes.save(EpisodeBatch(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
+            listOf(record.id)))
         val components = ComponentRepository(db)
         val ids = committed.map { components.writeComponents(it.id, listOf("knowledge of ${it.content}")).single() }.toSet()
         val beforeComponents = components.read(ids)
-        val beforeEpisodes = episodes.getEpisodes(user)
+        val beforeEpisodes = episodes.findVisibleTo(user)
         val beforeSources = sources.findBySource(source)
         val first = organizePending(db, 2, limit = 3)
         assertEquals(3, first.size)
@@ -68,7 +69,7 @@ class GroupRepositoryTest {
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(snapshot.groups, GroupRepository(restarted).groups())
         assertEquals(beforeComponents, components.read(ids))
-        assertEquals(beforeEpisodes, episodes.getEpisodes(user))
+        assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
         assertEquals(beforeSources, sources.findBySource(source))
     }
 
@@ -194,8 +195,8 @@ class GroupRepositoryTest {
         val user = UserId("owner")
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", "seed"), listOf(SourceRecordDraft("seed", "seed")),
             EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
-        val episodes = EpisodeRepository(db).commit(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
-            listOf(record.id))
+        val episodes = EpisodeRepositoryImpl(db).save(EpisodeBatch(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
+            listOf(record.id)))
         val components = ComponentRepository(db)
         val store = ComponentEmbeddingRepository(db)
         return episodes.associate { episode ->

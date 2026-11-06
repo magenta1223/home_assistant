@@ -1,10 +1,11 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
@@ -106,9 +107,9 @@ class EpisodeComponentAssignmentTest {
     private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
             access).recordsToAnalyze.single()
-        return EpisodeRepository(db).commit(user, contents.map { content ->
+        return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
             EpisodeProposal("title", content, listOf(record.id))
-        }, listOf(record.id)).map { it.id }
+        }, listOf(record.id))).map { it.id }
     }
 
     /** Assigns every claimable episode, completing its outbox row, then places the new Components in Groups. */

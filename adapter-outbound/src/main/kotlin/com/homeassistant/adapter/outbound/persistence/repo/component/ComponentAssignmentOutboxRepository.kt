@@ -9,7 +9,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignm
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtractionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
@@ -86,7 +86,7 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
 
     /** The episode with the messages it was written from, oldest first, read from the same transaction as its claim. */
     private fun pendingEpisode(row: ResultRow): PendingEpisode {
-        val episode = with(EpisodeRepository(db)) { row.toEpisode() }
+        val episode = with(EpisodeRepositoryImpl(db)) { row.toEpisode() }
         val messages = (EpisodeEvidenceTable innerJoin SourceRecordTable).select(SourceRecordTable.content)
             .where { EpisodeEvidenceTable.episodeId eq episode.id }
             .orderBy(SourceRecordTable.id)

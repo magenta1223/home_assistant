@@ -9,7 +9,8 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearchSettings
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
@@ -148,8 +149,8 @@ class ComponentSearcherTest {
                 reader,
                 GroupReader { groups.toList() },
                 embeddings,
-                object : EpisodeReader {
-                    override fun getEpisodes(userId: UserId) = byId.values
+                object : EpisodeRepository {
+                    override fun findVisibleTo(userId: UserId) = byId.values
                         .filter { it.isVisibleTo(userId) }
                         .map { it.sourceEpisodeId }
                         .distinct()
@@ -166,6 +167,7 @@ class ComponentSearcherTest {
                                 it.toLong()
                             )
                         }
+                    override fun save(batch: EpisodeBatch) = error("search never saves episodes")
                 },
                 componentEmbeddings,
                 UserAccessPolicy { authorized },

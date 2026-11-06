@@ -1,10 +1,11 @@
 package com.homeassistant.application.usecase.episode.search
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
@@ -65,8 +66,9 @@ class EpisodeSearcherTest {
         }
 
         fun searcher(limit: Int = 10, authorized: Boolean = true) = EpisodeSearcher(
-            object : EpisodeReader {
-                override fun getEpisodes(userId: UserId) = episodes
+            object : EpisodeRepository {
+                override fun findVisibleTo(userId: UserId) = episodes
+                override fun save(batch: EpisodeBatch) = error("search never saves episodes")
             },
             embeddings,
             PrepareEpisodeEmbedding(embeddings, object : EpisodeEmbeddingStore {

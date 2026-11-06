@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
@@ -32,20 +33,20 @@ class CanonicalEpisodeBatchRepositoryTest {
                 """.trimIndent(),
             )
         }
-        val repository = EpisodeRepository(db)
+        val repository = EpisodeRepositoryImpl(db)
 
         assertFails {
-            repository.commit(
+            repository.save(EpisodeBatch(
                 USER,
                 listOf(
                     proposal("ok", records[0].id),
                     proposal("fail", records[1].id),
                 ),
                 records.map { it.id },
-            )
+            ))
         }
 
-        assertTrue(repository.getEpisodes(USER).isEmpty())
+        assertTrue(repository.findVisibleTo(USER).isEmpty())
         assertEquals(0L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
         assertTrue(sourceRecords.findBySource(SOURCE).all {
             it.analysisStatus == SourceRecordAnalysisStatus.PENDING
@@ -57,12 +58,12 @@ class CanonicalEpisodeBatchRepositoryTest {
         withDatabase("batch-idempotency") { db ->
             val sourceRecords = SourceRecordRepositoryImpl(db)
             val records = sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).recordsToAnalyze
-            val repository = EpisodeRepository(db)
+            val repository = EpisodeRepositoryImpl(db)
             val firstRequest = listOf(item("stable-key", proposal("same", records[0].id)))
 
-            val first = repository.commit(USER, firstRequest, records.map { it.id })
-            val retried = repository.commit(USER, firstRequest, records.map { it.id })
-            val variants = repository.commit(
+            val first = repository.save(EpisodeBatch(USER, firstRequest, records.map { it.id }))
+            val retried = repository.save(EpisodeBatch(USER, firstRequest, records.map { it.id }))
+            val variants = repository.save(EpisodeBatch(
                 USER,
                 listOf(
                     item("different-evidence", proposal("same", records[1].id)),
@@ -72,10 +73,10 @@ class CanonicalEpisodeBatchRepositoryTest {
                     ),
                 ),
                 records.map { it.id },
-            )
+            ))
 
             assertEquals(first.single().id, retried.single().id)
-            assertEquals(3, repository.getEpisodes(USER).size)
+            assertEquals(3, repository.findVisibleTo(USER).size)
             assertEquals(2, variants.size)
             assertEquals(3L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
             assertTrue(sourceRecords.findBySource(SOURCE).all {

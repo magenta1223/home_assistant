@@ -58,6 +58,24 @@ class ApplicationPackageArchitectureTest {
     }
 
     @Test
+    fun `repository ports read with find and write with save`() {
+        val outputPorts = applicationSourceRoot.resolve("com/homeassistant/application/port/outbound")
+        val repository = Regex("interface\\s+(\\w+Repository)\\s*\\{(.*?)\\R}", RegexOption.DOT_MATCHES_ALL)
+        val method = Regex("\\bfun\\s+(\\w+)")
+
+        kotlinSources(outputPorts).forEach { source ->
+            repository.findAll(Files.readString(source)).forEach { port ->
+                method.findAll(port.groupValues[2]).map { it.groupValues[1] }.forEach { name ->
+                    assertTrue(
+                        name.startsWith("find") || name.startsWith("save"),
+                        "${port.groupValues[1]}.$name must be a find… read or a save write: $source",
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun `application exceptions are usecase contracts with module restricted constructors`() {
         val inputPortPath = "com/homeassistant/application/port/inbound"
         val usecasePath = "com/homeassistant/application/usecase"

@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.contextprovider.component
 
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.ComponentVector
@@ -25,7 +25,7 @@ class ComponentSearcher(
     private val components: ComponentReader,
     private val groups: GroupReader,
     private val queries: EmbeddingGenerator,
-    private val episodes: EpisodeReader,
+    private val episodes: EpisodeRepository,
     private val componentEmbeddings: PrepareComponentEmbedding,
     private val accessPolicy: UserAccessPolicy,
     private val settings: ComponentSearchSettings = ComponentSearchSettings(),
@@ -68,7 +68,7 @@ class ComponentSearcher(
     /** Each candidate Component's source episode when the requester can read both; other Components are left out. */
     private fun readableSources(userId: UserId, componentIds: Set<Int>): Map<Int, Episode> {
         // The reader re-checks access, so a Component's own access is never trusted on its own.
-        val visible = episodes.getEpisodes(userId).associateBy { it.id }
+        val visible = episodes.findVisibleTo(userId).associateBy { it.id }
         return components.read(componentIds).filter { it.isVisibleTo(userId) }
             .mapNotNull { component -> visible[component.sourceEpisodeId]?.let { component.id to it } }
             .toMap()

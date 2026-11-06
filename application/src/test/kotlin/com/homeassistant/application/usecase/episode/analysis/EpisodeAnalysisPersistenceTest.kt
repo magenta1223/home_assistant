@@ -1,5 +1,9 @@
 package com.homeassistant.application.usecase.episode.analysis
 
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
+import com.homeassistant.domain.episode.Episode
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.domain.episode.*
@@ -29,9 +33,12 @@ class EpisodeAnalysisPersistenceTest {
                     listOf(EpisodeProposal("title", "fact", listOf(1)))
             },
             sourceRecords = records,
-            episodeWriter = { _, _, _ ->
-                events += "commit"
-                emptyList()
+            episodes = object : EpisodeRepository {
+                override fun findVisibleTo(userId: UserId) = error("analysis never reads episodes")
+                override fun save(batch: EpisodeBatch): List<Episode> {
+                    events += "commit"
+                    return emptyList()
+                }
             },
             accessPolicy = { true },
         )

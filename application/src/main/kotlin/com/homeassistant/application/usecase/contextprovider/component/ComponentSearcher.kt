@@ -12,15 +12,13 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.pending
 import com.homeassistant.domain.component.Component
-import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.retrieval.BackboneSelection
 
 /**
  * xMemory-style search. Candidate Groups are the nearest Groups and their kNN neighbor Groups, which reach context
  * next to the question that the question itself is not near. Candidate Components are the Components of the backbone Groups,
- * plus the nearest Components directly, so a Component not yet in a Group is still found. Of the candidates the requester can
- * read, the backbone Components are kept, each with its source episode; an episode goes to the first kept Component it is the
- * source of.
+ * plus the nearest Components directly, so a Component not yet in a Group is still found. Of the candidates whose source
+ * episode the requester can read, the backbone Components are kept.
  */
 class ComponentSearcher(
     private val components: ComponentRepository,
@@ -32,16 +30,17 @@ class ComponentSearcher(
     private val settings: ComponentSearchSettings = ComponentSearchSettings(),
     private val backbone: BackboneSelection = BackboneSelection(),
 ) {
-    fun search(userId: UserId, query: String): List<ComponentMatch> {
+    fun search(userId: UserId, query: String): List<Component> {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val readable = components.findVisibleTo(userId)
         val vectors = readable.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
         if (vectors.isEmpty()) return emptyList()
         val question = queries.embedQuery(query.trim())
-        val sources = sourcesOf(userId, readable)
-        val kept = backbone.select(candidateComponents(userId, question, vectors) intersect sources.keys, vectors, question,
+        val withReadableSource = withReadableSource(userId, readable)
+        val kept = backbone.select(candidateComponents(userId, question, vectors) intersect withReadableSource, vectors, question,
             settings.componentLimit)
-        return matches(kept, sources, vectors, question)
+        val byId = readable.associateBy { it.id }
+        return kept.map { byId.getValue(it) }
     }
 
     /**
@@ -72,27 +71,10 @@ class ComponentSearcher(
         return (nearGroups + linked).distinct().take(settings.groupCandidates).toSet()
     }
 
-    /** Each of [readable] with its source episode, when the requester can read that episode too. */
-    private fun sourcesOf(userId: UserId, readable: List<Component>): Map<Int, Episode> {
-        val visible = episodes.findVisibleTo(userId).associateBy { it.id }
-        return readable
-            .mapNotNull { component -> visible[component.sourceEpisodeId]?.let { component.id to it } }
-            .toMap()
-    }
-
-    private fun matches(
-        kept: List<Int>,
-        sources: Map<Int, Episode>,
-        vectors: Map<Int, EmbeddingVector>,
-        question: EmbeddingVector,
-    ): List<ComponentMatch> {
-        val placed = mutableSetOf<Int>()
-        return kept.mapNotNull { componentId ->
-            val source = sources.getValue(componentId)
-            if (!placed.add(source.id)) null
-            else ComponentMatch(componentId, EmbeddingGeometry.cosine(question, vectors.getValue(componentId)),
-                listOf(ComponentMatchEpisode(source.id, source.content, source.createdAt)))
-        }
+    /** The ids of [readable] whose source episode the requester can read too. */
+    private fun withReadableSource(userId: UserId, readable: List<Component>): Set<Int> {
+        val visible = episodes.findVisibleTo(userId).map { it.id }.toSet()
+        return readable.filter { it.sourceEpisodeId in visible }.map { it.id }.toSet()
     }
 
     private fun nearest(question: EmbeddingVector, vectors: Map<Int, EmbeddingVector>, limit: Int): List<Int> =

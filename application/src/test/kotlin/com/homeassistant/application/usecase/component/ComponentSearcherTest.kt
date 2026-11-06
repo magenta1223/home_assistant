@@ -2,8 +2,6 @@ package com.homeassistant.application.usecase.component
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
-import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
-import com.homeassistant.application.usecase.contextprovider.component.ComponentMatchEpisode
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
@@ -36,7 +34,7 @@ class ComponentSearcherTest {
     private val onlyB = EpisodeAccess.restricted(listOf(UserId("b")))
     private val ab = EpisodeAccess.restricted(listOf(a, UserId("b")))
 
-    @Test fun `backbone components the requester can read come with their source episode`() {
+    @Test fun `backbone components the requester can read are kept`() {
         val fixture = Fixture(
             component(1, east, 10),
             component(2, east, 20, onlyB),
@@ -47,19 +45,16 @@ class ComponentSearcherTest {
         val matches = fixture.searcher(ComponentSearchSettings(componentLimit = 2)).search(a, "  question  ")
 
         assertEquals(listOf("question"), fixture.queries)
-        assertEquals(listOf(1, 3), matches.map { it.componentId })
-        assertEquals(1.0, matches.first().score, 1e-12)
-        assertEquals(ComponentMatchEpisode(10, "episode 10", 10L), matches.first().episodes.single())
-        assertEquals(ComponentMatchEpisode(30, "episode 30", 30L), matches.last().episodes.single())
+        assertEquals(listOf(1, 3), matches.map { it.id })
     }
 
     @Test fun `a component outside the nearest components is found through its backbone group`() {
         val fixture = Fixture(component(1, east, 10), component(2, north, 20))
         val narrow = ComponentSearchSettings(componentPool = 1)
 
-        assertEquals(listOf(1), fixture.searcher(narrow).search(a, "q").map { it.componentId })
+        assertEquals(listOf(1), fixture.searcher(narrow).search(a, "q").map { it.id })
         fixture.groups += StoredGroup(Group(1, setOf(2)), 1, east)
-        assertEquals(listOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.componentId })
+        assertEquals(listOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.id })
     }
 
     @Test fun `a component of a neighbor group outside the nearest groups is found`() {
@@ -72,7 +67,7 @@ class ComponentSearcherTest {
 
         val matches = fixture.searcher(ComponentSearchSettings(groupPool = 1, groupLimit = 2, componentPool = 1)).search(a, "q")
 
-        assertEquals(listOf(1, 2), matches.map { it.componentId })
+        assertEquals(listOf(1, 2), matches.map { it.id })
     }
 
     @Test fun `neighbor groups fill the candidates by their similarity to the group they neighbor, not to the question`() {
@@ -86,22 +81,19 @@ class ComponentSearcherTest {
         )
         val narrow = ComponentSearchSettings(groupPool = 1, groupCandidates = 2, groupLimit = 3, componentPool = 1)
 
-        assertEquals(setOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.componentId }.toSet())
+        assertEquals(setOf(1, 2), fixture.searcher(narrow).search(a, "q").map { it.id }.toSet())
     }
 
-    @Test fun `an episode is listed under its first component only`() {
+    @Test fun `components from the same source episode are all kept`() {
         val fixture = Fixture(component(1, east, 10), component(2, northEast, 10), component(3, north, 20))
 
-        val matches = fixture.searcher().search(a, "q")
-
-        assertEquals(listOf(1, 3), matches.map { it.componentId })
-        assertEquals(listOf(10, 20), matches.map { it.episodes.single().episodeId })
+        assertEquals(setOf(1, 2, 3), fixture.searcher().search(a, "q").map { it.id }.toSet())
     }
 
     @Test fun `a component whose source episode the reader no longer shows is dropped`() {
         val fixture = Fixture(component(1, east, 11, ab), component(2, north, 12))
         fixture.visible = setOf(12)
-        assertEquals(listOf(ComponentMatch(2, 0.0, listOf(ComponentMatchEpisode(12, "episode 12", 12L)))), fixture.searcher().search(a, "q"))
+        assertEquals(listOf(2), fixture.searcher().search(a, "q").map { it.id })
     }
 
     @Test fun `no component needs no embedding and an unauthorized user is rejected`() {

@@ -64,7 +64,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             assertTrue(conversationContext.reference.contains(publicEpisode.content))
             assertFalse(conversationContext.reference.contains(otherRestrictedEpisode.content))
             assertFalse(conversationContext.reference.contains(hiddenEpisode.content))
-            assertEquals(1, conversationContext.reference.lines().count { it.startsWith("## Component") })
+            assertTrue(conversationContext.reference.lines().contains("- fact of ${publicEpisode.content}"))
         }
     }
 

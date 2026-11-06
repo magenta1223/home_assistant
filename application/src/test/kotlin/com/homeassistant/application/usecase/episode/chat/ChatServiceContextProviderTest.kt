@@ -1,11 +1,12 @@
 package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
-import com.homeassistant.application.usecase.contextprovider.component.ComponentMatchEpisode
-import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
 import com.homeassistant.application.usecase.contextprovider.ContextProvider
+import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
+import com.homeassistant.domain.component.Component
+import com.homeassistant.domain.episode.Episode
+import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.identity.UserId
 import io.mockk.every
 import io.mockk.mockk
@@ -16,20 +17,21 @@ import kotlin.test.assertTrue
 
 class ChatServiceContextProviderTest {
     @Test
-    fun `reference holds one block per component with timestamps and score`() {
-        val provider = provider(ComponentMatch(7, 0.9, listOf(ComponentMatchEpisode(1, "saved fact", 1_000L), ComponentMatchEpisode(2, "older fact", 0L))),
-            ComponentMatch(9, 0.5, listOf(ComponentMatchEpisode(3, "other component", 0L))))
-
-        val context = provider.context(USER_ID, "question")
+    fun `reference holds the component statements then the episodes with their saved time`() {
+        val context = provider(
+            components = listOf(component(7, "likes tea"), component(9, "walks the dog daily")),
+            episodes = listOf(episode(1, "bought tea", 1_000L), episode(4, "cake pickup", 2_000L)),
+        ).context(USER_ID, "question")
 
         assertTrue(context.hasMatches)
         assertEquals(
             """
-            ## Component 7 [score=0.9]
-            - [savedAt=1970-01-01T00:00:01Z] saved fact
-            - [savedAt=1970-01-01T00:00:00Z] older fact
-            ## Component 9 [score=0.5]
-            - [savedAt=1970-01-01T00:00:00Z] other component
+            ## Components
+            - likes tea
+            - walks the dog daily
+            ## Episodes
+            - [savedAt=1970-01-01T00:00:01Z] bought tea
+            - [savedAt=1970-01-01T00:00:02Z] cake pickup
             """.trimIndent(),
             context.reference,
         )
@@ -37,40 +39,27 @@ class ChatServiceContextProviderTest {
 
     @Test
     fun `reference keeps whole lines within eight thousand characters and drops a header left alone`() {
-        val long = ComponentMatchEpisode(1, "x".repeat(7_000), 0L)
+        val long = "x".repeat(7_000)
         val context = provider(
-            ComponentMatch(1, 0.9, listOf(long, ComponentMatchEpisode(2, "y".repeat(2_000), 0L))),
-            ComponentMatch(2, 0.5, listOf(ComponentMatchEpisode(3, "short", 0L))),
+            components = listOf(component(1, long), component(2, "y".repeat(2_000))),
+            episodes = listOf(episode(3, "short", 0L)),
         ).context(USER_ID, "question")
 
-        assertEquals("## Component 1 [score=0.9]\n- [savedAt=1970-01-01T00:00:00Z] ${long.content}", context.reference)
+        assertEquals("## Components\n- $long", context.reference)
         assertTrue(context.hasMatches)
     }
 
     @Test
-    fun `a match whose first episode exceeds the budget leaves no reference`() {
-        val context = provider(ComponentMatch(1, 0.9, listOf(ComponentMatchEpisode(1, "x".repeat(9_000), 0L)))).context(USER_ID, "question")
+    fun `a first line that exceeds the budget leaves no reference`() {
+        val context = provider(components = listOf(component(1, "x".repeat(9_000)))).context(USER_ID, "question")
 
         assertFalse(context.hasMatches)
         assertEquals("", context.reference)
     }
 
     @Test
-    fun `nearest episodes not already under a component follow the component blocks`() {
-        val context = provider(
-            ComponentMatch(7, 0.9, listOf(ComponentMatchEpisode(1, "saved fact", 0L))),
-            episodes = listOf(EpisodeMatch(1, 0.8, "saved fact", 0L), EpisodeMatch(4, 0.7, "cake pickup", 2_000L)),
-        ).context(USER_ID, "question")
-
-        assertEquals(
-            "## Component 7 [score=0.9]\n- [savedAt=1970-01-01T00:00:00Z] saved fact\n## Episodes\n- [savedAt=1970-01-01T00:00:02Z] cake pickup",
-            context.reference,
-        )
-    }
-
-    @Test
     fun `episodes alone make a reference when no component matches`() {
-        val context = provider(episodes = listOf(EpisodeMatch(4, 0.7, "cake pickup", 0L))).context(USER_ID, "question")
+        val context = provider(episodes = listOf(episode(4, "cake pickup", 0L))).context(USER_ID, "question")
 
         assertTrue(context.hasMatches)
         assertEquals("## Episodes\n- [savedAt=1970-01-01T00:00:00Z] cake pickup", context.reference)
@@ -84,20 +73,18 @@ class ChatServiceContextProviderTest {
         assertEquals("", context.reference)
     }
 
-    private fun provider(vararg matches: ComponentMatch, episodes: List<EpisodeMatch> = emptyList()): ContextProvider {
+    private fun provider(components: List<Component> = emptyList(), episodes: List<Episode> = emptyList()): ContextProvider {
+        val componentSearcher = mockk<ComponentSearcher>()
+        every { componentSearcher.search(USER_ID, "question") } returns components
         val episodeSearcher = mockk<EpisodeSearcher>()
         every { episodeSearcher.search(USER_ID, "question") } returns episodes
-
-        val componentSearcher = mockk<ComponentSearcher>()
-        every { componentSearcher.search(USER_ID, "question") } returns matches.toList()
-
-
-        return ContextProvider(
-            componentSearcher,
-            episodeSearcher
-        )
+        return ContextProvider(componentSearcher, episodeSearcher)
     }
 
+    private fun component(id: Int, statement: String) = Component(id, statement, id, EpisodeAccess.PUBLIC)
+
+    private fun episode(id: Int, content: String, createdAt: Long) =
+        Episode(id, "creator", "title $id", content, EpisodeVisibility.PUBLIC, emptySet(), listOf(1), createdAt)
 
     private companion object {
         val USER_ID = UserId("member-1")

@@ -2,7 +2,6 @@ package com.homeassistant.application.usecase.episode.search
 
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
-import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
@@ -30,8 +29,7 @@ class EpisodeSearcherTest {
         val matches = fixture.searcher(limit = 2).search(user, "  question  ")
 
         assertEquals(listOf("question"), fixture.queries)
-        assertEquals(listOf(2, 3), matches.map(EpisodeMatch::episodeId))
-        assertEquals(EpisodeMatch(2, 1.0, "east", 2L), matches.first())
+        assertEquals(listOf(2, 3), matches.map { it.id })
     }
 
     @Test fun `an episode is embedded once and then read from the store`() {

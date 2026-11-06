@@ -1,34 +1,33 @@
 package com.homeassistant.application.usecase.contextprovider
 
-import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
+import com.homeassistant.domain.component.Component
+import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.identity.UserId
 import java.time.Instant
 
 /**
- * The reference holds one block per matched Component, then one block of the nearest episodes not already under a
- * Component, all with only the episodes the user can read. Whole lines are kept in search order up to
- * [MAX_CONTEXT_CHARS], and a header is never left without an episode under it.
+ * The reference holds, as xMemory gives it to the reader, a block of the matched Components' statements, then a block of
+ * the nearest episodes with the time each was saved, all with only what the user can read. Whole lines are kept in
+ * search order up to [MAX_CONTEXT_CHARS], and a header is never left without a line under it.
  */
 class ContextProvider(
     private val componentSearch: ComponentSearcher,
     private val episodeSearch: EpisodeSearcher,
 ) : ContextSource {
     override fun context(userId: UserId, question: String): Context {
-        val components = componentSearch.search(userId, question)
-        val listed = components.flatMap { match -> match.episodes.map { it.episodeId } }.toSet()
-        val episodes = episodeSearch.search(userId, question).filter { it.episodeId !in listed }
-        val lines = components.flatMap(::componentReferenceLines) + episodeReferenceLines(episodes)
+        val lines = componentReferenceLines(componentSearch.search(userId, question)) +
+            episodeReferenceLines(episodeSearch.search(userId, question))
         val reference = withinBudget(lines).joinToString("\n")
         return Context(reference = reference, hasMatches = reference.isNotEmpty())
     }
 
-    private fun componentReferenceLines(match: ComponentMatch): List<String> =
-        listOf("## Component ${match.componentId} [score=${match.score}]") + match.episodes.map { "- [savedAt=${Instant.ofEpochMilli(it.createdAt)}] ${it.content}" }
+    private fun componentReferenceLines(components: List<Component>): List<String> =
+        if (components.isEmpty()) emptyList()
+        else listOf("## Components") + components.map { "- ${it.statement}" }
 
-    private fun episodeReferenceLines(episodes: List<EpisodeMatch>): List<String> =
+    private fun episodeReferenceLines(episodes: List<Episode>): List<String> =
         if (episodes.isEmpty()) emptyList()
         else listOf("## Episodes") + episodes.map { "- [savedAt=${Instant.ofEpochMilli(it.createdAt)}] ${it.content}" }
 

@@ -21,7 +21,8 @@ class BackboneSelection(private val neighbors: Int = 10) {
 
     /**
      * Up to [limit] of [candidates] in pick order; an equal gain keeps the smaller id.
-     * [vectors] hold every node of the level, so a candidate's neighbors are found across the whole level.
+     * [vectors] hold every node of the level the requester can read, so a candidate's neighbors are found among the
+     * nodes that can be picked.
      */
     fun select(candidates: Set<Int>, vectors: Map<Int, ComponentVector>, query: ComponentVector, limit: Int): List<Int> {
         require(limit > 0)

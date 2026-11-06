@@ -1,5 +1,7 @@
 package com.homeassistant.application.usecase.component
 
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
 import com.homeassistant.application.usecase.contextprovider.component.ComponentMatchEpisode
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
@@ -11,7 +13,6 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupR
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearchSettings
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
@@ -124,9 +125,11 @@ class ComponentSearcherTest {
         val groups = mutableListOf<StoredGroup>()
         var visible: Set<Int>? = null
 
-        private val reader = object : ComponentReader {
-            override fun all() = byId.values.toList()
-            override fun read(componentIds: Collection<Int>) = componentIds.mapNotNull { byId[it] }
+        private val reader = object : ComponentRepository {
+            override fun findByIds(ids: Collection<Int>) = ids.mapNotNull { byId[it] }
+            override fun findCovering(access: EpisodeAccess) = byId.values.filter { it.access.covers(access) }
+            override fun findVisibleTo(userId: UserId) = byId.values.filter { it.isVisibleTo(userId) }
+            override fun save(extraction: EpisodeComponents) = error("search never saves Components")
         }
         private val cache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
         private val embeddings = object : EmbeddingGenerator {

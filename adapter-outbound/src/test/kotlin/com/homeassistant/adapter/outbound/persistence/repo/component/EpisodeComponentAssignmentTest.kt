@@ -8,8 +8,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbedd
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
@@ -54,7 +52,7 @@ class EpisodeComponentAssignmentTest {
         assertEquals(listOf(
             Component(1, "보일러는 매년 가을에 점검한다", boiler, access),
             Component(2, "월세 이체일은 25일이다", rent, access),
-        ), ComponentRepository(db).all())
+        ), ComponentRepositoryImpl(db).findByIds(listOf(1, 2)))
         assertEquals(listOf(listOf(1), listOf(2)), first)
         assertEquals(setOf(1, 2), GroupRepository(db).snapshot().groups.flatMap { it.group.componentIds }.toSet())
 
@@ -119,7 +117,7 @@ class EpisodeComponentAssignmentTest {
         extractor: ComponentKnowledgeExtractor,
     ): List<List<Int>> {
         val groups = GroupRepository(db)
-        val store = ComponentRepository(db)
+        val store = ComponentRepositoryImpl(db)
         val texts = object : EmbeddingGenerator {
             override val space = this@EpisodeComponentAssignmentTest.space
             override fun isAvailable() = true
@@ -133,7 +131,7 @@ class EpisodeComponentAssignmentTest {
             ComponentEmbeddingRepository(db)
         )
         val settings = GroupPolicySettings()
-        val assign = AssignEpisodeToComponents(store, store, episodeEmbeddings, componentEmbeddings, extractor)
+        val assign = AssignEpisodeToComponents(store, episodeEmbeddings, componentEmbeddings, extractor)
         val outbox = ComponentAssignmentOutboxRepository(db)
         val assigned = outbox.claimReady(10, NOW, NOW, NOW - 1, 5).map { task ->
             assign.assign(task.episode).also { outbox.markCompleted(task.outboxId, task.attempt, NOW) }

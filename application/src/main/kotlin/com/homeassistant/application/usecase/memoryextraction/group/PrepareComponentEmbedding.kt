@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.memoryextraction.group
 
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
@@ -14,7 +14,7 @@ import com.homeassistant.domain.component.Component
  * The vector embeds the Component's statement as a document, so Components compare with episodes and questions.
  */
 class PrepareComponentEmbedding(
-    private val components: ComponentReader,
+    private val components: ComponentRepository,
     private val generator: EmbeddingGenerator,
     private val store: ComponentEmbeddingStore,
 ) {
@@ -28,7 +28,7 @@ class PrepareComponentEmbedding(
     }
 
     private fun statementOf(component: PendingComponent): String =
-        requireNotNull(components.read(listOf(component.id)).singleOrNull()) { "component missing" }.statement
+        requireNotNull(components.findByIds(listOf(component.id)).singleOrNull()) { "component missing" }.statement
 }
 
 /** A statement never changes, so its fingerprint is the only vector version a Component has. */

@@ -49,7 +49,7 @@ object ApplicationServicesFactory {
             repositories.episodeEmbeddings,
         )
         val componentEmbeddings = PrepareComponentEmbedding(
-            repositories.componentReader,
+            repositories.components,
             ollamaEmbedding,
             repositories.componentEmbeddings,
         )
@@ -60,8 +60,7 @@ object ApplicationServicesFactory {
             GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
         )
         val assignEpisode = AssignEpisodeToComponents(
-            repositories.componentReader,
-            repositories.componentWriter,
+            repositories.components,
             episodeEmbeddings,
             componentEmbeddings,
             ComponentKnowledgeExtractorFactory.create(completionClient),
@@ -84,7 +83,7 @@ object ApplicationServicesFactory {
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
         val componentSearch = ComponentSearcher(
-            components = repositories.componentReader,
+            components = repositories.components,
             groups = repositories.groups,
             queries = ollamaEmbedding,
             episodes = repositories.episodes,

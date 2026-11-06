@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.component
 
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
@@ -91,19 +91,19 @@ class AssignEpisodeToComponentsTest {
             override fun find(key: EpisodeEmbeddingKey) = episodeCache[key]
             override fun save(embedding: EpisodeEmbedding) = episodeCache.getOrPut(embedding.key) { embedding }
         })
-        private val componentReader = object : ComponentReader {
-            override fun all() = components.toList()
-            override fun read(componentIds: Collection<Int>) = components.filter { it.id in componentIds }
-        }
-
-        private val componentWriter = object : ComponentWriter {
-            override fun writeComponents(episodeId: Int, statements: List<String>): List<Int> {
-                check(extracted.add(episodeId))
-                return statements.map { Component(components.size + 1, it, episodeId, EpisodeAccess.PUBLIC).also(components::add).id }
+        private val componentRepository = object : ComponentRepository {
+            override fun findByIds(ids: Collection<Int>) = components.filter { it.id in ids }
+            override fun findCovering(access: EpisodeAccess) = components.filter { it.access.covers(access) }
+            override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
+            override fun save(extraction: EpisodeComponents): List<Component> {
+                check(extracted.add(extraction.episodeId))
+                return extraction.statements.map {
+                    Component(components.size + 1, it, extraction.episodeId, EpisodeAccess.PUBLIC).also(components::add)
+                }
             }
         }
         private val componentCache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
-        private val componentEmbeddings = PrepareComponentEmbedding(componentReader, texts, object :
+        private val componentEmbeddings = PrepareComponentEmbedding(componentRepository, texts, object :
             ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: ComponentEmbedding) = componentCache.getOrPut(embedding.key) { embedding }
@@ -114,7 +114,7 @@ class AssignEpisodeToComponentsTest {
             statements[episode.id].orEmpty()
         }
 
-        val service = AssignEpisodeToComponents(componentReader, componentWriter, episodeEmbeddings, componentEmbeddings, extractor, knownLimit)
+        val service = AssignEpisodeToComponents(componentRepository, episodeEmbeddings, componentEmbeddings, extractor, knownLimit)
 
         fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", EpisodeAccess.PUBLIC, listOf("message $id"))
     }

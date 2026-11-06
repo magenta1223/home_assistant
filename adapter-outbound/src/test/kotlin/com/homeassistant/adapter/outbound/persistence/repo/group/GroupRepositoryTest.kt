@@ -1,9 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
-import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepository
+import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
@@ -49,9 +50,9 @@ class GroupRepositoryTest {
             .recordsToAnalyze.single()
         val committed = episodes.save(EpisodeBatch(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
-        val components = ComponentRepository(db)
-        val ids = committed.map { components.writeComponents(it.id, listOf("knowledge of ${it.content}")).single() }.toSet()
-        val beforeComponents = components.read(ids)
+        val components = ComponentRepositoryImpl(db)
+        val ids = committed.map { components.save(EpisodeComponents(it.id, listOf("knowledge of ${it.content}"))).single().id }.toSet()
+        val beforeComponents = components.findByIds(ids)
         val beforeEpisodes = episodes.findVisibleTo(user)
         val beforeSources = sources.findBySource(source)
         val first = organizePending(db, 2, limit = 3)
@@ -68,7 +69,7 @@ class GroupRepositoryTest {
         assertEquals(ids.size, snapshot.groups.sumOf { it.group.componentIds.size })
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(snapshot.groups, GroupRepository(restarted).groups())
-        assertEquals(beforeComponents, components.read(ids))
+        assertEquals(beforeComponents, components.findByIds(ids))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
         assertEquals(beforeSources, sources.findBySource(source))
     }
@@ -197,11 +198,11 @@ class GroupRepositoryTest {
             EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
         val episodes = EpisodeRepositoryImpl(db).save(EpisodeBatch(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
-        val components = ComponentRepository(db)
+        val components = ComponentRepositoryImpl(db)
         val store = ComponentEmbeddingRepository(db)
         return episodes.associate { episode ->
             val statement = "knowledge of ${episode.content}"
-            val id = components.writeComponents(episode.id, listOf(statement)).single()
+            val id = components.save(EpisodeComponents(episode.id, listOf(statement))).single().id
             id to store.save(
                 ComponentEmbedding(
                     PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(
@@ -238,7 +239,7 @@ class GroupRepositoryTest {
         val settings = GroupPolicySettings(maxComponents = maxComponents)
         val organizer = OrganizeComponentIntoGroups(
             repository, repository,
-            PrepareComponentEmbedding(ComponentRepository(db), generator, ComponentEmbeddingRepository(db)),
+            PrepareComponentEmbedding(ComponentRepositoryImpl(db), generator, ComponentEmbeddingRepository(db)),
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
         return repository.pending(limit).map(organizer::organize)

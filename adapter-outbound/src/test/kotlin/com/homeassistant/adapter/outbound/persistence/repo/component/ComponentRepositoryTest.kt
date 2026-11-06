@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtractionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
@@ -28,32 +29,48 @@ class ComponentRepositoryTest {
     @Test
     fun `an extraction stores its statements with the source episode's access across restarts`() = withDatabase { db, path ->
         val episode = createEpisode(db, "a", ab)
-        val ids = ComponentRepository(db).writeComponents(episode, listOf("first fact", "second fact"))
+        val saved = ComponentRepositoryImpl(db).save(EpisodeComponents(episode, listOf("first fact", "second fact")))
 
-        val expected = listOf(Component(ids[0], "first fact", episode, ab), Component(ids[1], "second fact", episode, ab))
-        assertEquals(expected, ComponentRepository(db).all())
-        assertEquals(expected.drop(1), ComponentRepository(DatabaseFactory.init(path)).read(listOf(ids[1])))
+        val expected = listOf(Component(saved[0].id, "first fact", episode, ab), Component(saved[1].id, "second fact", episode, ab))
+        assertEquals(expected, saved)
+        assertEquals(expected.drop(1), ComponentRepositoryImpl(DatabaseFactory.init(path)).findByIds(listOf(saved[1].id)))
+    }
+
+    @Test
+    fun `access conditions select the Components the domain access rules select`() = withDatabase { db, _ ->
+        val repository = ComponentRepositoryImpl(db)
+        val accesses = listOf(EpisodeAccess.PUBLIC, ab, EpisodeAccess.restricted(listOf(UserId("a"))))
+        val stored = accesses.mapIndexed { index, access ->
+            repository.save(EpisodeComponents(createEpisode(db, "e$index", access), listOf("fact $index"))).single()
+        }
+
+        listOf("a", "b", "c").map(::UserId).forEach { user ->
+            assertEquals(stored.filter { it.isVisibleTo(user) }, repository.findVisibleTo(user))
+        }
+        accesses.forEach { access ->
+            assertEquals(stored.filter { it.access.covers(access) }, repository.findCovering(access))
+        }
     }
 
     @Test
     fun `an episode without long-term knowledge is still marked extracted`() = withDatabase { db, _ ->
         val episode = createEpisode(db, "a")
 
-        assertTrue(ComponentRepository(db).writeComponents(episode, emptyList()).isEmpty())
+        assertTrue(ComponentRepositoryImpl(db).save(EpisodeComponents(episode, emptyList())).isEmpty())
         assertEquals(1L, transaction(db) { ComponentExtractionTable.selectAll().count() })
     }
 
     @Test
     fun `a second extraction or a missing episode rolls the write back`() = withDatabase { db, _ ->
         val episode = createEpisode(db, "a")
-        val repository = ComponentRepository(db)
-        repository.writeComponents(episode, listOf("fact"))
+        val repository = ComponentRepositoryImpl(db)
+        repository.save(EpisodeComponents(episode, listOf("fact")))
 
-        assertFails { repository.writeComponents(episode, listOf("again")) }
-        assertFailsWith<IllegalArgumentException> { repository.writeComponents(999, listOf("orphan")) }
-        assertEquals(listOf("fact"), repository.all().map { it.statement })
+        assertFails { repository.save(EpisodeComponents(episode, listOf("again"))) }
+        assertFailsWith<IllegalArgumentException> { repository.save(EpisodeComponents(999, listOf("orphan"))) }
+        assertEquals(listOf("fact"), repository.findCovering(EpisodeAccess.PUBLIC).map { it.statement })
         assertEquals(1L, transaction(db) { ComponentTable.selectAll().count() })
-        assertTrue(repository.read(emptyList()).isEmpty())
+        assertTrue(repository.findByIds(emptyList()).isEmpty())
     }
 
     private fun createEpisode(db: Database, name: String, access: EpisodeAccess = EpisodeAccess.PUBLIC): Int {

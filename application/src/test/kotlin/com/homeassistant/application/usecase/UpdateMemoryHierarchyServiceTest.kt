@@ -1,5 +1,8 @@
 package com.homeassistant.application.usecase
 
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentResult
@@ -7,8 +10,6 @@ import com.homeassistant.application.port.inbound.memoryextraction.MemoryHierarc
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
@@ -146,28 +147,29 @@ class UpdateMemoryHierarchyServiceTest {
             }
             override fun embedQuery(text: String) = VECTOR
         }
-        private val componentReader = object : ComponentReader {
-            override fun all() = components.toList()
-            override fun read(componentIds: Collection<Int>) = components.filter { it.id in componentIds }
-        }
-        private val componentWriter = object : ComponentWriter {
-            override fun writeComponents(episodeId: Int, statements: List<String>): List<Int> =
-                statements.map { Component(components.size + 1, it, episodeId, EpisodeAccess.PUBLIC).also(components::add).id }
+        private val componentRepository = object : ComponentRepository {
+            override fun findByIds(ids: Collection<Int>) = components.filter { it.id in ids }
+            override fun findCovering(access: EpisodeAccess) = components.filter { it.access.covers(access) }
+            override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
+            override fun save(extraction: EpisodeComponents) = extraction.statements.map {
+                Component(components.size + 1, it, extraction.episodeId, EpisodeAccess.PUBLIC).also(components::add)
+            }
         }
         private val assignEpisode = AssignEpisodeToComponents(
-            componentReader,
-            componentWriter,
+            componentRepository,
             PrepareEpisodeEmbedding(texts, EpisodeCache()),
-            PrepareComponentEmbedding(componentReader, texts, ComponentCache()),
+            PrepareComponentEmbedding(componentRepository, texts, ComponentCache()),
             ComponentKnowledgeExtractor { episode, _ ->
                 if (episode.id in failingEpisodes) error("model unavailable")
                 statements[episode.id].orEmpty()
             },
         )
 
-        private val unplacedComponents = object : ComponentReader {
-            override fun all() = (1..unplaced).map(::unplacedComponent)
-            override fun read(componentIds: Collection<Int>) = componentIds.map(::unplacedComponent)
+        private val unplacedComponents = object : ComponentRepository {
+            override fun findByIds(ids: Collection<Int>) = ids.map(::unplacedComponent)
+            override fun findCovering(access: EpisodeAccess) = (1..unplaced).map(::unplacedComponent)
+            override fun findVisibleTo(userId: UserId) = (1..unplaced).map(::unplacedComponent)
+            override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
         }
         private val snapshots = object : GroupSnapshotReader {
             override fun snapshot() = this@Fixture.snapshot

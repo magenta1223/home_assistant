@@ -7,7 +7,7 @@
 ## 책임과 정상 흐름
 
 `OrganizeComponentIntoGroups`는 한 Component의 배치와 충돌 재시도, `PrepareComponentEmbedding`은 Component 벡터 버전과 규약에 맞는 벡터 재사용·생성을 담당한다.
-Group은 Component ID와 벡터 버전만 받는다. 벡터는 캐시에 없을 때 `PrepareComponentEmbedding`이 `ComponentReader`로 문장을 읽어 `EmbeddingGenerator.embedDocument`로 만든다.
+Group은 Component ID와 벡터 버전만 받는다. 벡터는 캐시에 없을 때 `PrepareComponentEmbedding`이 `ComponentRepository.findByIds`로 문장을 읽어 `EmbeddingGenerator.embedDocument`로 만든다.
 배치·분할 판단은 `domain/group/GroupOrganizationPlanner`가 순수 정책을 조합한다.
 Application은 provider·DB 타입을 참조하지 않고 output port를 호출한다.
 
@@ -19,7 +19,7 @@ sequenceDiagram
     participant Snapshots as GroupSnapshotReader
     participant Embedding as PrepareComponentEmbedding
     participant Cache as ComponentEmbeddingStore
-    participant Components as ComponentReader
+    participant Components as ComponentRepository
     participant Generator as EmbeddingGenerator
     participant Policy as GroupOrganizationPlanner
     participant Writer as GroupChangeWriter
@@ -31,7 +31,7 @@ sequenceDiagram
         One->>Embedding: prepare(component)
         Embedding->>Cache: find(key)
         opt 캐시 없음
-            Embedding->>Components: read(id)
+            Embedding->>Components: findByIds(id)
             Embedding->>Generator: embedDocument(statement)
             Embedding->>Cache: save(embedding)
         end

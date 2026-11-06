@@ -49,12 +49,12 @@ sequenceDiagram
 
 ## 실패·복구와 신뢰 경계
 
-- 임베딩과 모델 호출은 DB transaction 밖에서 수행한다. 저장은 `ComponentMaintenanceStore.saveExtraction`의 원자 write다.
+- 임베딩과 모델 호출은 DB transaction 밖에서 수행한다. 저장은 `ComponentRepository.save`의 원자 write다.
 - `assign`이 실패하면 `UpdateMemoryHierarchyService`가 outbox에 시도 횟수와 오류를 남기고 다음 Episode를 계속 처리한다.
   실패한 Episode는 재시도 지연(기본 60초) 뒤 다시 claim되며, 최대 시도(기본 5회)를 넘으면 그 Episode만 멈춘다.
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 배치·병합 단계의 오류는 그 회차를 멈춘다. 앞 단계의 저장 결과는 유지되고 다음 회차가 이어간다.
-- 아는 지식은 매번 모든 Component 벡터와 비교해 고른다. 가족 규모를 전제로 하며 ANN 색인은 없다.
+- 아는 지식은 `findCovering(episode access)`가 DB에서 고른 Component의 벡터와 매번 비교해 고른다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Component 분할·병합(보류)은 [후속 작업](../../../../../../../../../docs/todolist/p1/component-group-merge-and-knn-links.md)이다.
 
 ## Component 검색
@@ -67,18 +67,17 @@ sequenceDiagram
     participant Search as ComponentSearcher
     participant Query as EmbeddingGenerator
     participant Groups as GroupReader
-    participant Components as ComponentReader
+    participant Components as ComponentRepository
     participant Episodes as EpisodeRepository
     Caller->>Search: 1. search(userId, question)
     Search->>Search: 2. 사용자 인가 확인
-    Search->>Components: 3. 모든 Component와 문장 벡터
+    Search->>Components: 3. findVisibleTo(userId): 사용자가 읽을 수 있는 Component와 문장 벡터
     Search->>Query: 4. 질문 벡터 (같은 모델, query: 규약)
-    Search->>Groups: 5. 모든 Group 중심과 소속 Component
-    Search->>Search: 6. 가까운 Group 5개와 kNN 이웃 Group(합쳐 20개까지) 중 backbone 3개의 Component ∪ 가까운 Component 20개
-    Search->>Episodes: 7. 사용자가 읽을 수 있는 Episode
-    Search->>Components: 8. 후보 Component, 사용자가 읽을 수 없거나 출처 Episode가 보이지 않으면 제외
-    Search->>Search: 9. backbone Component 5개
-    Search-->>Caller: 10. Component별 출처 Episode(앞 Component에 나온 Episode는 빼고)
+    Search->>Episodes: 5. findVisibleTo(userId): 사용자가 읽을 수 있는 Episode
+    Search->>Groups: 6. 모든 Group 중심과 소속 Component
+    Search->>Search: 7. 가까운 Group 5개와 kNN 이웃 Group(합쳐 20개까지) 중 backbone 3개의 읽을 수 있는 Component ∪ 가까운 Component 20개
+    Search->>Search: 8. 출처 Episode가 보이는 후보 중 backbone Component 5개
+    Search-->>Caller: 9. Component별 출처 Episode(앞 Component에 나온 Episode는 빼고)
 ```
 
 - backbone 선택은 domain의 `BackboneSelection`(xMemory 식 4)이며 Group과 Component 두 단계가 같은 것을 쓴다.
@@ -88,11 +87,13 @@ sequenceDiagram
   관련도가 낮아서 coverage 이득이 클 때나 고를 수에 여유가 있을 때만 뽑힌다.
 - 후보 Group은 논문의 Stage I 후보 풀처럼 20개까지다. 후보가 많으면 coverage를 나누는 전체 가중치가 커져 다양성 효과가 약해진다.
   남는 자리는 이웃 Group 중 이웃한 Group과 더 닮은 순으로 채운다. 질문과 닮은 순으로 자르면 확장하려던 맥락이 먼저 빠진다.
-- kNN은 저장하지 않고 검색할 때 Group·Component 전체와 cosine으로 계산한다. 저장한 링크와 결과가 같고 낡지 않는다.
+- kNN은 저장하지 않고 검색할 때 Group 전체, 그리고 사용자가 읽을 수 있는 Component 전체와 cosine으로 계산한다. 저장한 링크와 결과가 같고 낡지 않는다.
   Group·Component가 수만 개를 넘으면 같은 질의를 벡터 색인(pgvector)에 맡긴다.
 - 가까운 Component를 직접 후보에 더하므로 아직 Group에 들어가지 않은 Component도 찾힌다.
 - 한 Episode는 먼저 고른 Component 하나에만 싣는다. 출처 Episode가 앞 Component에 실린 Component는 결과에서 빠진다.
 - Group 순위는 ACL과 무관한 중심으로 정한다. 그래서 순위에 남의 Component가 영향을 줄 수 있지만, 내용은 넘기지 않는다.
+  Component의 후보·이웃·순위는 사용자가 읽을 수 있는 Component만으로 정한다. 뽑힐 수 없는 Component가 이웃 자리를 차지해
+  coverage를 깎지 않게 하기 위해서다.
 - 논문의 Stage II(reader entropy가 줄 때만 하위 텍스트 추가)는 하지 않는다([후속 작업](../../../../../../../../../docs/todolist/p2/xmemory-stage2-entropy.md)). 대화 context가 Episode를 순서대로 8,000자 안에서
   줄 단위로 싣는다. 최소 점수는 아직 두지 않는다.
 

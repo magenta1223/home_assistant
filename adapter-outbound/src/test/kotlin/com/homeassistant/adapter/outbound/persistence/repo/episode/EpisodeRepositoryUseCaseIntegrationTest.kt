@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
@@ -39,7 +40,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             )
             val hiddenEpisode = stores.saveEpisode(UserId("member-2"), "hidden", EpisodeAccess.restricted(listOf(UserId("member-2"))))
             listOf(publicEpisode, otherRestrictedEpisode, hiddenEpisode).forEach {
-                stores.componentWriter.writeComponents(it.id, listOf("fact of ${it.content}"))
+                stores.components.save(EpisodeComponents(it.id, listOf("fact of ${it.content}")))
             }
             val texts = object : EmbeddingGenerator {
                 override val space = EmbeddingSpace("test", "passage:v1")
@@ -48,8 +49,8 @@ class EpisodeRepositoryUseCaseIntegrationTest {
                 override fun embedQuery(text: String) = east
             }
             val search = ComponentSearcher(
-                stores.componentReader, stores.groups, texts, stores.episodes,
-                PrepareComponentEmbedding(stores.componentReader, texts, stores.componentEmbeddings),
+                stores.components, stores.groups, texts, stores.episodes,
+                PrepareComponentEmbedding(stores.components, texts, stores.componentEmbeddings),
                 UserAccessPolicy { it == member },
             )
 
@@ -73,8 +74,9 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             val access = EpisodeAccess.restricted(listOf(UserId("other")))
             val episode = stores.saveEpisode(member, "incoming", access)
             val before = stores.episodes.findVisibleTo(UserId("other"))
-            val (componentId) = stores.componentWriter.writeComponents(episode.id, listOf("fact"))
-            assertEquals(access, stores.componentReader.read(listOf(componentId)).single().access)
+            val (component) = stores.components.save(EpisodeComponents(episode.id, listOf("fact")))
+            assertEquals(access, component.access)
+            assertEquals(access, stores.components.findByIds(listOf(component.id)).single().access)
             assertEquals(before, stores.episodes.findVisibleTo(UserId("other")))
         }
     }

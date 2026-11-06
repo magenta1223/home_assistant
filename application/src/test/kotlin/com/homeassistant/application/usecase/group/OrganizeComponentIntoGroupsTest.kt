@@ -1,12 +1,14 @@
 package com.homeassistant.application.usecase.group
 
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
@@ -106,9 +108,11 @@ class OrganizeComponentIntoGroupsTest {
         var generated = 0
         var generate: (String) -> ComponentVector = { vector }
         var write: (GroupChange) -> GroupWriteResult = { GroupWriteResult.Applied(listOf(10)) }
-        private val components = object : ComponentReader {
-            override fun all() = emptyList<Component>()
-            override fun read(componentIds: Collection<Int>) = componentIds.map { Component(it, "$it", it, EpisodeAccess.PUBLIC) }
+        private val components = object : ComponentRepository {
+            override fun findByIds(ids: Collection<Int>) = ids.map { Component(it, "$it", it, EpisodeAccess.PUBLIC) }
+            override fun findCovering(access: EpisodeAccess) = emptyList<Component>()
+            override fun findVisibleTo(userId: UserId) = emptyList<Component>()
+            override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
         }
         private val generator = object : EmbeddingGenerator {
             override val space = this@OrganizeComponentIntoGroupsTest.space

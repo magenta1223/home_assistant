@@ -3,7 +3,7 @@ package com.homeassistant.application.usecase.contextprovider.component
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
@@ -11,6 +11,7 @@ import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.pending
+import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.retrieval.BackboneSelection
 
@@ -22,7 +23,7 @@ import com.homeassistant.domain.retrieval.BackboneSelection
  * source of.
  */
 class ComponentSearcher(
-    private val components: ComponentReader,
+    private val components: ComponentRepository,
     private val groups: GroupReader,
     private val queries: EmbeddingGenerator,
     private val episodes: EpisodeRepository,
@@ -33,22 +34,29 @@ class ComponentSearcher(
 ) {
     fun search(userId: UserId, query: String): List<ComponentMatch> {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
-        val vectors = components.all().associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
+        val readable = components.findVisibleTo(userId)
+        val vectors = readable.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
         if (vectors.isEmpty()) return emptyList()
         val question = queries.embedQuery(query.trim())
-        val readable = readableSources(userId, candidateComponents(question, vectors))
-        val kept = backbone.select(readable.keys, vectors, question, settings.componentLimit)
-        return matches(kept, readable, vectors, question)
+        val sources = sourcesOf(userId, readable)
+        val kept = backbone.select(candidateComponents(question, vectors) intersect sources.keys, vectors, question,
+            settings.componentLimit)
+        return matches(kept, sources, vectors, question)
     }
 
-    /** Components of the backbone candidate Groups, and the nearest [ComponentSearchSettings.componentPool] Components. */
+    /**
+     * The readable Components of the backbone candidate Groups, and the nearest [ComponentSearchSettings.componentPool]
+     * readable Components.
+     */
     private fun candidateComponents(question: ComponentVector, vectors: Map<Int, ComponentVector>): Set<Int> {
         val byId = groups.groups().associateBy { it.group.id }
         val groupCentroids = byId.mapValues { it.value.centroid }
         val candidates = candidateGroups(question, groupCentroids)
         val backboneGroups = backbone.select(candidates, groupCentroids, question, settings.groupLimit)
-        return backboneGroups.flatMap { byId.getValue(it).group.componentIds }.toSet() +
-            nearest(question, vectors, settings.componentPool)
+        return backboneGroups
+            .flatMap { byId.getValue(it).group.componentIds }
+            .filter { it in vectors }.toSet() +
+                nearest(question, vectors, settings.componentPool)
     }
 
     /**
@@ -65,11 +73,10 @@ class ComponentSearcher(
         return (nearGroups + linked).distinct().take(settings.groupCandidates).toSet()
     }
 
-    /** Each candidate Component's source episode when the requester can read both; other Components are left out. */
-    private fun readableSources(userId: UserId, componentIds: Set<Int>): Map<Int, Episode> {
-        // The reader re-checks access, so a Component's own access is never trusted on its own.
+    /** Each of [readable] with its source episode, when the requester can read that episode too. */
+    private fun sourcesOf(userId: UserId, readable: List<Component>): Map<Int, Episode> {
         val visible = episodes.findVisibleTo(userId).associateBy { it.id }
-        return components.read(componentIds).filter { it.isVisibleTo(userId) }
+        return readable
             .mapNotNull { component -> visible[component.sourceEpisodeId]?.let { component.id to it } }
             .toMap()
     }

@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.memoryextraction.component
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.pending
@@ -14,8 +14,7 @@ import com.homeassistant.domain.group.GroupGeometry
  * and only knowledge they do not state becomes new Components.
  */
 class AssignEpisodeToComponents(
-    private val componentReader: ComponentReader,
-    private val componentWriter: ComponentWriter,
+    private val components: ComponentRepository,
     private val episodeEmbeddings: PrepareEpisodeEmbedding,
     private val componentEmbeddings: PrepareComponentEmbedding,
     private val extractor: ComponentKnowledgeExtractor,
@@ -32,9 +31,9 @@ class AssignEpisodeToComponents(
         val vector = episodeEmbeddings.prepare(episode.id, episode.content).vector
         val statements = extractor.extract(episode, knownNear(episode, vector))
             .map(String::trim).filter(String::isNotEmpty).distinct()
-        val componentIds = componentWriter.writeComponents(episode.id, statements)
-        componentReader.read(componentIds).forEach { componentEmbeddings.prepare(it.pending()) }
-        return componentIds
+        val saved = components.save(EpisodeComponents(episode.id, statements))
+        saved.forEach { componentEmbeddings.prepare(it.pending()) }
+        return saved.map { it.id }
     }
 
     /**
@@ -42,7 +41,7 @@ class AssignEpisodeToComponents(
      * so knowledge hidden from them never shapes what is extracted for them.
      */
     private fun knownNear(episode: PendingEpisode, vector: ComponentVector): List<String> {
-        val known = componentReader.all().filter { it.access.covers(episode.access) }
+        val known = components.findCovering(episode.access)
         if (known.isEmpty()) return emptyList()
         val vectors = known.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
         val statements = known.associate { it.id to it.statement }

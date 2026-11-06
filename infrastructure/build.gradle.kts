@@ -4,8 +4,8 @@ plugins {
 }
 
 dependencies {
+    api(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.serialization.json)
-    testImplementation(libs.kotlinx.coroutines.core)
     testImplementation(libs.kotlin.test)
     testImplementation(kotlin("test"))
 }

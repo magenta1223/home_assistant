@@ -33,6 +33,7 @@ class OllamaServerRuntimeTest {
                 command = listOf(missingExecutable.toString(), "serve"),
                 environment = emptyMap(),
                 endpoint = OllamaEndpoint("127.0.0.1", 11435),
+                model = "test-model",
                 requiredExecutable = missingExecutable,
                 enforceFreePort = false,
                 processStarter = OllamaProcessStarter { _, _ ->
@@ -54,11 +55,9 @@ class OllamaServerRuntimeTest {
     fun `starts after readiness and stops only its child process`() {
         withFakeOllamaApi { endpoint ->
             var child: Process? = null
-            val embedder = OllamaTextEmbedder(endpoint.baseUrl, "test-model")
             val runtime = runtime(
                 endpoint = endpoint,
                 command = longRunningCommand(),
-                embeddingProbe = { embedder.embed("probe") },
                 processStarted = { child = it },
             )
 
@@ -95,6 +94,7 @@ class OllamaServerRuntimeTest {
                 command = longRunningCommand(),
                 environment = emptyMap(),
                 endpoint = endpoint,
+                model = "test-model",
                 enforceFreePort = true,
                 processStarter = OllamaProcessStarter { command, environment ->
                     launched = true
@@ -111,12 +111,11 @@ class OllamaServerRuntimeTest {
 
     @Test
     fun `cleans child process when embedding probe fails`() {
-        withFakeOllamaApi { endpoint ->
+        withFakeOllamaApi(embedStatus = 404) { endpoint ->
             var child: Process? = null
             val runtime = runtime(
                 endpoint = endpoint,
                 command = longRunningCommand(),
-                embeddingProbe = { error("model missing") },
                 processStarted = { child = it },
             )
 
@@ -131,13 +130,12 @@ class OllamaServerRuntimeTest {
     private fun runtime(
         endpoint: OllamaEndpoint,
         command: List<String>,
-        embeddingProbe: (() -> Unit)? = null,
         processStarted: (Process) -> Unit = {},
     ) = OllamaServerRuntime(
         command = command,
         environment = emptyMap(),
         endpoint = endpoint,
-        embeddingProbe = embeddingProbe,
+        model = "test-model",
         startTimeout = Duration.ofSeconds(5),
         enforceFreePort = false,
         processStarter = OllamaProcessStarter { processCommand, processEnvironment ->
@@ -175,14 +173,14 @@ class OllamaServerRuntimeTest {
         assertTrue(condition(), "condition was not satisfied before timeout")
     }
 
-    private inline fun withFakeOllamaApi(block: (OllamaEndpoint) -> Unit) {
+    private inline fun withFakeOllamaApi(embedStatus: Int = 200, block: (OllamaEndpoint) -> Unit) {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/api/version") { exchange ->
             exchange.respond(200, "{\"version\":\"test\"}")
         }
         server.createContext("/api/embed") { exchange ->
             val vector = List(768) { "1.0" }.joinToString(",")
-            exchange.respond(200, "{\"embeddings\":[[$vector]]}")
+            exchange.respond(embedStatus, "{\"embeddings\":[[$vector]]}")
         }
         server.start()
         try {

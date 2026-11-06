@@ -16,7 +16,6 @@ import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
-import com.homeassistant.adapter.outbound.embedding.E5EmbeddingAdapter
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
@@ -44,15 +43,14 @@ object ApplicationServicesFactory {
         val users = UserRegistryService(repositories.users)
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
-        val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
-        val embeddingGenerator = E5EmbeddingAdapter(managedEmbedding.embedder, embeddingModel, managedEmbedding.runtime)
+        val ollamaEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
         val episodeEmbeddings = PrepareEpisodeEmbedding(
-            embeddingGenerator,
+            ollamaEmbedding,
             repositories.episodeEmbeddings,
         )
         val componentEmbeddings = PrepareComponentEmbedding(
             repositories.componentReader,
-            embeddingGenerator,
+            ollamaEmbedding,
             repositories.componentEmbeddings,
         )
         val organizeComponent = OrganizeComponentIntoGroups(
@@ -88,12 +86,12 @@ object ApplicationServicesFactory {
         val componentSearch = ComponentSearcher(
             components = repositories.componentReader,
             groups = repositories.groups,
-            queries = embeddingGenerator,
+            queries = ollamaEmbedding,
             episodes = repositories.episodeReader,
             componentEmbeddings = componentEmbeddings,
             accessPolicy = users,
         )
-        val episodeSearch = EpisodeSearcher(repositories.episodeReader, embeddingGenerator, episodeEmbeddings, users)
+        val episodeSearch = EpisodeSearcher(repositories.episodeReader, ollamaEmbedding, episodeEmbeddings, users)
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
@@ -135,7 +133,7 @@ object ApplicationServicesFactory {
                 repositories.userSessions,
                 Pbkdf2PasswordHasher(),
             ),
-            embeddingRuntime = managedEmbedding.runtime,
+            embeddingRuntime = ollamaEmbedding,
             conversationExpiryWorker = conversationExpiryWorker,
             componentAssignmentWorker = EpisodeComponentAssignmentWorker(updateHierarchy),
             conversationGateway = conversationGateway,

@@ -1,6 +1,5 @@
 package com.homeassistant.adapter.outbound.embedding.ollama.install
 
-import com.homeassistant.adapter.outbound.embedding.ollama.OllamaTextEmbedder
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEndpoint
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaServerRuntime
 import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
@@ -35,17 +34,17 @@ object OllamaEmbeddingSetup {
             command = listOf(executable.toString(), "serve"),
             environment = environment,
             endpoint = endpoint,
+            model = model,
             requiredExecutable = executable,
             requiredModelsDirectory = modelsDirectory,
         )
 
         runtime.use {
-            it.start()
+            it.startServer()
             if (!modelExists(endpoint.baseUrl, model)) {
                 pullModel(executable, environment, model)
             }
-            OllamaTextEmbedder(endpoint.baseUrl, model)
-                .embed("home second brain embedding setup verification")
+            it.embedDocument("home second brain embedding setup verification")
         }
     }
 

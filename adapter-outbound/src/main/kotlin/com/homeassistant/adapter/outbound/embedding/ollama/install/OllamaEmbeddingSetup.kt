@@ -39,12 +39,14 @@ object OllamaEmbeddingSetup {
             requiredModelsDirectory = modelsDirectory,
         )
 
-        runtime.use {
-            it.startServer()
+        runtime.startServer()
+        try {
             if (!modelExists(endpoint.baseUrl, model)) {
                 pullModel(executable, environment, model)
             }
-            it.embedDocument("home second brain embedding setup verification")
+            runtime.embedDocument("home second brain embedding setup verification")
+        } finally {
+            runtime.stopServer()
         }
     }
 

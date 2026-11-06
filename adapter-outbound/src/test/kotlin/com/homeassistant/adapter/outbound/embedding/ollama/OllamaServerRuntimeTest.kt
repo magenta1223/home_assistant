@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
+import com.homeassistant.infrastructure.runtime.RuntimeState
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
@@ -63,15 +64,15 @@ class OllamaServerRuntimeTest {
 
             runtime.start()
 
-            assertTrue(runtime.isReady)
-            runtime.close()
-            assertFalse(runtime.isReady)
+            assertTrue(runtime.isAvailable())
+            runtime.stop()
+            assertEquals(RuntimeState.TERMINATED, runtime.state)
             assertFalse(child!!.isAlive)
         }
     }
 
     @Test
-    fun `becomes unhealthy when child process exits unexpectedly`() {
+    fun `fails when child process exits unexpectedly`() {
         withFakeOllamaApi { endpoint ->
             val runtime = runtime(
                 endpoint = endpoint,
@@ -80,9 +81,8 @@ class OllamaServerRuntimeTest {
 
             runtime.start()
 
-            eventually { !runtime.isReady }
-            assertFalse(runtime.isReady)
-            runtime.close()
+            eventually { runtime.state == RuntimeState.FAILED }
+            assertFalse(runtime.isAvailable())
         }
     }
 
@@ -123,7 +123,7 @@ class OllamaServerRuntimeTest {
 
             assertContains(failure.message.orEmpty(), "setupEmbedding")
             assertFalse(child!!.isAlive)
-            assertFalse(runtime.isReady)
+            assertEquals(RuntimeState.FAILED, runtime.state)
         }
     }
 

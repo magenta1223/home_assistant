@@ -1,8 +1,9 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.infrastructure.runtime.AbstractRuntime
+import com.homeassistant.infrastructure.runtime.RuntimeState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -19,7 +20,7 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            embeddingRuntime = embedding,
+            runtimes = listOf(embedding),
             conversationExpiryWorker = expiry,
             componentAssignmentWorker = assignment,
             conversationGateway = codex,
@@ -38,7 +39,7 @@ class DefaultApplicationServicesTest {
                 "expiry.close",
                 "assignment.close",
                 "codex.close",
-                "embedding.close",
+                "embedding.stop",
             ),
             events,
         )
@@ -59,7 +60,7 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            embeddingRuntime = embedding,
+            runtimes = listOf(embedding),
             conversationExpiryWorker = expiry,
             conversationGateway = codex,
         )
@@ -73,11 +74,11 @@ class DefaultApplicationServicesTest {
                 "expiry.start",
                 "expiry.close",
                 "codex.close",
-                "embedding.close",
+                "embedding.stop",
             ),
             events,
         )
-        assertFalse(embedding.isReady)
+        assertEquals(RuntimeState.TERMINATED, embedding.state)
     }
 
     private class RecordingComponentAssignmentWorker(
@@ -98,18 +99,13 @@ class DefaultApplicationServicesTest {
 
     private class RecordingEmbeddingRuntime(
         private val events: MutableList<String>,
-    ) : EmbeddingServerRuntime {
-        override var isReady: Boolean = false
-            private set
-
-        override fun start() {
+    ) : AbstractRuntime() {
+        override fun onStart() {
             events += "embedding.start"
-            isReady = true
         }
 
-        override fun close() {
-            events += "embedding.close"
-            isReady = false
+        override fun onStop() {
+            events += "embedding.stop"
         }
     }
 

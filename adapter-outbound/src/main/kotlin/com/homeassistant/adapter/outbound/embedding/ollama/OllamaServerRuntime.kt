@@ -5,6 +5,8 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.embedding.EmbeddingVector
+import com.homeassistant.infrastructure.runtime.AbstractRuntime
+import com.homeassistant.infrastructure.runtime.RuntimeState
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -20,13 +22,6 @@ import java.nio.file.Path
 import java.time.Duration
 import java.util.ArrayDeque
 import java.util.concurrent.TimeUnit
-
-/** Owns the local embedding server process used by the application. */
-interface EmbeddingServerRuntime : AutoCloseable {
-    val isReady: Boolean
-
-    fun start()
-}
 
 /** Builds the runtime of the managed Ollama installation. */
 object ManagedOllamaEmbeddingFactory {
@@ -63,8 +58,9 @@ internal fun interface OllamaProcessStarter {
 }
 
 /**
- * A managed Ollama server serving one e5 model: it starts and stops the server process, reports readiness and
- * embeds text. e5 expects `passage: ` before stored text and `query: ` before questions.
+ * A managed Ollama server serving one e5 model: it runs the server process as an [AbstractRuntime] and embeds text.
+ * It is available only while [RuntimeState.RUNNING]; the process exiting on its own fails the runtime.
+ * e5 expects `passage: ` before stored text and `query: ` before questions.
  */
 class OllamaServerRuntime internal constructor(
     private val command: List<String>,
@@ -85,7 +81,7 @@ class OllamaServerRuntime internal constructor(
     private val client: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(30))
         .build(),
-) : EmbeddingGenerator, EmbeddingServerRuntime {
+) : AbstractRuntime(), EmbeddingGenerator {
     private val log = LoggerFactory.getLogger(javaClass)
     private val recentLogs = ArrayDeque<String>()
 
@@ -93,35 +89,30 @@ class OllamaServerRuntime internal constructor(
     private var process: Process? = null
 
     @Volatile
-    private var ready = false
-
-    @Volatile
     private var closing = false
 
     override val space = EmbeddingSpace(model, "episode-content:passage:v1")
 
-    override val isReady: Boolean
-        get() = ready && process?.isAlive == true
+    override fun isAvailable(): Boolean = state == RuntimeState.RUNNING
 
-    override fun isAvailable(): Boolean = isReady
-
-    /** Starts the server and loads the model with one probe embedding; ready only when the model answers. */
-    @Synchronized
-    override fun start() {
+    /** Starts the server and loads the model with one probe embedding; running only when the model answers. */
+    override fun onStart() {
         startServer()
         try {
             embedDocument(READINESS_PROBE_TEXT)
         } catch (failure: Exception) {
-            close()
+            stopServer()
             throw IllegalStateException("Embedding model is not ready. Run .\\gradlew.bat setupEmbedding", failure)
         }
-        ready = true
+    }
+
+    override fun onStop() {
+        stopServer()
     }
 
     /** Starts the server process and waits until its API answers, without requiring the model to be installed. */
     @Synchronized
     internal fun startServer() {
-        check(process == null) { "Ollama server runtime has already been started" }
         requiredExecutable?.let {
             check(Files.isRegularFile(it)) {
                 "Managed Ollama is not installed at $it. Run .\\gradlew.bat setupEmbedding"
@@ -140,9 +131,9 @@ class OllamaServerRuntime internal constructor(
         log.info("Managed Ollama server process started pid={}", started.pid())
         consumeLogs(started)
         started.onExit().thenRun {
-            ready = false
             if (!closing) {
                 log.error("Managed Ollama server exited unexpectedly with code={}", started.exitValue())
+                fail(IllegalStateException("Managed Ollama server exited with code=${started.exitValue()}"))
             }
         }
 
@@ -150,7 +141,7 @@ class OllamaServerRuntime internal constructor(
             awaitReadiness(started)
             log.info("Managed Ollama server ready at {}", endpoint.baseUrl)
         } catch (failure: Exception) {
-            close()
+            stopServer()
             val diagnostic = synchronized(recentLogs) { recentLogs.joinToString(System.lineSeparator()) }
             throw IllegalStateException(
                 buildString {
@@ -163,9 +154,9 @@ class OllamaServerRuntime internal constructor(
         }
     }
 
+    /** Stops the server process and its children, forcibly when they do not exit in time. */
     @Synchronized
-    override fun close() {
-        ready = false
+    internal fun stopServer() {
         closing = true
         val running = process ?: return
         val descendants = running.descendants().toList()

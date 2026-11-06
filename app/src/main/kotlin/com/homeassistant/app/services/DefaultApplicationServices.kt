@@ -1,43 +1,43 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.infrastructure.runtime.Runtime
+import com.homeassistant.infrastructure.runtime.RuntimeState
 
+/** Serves the use cases while [runtimes] run: they start in order and stop in reverse order. */
 internal class DefaultApplicationServices(
     override val episodeAnalysis: EpisodeAnalysis,
     override val chatService: ChatService? = null,
     override val users: UserRegistry = UserRegistry.NONE,
     override val authentication: UserAuthentication = UserAuthentication.NONE,
-    private val embeddingRuntime: EmbeddingServerRuntime,
+    private val runtimes: List<Runtime>,
     private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
     private val componentAssignmentWorker: ComponentAssignmentWorker = ComponentAssignmentWorker.NONE,
     private val conversationGateway: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
-        get() = embeddingRuntime.isReady
+        get() = runtimes.all { it.state == RuntimeState.RUNNING }
 
     override fun start() {
-        embeddingRuntime.start()
+        runtimes.forEach(Runtime::start)
         componentAssignmentWorker.start()
         conversationExpiryWorker.start()
     }
 
+    /** Releases everything even when one release fails, then throws the first failure with the others suppressed. */
     override fun close() {
-        try {
-            conversationExpiryWorker.close()
-        } finally {
-            try {
-                componentAssignmentWorker.close()
-            } finally {
-                try {
-                    conversationGateway?.close()
-                } finally {
-                    embeddingRuntime.close()
-                }
-            }
+        val releases = listOf(
+            conversationExpiryWorker::close,
+            componentAssignmentWorker::close,
+            { conversationGateway?.close() },
+        ) + runtimes.asReversed().map { it::stop }
+        val failures = releases.mapNotNull { runCatching(it).exceptionOrNull() }
+        failures.firstOrNull()?.let { first ->
+            failures.drop(1).forEach(first::addSuppressed)
+            throw first
         }
     }
 }

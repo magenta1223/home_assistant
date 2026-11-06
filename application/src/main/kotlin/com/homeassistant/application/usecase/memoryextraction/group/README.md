@@ -1,34 +1,30 @@
 # Component → Group organization
 
 명시적으로 저장된 Component를 component로 사용해 Group을 생성·배치·분할한다.
-내부 input port는 `OrganizePendingComponents.execute(limit)`이며 앱의 `organizeComponents`로 제공된다.
-HTTP·worker·Episode 분석 경로에서는 호출하지 않는다. 앱 시작만으로 실행되지 않는다.
-현재 Component 자동 생성 경로는 없으므로 기존 trusted Component 저장 경로로 입력을 준비해야 한다.
+`OrganizeComponentIntoGroups.organize(component)`가 담당하며 inbound port가 아니다.
+`UpdateMemoryHierarchyService`가 회차마다 아직 Group에 없는 Component(`PendingComponentSource`)를 읽어 하나씩 부른다.
 
 ## 책임과 정상 흐름
 
-`OrganizePendingComponentsService`는 batch 제한과 결과 집계, `OrganizeComponent`은 한 Component의 실행과
-충돌 재시도, `PrepareComponentEmbedding`은 Component 벡터 버전과 규약에 맞는 벡터 재사용·생성을 담당한다.
+`OrganizeComponentIntoGroups`는 한 Component의 배치와 충돌 재시도, `PrepareComponentEmbedding`은 Component 벡터 버전과 규약에 맞는 벡터 재사용·생성을 담당한다.
 Group은 Component ID와 벡터 버전만 받는다. 벡터를 무엇으로 만드는지는 `ComponentEmbeddingGenerator` 구현이 정한다.
 배치·분할 판단은 `domain/group/GroupOrganizationPlanner`가 순수 정책을 조합한다.
 Application은 provider·DB 타입을 참조하지 않고 output port를 호출한다.
 
 ```mermaid
 sequenceDiagram
-    actor Caller as Internal caller
-    participant Batch as OrganizePendingComponentsService
+    participant Update as UpdateMemoryHierarchyService
     participant Pending as PendingComponentSource
-    participant One as OrganizeComponent
+    participant One as OrganizeComponentIntoGroups
     participant Snapshots as GroupSnapshotReader
     participant Embedding as PrepareComponentEmbedding
     participant Cache as ComponentEmbeddingStore
     participant Generator as ComponentEmbeddingGenerator
     participant Policy as GroupOrganizationPlanner
     participant Writer as GroupChangeWriter
-    Caller->>Batch: execute(limit)
-    Batch->>Pending: pending(limit)
+    Update->>Pending: pending(limit)
     loop Component ID 순서, 최대 limit개
-        Batch->>One: execute(component)
+        Update->>One: organize(component)
         One->>Snapshots: snapshot()
         One->>One: 이미 배치됨 / 모델·규약 확인
         One->>Embedding: prepare(component)
@@ -46,9 +42,9 @@ sequenceDiagram
         else 확정 또는 같은 요청 재전송
             Writer-->>One: Applied / AlreadyApplied
         end
-        One-->>Batch: Component별 결과
+        One-->>Update: Organized / AlreadyOrganized / ConflictExhausted
     end
-    Batch-->>Caller: Completed / RebuildRequired
+    Note over Update: GroupRebuildRequired면 회차를 멈추고 병합하지 않는다
 ```
 
 ## 정책
@@ -71,8 +67,7 @@ Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다
 
 ## Group 병합
 
-`MergeSmallGroups`는 `organizeEpisodes` 회차에서 Group 배치가 끝난 뒤 실행된다. 그 회차에 처리한 Episode가 있고
-배치가 `Completed`일 때만 실행한다. 규칙은 xMemory 부록 A.2·B를 따른다.
+`MergeSmallGroups`는 `UpdateMemoryHierarchyService`가 회차마다 Group 배치 다음에 부른다. 배치 중 `GroupRebuildRequired`가 나면 그 회차에는 실행하지 않는다. 규칙은 xMemory 부록 A.2·B를 따른다.
 
 - Component가 1개뿐인 Group을 ID 순으로 본다.
 - 중심이 가까운 Group `mergeNeighbors`(10)개 중 중심 cosine이 `mergeThreshold`(0.65) 이상이고 합쳐도 `maxComponents` 이하인 것이 후보다.
@@ -88,10 +83,10 @@ Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다
 - 캐시는 Component ID·벡터 버전·모델·입력 규약으로 구분한다. 같은 key는 첫 저장 벡터를 재사용한다.
 - 유한하지 않은 값·영벡터·차원 불일치·계산 불가능한 centroid는 성공으로 처리하지 않는다.
 - Group 소속·centroid·revision·receipt는 한 transaction으로 확정한다. 실패 시 모두 롤백한다.
-- 모델·규약·차원이 바뀌면 `RebuildRequired`로 실행을 중단한다. Component 문장은 바뀌지 않으므로 이미 배치된 Component의
+- 모델·규약·차원이 바뀌면 `GroupRebuildRequired`를 던지고, `UpdateMemoryHierarchyService`는 그 회차의 배치를 멈추고 병합하지 않는다. Component 문장은 바뀌지 않으므로 이미 배치된 Component의
   벡터 버전도 바뀌지 않는다.
   모델 이름이 같아도 실제 가중치를 교체했다면 식별자를 변경해야 한다. 자동 재구성은 후속 작업이다.
-- 개별 Component 실패는 `Failed`, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Component는 계속 처리한다.
+- 개별 Component 실패는 `UpdateMemoryHierarchyService`가 그 Component만 `Failed`로 남기고, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Component는 계속 처리한다.
   취소 예외는 삼키지 않는다. Pending 조회 자체의 저장소 장애는 호출자에게 전파한다.
 - 저장 성공 후 호출이 중단되어도 다음 실행은 Group 미소속 Component만 조회한다.
   저장 요청 자체를 재전송할 때에는 같은 operation key와 내용을 사용하면 같은 ID를 받는다.

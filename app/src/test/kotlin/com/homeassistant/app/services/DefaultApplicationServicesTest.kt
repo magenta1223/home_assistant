@@ -3,8 +3,6 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.embedding.ollama.EmbeddingServerRuntime
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
-import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -21,8 +19,6 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            organizeComponents = OrganizePendingComponents { error("must only run on explicit invocation") },
-            organizeEpisodes = unusedOrganizeEpisodes(),
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             componentAssignmentWorker = assignment,
@@ -63,8 +59,6 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            organizeComponents = OrganizePendingComponents { error("must only run on explicit invocation") },
-            organizeEpisodes = unusedOrganizeEpisodes(),
             embeddingRuntime = embedding,
             conversationExpiryWorker = expiry,
             conversationGateway = codex,
@@ -84,12 +78,6 @@ class DefaultApplicationServicesTest {
             events,
         )
         assertFalse(embedding.isReady)
-    }
-
-    private fun unusedOrganizeEpisodes() = object : OrganizePendingEpisodes {
-        override fun isReady() = error("must only run from the component assignment worker")
-        override fun execute(limit: Int) = error("must only run from the component assignment worker")
-        override fun enqueueUnassigned() = error("must only run from the component assignment worker")
     }
 
     private class RecordingComponentAssignmentWorker(

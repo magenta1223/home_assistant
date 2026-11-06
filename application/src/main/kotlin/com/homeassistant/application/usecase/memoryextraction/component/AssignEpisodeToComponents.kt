@@ -1,6 +1,5 @@
 package com.homeassistant.application.usecase.memoryextraction.component
 
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
@@ -13,7 +12,7 @@ import com.homeassistant.domain.group.GroupGeometry
  * Extracts an episode's Components as xMemory does: the Components nearest the episode stand for what is already known,
  * and only knowledge they do not state becomes new Components.
  */
-class ExtractComponents(
+class AssignEpisodeToComponents(
     private val componentReader: ComponentReader,
     private val componentWriter: ComponentWriter,
     private val episodeEmbeddings: PrepareEpisodeEmbedding,
@@ -26,15 +25,15 @@ class ExtractComponents(
     /** True when the episode embedding can be called now. */
     fun isReady(): Boolean = episodeEmbeddings.isAvailable()
 
-    /** Stores the new long-term knowledge of [episode] as Components and returns their ids; empty when there is none. */
-    fun execute(episode: PendingEpisode): EpisodeAssignmentOutcome.Extracted {
+    /** The ids of the Components created for [episode]; empty when it held no new long-term knowledge. */
+    fun assign(episode: PendingEpisode): List<Int> {
         // Every episode is embedded here, so episode search later finds it whether or not it yields Components.
         val vector = episodeEmbeddings.prepare(episode.id, episode.content).vector
         val statements = extractor.extract(episode, knownNear(episode, vector))
             .map(String::trim).filter(String::isNotEmpty).distinct()
         val componentIds = componentWriter.writeComponents(episode.id, statements)
         componentReader.read(componentIds).forEach { componentEmbeddings.prepare(it.pending()) }
-        return EpisodeAssignmentOutcome.Extracted(componentIds)
+        return componentIds
     }
 
     /**

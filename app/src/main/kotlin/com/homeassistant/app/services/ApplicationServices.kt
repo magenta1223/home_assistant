@@ -2,10 +2,8 @@ package com.homeassistant.app.services
 
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingComponents
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.chatservice.ChatService
-import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
 
 /** Provides the application's top-level use cases and managed runtimes. */
 interface ApplicationServices : AutoCloseable {
@@ -20,12 +18,6 @@ interface ApplicationServices : AutoCloseable {
 
     /** Registers people and keeps them logged in with sessions. */
     val authentication: UserAuthentication
-
-    /** Explicit trusted maintenance; starting the application does not run this use case. */
-    val organizeComponents: OrganizePendingComponents
-
-    /** Episode → Component assignment from the outbox, then Component → Group; the started worker runs it periodically. */
-    val organizeEpisodes: OrganizePendingEpisodes
 
     /** Describes a Component per viewer on demand; nothing is generated ahead of a request. */
 

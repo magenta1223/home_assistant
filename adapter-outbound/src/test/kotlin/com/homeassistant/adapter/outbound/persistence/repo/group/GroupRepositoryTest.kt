@@ -18,8 +18,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Pendin
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
 import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
@@ -54,15 +53,15 @@ class GroupRepositoryTest {
         val beforeComponents = components.read(ids)
         val beforeEpisodes = episodes.getEpisodes(user)
         val beforeSources = sources.findBySource(source)
-        val first = service(db, 2).execute(3)
-        assertEquals(3, first.components.size)
-        assertTrue(first.components.all { it.outcome is ComponentOrganizationOutcome.Organized })
-        assertTrue(first.components.any { (it.outcome as ComponentOrganizationOutcome.Organized).split is GroupSplit.Divided })
+        val first = organizePending(db, 2, limit = 3)
+        assertEquals(3, first.size)
+        assertTrue(first.all { it is ComponentOrganizationOutcome.Organized })
+        assertTrue(first.any { (it as ComponentOrganizationOutcome.Organized).split is GroupSplit.Divided })
         val restarted = DatabaseFactory.init(path)
-        val remaining = service(restarted, 2).execute(10)
-        assertEquals(2, remaining.components.size)
-        assertTrue(remaining.components.all { it.outcome is ComponentOrganizationOutcome.Organized })
-        assertTrue(service(restarted, 2).execute(10).components.isEmpty())
+        val remaining = organizePending(restarted, 2, limit = 10)
+        assertEquals(2, remaining.size)
+        assertTrue(remaining.all { it is ComponentOrganizationOutcome.Organized })
+        assertTrue(organizePending(restarted, 2, limit = 10).isEmpty())
         val snapshot = GroupRepository(restarted).snapshot()
         assertEquals(ids, snapshot.groups.flatMap { it.group.componentIds }.toSet())
         assertEquals(ids.size, snapshot.groups.sumOf { it.group.componentIds.size })
@@ -226,20 +225,20 @@ class GroupRepositoryTest {
         )
     }, embeddings.filterKeys { it in parts.flatten() })
 
-    private fun service(db: Database, maxComponents: Int): OrganizePendingComponentsService {
+    /** Places up to [limit] unplaced Components one by one, as the assignment worker does. */
+    private fun organizePending(db: Database, maxComponents: Int, limit: Int): List<ComponentOrganizationOutcome> {
         val repository = GroupRepository(db)
         val generator = object : ComponentEmbeddingGenerator {
             override val space = this@GroupRepositoryTest.space
             override fun generate(component: PendingComponent) = vector
         }
         val settings = GroupPolicySettings(maxComponents = maxComponents)
-        return OrganizePendingComponentsService(
-            repository, OrganizeComponent(
-                repository, repository,
-                PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
-                GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
-            )
+        val organizer = OrganizeComponentIntoGroups(
+            repository, repository,
+            PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
+            GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
+        return repository.pending(limit).map(organizer::organize)
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

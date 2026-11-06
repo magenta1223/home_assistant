@@ -6,7 +6,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
@@ -14,12 +13,9 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Ep
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
-import com.homeassistant.application.usecase.memoryextraction.component.ExtractComponents
-import com.homeassistant.application.usecase.memoryextraction.component.OrganizePendingEpisodesService
+import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.group.*
@@ -53,25 +49,25 @@ class EpisodeComponentAssignmentTest {
             "보일러 점검 예약" to listOf("보일러는 매년 가을에 점검한다"),
             "월세 이체일은 25일" to listOf("월세 이체일은 25일이다"),
         ))
-        val first = service(db, vectors, extractor).execute(10)
+        val first = assignmentRound(db, vectors, extractor)
 
         assertEquals(listOf(
             Component(1, "보일러는 매년 가을에 점검한다", boiler, access),
             Component(2, "월세 이체일은 25일이다", rent, access),
         ), ComponentRepository(db).all())
-        assertEquals(listOf(listOf(1), listOf(2)), first.episodes.map { (it.outcome as EpisodeAssignmentOutcome.Extracted).componentIds })
+        assertEquals(listOf(listOf(1), listOf(2)), first)
         assertEquals(setOf(1, 2), GroupRepository(db).snapshot().groups.flatMap { it.group.componentIds }.toSet())
 
         seedEpisodes(db, "second", "보일러 수리비 12만 원")
         vectors["보일러 수리비 12만 원"] = nearEast
-        val result = service(db, vectors, extractor).execute(10)
+        val result = assignmentRound(db, vectors, extractor)
 
-        assertEquals(EpisodeAssignmentOutcome.Extracted(emptyList()), result.episodes.single().outcome)
+        assertEquals(listOf(emptyList()), result)
         assertEquals("보일러는 매년 가을에 점검한다", extractor.known.last().first())
         assertEquals(listOf("보일러 수리비 12만 원"), extractor.messages.last())
 
         val restarted = DatabaseFactory.init(path)
-        assertTrue(service(restarted, vectors, extractor).execute(10).episodes.isEmpty())
+        assertTrue(assignmentRound(restarted, vectors, extractor).isEmpty())
     }
 
     //TODO: restore
@@ -116,13 +112,14 @@ class EpisodeComponentAssignmentTest {
         }, listOf(record.id)).map { it.id }
     }
 
-    private fun service(
+    /** Assigns every claimable episode, completing its outbox row, then places the new Components in Groups. */
+    private fun assignmentRound(
         db: Database,
         vectors: Map<String, ComponentVector>,
         extractor: ComponentKnowledgeExtractor,
-        store: ComponentRepository = ComponentRepository(db),
-    ): OrganizePendingEpisodesService {
+    ): List<List<Int>> {
         val groups = GroupRepository(db)
+        val store = ComponentRepository(db)
         val texts = object : EpisodeEmbeddingGenerator {
             override val space = this@EpisodeComponentAssignmentTest.space
             override fun isAvailable() = true
@@ -130,22 +127,21 @@ class EpisodeComponentAssignmentTest {
         }
         val episodeEmbeddings = PrepareEpisodeEmbedding(texts, EpisodeEmbeddingRepository(db))
         val componentEmbeddings = PrepareComponentEmbedding(
-            ComponentStatementVectors(ComponentRepository(db), texts),
+            ComponentStatementVectors(store, texts),
             ComponentEmbeddingRepository(db)
         )
         val settings = GroupPolicySettings()
-        return OrganizePendingEpisodesService(
-            ComponentAssignmentOutboxRepository(db),
-            ExtractComponents(store,  store, episodeEmbeddings, componentEmbeddings, extractor),
-            OrganizePendingComponentsService(
-                groups, OrganizeComponent(
-                    groups, groups, componentEmbeddings,
-                    GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
-                )
-            ),
-            MergeSmallGroups(groups, groups, GroupMergePolicy(settings)),
-            retryDelayMillis = 0,
+        val assign = AssignEpisodeToComponents(store, store, episodeEmbeddings, componentEmbeddings, extractor)
+        val outbox = ComponentAssignmentOutboxRepository(db)
+        val assigned = outbox.claimReady(10, NOW, NOW, NOW - 1, 5).map { task ->
+            assign.assign(task.episode).also { outbox.markCompleted(task.outboxId, task.attempt, NOW) }
+        }
+        val organizer = OrganizeComponentIntoGroups(
+            groups, groups, componentEmbeddings,
+            GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
+        groups.pending(10).forEach(organizer::organize)
+        return assigned
     }
 
     private data class OutboxRow(val status: String, val attempts: Int, val lastError: String?)
@@ -154,6 +150,10 @@ class EpisodeComponentAssignmentTest {
         ComponentAssignmentOutboxTable.selectAll().where { ComponentAssignmentOutboxTable.episodeId eq episodeId }.singleOrNull()?.let {
             OutboxRow(it[ComponentAssignmentOutboxTable.status], it[ComponentAssignmentOutboxTable.attempts], it[ComponentAssignmentOutboxTable.lastError])
         }
+    }
+
+    private companion object {
+        const val NOW = 1_000_000L
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

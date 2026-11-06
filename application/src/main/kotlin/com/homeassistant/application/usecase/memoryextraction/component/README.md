@@ -1,10 +1,10 @@
 # Episode → Component extraction
 
-Component 할당 outbox에 쌓인 Episode에서 Component를 추출하고, 이어서 Component를 Group으로 정리한다.
-내부 input port는 `OrganizePendingEpisodes.execute(limit)`이며 앱의 `organizeEpisodes`로 제공된다.
-outbox 행은 Episode 저장 transaction에서 함께 생긴다. 앱의 Component 할당 worker가 주기마다 임베딩 runtime이
-준비됐는지 확인한 뒤에만 호출한다. 준비되지 않은 회차는 claim하지 않는다.
-worker는 시작 시 `enqueueUnassigned()`로 outbox 도입 전 저장된 미추출 Episode를 한 번 등록한다.
+Episode 하나에서 Component를 추출한다. `AssignEpisodeToComponents.assign(episode)`가 담당하며 inbound port가 아니다.
+`assign`은 outbox를 모른다. outbox relay인 `UpdateMemoryHierarchyService`(`UpdateMemoryHierarchy`)가 Episode를 claim해 `assign`을 부르고 결과를 기록한다.
+outbox 행은 Episode 저장 transaction에서 함께 생긴다. relay는 `isReady()`로 임베딩 runtime이 준비됐는지 확인한 뒤에만 claim하고,
+claim 전에 outbox 도입 전 저장된 미추출 Episode를 등록한다. 앱의 worker는 이 use case를 주기마다 부르는 타이머다.
+Group 배치(`OrganizeComponentIntoGroups`)와 병합(`MergeSmallGroups`)도 같은 use case가 이어서 부른다.
 
 Episode는 xMemory의 episode, Component는 component, Group은 group이다. xMemory의 prediction-correction처럼
 Episode에 가까운 기존 Component를 이미 아는 지식으로 두고, 그 지식이 말하지 않는 장기 지식만 새 Component로 저장한다.
@@ -13,28 +13,27 @@ Episode에 가까운 기존 Component를 이미 아는 지식으로 두고, 그 
 
 ```mermaid
 sequenceDiagram
-    actor Caller as 호출자
-    participant Batch as OrganizePendingEpisodesService
-    participant Extract as ExtractComponents
+    participant Update as UpdateMemoryHierarchyService
+    participant Outbox as 할당 outbox
+    participant Extract as AssignEpisodeToComponents
     participant Embed as 임베딩 캐시
     participant Model as ComponentKnowledgeExtractor
     participant Store as Component DB
     participant Groups as Group 정리
-    Caller->>Batch: 1. organizeEpisodes(limit)
-    Batch->>Store: 2. 할당 outbox claim (시도 횟수 증가)
+    Update->>Outbox: 1. claim (시도 횟수 증가)
     loop Episode마다
-        Batch->>Extract: 3. 추출 요청
-        Extract->>Store: 4. Episode의 독자가 모두 읽을 수 있는 Component
-        Extract->>Embed: 5. Episode 벡터와 Component 문장 벡터
-        Extract->>Model: 6. 가까운 Component 10개를 아는 지식으로 넘겨 새 장기 지식 추출
-        Extract->>Store: 7. 추출 완료 표시와 새 Component를 한 transaction으로
-        Extract->>Embed: 8. 새 Component 문장 벡터
-        Extract-->>Batch: 9. 새 Component ID들 (없을 수 있음)
+        Update->>Extract: 2. assign(episode)
+        Extract->>Store: 3. Episode의 독자가 모두 읽을 수 있는 Component
+        Extract->>Embed: 4. Episode 벡터와 Component 문장 벡터
+        Extract->>Model: 5. 가까운 Component 10개를 아는 지식으로 넘겨 새 장기 지식 추출
+        Extract->>Store: 6. 추출 완료 표시와 새 Component를 한 transaction으로
+        Extract->>Embed: 7. 새 Component 문장 벡터
+        Extract-->>Update: 8. 새 Component ID들 (없을 수 있음)
+        Update->>Outbox: 9. 완료 또는 실패 기록
     end
-    Batch->>Groups: 10. 버전이 바뀐 Component 벡터의 Group 갱신
-    Batch->>Groups: 11. 새 Component를 xMemory 방식으로 Group 배치·분할
-    Batch->>Groups: 12. Component 1개짜리 Group을 이웃 Group과 병합(배치가 정상 완료된 회차만)
-    Batch-->>Caller: 13. Episode별 결과 + Group 결과 + 병합 결과
+    Update->>Groups: 10. 버전이 바뀐 Component 벡터의 Group 갱신
+    Update->>Groups: 11. 새 Component를 xMemory 방식으로 Group 배치·분할
+    Update->>Groups: 12. Component 1개짜리 Group을 이웃 Group과 병합(배치가 정상 완료된 회차만)
 ```
 
 ## 정책
@@ -51,10 +50,10 @@ sequenceDiagram
 ## 실패·복구와 신뢰 경계
 
 - 임베딩과 모델 호출은 DB transaction 밖에서 수행한다. 저장은 `ComponentMaintenanceStore.saveExtraction`의 원자 write다.
-- 개별 Episode 실패는 `Failed`이며 outbox에 시도 횟수와 오류를 남기고 다음 Episode를 계속 처리한다.
+- `assign`이 실패하면 `UpdateMemoryHierarchyService`가 outbox에 시도 횟수와 오류를 남기고 다음 Episode를 계속 처리한다.
   실패한 Episode는 재시도 지연(기본 60초) 뒤 다시 claim되며, 최대 시도(기본 5회)를 넘으면 그 Episode만 멈춘다.
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
-- Group 벡터 준비·배치 단계의 오류는 호출자에게 전파한다. 앞 단계의 저장 결과는 유지되고 다음 호출이 이어간다.
+- Group 배치·병합 단계의 오류는 그 회차를 멈춘다. 앞 단계의 저장 결과는 유지되고 다음 회차가 이어간다.
 - 아는 지식은 매번 모든 Component 벡터와 비교해 고른다. 가족 규모를 전제로 하며 ANN 색인은 없다.
 - Component 분할·병합(보류)은 [후속 작업](../../../../../../../../../docs/todolist/p1/component-group-merge-and-knn-links.md)이다.
 

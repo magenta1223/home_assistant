@@ -1,8 +1,10 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
-import com.homeassistant.application.port.inbound.memoryextraction.OrganizePendingEpisodes
+import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
+import com.homeassistant.application.port.inbound.memoryextraction.MemoryHierarchyUpdate
+import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemoryHierarchy
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -20,12 +22,11 @@ internal interface ComponentAssignmentWorker : AutoCloseable {
 }
 
 /**
- * Drains the Component-assignment outbox. A round runs only when [OrganizePendingEpisodes.isReady] reports
- * that the services assignment calls are available, so a missing service never uses up assignment attempts.
+ * Runs [UpdateMemoryHierarchy] every [intervalSeconds] and logs what each round changed.
  * TODO: To inbound-adapter
  */
 internal class EpisodeComponentAssignmentWorker(
-    private val organize: OrganizePendingEpisodes,
+    private val updateHierarchy: UpdateMemoryHierarchy,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     private val intervalSeconds: Long = DEFAULT_INTERVAL_SECONDS,
     private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { task ->
@@ -33,37 +34,33 @@ internal class EpisodeComponentAssignmentWorker(
     },
 ) : ComponentAssignmentWorker {
     override fun start() {
-        executor.execute(::enqueueUnassigned)
         executor.scheduleWithFixedDelay(::runRound, 0, intervalSeconds, TimeUnit.SECONDS)
-    }
-
-    internal fun enqueueUnassigned() {
-        runCatching { organize.enqueueUnassigned() }
-            .onSuccess { if (it > 0) log.info("Queued {} unassigned episodes for Component assignment", it) }
-            .onFailure { log.warn("Queuing unassigned episodes failed", it) }
     }
 
     /** Contains every failure: an exception escaping a scheduled task would cancel later rounds. */
     internal fun runRound() {
-        runCatching {
-            if (!organize.isReady()) {
-                log.debug("Component assignment skipped: assignment services are not ready")
-                return
-            }
-            organize.execute(batchSize)
-        }
-            .onSuccess { result ->
-                val failed = result.episodes.count { it.outcome is EpisodeAssignmentOutcome.Failed }
-                if (result.episodes.isNotEmpty()) {
-                    log.info("Component assignment processed={} failed={} groupMerges={}", result.episodes.size, failed,
-                        result.groupMerges.count { it is GroupMergeOutcome.Merged })
-                }
-            }
-            .onFailure { log.warn("Component assignment round failed", it) }
+        runCatching { updateHierarchy.execute(batchSize) }
+            .onSuccess(::log)
+            .onFailure { log.warn("Memory hierarchy update failed", it) }
     }
 
     override fun close() {
         executor.shutdownNow()
+    }
+
+    private fun log(update: MemoryHierarchyUpdate) {
+        when (update) {
+            MemoryHierarchyUpdate.Skipped -> log.debug("Memory hierarchy update skipped: assignment services are not ready")
+            is MemoryHierarchyUpdate.Completed -> if (update.episodes.isNotEmpty() || update.components.isNotEmpty()) {
+                log.info(
+                    "Memory hierarchy updated episodes={} episodeFailures={} components={} componentFailures={} groupMerges={}",
+                    update.episodes.size, update.episodes.count { it.outcome is EpisodeAssignmentOutcome.Failed },
+                    update.components.size, update.components.count { it.outcome is ComponentPlacementOutcome.Failed },
+                    update.merges.count { it is GroupMergeOutcome.Merged },
+                )
+            }
+            is MemoryHierarchyUpdate.RebuildRequired -> log.warn("Memory hierarchy update stopped: {}", update.reason)
+        }
     }
 
     private companion object {

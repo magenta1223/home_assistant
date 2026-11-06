@@ -20,13 +20,12 @@ import com.homeassistant.adapter.outbound.embedding.episode.EpisodeEmbeddingAdap
 import com.homeassistant.adapter.outbound.embedding.episode.QueryEmbeddingAdapter
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
-import com.homeassistant.application.usecase.memoryextraction.component.ExtractComponents
-import com.homeassistant.application.usecase.memoryextraction.component.OrganizePendingEpisodesService
+import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponent
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizePendingComponentsService
+import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryHierarchyService
 import com.homeassistant.domain.group.*
 import com.homeassistant.llm.AgentBackend
 import com.homeassistant.llm.AgentClientFactory
@@ -58,26 +57,26 @@ object ApplicationServicesFactory {
             ComponentStatementVectors(repositories.componentReader, passageEmbedder),
             repositories.componentEmbeddings,
         )
-        val organizeComponents = OrganizePendingComponentsService(
-            repositories.pendingComponents,
-            OrganizeComponent(
-                repositories.groupSnapshots,
-                repositories.groupChanges,
-                componentEmbeddings,
-                GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
-            ),
+        val organizeComponent = OrganizeComponentIntoGroups(
+            repositories.groupSnapshots,
+            repositories.groupChanges,
+            componentEmbeddings,
+            GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
         )
-        val organizeEpisodes = OrganizePendingEpisodesService(
+        val assignEpisode = AssignEpisodeToComponents(
+            repositories.componentReader,
+            repositories.componentWriter,
+            episodeEmbeddings,
+            componentEmbeddings,
+            ComponentKnowledgeExtractorFactory.create(completionClient),
+        )
+        val mergeSmallGroups = MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings))
+        val updateHierarchy = UpdateMemoryHierarchyService(
             repositories.componentAssignmentOutbox,
-            ExtractComponents(
-                repositories.componentReader,
-                repositories.componentWriter,
-                episodeEmbeddings,
-                componentEmbeddings,
-                ComponentKnowledgeExtractorFactory.create(completionClient),
-            ),
-            organizeComponents,
-            MergeSmallGroups(repositories.groupSnapshots, repositories.groupChanges, GroupMergePolicy(groupSettings)),
+            repositories.pendingComponents,
+            assignEpisode,
+            organizeComponent,
+            mergeSmallGroups,
         )
         log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
 
@@ -132,8 +131,6 @@ object ApplicationServicesFactory {
         } ?: ConversationExpiryWorker.NONE
         return DefaultApplicationServices(
             episodeAnalysis = episodeAnalysisService,
-            organizeComponents = organizeComponents,
-            organizeEpisodes = organizeEpisodes,
             chatService = episodeConversation,
             users = users,
             authentication = UserAuthenticationService(
@@ -143,7 +140,7 @@ object ApplicationServicesFactory {
             ),
             embeddingRuntime = managedEmbedding.runtime,
             conversationExpiryWorker = conversationExpiryWorker,
-            componentAssignmentWorker = EpisodeComponentAssignmentWorker(organizeEpisodes),
+            componentAssignmentWorker = EpisodeComponentAssignmentWorker(updateHierarchy),
             conversationGateway = conversationGateway,
         )
     }

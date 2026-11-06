@@ -11,13 +11,16 @@ import com.homeassistant.application.port.inbound.memoryextraction.InvalidKnowle
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeWriter
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
+import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.InvalidSourceReferenceException
 import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
@@ -34,17 +37,7 @@ class EpisodeAnalysisService(
         requireAuthorized(userId)
         requireAuthorizedAudience(request.access.allowedUserIds)
         val parsedSource = interpretReference(request)
-        val sourceRecordSave = try {
-            requireAvailable {
-                sourceRecords.saveAll(parsedSource.source, parsedSource.records, request.access)
-            }
-        } catch (error: EpisodeAnalysisUnavailableException) {
-            val conflict = error.cause as? SourceAccessConflictException
-            if (conflict != null) {
-                throw ConflictingSourceAudienceException(parsedSource.source.name, conflict.existingAccess)
-            }
-            throw error
-        }
+        val sourceRecordSave = saveSourceRecords(parsedSource, request.access)
         val recordsToAnalyze = sourceRecordSave.recordsToAnalyze
 
         if (recordsToAnalyze.isEmpty() && parsedSource.records.isNotEmpty()) {
@@ -54,7 +47,7 @@ class EpisodeAnalysisService(
             )
         }
 
-        val proposals = requireAvailable {
+        val proposals = rethrowAsUnavailable {
             episodeExtractor.analyze(
                 SourceDocument(
                     source = parsedSource.source,
@@ -62,7 +55,7 @@ class EpisodeAnalysisService(
                 ),
             )
         }
-        requireAvailable {
+        rethrowAsUnavailable {
             episodeWriter.commit(userId, proposals, recordsToAnalyze.map { it.id })
         }
         return EpisodeAnalysisResult(
@@ -77,6 +70,16 @@ class EpisodeAnalysisService(
             episodes = proposals,
         )
     }
+
+    /** Saves [source]'s records, reporting an audience conflict apart from an unavailable store. */
+    private fun saveSourceRecords(source: SourceDocumentDraft, access: EpisodeAccess): SourceRecordSaveResult =
+        try {
+            sourceRecords.saveAll(source.source, source.records, access)
+        } catch (conflict: SourceAccessConflictException) {
+            throw ConflictingSourceAudienceException(source.source.name, conflict.existingAccess)
+        } catch (error: Exception) {
+            throw EpisodeAnalysisUnavailableException(error)
+        }
 
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
@@ -125,7 +128,8 @@ class EpisodeAnalysisService(
         if (invalid.isNotEmpty()) throw InvalidEpisodeAudienceException(invalid)
     }
 
-    private suspend fun <T> requireAvailable(operation: suspend () -> T): T =
+    /** The result of [operation], rethrowing its failure as [EpisodeAnalysisUnavailableException]. */
+    private suspend fun <T> rethrowAsUnavailable(operation: suspend () -> T): T =
         try {
             operation()
         } catch (error: CancellationException) {

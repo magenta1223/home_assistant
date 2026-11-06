@@ -3,7 +3,7 @@ package com.homeassistant.application.usecase.contextprovider.episode
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
-import com.homeassistant.domain.group.GroupGeometry
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -28,7 +28,7 @@ class EpisodeSearcher(
         if (readable.isEmpty()) return emptyList()
         val question = queries.embedQuery(query.trim())
         val vectors = readable.mapValues { (id, episode) -> embeddings.prepare(id, episode.content).vector }
-        return GroupGeometry.nearest(question, vectors, limit).map { (id, score) ->
+        return EmbeddingGeometry.nearest(question, vectors, limit).map { (id, score) ->
             val episode = readable.getValue(id)
             EpisodeMatch(id, score, episode.content, episode.createdAt)
         }

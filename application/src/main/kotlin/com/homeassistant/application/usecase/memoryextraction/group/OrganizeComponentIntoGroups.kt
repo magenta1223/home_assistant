@@ -1,5 +1,6 @@
 package com.homeassistant.application.usecase.memoryextraction.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.embedding.Embedding
@@ -71,7 +72,7 @@ class OrganizeComponentIntoGroups(
         val results = decision.partition.parts.mapIndexed { index, ids ->
             val target = if (index == 0 && selected.isNotEmpty()) GroupTarget.Existing(selected.single().group.id)
                 else GroupTarget.Created("part-$index")
-            ResultingGroup(target, ids, GroupGeometry.centroid(ids.sorted().map { allEmbeddings.getValue(it).vector }))
+            ResultingGroup(target, ids, EmbeddingGeometry.centroid(ids.sorted().map { allEmbeddings.getValue(it).vector }))
         }
         return GroupChange(
             UUID.randomUUID().toString(), selected.associate { it.group.id to it.revision },

@@ -6,8 +6,8 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Ep
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.pending
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
-import com.homeassistant.domain.group.GroupGeometry
 
 /**
  * Extracts an episode's Components as xMemory does: the Components nearest the episode stand for what is already known,
@@ -45,7 +45,7 @@ class AssignEpisodeToComponents(
         if (known.isEmpty()) return emptyList()
         val vectors = known.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
         val statements = known.associate { it.id to it.statement }
-        return GroupGeometry.nearest(vector, vectors, knownLimit).map { statements.getValue(it.first) }
+        return EmbeddingGeometry.nearest(vector, vectors, knownLimit).map { statements.getValue(it.first) }
     }
 
     private companion object {

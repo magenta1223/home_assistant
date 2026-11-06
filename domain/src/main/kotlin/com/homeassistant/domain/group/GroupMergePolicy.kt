@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 
 /** [absorbed]'s Components join [survivor], the smaller id, which keeps its id. */
@@ -33,7 +34,7 @@ class GroupMergePolicy(
 
     private fun neighbors(single: Group, groups: List<Group>, centroids: Map<Int, EmbeddingVector>): List<Group> {
         val others = groups.filter { it.id != single.id }.associateBy { it.id }
-        return GroupGeometry.nearest(centroids.getValue(single.id), others.mapValues { centroids.getValue(it.key) }, settings.mergeNeighbors)
+        return EmbeddingGeometry.nearest(centroids.getValue(single.id), others.mapValues { centroids.getValue(it.key) }, settings.mergeNeighbors)
             .map { (id, cosine) -> others.getValue(id) to cosine }
             .filter { (group, cosine) -> cosine >= settings.mergeThreshold && group.componentIds.size + 1 <= settings.maxComponents }
             .map { it.first }

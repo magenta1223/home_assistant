@@ -7,7 +7,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupS
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
-import com.homeassistant.domain.group.GroupGeometry
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.group.GroupMerge
 import com.homeassistant.domain.group.GroupMergePolicy
 import java.util.UUID
@@ -62,7 +62,7 @@ class MergeSmallGroups(
             listOf(
                 ResultingGroup(
                     GroupTarget.Existing(merge.survivor), componentIds,
-                    GroupGeometry.centroid(componentIds.sorted().map { embeddings.getValue(it).vector })
+                    EmbeddingGeometry.centroid(componentIds.sorted().map { embeddings.getValue(it).vector })
                 )
             ),
             embeddings,

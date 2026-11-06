@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
@@ -248,7 +249,7 @@ class GroupRepositoryTest {
     ): GroupChange = GroupChange(key, expected, incoming, parts.mapIndexed { index, ids ->
         ResultingGroup(
             if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created("$index"),
-            ids, GroupGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector })
+            ids, EmbeddingGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector })
         )
     }, embeddings.filterKeys { it in parts.flatten() })
 

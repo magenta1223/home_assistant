@@ -1,6 +1,6 @@
 package com.homeassistant.domain.retrieval
 
-import com.homeassistant.domain.group.GroupGeometry
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 
 /**
@@ -17,7 +17,7 @@ class BackboneSelection(private val neighbors: Int = 10) {
 
     /** The [neighbors] nodes nearest to [id] among [vectors] with their cosine to it, nearest first. */
     fun neighborsOf(id: Int, vectors: Map<Int, EmbeddingVector>): List<Pair<Int, Double>> =
-        GroupGeometry.nearest(vectors.getValue(id), vectors - id, neighbors)
+        EmbeddingGeometry.nearest(vectors.getValue(id), vectors - id, neighbors)
 
     /**
      * Up to [limit] of [candidates] in pick order; an equal gain keeps the smaller id.
@@ -28,7 +28,7 @@ class BackboneSelection(private val neighbors: Int = 10) {
         require(limit > 0)
         val reach = candidates.associateWith { coverage(it, candidates, vectors) }
         val total = reach.values.sumOf { it.values.sum() }
-        val relevance = candidates.associateWith { (GroupGeometry.cosine(query, vectors.getValue(it)) + 1.0) / 2.0 }
+        val relevance = candidates.associateWith { (EmbeddingGeometry.cosine(query, vectors.getValue(it)) + 1.0) / 2.0 }
         val picked = mutableListOf<Int>()
         val covered = mutableSetOf<Int>()
         repeat(minOf(limit, candidates.size)) {

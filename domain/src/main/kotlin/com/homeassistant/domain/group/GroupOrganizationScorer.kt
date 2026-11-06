@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 import kotlin.math.abs
 import kotlin.math.exp
@@ -16,13 +17,13 @@ class GroupOrganizationScorer {
         val sizes = parts.map { it.size.toDouble() }
         val count = sizes.sum()
         val sparsity = count * count / (parts.size * sizes.sumOf { it * it })
-        val centroids = parts.map { part -> GroupGeometry.centroid(part.sorted().map { vectors.getValue(it) }) }
+        val centroids = parts.map { part -> EmbeddingGeometry.centroid(part.sorted().map { vectors.getValue(it) }) }
         val cohesion = parts.mapIndexed { index, part ->
-            part.sorted().map { GroupGeometry.cosine(vectors.getValue(it), centroids[index]) }.average()
+            part.sorted().map { EmbeddingGeometry.cosine(vectors.getValue(it), centroids[index]) }.average()
         }
         if (parts.size == 1) return OrganizationScore(sparsity, cohesion.single())
         val nearest = centroids.indices.map { i ->
-            centroids.indices.filter { it != i }.maxOf { j -> GroupGeometry.cosine(centroids[i], centroids[j]) }
+            centroids.indices.filter { it != i }.maxOf { j -> EmbeddingGeometry.cosine(centroids[i], centroids[j]) }
         }
         val median = median(nearest)
         val sigma = median(nearest.map { abs(it - median) }) + 1e-9

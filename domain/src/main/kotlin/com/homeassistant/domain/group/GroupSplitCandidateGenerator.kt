@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 
 class GroupSplitCandidateGenerator(private val settings: GroupPolicySettings) {
@@ -21,7 +22,7 @@ class GroupSplitCandidateGenerator(private val settings: GroupPolicySettings) {
             while (queue.isNotEmpty()) {
                 val current = queue.removeFirst()
                 val neighbors = remaining.filter {
-                    GroupGeometry.cosine(components.getValue(current), components.getValue(it)) >= settings.splitThreshold
+                    EmbeddingGeometry.cosine(components.getValue(current), components.getValue(it)) >= settings.splitThreshold
                 }
                 remaining.removeAll(neighbors.toSet())
                 part.addAll(neighbors)
@@ -36,12 +37,12 @@ class GroupSplitCandidateGenerator(private val settings: GroupPolicySettings) {
         if (ids.size <= settings.maxComponents) return listOf(ids)
         val sorted = ids.sorted()
         val seeds = sorted.flatMapIndexed { index, a -> sorted.drop(index + 1).map { b -> a to b } }
-            .minBy { (a, b) -> GroupGeometry.cosine(vectors.getValue(a), vectors.getValue(b)) }
+            .minBy { (a, b) -> EmbeddingGeometry.cosine(vectors.getValue(a), vectors.getValue(b)) }
         val left = sortedSetOf(seeds.first)
         val right = sortedSetOf(seeds.second)
         sorted.filter { it != seeds.first && it != seeds.second }.forEach { id ->
-            val a = GroupGeometry.cosine(vectors.getValue(id), vectors.getValue(seeds.first))
-            val b = GroupGeometry.cosine(vectors.getValue(id), vectors.getValue(seeds.second))
+            val a = EmbeddingGeometry.cosine(vectors.getValue(id), vectors.getValue(seeds.first))
+            val b = EmbeddingGeometry.cosine(vectors.getValue(id), vectors.getValue(seeds.second))
             when {
                 a > b -> left.add(id)
                 b > a -> right.add(id)

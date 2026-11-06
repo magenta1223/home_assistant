@@ -1,8 +1,8 @@
-package com.homeassistant.domain.group
+package com.homeassistant.domain.embedding
 
-import com.homeassistant.domain.embedding.EmbeddingVector
-
-object GroupGeometry {
+/** Comparisons between vectors of the shared embedding space. */
+object EmbeddingGeometry {
+    /** The cosine similarity of two vectors of the same dimension. */
     fun cosine(first: EmbeddingVector, second: EmbeddingVector): Double {
         require(first.dimension == second.dimension) { "vector dimension mismatch" }
         return first.values().zip(second.values()).sumOf { (a, b) -> a * b }.coerceIn(-1.0, 1.0)

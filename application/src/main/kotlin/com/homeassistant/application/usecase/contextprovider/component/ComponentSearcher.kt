@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
-import com.homeassistant.domain.group.GroupGeometry
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
@@ -90,11 +90,11 @@ class ComponentSearcher(
         return kept.mapNotNull { componentId ->
             val source = sources.getValue(componentId)
             if (!placed.add(source.id)) null
-            else ComponentMatch(componentId, GroupGeometry.cosine(question, vectors.getValue(componentId)),
+            else ComponentMatch(componentId, EmbeddingGeometry.cosine(question, vectors.getValue(componentId)),
                 listOf(ComponentMatchEpisode(source.id, source.content, source.createdAt)))
         }
     }
 
     private fun nearest(question: EmbeddingVector, vectors: Map<Int, EmbeddingVector>, limit: Int): List<Int> =
-        GroupGeometry.nearest(question, vectors, limit).map { it.first }
+        EmbeddingGeometry.nearest(question, vectors, limit).map { it.first }
 }

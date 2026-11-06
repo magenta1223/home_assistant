@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAccessCondition
 import com.homeassistant.domain.identity.UserId
@@ -121,7 +122,7 @@ internal class GroupRepositoryImpl(private val db: Database) : PendingComponentS
             throw GroupRebuildRequired("cannot mix group embedding models, formats or dimensions")
         }
         change.resultingGroups.forEach { result ->
-            val centroid = GroupGeometry.centroid(result.componentIds.sorted().map { stored.getValue(it).vector })
+            val centroid = EmbeddingGeometry.centroid(result.componentIds.sorted().map { stored.getValue(it).vector })
             require(centroid == result.centroid) { "centroid does not match membership vectors" }
         }
     }

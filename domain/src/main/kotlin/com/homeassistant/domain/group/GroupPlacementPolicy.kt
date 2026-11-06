@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 
 sealed interface GroupPlacement {
@@ -9,9 +10,9 @@ sealed interface GroupPlacement {
 
 class GroupPlacementPolicy(private val settings: GroupPolicySettings) {
     fun decide(component: EmbeddingVector, centroids: Map<Int, EmbeddingVector>): GroupPlacement {
-        val nearest = centroids.entries.sortedBy { it.key }.maxByOrNull { GroupGeometry.cosine(component, it.value) }
+        val nearest = centroids.entries.sortedBy { it.key }.maxByOrNull { EmbeddingGeometry.cosine(component, it.value) }
             ?: return GroupPlacement.Create
-        return if (GroupGeometry.cosine(component, nearest.value) > settings.attachThreshold) {
+        return if (EmbeddingGeometry.cosine(component, nearest.value) > settings.attachThreshold) {
             GroupPlacement.Attach(nearest.key)
         } else GroupPlacement.Create
     }

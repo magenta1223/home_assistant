@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 import kotlin.test.*
 
@@ -72,8 +73,8 @@ class GroupPoliciesTest {
         listOf(emptyList(), listOf(0.0, 0.0), listOf(Double.NaN), listOf(Double.POSITIVE_INFINITY)).forEach {
             assertFailsWith<IllegalArgumentException> { EmbeddingVector.normalized(it) }
         }
-        assertFailsWith<IllegalArgumentException> { GroupGeometry.cosine(x, vector(1.0)) }
-        assertFailsWith<IllegalArgumentException> { GroupGeometry.centroid(listOf(x, vector(-1.0, 0.0))) }
+        assertFailsWith<IllegalArgumentException> { EmbeddingGeometry.cosine(x, vector(1.0)) }
+        assertFailsWith<IllegalArgumentException> { EmbeddingGeometry.centroid(listOf(x, vector(-1.0, 0.0))) }
         assertFailsWith<IllegalArgumentException> { ComponentPartition(listOf(setOf(1), setOf(1))) }
         assertFailsWith<IllegalArgumentException> { ComponentPartition(listOf(emptySet())) }
         assertFailsWith<IllegalArgumentException> { ComponentPartition(listOf(setOf(1))).requireConserves(setOf(1, 2)) }

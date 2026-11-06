@@ -1,6 +1,6 @@
 package com.homeassistant.application.port.outbound.memoryextraction.component
 
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.group.ComponentVector
@@ -29,13 +29,6 @@ data class EpisodeEmbeddingKey(val episodeId: Int, val contentHash: String, val 
 }
 
 data class EpisodeEmbedding(val key: EpisodeEmbeddingKey, val vector: ComponentVector)
-
-interface EpisodeEmbeddingGenerator {
-    val space: EmbeddingSpace
-    /** True when [generate] can reach the embedding service now. */
-    fun isAvailable(): Boolean
-    fun generate(content: String): ComponentVector
-}
 
 interface EpisodeEmbeddingStore {
     fun find(key: EpisodeEmbeddingKey): EpisodeEmbedding?

@@ -43,7 +43,7 @@ TO-BE: Analysis → commit(episode + 색인 outbox + 할당 outbox) → 응답
 | application `port/output/component/ComponentAssignmentOutbox` | claim·완료·실패·미등록 Episode 등록 계약. `PendingEpisodeSource` 대체 |
 | application `OrganizePendingEpisodesService` | `pending(limit)` 대신 outbox claim, 결과에 따라 완료·실패 기록 |
 | application input `OrganizePendingEpisodes` | `isReady()`: 할당이 호출하는 서비스가 준비됐는지. `enqueueUnassigned()`: outbox 도입 전 Episode 백필 |
-| application `EpisodeEmbeddingGenerator`·`ComponentAssignmentGenerator` | `isAvailable()`: 각 port가 자기 서비스의 가용 여부를 보고. adapter-outbound가 Ollama runtime과 `CompletionClient`로 구현 |
+| application `EmbeddingGenerator`·`ComponentAssignmentGenerator` | `isAvailable()`: 각 port가 자기 서비스의 가용 여부를 보고. adapter-outbound가 Ollama runtime과 `CompletionClient`로 구현 |
 | adapter-outbound `component_assignment_outbox` 테이블·repository | 색인 outbox와 같은 상태 모델(PENDING/PROCESSING/COMPLETED/FAILED) + 최대 시도 |
 | adapter-outbound `EpisodeRepository.commit` | 같은 transaction에 할당 outbox 행 추가. 색인 outbox도 같은 `enqueue` 방식으로 정리 |
 | integration-llm `CompletionClient.isAvailable` | 각 backend 구현이 CLI `--version` probe. 로그인은 확인하지 않음 |
@@ -89,7 +89,7 @@ TO-BE: Analysis → commit(episode + 색인 outbox + 할당 outbox) → 응답
 - `PendingEpisodeSource`와 `ComponentRepository.pending`을 제거하고 `OrganizePendingEpisodesService`가 outbox를 claim한다.
   성공은 `markCompleted`, 실패는 `markFailed`(오류 2,000자까지)로 기록한다.
 - claim 시점에 이미 Component 소속이 있는 Episode는 배정 없이 완료한다. Component 저장과 완료 기록은 별도 transaction이다.
-- 준비 여부는 별도 port 없이 기존 출력 port가 보고한다. `EpisodeEmbeddingGenerator.isAvailable()`(Ollama runtime)과
+- 준비 여부는 별도 port 없이 기존 출력 port가 보고한다. `EmbeddingGenerator.isAvailable()`(Ollama runtime)과
   `ComponentAssignmentGenerator.isAvailable()`(`CompletionClient.isAvailable()`, CLI 실행 확인)을
   `AssignEpisodeToComponents.isReady()`가 묶고, `OrganizePendingEpisodes.isReady()`로 노출한다.
 - app에 `EpisodeComponentAssignmentWorker`를 추가해 시작 시 백필(`enqueueUnassigned`) 1회, 이후 30초마다 `isReady()`가 참이면

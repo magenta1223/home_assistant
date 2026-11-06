@@ -10,15 +10,14 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
@@ -29,7 +28,6 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Pendin
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryHierarchyService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
@@ -139,10 +137,14 @@ class UpdateMemoryHierarchyServiceTest {
             }
         }
 
-        private val texts = object : EpisodeEmbeddingGenerator {
+        private val texts = object : EmbeddingGenerator {
             override val space = SPACE
             override fun isAvailable() = embeddingReady
-            override fun generate(content: String) = VECTOR
+            override fun embedDocument(text: String): ComponentVector {
+                if (text in failingComponents.map(::placementStatement)) error("embedding unavailable")
+                return VECTOR
+            }
+            override fun embedQuery(text: String) = VECTOR
         }
         private val componentReader = object : ComponentReader {
             override fun all() = components.toList()
@@ -156,19 +158,16 @@ class UpdateMemoryHierarchyServiceTest {
             componentReader,
             componentWriter,
             PrepareEpisodeEmbedding(texts, EpisodeCache()),
-            PrepareComponentEmbedding(ComponentStatementVectors(componentReader, texts), ComponentCache()),
+            PrepareComponentEmbedding(componentReader, texts, ComponentCache()),
             ComponentKnowledgeExtractor { episode, _ ->
                 if (episode.id in failingEpisodes) error("model unavailable")
                 statements[episode.id].orEmpty()
             },
         )
 
-        private val placementVectors = object : ComponentEmbeddingGenerator {
-            override val space = SPACE
-            override fun generate(component: PendingComponent): ComponentVector {
-                if (component.id in failingComponents) error("embedding unavailable")
-                return VECTOR
-            }
+        private val unplacedComponents = object : ComponentReader {
+            override fun all() = (1..unplaced).map(::unplacedComponent)
+            override fun read(componentIds: Collection<Int>) = componentIds.map(::unplacedComponent)
         }
         private val snapshots = object : GroupSnapshotReader {
             override fun snapshot() = this@Fixture.snapshot
@@ -190,13 +189,15 @@ class UpdateMemoryHierarchyServiceTest {
             organizeComponent = OrganizeComponentIntoGroups(
                 snapshots,
                 groupWriter,
-                PrepareComponentEmbedding(placementVectors, ComponentCache()),
+                PrepareComponentEmbedding(unplacedComponents, texts, ComponentCache()),
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)),
             ),
             mergeSmallGroups = MergeSmallGroups(snapshots, groupWriter, GroupMergePolicy(settings)),
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
         )
 
+        private fun unplacedComponent(id: Int) = Component(id, placementStatement(id), id, EpisodeAccess.PUBLIC)
+        private fun placementStatement(id: Int) = "placement $id"
         private fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", EpisodeAccess.PUBLIC, listOf("message $id"))
     }
 

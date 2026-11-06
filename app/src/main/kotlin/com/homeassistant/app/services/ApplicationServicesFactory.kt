@@ -16,10 +16,8 @@ import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.application.usecase.identity.UserRegistryService
-import com.homeassistant.adapter.outbound.embedding.episode.EpisodeEmbeddingAdapter
-import com.homeassistant.adapter.outbound.embedding.episode.QueryEmbeddingAdapter
+import com.homeassistant.adapter.outbound.embedding.E5EmbeddingAdapter
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
@@ -47,14 +45,14 @@ object ApplicationServicesFactory {
         val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
             ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
         val managedEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
-        val textEmbedder = managedEmbedding.embedder
-        val passageEmbedder = EpisodeEmbeddingAdapter(textEmbedder, embeddingModel, managedEmbedding.runtime)
+        val embeddingGenerator = E5EmbeddingAdapter(managedEmbedding.embedder, embeddingModel, managedEmbedding.runtime)
         val episodeEmbeddings = PrepareEpisodeEmbedding(
-            passageEmbedder,
+            embeddingGenerator,
             repositories.episodeEmbeddings,
         )
         val componentEmbeddings = PrepareComponentEmbedding(
-            ComponentStatementVectors(repositories.componentReader, passageEmbedder),
+            repositories.componentReader,
+            embeddingGenerator,
             repositories.componentEmbeddings,
         )
         val organizeComponent = OrganizeComponentIntoGroups(
@@ -87,16 +85,15 @@ object ApplicationServicesFactory {
             accessPolicy = users,
             referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
         )
-        val queryEmbedder = QueryEmbeddingAdapter(textEmbedder)
         val componentSearch = ComponentSearcher(
             components = repositories.componentReader,
             groups = repositories.groups,
-            queries = queryEmbedder,
+            queries = embeddingGenerator,
             episodes = repositories.episodeReader,
             componentEmbeddings = componentEmbeddings,
             accessPolicy = users,
         )
-        val episodeSearch = EpisodeSearcher(repositories.episodeReader, queryEmbedder, episodeEmbeddings, users)
+        val episodeSearch = EpisodeSearcher(repositories.episodeReader, embeddingGenerator, episodeEmbeddings, users)
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS

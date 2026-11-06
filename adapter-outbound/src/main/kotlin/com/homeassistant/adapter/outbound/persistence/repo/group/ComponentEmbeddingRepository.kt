@@ -5,7 +5,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction

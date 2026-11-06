@@ -7,7 +7,7 @@
 ## 책임과 정상 흐름
 
 `OrganizeComponentIntoGroups`는 한 Component의 배치와 충돌 재시도, `PrepareComponentEmbedding`은 Component 벡터 버전과 규약에 맞는 벡터 재사용·생성을 담당한다.
-Group은 Component ID와 벡터 버전만 받는다. 벡터를 무엇으로 만드는지는 `ComponentEmbeddingGenerator` 구현이 정한다.
+Group은 Component ID와 벡터 버전만 받는다. 벡터는 캐시에 없을 때 `PrepareComponentEmbedding`이 `ComponentReader`로 문장을 읽어 `EmbeddingGenerator.embedDocument`로 만든다.
 배치·분할 판단은 `domain/group/GroupOrganizationPlanner`가 순수 정책을 조합한다.
 Application은 provider·DB 타입을 참조하지 않고 output port를 호출한다.
 
@@ -19,7 +19,8 @@ sequenceDiagram
     participant Snapshots as GroupSnapshotReader
     participant Embedding as PrepareComponentEmbedding
     participant Cache as ComponentEmbeddingStore
-    participant Generator as ComponentEmbeddingGenerator
+    participant Components as ComponentReader
+    participant Generator as EmbeddingGenerator
     participant Policy as GroupOrganizationPlanner
     participant Writer as GroupChangeWriter
     Update->>Pending: pending(limit)
@@ -30,7 +31,8 @@ sequenceDiagram
         One->>Embedding: prepare(component)
         Embedding->>Cache: find(key)
         opt 캐시 없음
-            Embedding->>Generator: generate(component)
+            Embedding->>Components: read(id)
+            Embedding->>Generator: embedDocument(statement)
             Embedding->>Cache: save(embedding)
         end
         One->>Policy: plan(component, groups, vectors)
@@ -49,7 +51,7 @@ sequenceDiagram
 
 ## 정책
 
-- Component 벡터는 `ComponentStatementVectors`가 Component 문장을 임베딩한 것이며 Episode 벡터와 같은 공간이다.
+- Component 벡터는 Component 문장을 document로 임베딩한 것이며 Episode 벡터, 질문 벡터와 같은 공간이다.
   벡터 버전은 문장의 fingerprint다. 문장은 바뀌지 않으므로 버전도 바뀌지 않는다.
 - cosine이 attach threshold를 **초과**하면 가장 가까운 Group에 배치한다. 동점은 작은 Group ID다.
 - 상한 초과 시 연결 성분과 결정적 이분할로 최대 두 종류의 partition 후보를 만든다.

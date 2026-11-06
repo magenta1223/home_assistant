@@ -20,5 +20,4 @@ state. A statement's fingerprint is its vector version for Groups.
 |---|---|
 | `ComponentAssignmentOutbox` | Durable extraction queue written with each episode; claims fence stale workers, failed rows stop after the attempt limit, and already-extracted episodes complete on claim |
 | `ComponentKnowledgeExtractor` | Long-term statements of an episode that the given known statements do not already state; empty when there is none |
-| `EpisodeEmbeddingGenerator` / `EpisodeEmbeddingStore` | Normalized passage vectors of episodes and statements; episode vectors are immutable per episode, content hash, model and format |
-| `QueryEmbeddingGenerator` | Question vector from the episode embedding model with the `query: ` prefix, compared with Component statements |
+| `EpisodeEmbeddingStore` | Episode document vectors from `EmbeddingGenerator`; immutable per episode, content hash, model and format |

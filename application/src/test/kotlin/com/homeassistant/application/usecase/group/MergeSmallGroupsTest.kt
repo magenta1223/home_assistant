@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.group
 
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot

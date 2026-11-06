@@ -5,8 +5,7 @@
 | Port | 계약 |
 |---|---|
 | `PendingComponentSource` | Group 미소속 Component ID·벡터 버전을 ID 순서로 제한 조회 |
-| `ComponentEmbeddingGenerator` | Component의 현재 벡터 제공; 요청 버전이 지난 벡터는 `ComponentEmbeddingStore`가 거절 |
-| `ComponentEmbeddingStore` | key별 불변 벡터 저장; 경쟁 생성 시 먼저 저장한 벡터 반환 |
+| `ComponentEmbeddingStore` | key별 불변 벡터 저장; 요청 버전이 지난 벡터는 거절; 경쟁 생성 시 먼저 저장한 벡터 반환 |
 | `GroupReader` | 모든 Group의 소속 Component·centroid 조회 (검색용, ACL 필터 없음) |
 | `GroupSnapshotReader` | 같은 DB snapshot의 Group 소속·revision·centroid·사용된 Component 벡터 조회 |
 | `GroupChangeWriter` | 기존 Group 집합을 결과 Group 집합으로 원자 교체 |

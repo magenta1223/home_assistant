@@ -39,7 +39,7 @@ object ManagedOllamaEmbeddingFactory {
         val normalizedRoot = runtimeRoot.toAbsolutePath().normalize()
         val executable = PinnedOllamaDistribution.manifest.resolveEntryPoint(normalizedRoot)
         val modelsDirectory = normalizedRoot.resolve("models")
-        val embedder = OllamaEmbeddingFactory.create(endpoint.baseUrl, model)
+        val embedder = OllamaTextEmbedder(endpoint.baseUrl, model)
         val runtime = OllamaServerRuntime(
             command = listOf(executable.toString(), "serve"),
             environment = environment(endpoint, modelsDirectory),

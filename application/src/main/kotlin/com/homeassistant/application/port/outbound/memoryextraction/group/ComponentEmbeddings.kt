@@ -1,11 +1,8 @@
 package com.homeassistant.application.port.outbound.memoryextraction.group
 
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.domain.group.ComponentVector
 import java.security.MessageDigest
-
-data class EmbeddingSpace(val model: String, val inputFormat: String) {
-    init { require(model.isNotBlank() && inputFormat.isNotBlank()) }
-}
 
 /** A Component at one [version] of its vector; a new version means the vector changed and must be prepared again. */
 data class PendingComponent(val id: Int, val version: String) {

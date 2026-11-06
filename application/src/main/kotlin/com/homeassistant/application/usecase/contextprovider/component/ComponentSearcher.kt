@@ -1,16 +1,16 @@
 package com.homeassistant.application.usecase.contextprovider.component
 
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
-import com.homeassistant.application.usecase.memoryextraction.component.pending
 import com.homeassistant.domain.group.GroupGeometry
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.pending
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.retrieval.BackboneSelection
 
@@ -24,7 +24,7 @@ import com.homeassistant.domain.retrieval.BackboneSelection
 class ComponentSearcher(
     private val components: ComponentReader,
     private val groups: GroupReader,
-    private val queries: QueryEmbeddingGenerator,
+    private val queries: EmbeddingGenerator,
     private val episodes: EpisodeReader,
     private val componentEmbeddings: PrepareComponentEmbedding,
     private val accessPolicy: UserAccessPolicy,
@@ -35,7 +35,7 @@ class ComponentSearcher(
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val vectors = components.all().associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
         if (vectors.isEmpty()) return emptyList()
-        val question = queries.generate(query.trim())
+        val question = queries.embedQuery(query.trim())
         val readable = readableSources(userId, candidateComponents(question, vectors))
         val kept = backbone.select(readable.keys, vectors, question, settings.componentLimit)
         return matches(kept, readable, vectors, question)

@@ -9,10 +9,9 @@ import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRe
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
-import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
@@ -120,14 +119,16 @@ class EpisodeComponentAssignmentTest {
     ): List<List<Int>> {
         val groups = GroupRepository(db)
         val store = ComponentRepository(db)
-        val texts = object : EpisodeEmbeddingGenerator {
+        val texts = object : EmbeddingGenerator {
             override val space = this@EpisodeComponentAssignmentTest.space
             override fun isAvailable() = true
-            override fun generate(content: String) = vectors.getValue(content)
+            override fun embedDocument(text: String) = vectors.getValue(text)
+            override fun embedQuery(text: String) = vectors.getValue(text)
         }
         val episodeEmbeddings = PrepareEpisodeEmbedding(texts, EpisodeEmbeddingRepository(db))
         val componentEmbeddings = PrepareComponentEmbedding(
-            ComponentStatementVectors(store, texts),
+            store,
+            texts,
             ComponentEmbeddingRepository(db)
         )
         val settings = GroupPolicySettings()

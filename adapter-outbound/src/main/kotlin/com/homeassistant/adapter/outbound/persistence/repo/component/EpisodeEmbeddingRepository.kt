@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.component
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey

@@ -172,7 +172,7 @@ Ollama로 만든 vector와 ONNX vector는 모델 이름과 차원이 같아도 �
 
 ONNX 전환과 새 collection 검증이 끝난 후 다음 항목을 제거한다.
 
-- `OllamaEmbeddingService`, `ManagedOllamaEmbeddingFactory`, `OllamaServerRuntime`
+- `OllamaTextEmbedder`, `ManagedOllamaEmbeddingFactory`, `OllamaServerRuntime`
 - Ollama distribution installer와 model pull setup
 - Ollama host/base URL/runtime directory 설정
 - `11435` readiness, port ownership과 deploy shutdown 처리

@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.contextprovider.episode
 
-import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.domain.group.GroupGeometry
@@ -15,7 +15,7 @@ import com.homeassistant.domain.identity.UserId
  */
 class EpisodeSearcher(
     private val episodes: EpisodeReader,
-    private val queries: QueryEmbeddingGenerator,
+    private val queries: EmbeddingGenerator,
     private val embeddings: PrepareEpisodeEmbedding,
     private val accessPolicy: UserAccessPolicy,
     private val limit: Int = DEFAULT_LIMIT,
@@ -26,7 +26,7 @@ class EpisodeSearcher(
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val readable = episodes.getEpisodes(userId).associateBy { it.id }
         if (readable.isEmpty()) return emptyList()
-        val question = queries.generate(query.trim())
+        val question = queries.embedQuery(query.trim())
         val vectors = readable.mapValues { (id, episode) -> embeddings.prepare(id, episode.content).vector }
         return GroupGeometry.nearest(question, vectors, limit).map { (id, score) ->
             val episode = readable.getValue(id)

@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.embedding.ollama.install
 
-import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEmbeddingFactory
+import com.homeassistant.adapter.outbound.embedding.ollama.OllamaTextEmbedder
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaEndpoint
 import com.homeassistant.adapter.outbound.embedding.ollama.OllamaServerRuntime
 import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
@@ -44,7 +44,7 @@ object OllamaEmbeddingSetup {
             if (!modelExists(endpoint.baseUrl, model)) {
                 pullModel(executable, environment, model)
             }
-            OllamaEmbeddingFactory.create(endpoint.baseUrl, model)
+            OllamaTextEmbedder(endpoint.baseUrl, model)
                 .embed("home second brain embedding setup verification")
         }
     }

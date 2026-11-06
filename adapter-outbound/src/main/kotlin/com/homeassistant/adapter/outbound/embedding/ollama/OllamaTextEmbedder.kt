@@ -12,7 +12,8 @@ import java.net.http.HttpResponse
 import java.time.Duration
 import kotlin.math.sqrt
 
-internal class OllamaEmbeddingService(
+/** Embeds text with a model served by the local Ollama server, returning an L2-normalized vector. */
+internal class OllamaTextEmbedder(
     private val baseUrl: String,
     private val model: String,
     private val vectorSize: Int = AppConfig.DEFAULT_EMBEDDING_VECTOR_SIZE,
@@ -73,11 +74,6 @@ internal class OllamaEmbeddingService(
 
     private fun elapsedMillis(startedAt: Long): Long =
         Duration.ofNanos(System.nanoTime() - startedAt).toMillis()
-}
-
-object OllamaEmbeddingFactory {
-    fun create(baseUrl: String, model: String): TextEmbedder =
-        OllamaEmbeddingService(baseUrl, model)
 }
 
 @Serializable

@@ -8,8 +8,8 @@ import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRe
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingGenerator
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
@@ -228,14 +228,16 @@ class GroupRepositoryTest {
     /** Places up to [limit] unplaced Components one by one, as the assignment worker does. */
     private fun organizePending(db: Database, maxComponents: Int, limit: Int): List<ComponentOrganizationOutcome> {
         val repository = GroupRepository(db)
-        val generator = object : ComponentEmbeddingGenerator {
+        val generator = object : EmbeddingGenerator {
             override val space = this@GroupRepositoryTest.space
-            override fun generate(component: PendingComponent) = vector
+            override fun isAvailable() = true
+            override fun embedDocument(text: String) = vector
+            override fun embedQuery(text: String) = vector
         }
         val settings = GroupPolicySettings(maxComponents = maxComponents)
         val organizer = OrganizeComponentIntoGroups(
             repository, repository,
-            PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
+            PrepareComponentEmbedding(ComponentRepository(db), generator, ComponentEmbeddingRepository(db)),
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
         return repository.pending(limit).map(organizer::organize)

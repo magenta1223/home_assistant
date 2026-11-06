@@ -2,12 +2,11 @@ package com.homeassistant.application.usecase.episode.search
 
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.episode.Episode
@@ -58,16 +57,19 @@ class EpisodeSearcherTest {
             Episode(index + 1, "creator", "title", content, EpisodeVisibility.PUBLIC, emptySet(), listOf(1), (index + 1).toLong())
         }
 
+        private val embeddings = object : EmbeddingGenerator {
+            override val space = EmbeddingSpace("test", "passage:v1")
+            override fun isAvailable() = true
+            override fun embedDocument(text: String) = vectors.getValue(text).also { generated.add(text) }
+            override fun embedQuery(text: String): ComponentVector { queries.add(text); return east }
+        }
+
         fun searcher(limit: Int = 10, authorized: Boolean = true) = EpisodeSearcher(
             object : EpisodeReader {
                 override fun getEpisodes(userId: UserId) = episodes
             },
-            QueryEmbeddingGenerator { queries.add(it); east },
-            PrepareEpisodeEmbedding(object : EpisodeEmbeddingGenerator {
-                override val space = EmbeddingSpace("test", "passage:v1")
-                override fun isAvailable() = true
-                override fun generate(content: String) = vectors.getValue(content).also { generated.add(content) }
-            }, object : EpisodeEmbeddingStore {
+            embeddings,
+            PrepareEpisodeEmbedding(embeddings, object : EpisodeEmbeddingStore {
                 override fun find(key: EpisodeEmbeddingKey) = stored[key]
                 override fun save(embedding: EpisodeEmbedding) = stored.getOrPut(embedding.key) { embedding }
             }),

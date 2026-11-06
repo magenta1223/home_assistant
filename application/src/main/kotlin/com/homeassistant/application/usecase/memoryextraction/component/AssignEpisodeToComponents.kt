@@ -5,6 +5,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.memoryextraction.group.pending
 import com.homeassistant.domain.group.ComponentVector
 import com.homeassistant.domain.group.GroupGeometry
 

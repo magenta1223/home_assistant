@@ -54,7 +54,7 @@ class OllamaServerRuntimeTest {
     fun `starts after readiness and stops only its child process`() {
         withFakeOllamaApi { endpoint ->
             var child: Process? = null
-            val embedder = OllamaEmbeddingService(endpoint.baseUrl, "test-model")
+            val embedder = OllamaTextEmbedder(endpoint.baseUrl, "test-model")
             val runtime = runtime(
                 endpoint = endpoint,
                 command = longRunningCommand(),

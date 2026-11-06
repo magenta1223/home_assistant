@@ -5,16 +5,14 @@ import com.homeassistant.application.usecase.contextprovider.component.Component
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeReader
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
-import com.homeassistant.application.port.outbound.memoryextraction.component.QueryEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearchSettings
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.group.ComponentVector
@@ -130,12 +128,15 @@ class ComponentSearcherTest {
             override fun read(componentIds: Collection<Int>) = componentIds.mapNotNull { byId[it] }
         }
         private val cache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
+        private val embeddings = object : EmbeddingGenerator {
+            override val space = this@ComponentSearcherTest.space
+            override fun isAvailable() = true
+            override fun embedDocument(text: String) = vectors.getValue(text)
+            override fun embedQuery(text: String): ComponentVector { queries.add(text); return east }
+        }
         private val componentEmbeddings = PrepareComponentEmbedding(
-            ComponentStatementVectors(reader, object : EpisodeEmbeddingGenerator {
-                override val space = this@ComponentSearcherTest.space
-                override fun isAvailable() = true
-                override fun generate(content: String) = vectors.getValue(content)
-            }),
+            reader,
+            embeddings,
             object : ComponentEmbeddingStore {
                 override fun find(key: ComponentEmbeddingKey) = cache[key]
                 override fun save(embedding: ComponentEmbedding) = cache.getOrPut(embedding.key) { embedding }
@@ -146,7 +147,7 @@ class ComponentSearcherTest {
             ComponentSearcher(
                 reader,
                 GroupReader { groups.toList() },
-                QueryEmbeddingGenerator { queries.add(it); east },
+                embeddings,
                 object : EpisodeReader {
                     override fun getEpisodes(userId: UserId) = byId.values
                         .filter { it.isVisibleTo(userId) }

@@ -2,10 +2,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
@@ -41,19 +40,20 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             listOf(publicEpisode, otherRestrictedEpisode, hiddenEpisode).forEach {
                 stores.componentWriter.writeComponents(it.id, listOf("fact of ${it.content}"))
             }
-            val texts = object : EpisodeEmbeddingGenerator {
+            val texts = object : EmbeddingGenerator {
                 override val space = EmbeddingSpace("test", "passage:v1")
                 override fun isAvailable() = true
-                override fun generate(content: String) = east
+                override fun embedDocument(text: String) = east
+                override fun embedQuery(text: String) = east
             }
             val search = ComponentSearcher(
-                stores.componentReader, stores.groups, { east }, stores.episodeReader,
-                PrepareComponentEmbedding(ComponentStatementVectors(stores.componentReader, texts), stores.componentEmbeddings),
+                stores.componentReader, stores.groups, texts, stores.episodeReader,
+                PrepareComponentEmbedding(stores.componentReader, texts, stores.componentEmbeddings),
                 UserAccessPolicy { it == member },
             )
 
             val episodeSearch = EpisodeSearcher(
-                stores.episodeReader, { east }, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
+                stores.episodeReader, texts, PrepareEpisodeEmbedding(texts, stores.episodeEmbeddings), UserAccessPolicy { it == member },
             )
 
             val conversationContext = ContextProvider(search, episodeSearch).context(member, "question")

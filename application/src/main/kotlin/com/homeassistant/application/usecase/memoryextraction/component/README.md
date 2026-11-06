@@ -65,7 +65,7 @@ sequenceDiagram
 sequenceDiagram
     actor Caller as 대화 context
     participant Search as ComponentSearcher
-    participant Query as QueryEmbeddingGenerator
+    participant Query as EmbeddingGenerator
     participant Groups as GroupReader
     participant Components as ComponentReader
     participant Episodes as EpisodeReader

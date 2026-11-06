@@ -4,15 +4,14 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentWriter
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
-import com.homeassistant.application.usecase.memoryextraction.component.ComponentStatementVectors
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
@@ -81,10 +80,11 @@ class AssignEpisodeToComponentsTest {
             return Component(components.size + 1, statement, 50 + components.size, access).also(components::add)
         }
 
-        private val texts = object : EpisodeEmbeddingGenerator {
+        private val texts = object : EmbeddingGenerator {
             override val space = this@AssignEpisodeToComponentsTest.space
             override fun isAvailable() = embeddingReady
-            override fun generate(content: String) = vectors[content] ?: east
+            override fun embedDocument(text: String) = vectors[text] ?: east
+            override fun embedQuery(text: String) = east
         }
         private val episodeCache = mutableMapOf<EpisodeEmbeddingKey, EpisodeEmbedding>()
         private val episodeEmbeddings = PrepareEpisodeEmbedding(texts, object : EpisodeEmbeddingStore {
@@ -103,7 +103,7 @@ class AssignEpisodeToComponentsTest {
             }
         }
         private val componentCache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
-        private val componentEmbeddings = PrepareComponentEmbedding(ComponentStatementVectors(componentReader, texts), object :
+        private val componentEmbeddings = PrepareComponentEmbedding(componentReader, texts, object :
             ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: ComponentEmbedding) = componentCache.getOrPut(embedding.key) { embedding }

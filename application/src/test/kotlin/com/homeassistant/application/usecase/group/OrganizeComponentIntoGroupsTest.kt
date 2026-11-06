@@ -2,10 +2,11 @@ package com.homeassistant.application.usecase.group
 
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
+import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentReader
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeWriter
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
@@ -17,6 +18,8 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupR
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.domain.component.Component
+import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.group.*
 import java.util.concurrent.CancellationException
 import kotlin.test.*
@@ -103,9 +106,15 @@ class OrganizeComponentIntoGroupsTest {
         var generated = 0
         var generate: (String) -> ComponentVector = { vector }
         var write: (GroupChange) -> GroupWriteResult = { GroupWriteResult.Applied(listOf(10)) }
-        private val generator = object : ComponentEmbeddingGenerator {
+        private val components = object : ComponentReader {
+            override fun all() = emptyList<Component>()
+            override fun read(componentIds: Collection<Int>) = componentIds.map { Component(it, "$it", it, EpisodeAccess.PUBLIC) }
+        }
+        private val generator = object : EmbeddingGenerator {
             override val space = this@OrganizeComponentIntoGroupsTest.space
-            override fun generate(component: PendingComponent): ComponentVector { generated++; return generate.invoke(component.version) }
+            override fun isAvailable() = true
+            override fun embedDocument(text: String): ComponentVector { generated++; return generate.invoke(text) }
+            override fun embedQuery(text: String) = vector
         }
         private val store = object : ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = cache[key]
@@ -118,7 +127,7 @@ class OrganizeComponentIntoGroupsTest {
             override fun apply(change: GroupChange): GroupWriteResult { writes.add(change); return write(change) }
         }
         private val service = OrganizeComponentIntoGroups(
-            reader, writer, PrepareComponentEmbedding(generator, store),
+            reader, writer, PrepareComponentEmbedding(components, generator, store),
             GroupOrganizationPlanner(
                 GroupPlacementPolicy(GroupPolicySettings(maxComponents = maxComponents)),
                 GroupSplitPolicy(GroupPolicySettings(maxComponents = maxComponents))

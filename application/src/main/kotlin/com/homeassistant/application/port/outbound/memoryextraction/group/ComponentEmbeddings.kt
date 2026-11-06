@@ -1,8 +1,6 @@
 package com.homeassistant.application.port.outbound.memoryextraction.group
 
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.domain.group.ComponentVector
-import java.security.MessageDigest
 
 /** A Component at one [version] of its vector; a new version means the vector changed and must be prepared again. */
 data class PendingComponent(val id: Int, val version: String) {
@@ -10,14 +8,8 @@ data class PendingComponent(val id: Int, val version: String) {
     fun embeddingKey(space: EmbeddingSpace) = ComponentEmbeddingKey(id, version, space)
 }
 
-fun descriptionFingerprint(description: String): String =
-    MessageDigest.getInstance("SHA-256").digest(description.toByteArray(Charsets.UTF_8))
-        .joinToString("") { "%02x".format(it) }
-
 data class ComponentEmbeddingKey(val componentId: Int, val version: String, val space: EmbeddingSpace) {
     init { require(componentId > 0 && version.isNotBlank()) }
 }
-
-data class ComponentEmbedding(val key: ComponentEmbeddingKey, val vector: ComponentVector)
 
 class GroupRebuildRequired(message: String) : IllegalStateException(message)

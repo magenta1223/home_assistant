@@ -3,13 +3,13 @@ package com.homeassistant.adapter.outbound.persistence.repo.group
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import kotlinx.serialization.json.*
 
 /** Stable receipt representation; domain and application remain independent of JSON. */
 internal object GroupStorageCodec {
-    fun vector(value: ComponentVector): String = JsonArray(value.values().map(::JsonPrimitive)).toString()
-    fun vector(value: String): ComponentVector = ComponentVector.restore(Json.parseToJsonElement(value).jsonArray.map { it.jsonPrimitive.double })
+    fun vector(value: EmbeddingVector): String = JsonArray(value.values().map(::JsonPrimitive)).toString()
+    fun vector(value: String): EmbeddingVector = EmbeddingVector.restore(Json.parseToJsonElement(value).jsonArray.map { it.jsonPrimitive.double })
     fun ids(values: Collection<Int>): String = JsonArray(values.map(::JsonPrimitive)).toString()
     fun ids(value: String): List<Int> = Json.parseToJsonElement(value).jsonArray.map { it.jsonPrimitive.int }
 

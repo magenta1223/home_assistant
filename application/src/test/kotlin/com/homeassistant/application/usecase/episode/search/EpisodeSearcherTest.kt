@@ -3,7 +3,7 @@ package com.homeassistant.application.usecase.episode.search
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeMatch
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
@@ -12,7 +12,7 @@ import com.homeassistant.application.usecase.memoryextraction.component.PrepareE
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeVisibility
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -20,9 +20,9 @@ import kotlin.test.*
 
 class EpisodeSearcherTest {
     private val user = UserId("a")
-    private val east = ComponentVector.normalized(listOf(1.0, 0.0))
-    private val north = ComponentVector.normalized(listOf(0.0, 1.0))
-    private val nearEast = ComponentVector.normalized(listOf(1.0, 0.2))
+    private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
+    private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
+    private val nearEast = EmbeddingVector.normalized(listOf(1.0, 0.2))
 
     @Test fun `readable episodes come nearest the question first, up to the limit`() {
         val fixture = Fixture(mapOf("north" to north, "east" to east, "near east" to nearEast))
@@ -50,10 +50,10 @@ class EpisodeSearcherTest {
         assertFailsWith<UserAccessDeniedException> { Fixture(mapOf("east" to east)).searcher(authorized = false).search(user, "q") }
     }
 
-    private inner class Fixture(private val vectors: Map<String, ComponentVector>) {
+    private inner class Fixture(private val vectors: Map<String, EmbeddingVector>) {
         val queries = mutableListOf<String>()
         val generated = mutableListOf<String>()
-        private val stored = mutableMapOf<EpisodeEmbeddingKey, EpisodeEmbedding>()
+        private val stored = mutableMapOf<EpisodeEmbeddingKey, Embedding<EpisodeEmbeddingKey>>()
         private val episodes = vectors.keys.mapIndexed { index, content ->
             Episode(index + 1, "creator", "title", content, EpisodeVisibility.PUBLIC, emptySet(), listOf(1), (index + 1).toLong())
         }
@@ -62,7 +62,7 @@ class EpisodeSearcherTest {
             override val space = EmbeddingSpace("test", "passage:v1")
             override fun isAvailable() = true
             override fun embedDocument(text: String) = vectors.getValue(text).also { generated.add(text) }
-            override fun embedQuery(text: String): ComponentVector { queries.add(text); return east }
+            override fun embedQuery(text: String): EmbeddingVector { queries.add(text); return east }
         }
 
         fun searcher(limit: Int = 10, authorized: Boolean = true) = EpisodeSearcher(
@@ -73,7 +73,7 @@ class EpisodeSearcherTest {
             embeddings,
             PrepareEpisodeEmbedding(embeddings, object : EpisodeEmbeddingStore {
                 override fun find(key: EpisodeEmbeddingKey) = stored[key]
-                override fun save(embedding: EpisodeEmbedding) = stored.getOrPut(embedding.key) { embedding }
+                override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = stored.getOrPut(embedding.key) { embedding }
             }),
             UserAccessPolicy { authorized },
             limit,

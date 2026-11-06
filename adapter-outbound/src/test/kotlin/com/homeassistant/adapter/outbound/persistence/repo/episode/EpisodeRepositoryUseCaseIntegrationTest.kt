@@ -11,7 +11,7 @@ import com.homeassistant.application.usecase.memoryextraction.component.PrepareE
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.contextprovider.ContextProvider
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
@@ -31,7 +31,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     @Test
     fun `conversation context reads only the components and episodes the user can see`() {
         withRepositories("component-search-integration") { stores ->
-            val east = ComponentVector.normalized(listOf(1.0, 0.0))
+            val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
             val publicEpisode = stores.saveEpisode(member, "public", EpisodeAccess.PUBLIC)
             val otherRestrictedEpisode = stores.saveEpisode(
                 UserId("member-2"),

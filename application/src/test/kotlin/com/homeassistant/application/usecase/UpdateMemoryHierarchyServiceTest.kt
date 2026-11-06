@@ -11,11 +11,10 @@ import com.homeassistant.application.port.inbound.memoryextraction.MemoryHierarc
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
@@ -33,7 +32,7 @@ import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComp
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.EpisodeAccess
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.group.GroupMergePolicy
 import com.homeassistant.domain.group.GroupOrganizationPlanner
@@ -92,7 +91,7 @@ class UpdateMemoryHierarchyServiceTest {
         val fixture = Fixture(claimable = 0, unplaced = 2)
         fixture.snapshot = GroupSnapshot(
             listOf(StoredGroup(Group(4, setOf(9)), 1, VECTOR)),
-            mapOf(9 to ComponentEmbedding(PendingComponent(9, "9").embeddingKey(EmbeddingSpace("old", "v1")), VECTOR)),
+            mapOf(9 to Embedding(PendingComponent(9, "9").embeddingKey(EmbeddingSpace("old", "v1")), VECTOR)),
         )
         val update = assertIs<MemoryHierarchyUpdate.RebuildRequired>(fixture.service.execute(20))
         assertTrue(update.components.isEmpty())
@@ -139,7 +138,7 @@ class UpdateMemoryHierarchyServiceTest {
         private val texts = object : EmbeddingGenerator {
             override val space = SPACE
             override fun isAvailable() = embeddingReady
-            override fun embedDocument(text: String): ComponentVector {
+            override fun embedDocument(text: String): EmbeddingVector {
                 if (text in failingComponents.map(::placementStatement)) error("embedding unavailable")
                 return VECTOR
             }
@@ -200,20 +199,20 @@ class UpdateMemoryHierarchyServiceTest {
     }
 
     private class EpisodeCache : EpisodeEmbeddingStore {
-        private val cache = mutableMapOf<EpisodeEmbeddingKey, EpisodeEmbedding>()
+        private val cache = mutableMapOf<EpisodeEmbeddingKey, Embedding<EpisodeEmbeddingKey>>()
         override fun find(key: EpisodeEmbeddingKey) = cache[key]
-        override fun save(embedding: EpisodeEmbedding) = cache.getOrPut(embedding.key) { embedding }
+        override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }
     }
 
     private class ComponentCache : ComponentEmbeddingStore {
-        private val cache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
+        private val cache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
         override fun find(key: ComponentEmbeddingKey) = cache[key]
-        override fun save(embedding: ComponentEmbedding) = cache.getOrPut(embedding.key) { embedding }
+        override fun save(embedding: Embedding<ComponentEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }
     }
 
     private companion object {
         const val NOW = 1_000_000L
         val SPACE = EmbeddingSpace("test", "v1")
-        val VECTOR = ComponentVector.normalized(listOf(1.0, 0.0))
+        val VECTOR = EmbeddingVector.normalized(listOf(1.0, 0.0))
     }
 }

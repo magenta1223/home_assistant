@@ -1,17 +1,18 @@
 package com.homeassistant.application.port.outbound.memoryextraction.group
 
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.group.ComponentPartition
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 
-data class StoredGroup(val group: Group, val revision: Long, val centroid: ComponentVector) {
+data class StoredGroup(val group: Group, val revision: Long, val centroid: EmbeddingVector) {
     init { require(revision > 0) }
 }
 
 data class GroupSnapshot(
     val groups: List<StoredGroup>,
-    val embeddings: Map<Int, ComponentEmbedding>,
+    val embeddings: Map<Int, Embedding<ComponentEmbeddingKey>>,
 )
 
 sealed interface GroupTarget {
@@ -19,7 +20,7 @@ sealed interface GroupTarget {
     data class Created(val key: String) : GroupTarget { init { require(key.isNotBlank()) } }
 }
 
-data class ResultingGroup(val target: GroupTarget, val componentIds: Set<Int>, val centroid: ComponentVector)
+data class ResultingGroup(val target: GroupTarget, val componentIds: Set<Int>, val centroid: EmbeddingVector)
 
 /** Supports create, attach, split and merge without exposing individual membership edits. */
 data class GroupChange(
@@ -27,7 +28,7 @@ data class GroupChange(
     val expectedGroups: Map<Int, Long>,
     val incomingComponentIds: Set<Int>,
     val resultingGroups: List<ResultingGroup>,
-    val embeddings: Map<Int, ComponentEmbedding>,
+    val embeddings: Map<Int, Embedding<ComponentEmbeddingKey>>,
 ) {
     init {
         require(operationKey.isNotBlank())

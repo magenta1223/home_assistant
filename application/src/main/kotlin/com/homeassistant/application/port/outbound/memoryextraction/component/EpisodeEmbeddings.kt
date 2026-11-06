@@ -1,9 +1,9 @@
 package com.homeassistant.application.port.outbound.memoryextraction.component
 
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
 import com.homeassistant.domain.episode.EpisodeAccess
-import com.homeassistant.domain.group.ComponentVector
 
 /**
  * An episode whose Components are not extracted yet, with the messages it was written from, oldest first.
@@ -28,10 +28,8 @@ data class EpisodeEmbeddingKey(val episodeId: Int, val contentHash: String, val 
     }
 }
 
-data class EpisodeEmbedding(val key: EpisodeEmbeddingKey, val vector: ComponentVector)
-
 interface EpisodeEmbeddingStore {
-    fun find(key: EpisodeEmbeddingKey): EpisodeEmbedding?
+    fun find(key: EpisodeEmbeddingKey): Embedding<EpisodeEmbeddingKey>?
     /** Immutable per key. Concurrent preparation returns the first persisted vector. */
-    fun save(embedding: EpisodeEmbedding): EpisodeEmbedding
+    fun save(embedding: Embedding<EpisodeEmbeddingKey>): Embedding<EpisodeEmbeddingKey>
 }

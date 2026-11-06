@@ -1,7 +1,8 @@
 package com.homeassistant.application.usecase.memoryextraction.group
 
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
@@ -57,13 +58,13 @@ class OrganizeComponentIntoGroups(
         }
     }
 
-    private fun validateDimension(snapshot: GroupSnapshot, incoming: ComponentEmbedding) {
+    private fun validateDimension(snapshot: GroupSnapshot, incoming: Embedding<ComponentEmbeddingKey>) {
         if (snapshot.embeddings.values.any { it.vector.dimension != incoming.vector.dimension }) {
             throw GroupRebuildRequired("group embedding dimension changed")
         }
     }
 
-    private fun changeFor(snapshot: GroupSnapshot, incoming: ComponentEmbedding, decision: GroupOrganizationPlan): GroupChange {
+    private fun changeFor(snapshot: GroupSnapshot, incoming: Embedding<ComponentEmbeddingKey>, decision: GroupOrganizationPlan): GroupChange {
         val selected = snapshot.groups.filter { it.group.id in decision.consumedGroupIds }
         val componentIds = decision.partition.parts.flatten().toSet()
         val allEmbeddings = snapshot.embeddings + (incoming.key.componentId to incoming)

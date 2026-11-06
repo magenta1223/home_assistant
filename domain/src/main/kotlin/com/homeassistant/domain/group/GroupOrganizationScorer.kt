@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
 import kotlin.math.abs
 import kotlin.math.exp
 
@@ -9,7 +10,7 @@ data class OrganizationScore(val sparsity: Double, val semantics: Double) {
 
 /** xMemory equations 1-3; sparsity measures size balance, not a penalty on the group count. */
 class GroupOrganizationScorer {
-    fun score(parts: List<Set<Int>>, vectors: Map<Int, ComponentVector>): OrganizationScore {
+    fun score(parts: List<Set<Int>>, vectors: Map<Int, EmbeddingVector>): OrganizationScore {
         if (parts.isEmpty()) return OrganizationScore(0.0, 0.0)
         ComponentPartition(parts)
         val sizes = parts.map { it.size.toDouble() }

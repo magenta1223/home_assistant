@@ -1,12 +1,13 @@
 package com.homeassistant.application.usecase.memoryextraction.group
 
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
+import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
-import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
 import com.homeassistant.domain.component.Component
 
 /**
@@ -22,9 +23,9 @@ class PrepareComponentEmbedding(
     val space: EmbeddingSpace get() = generator.space
 
     /** The stored vector of [component]'s version in [space], generated and stored first when missing. */
-    fun prepare(component: PendingComponent): ComponentEmbedding {
+    fun prepare(component: PendingComponent): Embedding<ComponentEmbeddingKey> {
         val key = component.embeddingKey(space)
-        return store.find(key) ?: store.save(ComponentEmbedding(key, generator.embedDocument(statementOf(component))))
+        return store.find(key) ?: store.save(Embedding(key, generator.embedDocument(statementOf(component))))
     }
 
     private fun statementOf(component: PendingComponent): String =

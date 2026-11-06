@@ -1,5 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
@@ -9,7 +11,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeReposi
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
@@ -18,7 +20,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupT
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
-import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
@@ -38,7 +40,7 @@ import kotlin.test.*
 
 class GroupRepositoryTest {
     private val space = EmbeddingSpace("test", "passage:v1")
-    private val vector = ComponentVector.normalized(listOf(1.0, 0.0))
+    private val vector = EmbeddingVector.normalized(listOf(1.0, 0.0))
 
     @Test
     fun `create attach split restart and repeat preserve all component state`() = withDatabase { db, path ->
@@ -130,10 +132,10 @@ class GroupRepositoryTest {
             change("steal", incoming = setOf(2), parts = listOf(setOf(1, 2)), embeddings = embeddings),
             change("extra", incoming = setOf(2), parts = listOf(setOf(2, 3)), embeddings = embeddings),
             change("wrong-centroid", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = embeddings).let {
-                it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = ComponentVector.normalized(listOf(0.0, 1.0))) })
+                it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = EmbeddingVector.normalized(listOf(0.0, 1.0))) })
             },
             change("missing", incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
-                mapOf(999 to ComponentEmbedding(PendingComponent(999, "1").embeddingKey(space), vector))),
+                mapOf(999 to Embedding(PendingComponent(999, "1").embeddingKey(space), vector))),
         )
         invalid.forEach { assertFailsWith<IllegalArgumentException> { repository.save(it) } }
         assertEquals(setOf(1), repository.findSnapshot().groups.single().group.componentIds)
@@ -198,7 +200,7 @@ class GroupRepositoryTest {
         val restarted = ComponentEmbeddingRepository(DatabaseFactory.init(path))
         assertEquals(embeddings.getValue(1), restarted.find(embeddings.getValue(1).key))
         // The first vector for a cache key wins even if another embedding request returns different coordinates.
-        assertEquals(embeddings.getValue(1), restarted.save(embeddings.getValue(1).copy(vector = ComponentVector.normalized(listOf(0.0, 1.0)))))
+        assertEquals(embeddings.getValue(1), restarted.save(embeddings.getValue(1).copy(vector = EmbeddingVector.normalized(listOf(0.0, 1.0)))))
         val replacement = restarted.save(embeddings.getValue(2).let { it.copy(key = it.key.copy(space = EmbeddingSpace(
             "new",
             "v1"
@@ -215,7 +217,7 @@ class GroupRepositoryTest {
         count: Int,
         access: EpisodeAccess = EpisodeAccess.restricted(listOf(UserId("owner"))),
         key: String = "seed",
-    ): Map<Int, ComponentEmbedding> {
+    ): Map<Int, Embedding<ComponentEmbeddingKey>> {
         val user = UserId("owner")
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, key)),
             access).recordsToAnalyze.single()
@@ -227,7 +229,7 @@ class GroupRepositoryTest {
             val statement = "knowledge of ${episode.content}"
             val id = components.save(EpisodeComponents(episode.id, listOf(statement))).single().id
             id to store.save(
-                ComponentEmbedding(
+                Embedding(
                     PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(
                         space
                     ), vector
@@ -241,7 +243,7 @@ class GroupRepositoryTest {
         expected: Map<Int, Long> = emptyMap(),
         incoming: Set<Int>,
         parts: List<Set<Int>>,
-        embeddings: Map<Int, ComponentEmbedding>,
+        embeddings: Map<Int, Embedding<ComponentEmbeddingKey>>,
         retain: Int? = null,
     ): GroupChange = GroupChange(key, expected, incoming, parts.mapIndexed { index, ids ->
         ResultingGroup(

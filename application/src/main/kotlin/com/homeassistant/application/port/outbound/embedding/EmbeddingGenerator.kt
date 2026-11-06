@@ -1,6 +1,6 @@
 package com.homeassistant.application.port.outbound.embedding
 
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 
 /** The embedding model and input format a stored vector was made with; vectors compare only within one space. */
 data class EmbeddingSpace(val model: String, val inputFormat: String) {
@@ -17,8 +17,8 @@ interface EmbeddingGenerator {
     fun isAvailable(): Boolean
 
     /** The normalized vector of stored text such as an episode or a Component statement. */
-    fun embedDocument(text: String): ComponentVector
+    fun embedDocument(text: String): EmbeddingVector
 
     /** The normalized vector of a search question. */
-    fun embedQuery(text: String): ComponentVector
+    fun embedQuery(text: String): EmbeddingVector
 }

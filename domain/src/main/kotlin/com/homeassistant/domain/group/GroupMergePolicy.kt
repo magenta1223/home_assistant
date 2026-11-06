@@ -1,5 +1,7 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
+
 /** [absorbed]'s Components join [survivor], the smaller id, which keeps its id. */
 data class GroupMerge(val survivor: Int, val absorbed: Int, val before: OrganizationScore, val after: OrganizationScore) {
     init { require(survivor in 1 until absorbed) }
@@ -15,7 +17,7 @@ class GroupMergePolicy(
     private val settings: GroupPolicySettings,
     private val scorer: GroupOrganizationScorer = GroupOrganizationScorer(),
 ) {
-    fun decide(groups: List<Group>, centroids: Map<Int, ComponentVector>, vectors: Map<Int, ComponentVector>): GroupMerge? {
+    fun decide(groups: List<Group>, centroids: Map<Int, EmbeddingVector>, vectors: Map<Int, EmbeddingVector>): GroupMerge? {
         val before by lazy { scorer.score(groups.map { it.componentIds }, vectors) }
         for (single in groups.filter { it.componentIds.size == 1 }.sortedBy { it.id }) {
             // Nearest first, so an equal score keeps the nearer Group.
@@ -29,7 +31,7 @@ class GroupMergePolicy(
         return null
     }
 
-    private fun neighbors(single: Group, groups: List<Group>, centroids: Map<Int, ComponentVector>): List<Group> {
+    private fun neighbors(single: Group, groups: List<Group>, centroids: Map<Int, EmbeddingVector>): List<Group> {
         val others = groups.filter { it.id != single.id }.associateBy { it.id }
         return GroupGeometry.nearest(centroids.getValue(single.id), others.mapValues { centroids.getValue(it.key) }, settings.mergeNeighbors)
             .map { (id, cosine) -> others.getValue(id) to cosine }

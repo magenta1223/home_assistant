@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.embedding.ollama.install.PinnedOllamaD
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import kotlinx.serialization.Serializable
 import org.slf4j.LoggerFactory
@@ -180,11 +180,11 @@ class OllamaServerRuntime internal constructor(
         process = null
     }
 
-    override fun embedDocument(text: String): ComponentVector = embed("passage: $text")
+    override fun embedDocument(text: String): EmbeddingVector = embed("passage: $text")
 
-    override fun embedQuery(text: String): ComponentVector = embed("query: $text")
+    override fun embedQuery(text: String): EmbeddingVector = embed("query: $text")
 
-    private fun embed(input: String): ComponentVector {
+    private fun embed(input: String): EmbeddingVector {
         val startedAt = System.nanoTime()
         return try {
             val request = HttpRequest.newBuilder(URI.create("${endpoint.baseUrl}/api/embed"))
@@ -209,7 +209,7 @@ class OllamaServerRuntime internal constructor(
             check(vector.size == vectorSize) {
                 "Embedding vector size mismatch: expected=$vectorSize actual=${vector.size}"
             }
-            ComponentVector.normalized(vector.map { it.toDouble() }).also {
+            EmbeddingVector.normalized(vector.map { it.toDouble() }).also {
                 log.info(
                     "Latency stage=embedding-request result=success model={} elapsedMs={}",
                     model,

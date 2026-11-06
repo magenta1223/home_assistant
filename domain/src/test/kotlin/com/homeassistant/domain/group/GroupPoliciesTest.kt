@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
 import kotlin.test.*
 
 class GroupPoliciesTest {
@@ -69,7 +70,7 @@ class GroupPoliciesTest {
 
     @Test fun `invalid vectors dimensions and partitions fail explicitly`() {
         listOf(emptyList(), listOf(0.0, 0.0), listOf(Double.NaN), listOf(Double.POSITIVE_INFINITY)).forEach {
-            assertFailsWith<IllegalArgumentException> { ComponentVector.normalized(it) }
+            assertFailsWith<IllegalArgumentException> { EmbeddingVector.normalized(it) }
         }
         assertFailsWith<IllegalArgumentException> { GroupGeometry.cosine(x, vector(1.0)) }
         assertFailsWith<IllegalArgumentException> { GroupGeometry.centroid(listOf(x, vector(-1.0, 0.0))) }
@@ -81,11 +82,11 @@ class GroupPoliciesTest {
 
     @Test fun `normalization supports large finite inputs and protects input from mutation`() {
         val original = mutableListOf(Double.MAX_VALUE, Double.MAX_VALUE)
-        val vector = ComponentVector.normalized(original)
+        val vector = EmbeddingVector.normalized(original)
         original[0] = 0.0
         assertEquals(kotlin.math.sqrt(0.5), vector.values().first(), 1e-12)
-        assertEquals(vector, ComponentVector.restore(vector.values()))
+        assertEquals(vector, EmbeddingVector.restore(vector.values()))
     }
 
-    private fun vector(vararg values: Double) = ComponentVector.normalized(values.toList())
+    private fun vector(vararg values: Double) = EmbeddingVector.normalized(values.toList())
 }

@@ -1,5 +1,6 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
 import kotlin.test.*
 
 class GroupMergePolicyTest {
@@ -54,8 +55,8 @@ class GroupMergePolicyTest {
         assertEquals(2 to 3, assertNotNull(policy.decide(groups, centroids, vectors)).let { it.survivor to it.absorbed })
     }
 
-    private fun centroids(groups: List<Group>, vectors: Map<Int, ComponentVector>) =
+    private fun centroids(groups: List<Group>, vectors: Map<Int, EmbeddingVector>) =
         groups.associate { group -> group.id to GroupGeometry.centroid(group.componentIds.sorted().map(vectors::getValue)) }
 
-    private fun vector(vararg values: Double) = ComponentVector.normalized(values.toList())
+    private fun vector(vararg values: Double) = EmbeddingVector.normalized(values.toList())
 }

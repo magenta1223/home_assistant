@@ -1,7 +1,7 @@
 package com.homeassistant.domain.retrieval
 
 import com.homeassistant.domain.group.GroupGeometry
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 
 /**
  * xMemory Stage I (equation 4): greedily picks the candidate that adds the most uncovered neighbor weight plus query
@@ -16,7 +16,7 @@ class BackboneSelection(private val neighbors: Int = 10) {
     init { require(neighbors >= 1) }
 
     /** The [neighbors] nodes nearest to [id] among [vectors] with their cosine to it, nearest first. */
-    fun neighborsOf(id: Int, vectors: Map<Int, ComponentVector>): List<Pair<Int, Double>> =
+    fun neighborsOf(id: Int, vectors: Map<Int, EmbeddingVector>): List<Pair<Int, Double>> =
         GroupGeometry.nearest(vectors.getValue(id), vectors - id, neighbors)
 
     /**
@@ -24,7 +24,7 @@ class BackboneSelection(private val neighbors: Int = 10) {
      * [vectors] hold every node of the level the requester can read, so a candidate's neighbors are found among the
      * nodes that can be picked.
      */
-    fun select(candidates: Set<Int>, vectors: Map<Int, ComponentVector>, query: ComponentVector, limit: Int): List<Int> {
+    fun select(candidates: Set<Int>, vectors: Map<Int, EmbeddingVector>, query: EmbeddingVector, limit: Int): List<Int> {
         require(limit > 0)
         val reach = candidates.associateWith { coverage(it, candidates, vectors) }
         val total = reach.values.sumOf { it.values.sum() }
@@ -42,7 +42,7 @@ class BackboneSelection(private val neighbors: Int = 10) {
     }
 
     /** What picking [id] covers among [candidates], with each covered node's weight. */
-    private fun coverage(id: Int, candidates: Set<Int>, vectors: Map<Int, ComponentVector>): Map<Int, Double> =
+    private fun coverage(id: Int, candidates: Set<Int>, vectors: Map<Int, EmbeddingVector>): Map<Int, Double> =
         neighborsOf(id, vectors).filter { it.first in candidates }
             .associate { (other, cosine) -> other to cosine.coerceAtLeast(0.0) } + (id to 1.0)
 }

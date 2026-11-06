@@ -1,5 +1,7 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
+
 sealed interface GroupSplit {
     data object Unchanged : GroupSplit
     data class Divided(
@@ -16,7 +18,7 @@ class GroupSplitPolicy(
     private val candidates: GroupSplitCandidateGenerator = GroupSplitCandidateGenerator(settings),
     private val scorer: GroupOrganizationScorer = GroupOrganizationScorer(),
 ) {
-    fun decide(target: Set<Int>, surrounding: List<Set<Int>>, vectors: Map<Int, ComponentVector>): GroupSplit {
+    fun decide(target: Set<Int>, surrounding: List<Set<Int>>, vectors: Map<Int, EmbeddingVector>): GroupSplit {
         if (target.size <= settings.maxComponents) return GroupSplit.Unchanged
         val before = scorer.score(surrounding + listOf(target), vectors)
         val ranked = candidates.generate(vectors.filterKeys { it in target }).mapNotNull { partition ->

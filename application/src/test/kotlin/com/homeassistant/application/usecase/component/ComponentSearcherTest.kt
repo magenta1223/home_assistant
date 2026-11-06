@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.usecase.contextprovider.component.ComponentMatch
 import com.homeassistant.application.usecase.contextprovider.component.ComponentMatchEpisode
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
@@ -18,7 +18,7 @@ import com.homeassistant.application.usecase.contextprovider.component.Component
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.domain.group.Group
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -30,9 +30,9 @@ import kotlin.test.*
 class ComponentSearcherTest {
     private val a = UserId("a")
     private val space = EmbeddingSpace("test", "passage:v1")
-    private val east = ComponentVector.normalized(listOf(1.0, 0.0))
-    private val north = ComponentVector.normalized(listOf(0.0, 1.0))
-    private val northEast = ComponentVector.normalized(listOf(1.0, 1.0))
+    private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
+    private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
+    private val northEast = EmbeddingVector.normalized(listOf(1.0, 1.0))
     private val onlyB = EpisodeAccess.restricted(listOf(UserId("b")))
     private val ab = EpisodeAccess.restricted(listOf(a, UserId("b")))
 
@@ -114,12 +114,12 @@ class ComponentSearcherTest {
     }
 
     private fun degrees(angle: Double) =
-        ComponentVector.normalized(listOf(kotlin.math.cos(Math.toRadians(angle)), kotlin.math.sin(Math.toRadians(angle))))
+        EmbeddingVector.normalized(listOf(kotlin.math.cos(Math.toRadians(angle)), kotlin.math.sin(Math.toRadians(angle))))
 
-    private fun component(id: Int, vector: ComponentVector, sourceEpisodeId: Int, access: EpisodeAccess = EpisodeAccess.PUBLIC) =
+    private fun component(id: Int, vector: EmbeddingVector, sourceEpisodeId: Int, access: EpisodeAccess = EpisodeAccess.PUBLIC) =
         Component(id, "c$id", sourceEpisodeId, access) to vector
 
-    private inner class Fixture(vararg components: Pair<Component, ComponentVector>) {
+    private inner class Fixture(vararg components: Pair<Component, EmbeddingVector>) {
         private val byId = components.associate { it.first.id to it.first }
         private val vectors = components.associate { it.first.statement to it.second }
         val queries = mutableListOf<String>()
@@ -132,19 +132,19 @@ class ComponentSearcherTest {
             override fun findVisibleTo(userId: UserId) = byId.values.filter { it.isVisibleTo(userId) }
             override fun save(extraction: EpisodeComponents) = error("search never saves Components")
         }
-        private val cache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
+        private val cache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
         private val embeddings = object : EmbeddingGenerator {
             override val space = this@ComponentSearcherTest.space
             override fun isAvailable() = true
             override fun embedDocument(text: String) = vectors.getValue(text)
-            override fun embedQuery(text: String): ComponentVector { queries.add(text); return east }
+            override fun embedQuery(text: String): EmbeddingVector { queries.add(text); return east }
         }
         private val componentEmbeddings = PrepareComponentEmbedding(
             reader,
             embeddings,
             object : ComponentEmbeddingStore {
                 override fun find(key: ComponentEmbeddingKey) = cache[key]
-                override fun save(embedding: ComponentEmbedding) = cache.getOrPut(embedding.key) { embedding }
+                override fun save(embedding: Embedding<ComponentEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }
             },
         )
 

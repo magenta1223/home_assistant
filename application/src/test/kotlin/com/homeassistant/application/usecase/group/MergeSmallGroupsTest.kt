@@ -1,10 +1,11 @@
 package com.homeassistant.application.usecase.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
@@ -17,7 +18,7 @@ import kotlin.test.*
 
 class MergeSmallGroupsTest {
     private val space = EmbeddingSpace("test", "v1")
-    private val east = ComponentVector.normalized(listOf(1.0, 0.0))
+    private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
 
     @Test fun `single-component groups merge one at a time on fresh snapshots until none is left`() {
         val store = Store(mapOf(1 to setOf(1, 2), 2 to setOf(3), 3 to setOf(4), 4 to setOf(5, 6), 5 to setOf(7), 6 to setOf(8)))
@@ -53,7 +54,7 @@ class MergeSmallGroupsTest {
         override fun findSnapshot(): GroupSnapshot {
             reads++
             val embeddings = groups.values.flatten().associateWith {
-                ComponentEmbedding(
+                Embedding(
                     PendingComponent(
                         it,
                         "1"

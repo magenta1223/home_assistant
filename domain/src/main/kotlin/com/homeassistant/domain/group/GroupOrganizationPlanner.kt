@@ -1,5 +1,7 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
+
 data class GroupOrganizationPlan(
     val consumedGroupIds: Set<Int>,
     val partition: ComponentPartition,
@@ -14,8 +16,8 @@ class GroupOrganizationPlanner(
     fun plan(
         incomingComponentId: Int,
         groups: List<Group>,
-        centroids: Map<Int, ComponentVector>,
-        vectors: Map<Int, ComponentVector>,
+        centroids: Map<Int, EmbeddingVector>,
+        vectors: Map<Int, EmbeddingVector>,
     ): GroupOrganizationPlan {
         require(groups.none { incomingComponentId in it.componentIds }) { "incoming component is already grouped" }
         val consumed = when (val choice = placement.decide(vectors.getValue(incomingComponentId), centroids)) {

@@ -4,8 +4,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbedding
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.group.descriptionFingerprint
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import kotlinx.serialization.json.add
@@ -14,9 +14,9 @@ import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmbeddingStore {
-    override fun find(key: EpisodeEmbeddingKey): EpisodeEmbedding? = transaction(db) { findStored(key) }
+    override fun find(key: EpisodeEmbeddingKey): Embedding<EpisodeEmbeddingKey>? = transaction(db) { findStored(key) }
 
-    override fun save(embedding: EpisodeEmbedding): EpisodeEmbedding = transaction(db) {
+    override fun save(embedding: Embedding<EpisodeEmbeddingKey>): Embedding<EpisodeEmbeddingKey> = transaction(db) {
         EpisodeEmbeddingTable.insertIgnore {
             it[key] = key(embedding.key)
             it[episodeId] = embedding.key.episodeId
@@ -32,7 +32,7 @@ internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmb
         requireNotNull(findStored(embedding.key))
     }
 
-    private fun findStored(key: EpisodeEmbeddingKey): EpisodeEmbedding? =
+    private fun findStored(key: EpisodeEmbeddingKey): Embedding<EpisodeEmbeddingKey>? =
         EpisodeEmbeddingTable.selectAll().where { EpisodeEmbeddingTable.key eq key(key) }.singleOrNull()?.let { decode(it) }
 
     companion object {
@@ -40,7 +40,7 @@ internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmb
             add(value.episodeId); add(value.contentHash); add(value.space.model); add(value.space.inputFormat)
         }.toString()
 
-        fun decode(row: ResultRow): EpisodeEmbedding = EpisodeEmbedding(
+        fun decode(row: ResultRow): Embedding<EpisodeEmbeddingKey> = Embedding(
             EpisodeEmbeddingKey(
                 row[EpisodeEmbeddingTable.episodeId], row[EpisodeEmbeddingTable.contentHash],
                 EmbeddingSpace(row[EpisodeEmbeddingTable.model], row[EpisodeEmbeddingTable.inputFormat])

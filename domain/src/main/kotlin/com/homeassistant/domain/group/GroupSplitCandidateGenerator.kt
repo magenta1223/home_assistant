@@ -1,14 +1,16 @@
 package com.homeassistant.domain.group
 
+import com.homeassistant.domain.embedding.EmbeddingVector
+
 class GroupSplitCandidateGenerator(private val settings: GroupPolicySettings) {
-    fun generate(components: Map<Int, ComponentVector>): List<ComponentPartition> {
+    fun generate(components: Map<Int, EmbeddingVector>): List<ComponentPartition> {
         require(components.isNotEmpty())
         val connected = connectedComponents(components).flatMap { bound(it, components) }
         val binary = bound(components.keys, components)
         return listOf(ComponentPartition(connected).canonical(), ComponentPartition(binary).canonical()).distinct()
     }
 
-    private fun connectedComponents(components: Map<Int, ComponentVector>): List<Set<Int>> {
+    private fun connectedComponents(components: Map<Int, EmbeddingVector>): List<Set<Int>> {
         val remaining = components.keys.toSortedSet()
         val parts = mutableListOf<Set<Int>>()
         while (remaining.isNotEmpty()) {
@@ -30,7 +32,7 @@ class GroupSplitCandidateGenerator(private val settings: GroupPolicySettings) {
         return parts
     }
 
-    private fun bound(ids: Set<Int>, vectors: Map<Int, ComponentVector>): List<Set<Int>> {
+    private fun bound(ids: Set<Int>, vectors: Map<Int, EmbeddingVector>): List<Set<Int>> {
         if (ids.size <= settings.maxComponents) return listOf(ids)
         val sorted = ids.sorted()
         val seeds = sorted.flatMapIndexed { index, a -> sorted.drop(index + 1).map { b -> a to b } }

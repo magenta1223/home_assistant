@@ -1,8 +1,8 @@
 package com.homeassistant.application.usecase.memoryextraction.component
 
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 
@@ -18,8 +18,8 @@ class PrepareEpisodeEmbedding(
     fun isAvailable(): Boolean = generator.isAvailable()
 
     /** The stored vector of an episode's [content] in [space], generated and stored first when missing. */
-    fun prepare(episodeId: Int, content: String): EpisodeEmbedding {
+    fun prepare(episodeId: Int, content: String): Embedding<EpisodeEmbeddingKey> {
         val key = EpisodeEmbeddingKey.of(episodeId, content, space)
-        return store.find(key) ?: store.save(EpisodeEmbedding(key, generator.embedDocument(content)))
+        return store.find(key) ?: store.save(Embedding(key, generator.embedDocument(content)))
     }
 }

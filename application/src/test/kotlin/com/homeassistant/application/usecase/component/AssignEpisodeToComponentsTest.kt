@@ -3,11 +3,10 @@ package com.homeassistant.application.usecase.component
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbedding
+import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
@@ -15,7 +14,7 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.component.Component
@@ -23,9 +22,9 @@ import kotlin.test.*
 
 class AssignEpisodeToComponentsTest {
     private val space = EmbeddingSpace("test", "v1")
-    private val east = ComponentVector.normalized(listOf(1.0, 0.0))
-    private val north = ComponentVector.normalized(listOf(0.0, 1.0))
-    private val nearEast = ComponentVector.normalized(listOf(1.0, 0.2))
+    private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
+    private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
+    private val nearEast = EmbeddingVector.normalized(listOf(1.0, 0.2))
     private val onlyB = EpisodeAccess.restricted(listOf(UserId("b")))
 
     @Test fun `without components every long-term statement of the episode becomes a component`() {
@@ -67,7 +66,7 @@ class AssignEpisodeToComponentsTest {
     }
 
     private inner class Fixture(knownLimit: Int = 10) {
-        var vectors = emptyMap<String, ComponentVector>()
+        var vectors = emptyMap<String, EmbeddingVector>()
         var statements = emptyMap<Int, List<String>>()
         var failing = emptySet<Int>()
         val components = mutableListOf<Component>()
@@ -75,7 +74,7 @@ class AssignEpisodeToComponentsTest {
         val extractions = mutableListOf<Extraction>()
         var embeddingReady = true
 
-        fun add(statement: String, vector: ComponentVector, access: EpisodeAccess = EpisodeAccess.PUBLIC): Component {
+        fun add(statement: String, vector: EmbeddingVector, access: EpisodeAccess = EpisodeAccess.PUBLIC): Component {
             vectors = vectors + (statement to vector)
             return Component(components.size + 1, statement, 50 + components.size, access).also(components::add)
         }
@@ -86,10 +85,10 @@ class AssignEpisodeToComponentsTest {
             override fun embedDocument(text: String) = vectors[text] ?: east
             override fun embedQuery(text: String) = east
         }
-        private val episodeCache = mutableMapOf<EpisodeEmbeddingKey, EpisodeEmbedding>()
+        private val episodeCache = mutableMapOf<EpisodeEmbeddingKey, Embedding<EpisodeEmbeddingKey>>()
         private val episodeEmbeddings = PrepareEpisodeEmbedding(texts, object : EpisodeEmbeddingStore {
             override fun find(key: EpisodeEmbeddingKey) = episodeCache[key]
-            override fun save(embedding: EpisodeEmbedding) = episodeCache.getOrPut(embedding.key) { embedding }
+            override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = episodeCache.getOrPut(embedding.key) { embedding }
         })
         private val componentRepository = object : ComponentRepository {
             override fun findByIds(ids: Collection<Int>) = components.filter { it.id in ids }
@@ -102,11 +101,11 @@ class AssignEpisodeToComponentsTest {
                 }
             }
         }
-        private val componentCache = mutableMapOf<ComponentEmbeddingKey, ComponentEmbedding>()
+        private val componentCache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
         private val componentEmbeddings = PrepareComponentEmbedding(componentRepository, texts, object :
             ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
-            override fun save(embedding: ComponentEmbedding) = componentCache.getOrPut(embedding.key) { embedding }
+            override fun save(embedding: Embedding<ComponentEmbeddingKey>) = componentCache.getOrPut(embedding.key) { embedding }
         })
         private val extractor = ComponentKnowledgeExtractor { episode, known ->
             extractions.add(Extraction(episode.id, known))

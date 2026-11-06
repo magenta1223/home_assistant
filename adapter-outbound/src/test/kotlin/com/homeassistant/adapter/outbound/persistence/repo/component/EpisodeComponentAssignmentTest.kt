@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
@@ -30,9 +31,9 @@ import kotlin.test.*
 
 class EpisodeComponentAssignmentTest {
     private val space = EmbeddingSpace("test", "passage:v1")
-    private val east = ComponentVector.normalized(listOf(1.0, 0.0))
-    private val north = ComponentVector.normalized(listOf(0.0, 1.0))
-    private val nearEast = ComponentVector.normalized(listOf(1.0, 0.2))
+    private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
+    private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
+    private val nearEast = EmbeddingVector.normalized(listOf(1.0, 0.2))
     private val user = UserId("owner")
     private val access = EpisodeAccess.restricted(listOf(user))
 
@@ -113,7 +114,7 @@ class EpisodeComponentAssignmentTest {
     /** Assigns every claimable episode, completing its outbox row, then places the new Components in Groups. */
     private fun assignmentRound(
         db: Database,
-        vectors: Map<String, ComponentVector>,
+        vectors: Map<String, EmbeddingVector>,
         extractor: ComponentKnowledgeExtractor,
     ): List<List<Int>> {
         val groups = GroupRepositoryImpl(db)

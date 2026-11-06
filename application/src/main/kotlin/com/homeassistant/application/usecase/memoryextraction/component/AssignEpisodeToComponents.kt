@@ -6,7 +6,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Ep
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.pending
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.group.GroupGeometry
 
 /**
@@ -40,7 +40,7 @@ class AssignEpisodeToComponents(
      * The statements of the Components nearest [episode]. Only Components every reader of the episode may read are used,
      * so knowledge hidden from them never shapes what is extracted for them.
      */
-    private fun knownNear(episode: PendingEpisode, vector: ComponentVector): List<String> {
+    private fun knownNear(episode: PendingEpisode, vector: EmbeddingVector): List<String> {
         val known = components.findCovering(episode.access)
         if (known.isEmpty()) return emptyList()
         val vectors = known.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }

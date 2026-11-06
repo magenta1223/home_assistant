@@ -5,7 +5,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupR
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.domain.group.GroupGeometry
-import com.homeassistant.domain.group.ComponentVector
+import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -48,7 +48,7 @@ class ComponentSearcher(
      * The readable Components of the backbone candidate Groups, and the nearest [ComponentSearchSettings.componentPool]
      * readable Components.
      */
-    private fun candidateComponents(userId: UserId, question: ComponentVector, vectors: Map<Int, ComponentVector>): Set<Int> {
+    private fun candidateComponents(userId: UserId, question: EmbeddingVector, vectors: Map<Int, EmbeddingVector>): Set<Int> {
         val byId = groups.findVisibleTo(userId).associateBy { it.group.id }
         val groupCentroids = byId.mapValues { it.value.centroid }
         val candidates = candidateGroups(question, groupCentroids)
@@ -63,7 +63,7 @@ class ComponentSearcher(
      * up to [ComponentSearchSettings.groupCandidates]. Neighbors are not ranked by the question, which would drop first the
      * context next to the question that the expansion is for.
      */
-    private fun candidateGroups(question: ComponentVector, groupCentroids: Map<Int, ComponentVector>): Set<Int> {
+    private fun candidateGroups(question: EmbeddingVector, groupCentroids: Map<Int, EmbeddingVector>): Set<Int> {
         val nearGroups = nearest(question, groupCentroids, settings.groupPool)
         val linked = nearGroups.flatMap { backbone.neighborsOf(it, groupCentroids) }
             .filter { it.first !in nearGroups }
@@ -83,8 +83,8 @@ class ComponentSearcher(
     private fun matches(
         kept: List<Int>,
         sources: Map<Int, Episode>,
-        vectors: Map<Int, ComponentVector>,
-        question: ComponentVector,
+        vectors: Map<Int, EmbeddingVector>,
+        question: EmbeddingVector,
     ): List<ComponentMatch> {
         val placed = mutableSetOf<Int>()
         return kept.mapNotNull { componentId ->
@@ -95,6 +95,6 @@ class ComponentSearcher(
         }
     }
 
-    private fun nearest(question: ComponentVector, vectors: Map<Int, ComponentVector>, limit: Int): List<Int> =
+    private fun nearest(question: EmbeddingVector, vectors: Map<Int, EmbeddingVector>, limit: Int): List<Int> =
         GroupGeometry.nearest(question, vectors, limit).map { it.first }
 }

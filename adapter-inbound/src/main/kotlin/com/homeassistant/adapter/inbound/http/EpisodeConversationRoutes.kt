@@ -1,9 +1,7 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.chatservice.ChatService
-import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
-import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.configuration.AppConfig
 import io.ktor.http.ContentType
@@ -60,15 +58,8 @@ internal fun Route.episodeConversationRoutes(
         val result = withContext(Dispatchers.IO) {
             conversation.answer(
                 ChatRequest(
-                    participant = ChatParticipant(
-                        scopeId = HTTP_CONVERSATION_SCOPE,
-                        participantId = userId.value,
-                        userId = userId,
-                    ),
-                    key = ChatRequestKey(
-                        streamId = "$HTTP_CONVERSATION_SCOPE:${userId.value}",
-                        requestId = requestId,
-                    ),
+                    userId = userId,
+                    requestId = requestId,
                     question = question,
                 ),
             )
@@ -104,5 +95,4 @@ internal data class HttpEpisodeConversationResponse(
     val answer: String,
 )
 
-private const val HTTP_CONVERSATION_SCOPE = "http"
 private const val MAX_QUESTION_LENGTH = 10_000

@@ -17,8 +17,8 @@ import java.time.Clock
 import java.time.Duration
 
 /**
- * Answers a question from the participant's readable episodes in a provider conversation. The conversation is resumed
- * while the participant was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
+ * Answers a question from the user's readable episodes in a provider conversation. The conversation is resumed
+ * while the user was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
 class ChatServiceImpl(
@@ -34,7 +34,7 @@ class ChatServiceImpl(
         // TODO: ORCHESTRATION
         sessions.claimRequest(request.key, now()) ?: return existingResult(request.key)
 
-        val active = when (val lease = sessions.lease(request.participant, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
+        val active = when (val lease = sessions.lease(request.userId, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
             is ChatSessionLease.Active -> lease.session
             is ChatSessionLease.Expired -> {
                 chatGateway.end(lease.session.chatId)
@@ -44,7 +44,7 @@ class ChatServiceImpl(
         }
         val contextStartedAt = System.nanoTime()
         val context = try {
-            contextProvider.context(request.participant.userId, request.question)
+            contextProvider.context(request.userId, request.question)
         } catch (error: Exception) {
             log.warn(
                 "Episode context retrieval failed category={} elapsedMs={}",
@@ -77,11 +77,11 @@ class ChatServiceImpl(
             ChatGatewayResult.Failure -> {
                 chatGateway.end(session.chatId)
                 sessions.markFailed(request.key, now())
-                sessions.clearActive(request.participant)
+                sessions.clearActive(request.userId)
                 ChatResult.Failed
             }
             is ChatGatewayResult.Success -> {
-                sessions.touch(request.participant, session.id, now())
+                sessions.touch(request.userId, session.id, now())
                 answerReady(request.key, result.answer)
             }
         }
@@ -111,14 +111,14 @@ class ChatServiceImpl(
         var chatId: ChatId? = null
         return try {
             chatId = chatGateway.begin().getOrThrow()
-            sessions.createAndActivate(request.participant, chatId, now()).also { session ->
+            sessions.createAndActivate(request.userId, chatId, now()).also { session ->
                 sessions.attachSession(request.key, session.id, now())
             }
         } catch (error: Exception) {
             log.warn("Episode conversation session start failed category={}", error.javaClass.simpleName)
             chatId?.let {
                 chatGateway.end(it)
-                sessions.clearActive(request.participant)
+                sessions.clearActive(request.userId)
             }
             sessions.markFailed(request.key, now())
             null

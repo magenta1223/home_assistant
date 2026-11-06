@@ -1,6 +1,5 @@
 package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
@@ -42,15 +41,15 @@ class ChatServiceImplTest {
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
         assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
-        assertEquals(ChatRequestStatus.ANSWER_READY, store.receipt(KEY)?.status)
+        assertEquals(ChatRequestStatus.ANSWER_READY, store.receipt(REQUEST.key)?.status)
 
     }
 
     @Test
     fun `returns a stored answer without invoking the model again`() {
         val store = RecordingSessionStore().apply {
-            claimRequest(KEY, NOW)
-            markAnswerReady(KEY, "stored answer", NOW)
+            claimRequest(REQUEST.key, NOW)
+            markAnswerReady(REQUEST.key, "stored answer", NOW)
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ -> error("context must not be rebuilt") }
@@ -79,9 +78,9 @@ class ChatServiceImplTest {
     }
 
     @Test
-    fun `executes on the participant active session within its idle lease`() {
+    fun `executes on the user active session within its idle lease`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(PARTICIPANT, ChatId("existing-thread"), NOW - 1)
+            createAndActivate(USER_ID, ChatId("existing-thread"), NOW - 1)
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
@@ -98,7 +97,7 @@ class ChatServiceImplTest {
     fun `expires an idle thread before starting a replacement`() {
         val store = RecordingSessionStore().apply {
             createAndActivate(
-                PARTICIPANT,
+                USER_ID,
                 ChatId("expired-thread"),
                 NOW - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
             )
@@ -116,37 +115,33 @@ class ChatServiceImplTest {
     }
 
     @Test
-    fun `keeps different participants on different conversation threads`() {
+    fun `keeps different users on different conversation threads`() {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             Context("saved episode", hasMatches = true)
         }
-        val secondParticipant = ChatParticipant(
-            scopeId = "workspace-1",
-            participantId = "member-2",
-            userId = UserId("user-2"),
-        )
+        val secondUser = UserId("member-2")
 
         handler.answer(REQUEST)
         handler.answer(
             ChatRequest(
-                secondParticipant,
-                ChatRequestKey("stream-2", "request-1"),
+                secondUser,
+                "request-1",
                 "question",
             ),
         )
         handler.answer(
             ChatRequest(
-                PARTICIPANT,
-                ChatRequestKey("stream-1", "request-2"),
+                USER_ID,
+                "request-2",
                 "follow up",
             ),
         )
         handler.answer(
             ChatRequest(
-                secondParticipant,
-                ChatRequestKey("stream-2", "request-2"),
+                secondUser,
+                "request-2",
                 "follow up",
             ),
         )
@@ -169,14 +164,14 @@ class ChatServiceImplTest {
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertIs<ChatSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(USER_ID, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
     @Test
     fun `ends an active thread when its turn fails`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(PARTICIPANT, ChatId("existing-thread"), NOW - 1)
+            createAndActivate(USER_ID, ChatId("existing-thread"), NOW - 1)
         }
         val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
         val handler = handler(store, client) { _, _ ->
@@ -188,7 +183,7 @@ class ChatServiceImplTest {
         assertEquals(emptyList(), client.createdThreadIds)
         assertEquals(listOf("existing-thread"), client.endedThreadIds)
         assertIs<ChatSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(USER_ID, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -203,7 +198,7 @@ class ChatServiceImplTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(null, client.executedThreadId)
-        assertEquals(ChatRequestStatus.FAILED, store.receipt(KEY)?.status)
+        assertEquals(ChatRequestStatus.FAILED, store.receipt(REQUEST.key)?.status)
     }
 
     @Test
@@ -219,7 +214,7 @@ class ChatServiceImplTest {
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertEquals(null, client.executedThreadId)
         assertIs<ChatSessionLease.None>(
-            store.lease(PARTICIPANT, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(USER_ID, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -274,7 +269,7 @@ class ChatServiceImplTest {
         private val events: MutableList<String>? = null,
     ) : ChatSessionStore {
         private val receipts = mutableMapOf<ChatRequestKey, ChatReceipt>()
-        private val activeSessions = mutableMapOf<ChatParticipant, ChatSession>()
+        private val activeSessions = mutableMapOf<UserId, ChatSession>()
         private var nextSessionId = 1
 
         override fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt? {
@@ -306,46 +301,46 @@ class ChatServiceImplTest {
         }
 
         override fun createAndActivate(
-            participant: ChatParticipant,
+            userId: UserId,
             chatId: ChatId,
             now: Long,
         ): ChatSession = ChatSession(
             id = nextSessionId++,
-            participant = participant,
+            userId = userId,
             chatId = chatId,
             createdAt = now,
             lastActiveAt = now,
         ).also {
             events?.add("createAndActivate")
-            activeSessions[participant] = it
+            activeSessions[userId] = it
         }
 
         override fun lease(
-            participant: ChatParticipant,
+            userId: UserId,
             now: Long,
             idleTimeoutMillis: Long,
         ): ChatSessionLease {
-            val session = activeSessions[participant] ?: return ChatSessionLease.None
+            val session = activeSessions[userId] ?: return ChatSessionLease.None
             if (now - session.lastActiveAt >= idleTimeoutMillis) {
-                activeSessions.remove(participant)
+                activeSessions.remove(userId)
                 return ChatSessionLease.Expired(session)
             }
             val renewed = session.copy(lastActiveAt = now)
-            activeSessions[participant] = renewed
+            activeSessions[userId] = renewed
             return ChatSessionLease.Active(renewed)
         }
 
-        override fun clearActive(participant: ChatParticipant) {
-            activeSessions.remove(participant)
+        override fun clearActive(userId: UserId) {
+            activeSessions.remove(userId)
         }
 
-        override fun touch(participant: ChatParticipant, sessionId: Int, now: Long) {
-            activeSessions[participant] = activeSessions.getValue(participant).copy(lastActiveAt = now)
+        override fun touch(userId: UserId, sessionId: Int, now: Long) {
+            activeSessions[userId] = activeSessions.getValue(userId).copy(lastActiveAt = now)
         }
 
         override fun expireIdle(beforeInclusive: Long): List<ChatSession> {
             val expired = activeSessions.values.filter { it.lastActiveAt <= beforeInclusive }
-            expired.forEach { activeSessions.remove(it.participant) }
+            expired.forEach { activeSessions.remove(it.userId) }
             return expired
         }
 
@@ -366,8 +361,6 @@ class ChatServiceImplTest {
     private companion object {
         const val NOW = 1_000_000L
         val USER_ID = UserId("member-1")
-        val PARTICIPANT = ChatParticipant("workspace-1", "member-1", USER_ID)
-        val KEY = ChatRequestKey("stream-1", "request-1")
-        val REQUEST = ChatRequest(PARTICIPANT, KEY, "question")
+        val REQUEST = ChatRequest(USER_ID, "request-1", "question")
     }
 }

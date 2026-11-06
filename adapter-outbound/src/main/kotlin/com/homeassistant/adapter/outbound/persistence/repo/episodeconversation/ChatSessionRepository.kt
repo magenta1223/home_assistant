@@ -1,6 +1,5 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
-import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
 import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
@@ -30,7 +29,7 @@ internal class ChatSessionRepository(
         try {
             transaction(db) {
                 EpisodeConversationReceiptTable.insert {
-                    it[streamId] = key.streamId
+                    it[userId] = key.userId.value
                     it[requestId] = key.requestId
                     it[status] = ChatRequestStatus.PROCESSING.name
                     it[createdAt] = now
@@ -45,7 +44,7 @@ internal class ChatSessionRepository(
     override fun receipt(key: ChatRequestKey): ChatReceipt? = transaction(db) {
         EpisodeConversationReceiptTable.selectAll()
             .where {
-                (EpisodeConversationReceiptTable.streamId eq key.streamId) and
+                (EpisodeConversationReceiptTable.userId eq key.userId.value) and
                     (EpisodeConversationReceiptTable.requestId eq key.requestId)
             }
             .singleOrNull()
@@ -73,51 +72,47 @@ internal class ChatSessionRepository(
     }
 
     override fun createAndActivate(
-        participant: ChatParticipant,
+        userId: UserId,
         chatId: ChatId,
         now: Long,
     ): ChatSession = transaction(db) {
         val id = EpisodeConversationSessionTable.insert {
-            it[scopeId] = participant.scopeId
-            it[participantId] = participant.participantId
-            it[userId] = participant.userId.value
+            it[EpisodeConversationSessionTable.userId] = userId.value
             it[EpisodeConversationSessionTable.conversationId] = chatId.value
             it[createdAt] = now
             it[lastActiveAt] = now
         }[EpisodeConversationSessionTable.id]
 
-        deleteActive(participant)
+        deleteActive(userId)
         EpisodeConversationActiveSessionTable.insert {
-            it[scopeId] = participant.scopeId
-            it[participantId] = participant.participantId
+            it[EpisodeConversationActiveSessionTable.userId] = userId.value
             it[sessionId] = id
         }
         sessionRow(id).toSession()
     }
 
     override fun lease(
-        participant: ChatParticipant,
+        userId: UserId,
         now: Long,
         idleTimeoutMillis: Long,
     ): ChatSessionLease = transaction(db) {
         require(idleTimeoutMillis > 0) { "idleTimeoutMillis must be positive" }
         val pointer = EpisodeConversationActiveSessionTable.selectAll()
             .where {
-                (EpisodeConversationActiveSessionTable.scopeId eq participant.scopeId) and
-                    (EpisodeConversationActiveSessionTable.participantId eq participant.participantId)
+                EpisodeConversationActiveSessionTable.userId eq userId.value
             }
             .singleOrNull()
             ?: return@transaction ChatSessionLease.None
         val row = EpisodeConversationSessionTable.selectAll()
             .where { EpisodeConversationSessionTable.id eq pointer[EpisodeConversationActiveSessionTable.sessionId] }
             .singleOrNull()
-        if (row == null || !row.matches(participant)) {
-            deleteActive(participant)
+        if (row == null) {
+            deleteActive(userId)
             return@transaction ChatSessionLease.None
         }
         val session = row.toSession()
         if (now - row[EpisodeConversationSessionTable.lastActiveAt] >= idleTimeoutMillis) {
-            deleteActive(participant)
+            deleteActive(userId)
             return@transaction ChatSessionLease.Expired(session)
         }
         EpisodeConversationSessionTable.update({ EpisodeConversationSessionTable.id eq session.id }) {
@@ -126,19 +121,17 @@ internal class ChatSessionRepository(
         ChatSessionLease.Active(session.copy(lastActiveAt = now))
     }
 
-    override fun clearActive(participant: ChatParticipant) {
+    override fun clearActive(userId: UserId) {
         transaction(db) {
-            deleteActive(participant)
+            deleteActive(userId)
         }
     }
 
-    override fun touch(participant: ChatParticipant, sessionId: Int, now: Long) {
+    override fun touch(userId: UserId, sessionId: Int, now: Long) {
         transaction(db) {
             val updated = EpisodeConversationSessionTable.update({
                 (EpisodeConversationSessionTable.id eq sessionId) and
-                    (EpisodeConversationSessionTable.scopeId eq participant.scopeId) and
-                    (EpisodeConversationSessionTable.participantId eq participant.participantId) and
-                    (EpisodeConversationSessionTable.userId eq participant.userId.value)
+                    (EpisodeConversationSessionTable.userId eq userId.value)
             }) {
                 it[lastActiveAt] = now
             }
@@ -151,7 +144,7 @@ internal class ChatSessionRepository(
             .selectAll()
             .where { EpisodeConversationSessionTable.lastActiveAt lessEq beforeInclusive }
             .map { it.toSession() }
-        expired.forEach { deleteActive(it.participant) }
+        expired.forEach { deleteActive(it.userId) }
         expired
     }
 
@@ -172,7 +165,7 @@ internal class ChatSessionRepository(
     ) {
         transaction(db) {
             val count = EpisodeConversationReceiptTable.update({
-                (EpisodeConversationReceiptTable.streamId eq key.streamId) and
+                (EpisodeConversationReceiptTable.userId eq key.userId.value) and
                     (EpisodeConversationReceiptTable.requestId eq key.requestId)
             }) {
                 update(EpisodeConversationReceiptTable, it)
@@ -182,17 +175,16 @@ internal class ChatSessionRepository(
         }
     }
 
-    private fun deleteActive(participant: ChatParticipant) {
+    private fun deleteActive(userId: UserId) {
         EpisodeConversationActiveSessionTable.deleteWhere {
-            (scopeId eq participant.scopeId) and
-                (participantId eq participant.participantId)
+            EpisodeConversationActiveSessionTable.userId eq userId.value
         }
     }
 
     private fun receiptRow(key: ChatRequestKey): ResultRow =
         EpisodeConversationReceiptTable.selectAll()
             .where {
-                (EpisodeConversationReceiptTable.streamId eq key.streamId) and
+                (EpisodeConversationReceiptTable.userId eq key.userId.value) and
                     (EpisodeConversationReceiptTable.requestId eq key.requestId)
             }
             .single()
@@ -202,19 +194,10 @@ internal class ChatSessionRepository(
             .where { EpisodeConversationSessionTable.id eq id }
             .single()
 
-    private fun ResultRow.matches(participant: ChatParticipant): Boolean =
-        this[EpisodeConversationSessionTable.scopeId] == participant.scopeId &&
-            this[EpisodeConversationSessionTable.participantId] == participant.participantId &&
-            this[EpisodeConversationSessionTable.userId] == participant.userId.value
-
     private fun ResultRow.toSession(): ChatSession =
         ChatSession(
             id = this[EpisodeConversationSessionTable.id],
-            participant = ChatParticipant(
-                scopeId = this[EpisodeConversationSessionTable.scopeId],
-                participantId = this[EpisodeConversationSessionTable.participantId],
-                userId = UserId(this[EpisodeConversationSessionTable.userId]),
-            ),
+            userId = UserId(this[EpisodeConversationSessionTable.userId]),
             chatId = ChatId(this[EpisodeConversationSessionTable.conversationId]),
             createdAt = this[EpisodeConversationSessionTable.createdAt],
             lastActiveAt = this[EpisodeConversationSessionTable.lastActiveAt],
@@ -223,7 +206,7 @@ internal class ChatSessionRepository(
     private fun ResultRow.toReceipt(): ChatReceipt =
         ChatReceipt(
             key = ChatRequestKey(
-                streamId = this[EpisodeConversationReceiptTable.streamId],
+                userId = UserId(this[EpisodeConversationReceiptTable.userId]),
                 requestId = this[EpisodeConversationReceiptTable.requestId],
             ),
             status = ChatRequestStatus.valueOf(this[EpisodeConversationReceiptTable.status]),

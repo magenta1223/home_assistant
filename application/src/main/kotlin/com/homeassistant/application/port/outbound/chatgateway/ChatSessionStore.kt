@@ -1,7 +1,7 @@
 package com.homeassistant.application.port.outbound.chatgateway
 
-import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
+import com.homeassistant.domain.identity.UserId
 
 enum class ChatRequestStatus {
     PROCESSING,
@@ -13,7 +13,7 @@ enum class ChatRequestStatus {
 
 data class ChatSession(
     val id: Int,
-    val participant: ChatParticipant,
+    val userId: UserId,
     val chatId: ChatId,
     val createdAt: Long,
     val lastActiveAt: Long,
@@ -34,7 +34,7 @@ data class ChatReceipt(
     val updatedAt: Long,
 )
 
-/** Stores request receipts and each participant's active model chat. */
+/** Stores request receipts and each user's active model chat. */
 interface ChatSessionStore {
     fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt?
     fun receipt(key: ChatRequestKey): ChatReceipt?
@@ -43,20 +43,20 @@ interface ChatSessionStore {
     fun markFailed(key: ChatRequestKey, now: Long)
 
     fun createAndActivate(
-        participant: ChatParticipant,
+        userId: UserId,
         chatId: ChatId,
         now: Long,
     ): ChatSession
 
-    /** Claims and renews this participant's active session, or removes and returns an expired one. */
+    /** Claims and renews this user's active session, or removes and returns an expired one. */
     fun lease(
-        participant: ChatParticipant,
+        userId: UserId,
         now: Long,
         idleTimeoutMillis: Long,
     ): ChatSessionLease
 
-    fun clearActive(participant: ChatParticipant)
-    fun touch(participant: ChatParticipant, sessionId: Int, now: Long)
+    fun clearActive(userId: UserId)
+    fun touch(userId: UserId, sessionId: Int, now: Long)
     fun expireIdle(beforeInclusive: Long): List<ChatSession>
     fun failStaleProcessing(before: Long, now: Long): Int
 }

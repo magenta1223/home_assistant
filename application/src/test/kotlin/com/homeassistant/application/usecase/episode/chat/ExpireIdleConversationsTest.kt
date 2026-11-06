@@ -1,6 +1,5 @@
 package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.chatservice.ChatParticipant
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
@@ -65,17 +64,17 @@ class ExpireIdleConversationsTest {
         override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) = error("unused")
         override fun markFailed(key: ChatRequestKey, now: Long) = error("unused")
         override fun createAndActivate(
-            participant: ChatParticipant,
+            userId: UserId,
             chatId: ChatId,
             now: Long,
         ): ChatSession = error("unused")
         override fun lease(
-            participant: ChatParticipant,
+            userId: UserId,
             now: Long,
             idleTimeoutMillis: Long,
         ): ChatSessionLease = error("unused")
-        override fun clearActive(participant: ChatParticipant) = error("unused")
-        override fun touch(participant: ChatParticipant, sessionId: Int, now: Long) = error("unused")
+        override fun clearActive(userId: UserId) = error("unused")
+        override fun touch(userId: UserId, sessionId: Int, now: Long) = error("unused")
         override fun failStaleProcessing(before: Long, now: Long): Int = error("unused")
     }
 
@@ -85,7 +84,7 @@ class ExpireIdleConversationsTest {
 
         fun session(id: Int, threadId: String, lastActiveAt: Long) = ChatSession(
             id = id,
-            participant = ChatParticipant("scope", "participant-$id", UserId("user-$id")),
+            userId = UserId("user-$id"),
             chatId = ChatId(threadId),
             createdAt = 0,
             lastActiveAt = lastActiveAt,

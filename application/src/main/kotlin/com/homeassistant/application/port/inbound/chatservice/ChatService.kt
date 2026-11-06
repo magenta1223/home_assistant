@@ -1,6 +1,6 @@
 package com.homeassistant.application.port.inbound.chatservice
 
-/** Answers one deduplicated question using episodes visible to the participant. */
+/** Answers one deduplicated question using episodes visible to the user. */
 interface ChatService {
     /**
      * The answer to [request], or [ChatResult.AlreadyHandled] when its key was claimed before and no answer

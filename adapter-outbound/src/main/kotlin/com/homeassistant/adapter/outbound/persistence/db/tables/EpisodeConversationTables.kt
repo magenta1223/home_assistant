@@ -2,12 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.db.tables
 
 import org.jetbrains.exposed.sql.Table
 
-// Physical names are retained because HTTP sessions and request receipts already use this schema.
-// These mappings do not enable any messaging-channel integration.
-internal object EpisodeConversationSessionTable : Table("slack_codex_sessions") {
+internal object EpisodeConversationSessionTable : Table("chat_sessions") {
     val id = integer("id").autoIncrement()
-    val scopeId = text("team_id")
-    val participantId = text("slack_user_id")
     val userId = text("user_id")
     val conversationId = text("codex_thread_id").uniqueIndex()
     val createdAt = long("created_at")
@@ -15,20 +11,19 @@ internal object EpisodeConversationSessionTable : Table("slack_codex_sessions") 
     override val primaryKey = PrimaryKey(id)
 }
 
-internal object EpisodeConversationActiveSessionTable : Table("slack_codex_active_sessions") {
-    val scopeId = text("team_id")
-    val participantId = text("slack_user_id")
+internal object EpisodeConversationActiveSessionTable : Table("chat_active_sessions") {
+    val userId = text("user_id")
     val sessionId = integer("session_id").references(EpisodeConversationSessionTable.id)
-    override val primaryKey = PrimaryKey(scopeId, participantId)
+    override val primaryKey = PrimaryKey(userId)
 }
 
-internal object EpisodeConversationReceiptTable : Table("slack_message_receipts") {
-    val streamId = text("channel_id")
-    val requestId = text("message_ts")
+internal object EpisodeConversationReceiptTable : Table("chat_request_receipts") {
+    val userId = text("user_id")
+    val requestId = text("request_id")
     val sessionId = integer("session_id").references(EpisodeConversationSessionTable.id).nullable()
     val status = text("status")
     val answerText = text("answer_text").nullable()
     val createdAt = long("created_at")
     val updatedAt = long("updated_at")
-    override val primaryKey = PrimaryKey(streamId, requestId)
+    override val primaryKey = PrimaryKey(userId, requestId)
 }

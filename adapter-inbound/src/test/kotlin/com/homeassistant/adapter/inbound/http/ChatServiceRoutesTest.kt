@@ -5,7 +5,6 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalys
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatService
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
-import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
@@ -67,15 +66,13 @@ class ChatServiceRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.bodyAsText().contains("기억 기반 답변"))
         val captured = conversation.requests.single()
-        assertEquals("http", captured.participant.scopeId)
-        assertEquals("member-1", captured.participant.participantId)
-        assertEquals(UserId("member-1"), captured.participant.userId)
-        assertEquals(ChatRequestKey("http:member-1", REQUEST_ID), captured.key)
+        assertEquals(UserId("member-1"), captured.userId)
+        assertEquals(REQUEST_ID, captured.requestId)
         assertEquals("무엇을 기억하고 있어?", captured.question)
     }
 
     @Test
-    fun `different bearer tokens create different HTTP participants`() = testApplication {
+    fun `different bearer tokens create different chat users`() = testApplication {
         val conversation = RecordingChatService(ChatResult.AnswerReady("answer"))
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
@@ -96,11 +93,7 @@ class ChatServiceRoutesTest {
         postConversation(API_TOKEN, REQUEST_ID)
         postConversation(SECOND_API_TOKEN, SECOND_REQUEST_ID)
 
-        assertEquals(listOf("member-1", "member-2"), conversation.requests.map { it.participant.participantId })
-        assertEquals(
-            listOf("http:member-1", "http:member-2"),
-            conversation.requests.map { it.key.streamId },
-        )
+        assertEquals(listOf(UserId("member-1"), UserId("member-2")), conversation.requests.map { it.userId })
     }
 
     @Test

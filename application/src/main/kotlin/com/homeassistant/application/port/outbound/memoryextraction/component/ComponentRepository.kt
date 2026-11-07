@@ -1,7 +1,7 @@
 package com.homeassistant.application.port.outbound.memoryextraction.component
 
 import com.homeassistant.domain.component.Component
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
 
 /** The long-term [statements] extracted from episode [episodeId]; empty when it held none. */
@@ -13,7 +13,7 @@ data class EpisodeComponents(val episodeId: Int, val statements: List<String>)
  */
 interface ComponentRepository {
     /** The Components every reader of [access] may read, oldest first. */
-    fun findCovering(access: EpisodeAccess): List<Component>
+    fun findCovering(access: AccessControl): List<Component>
 
     /** The Components [userId] can read, oldest first. */
     fun findVisibleTo(userId: UserId): List<Component>

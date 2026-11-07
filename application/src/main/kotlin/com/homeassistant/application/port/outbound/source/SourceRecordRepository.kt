@@ -1,6 +1,6 @@
 package com.homeassistant.application.port.outbound.source
 
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -14,7 +14,7 @@ interface SourceRecordRepository {
     fun saveAll(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
-        access: EpisodeAccess = EpisodeAccess.PUBLIC,
+        access: AccessControl = AccessControl.PUBLIC,
     ): SourceRecordSaveResult
 
 }

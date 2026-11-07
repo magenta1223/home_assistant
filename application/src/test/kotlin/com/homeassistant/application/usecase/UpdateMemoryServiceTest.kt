@@ -29,7 +29,7 @@ import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGr
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.group.GroupMergePolicy
@@ -143,11 +143,11 @@ class UpdateMemoryServiceTest {
             override fun embedQuery(text: String) = VECTOR
         }
         private val componentRepository = object : ComponentRepository {
-            override fun findCovering(access: EpisodeAccess) = components.filter { it.access.covers(access) }
+            override fun findCovering(access: AccessControl) = components.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
             override fun findUngrouped(limit: Int) = error("assignment never places Components")
             override fun save(extraction: EpisodeComponents) = extraction.statements.map {
-                Component(components.size + 1, it, extraction.episodeId, EpisodeAccess.PUBLIC).also(components::add)
+                Component(components.size + 1, it, extraction.episodeId, AccessControl.PUBLIC).also(components::add)
             }
         }
         private val assignEpisode = AssignEpisodeToComponents(
@@ -161,7 +161,7 @@ class UpdateMemoryServiceTest {
         )
 
         private val unplacedComponents = object : ComponentRepository {
-            override fun findCovering(access: EpisodeAccess) = (1..unplaced).map(::unplacedComponent)
+            override fun findCovering(access: AccessControl) = (1..unplaced).map(::unplacedComponent)
             override fun findVisibleTo(userId: UserId) = (1..unplaced).map(::unplacedComponent)
             override fun findUngrouped(limit: Int) = (1..unplaced).map(::unplacedComponent)
             override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
@@ -189,9 +189,9 @@ class UpdateMemoryServiceTest {
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
         )
 
-        private fun unplacedComponent(id: Int) = Component(id, placementStatement(id), id, EpisodeAccess.PUBLIC)
+        private fun unplacedComponent(id: Int) = Component(id, placementStatement(id), id, AccessControl.PUBLIC)
         private fun placementStatement(id: Int) = "placement $id"
-        private fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", EpisodeAccess.PUBLIC, listOf("message $id"))
+        private fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", AccessControl.PUBLIC, listOf("message $id"))
     }
 
     private class EpisodeCache : EpisodeEmbeddingRepository {

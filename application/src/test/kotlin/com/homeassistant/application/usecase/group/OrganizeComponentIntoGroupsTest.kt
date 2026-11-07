@@ -18,7 +18,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Stored
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.group.*
 import java.util.concurrent.CancellationException
 import kotlin.test.*
@@ -127,7 +127,7 @@ class OrganizeComponentIntoGroupsTest {
             )
         )
 
-        fun organize(id: Int) = service.organize(Component(id, "$id", id, EpisodeAccess.PUBLIC))
+        fun organize(id: Int) = service.organize(Component(id, "$id", id, AccessControl.PUBLIC))
     }
 
     private fun saved(change: GroupChange) = change.resultingGroups.mapIndexed { index, result -> Group(10 + index, result.componentIds) }

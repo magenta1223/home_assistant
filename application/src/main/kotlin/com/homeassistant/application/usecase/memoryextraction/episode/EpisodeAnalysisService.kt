@@ -14,7 +14,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
@@ -73,7 +73,7 @@ class EpisodeAnalysisService(
     }
 
     /** Saves [source]'s records, reporting an audience conflict apart from an unavailable store. */
-    private fun saveSourceRecords(source: SourceDocumentDraft, access: EpisodeAccess): SourceRecordSaveResult =
+    private fun saveSourceRecords(source: SourceDocumentDraft, access: AccessControl): SourceRecordSaveResult =
         try {
             sourceRecords.saveAll(source.source, source.records, access)
         } catch (conflict: SourceAccessConflictException) {

@@ -6,6 +6,7 @@ import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
+import com.homeassistant.domain.access.*
 import com.homeassistant.domain.episode.*
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
@@ -20,7 +21,7 @@ class EpisodeAnalysisPersistenceTest {
         val events = mutableListOf<String>()
         val source = SourceDescriptor("test", "component")
         val records = object : SourceRecordRepository {
-            override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>, access: EpisodeAccess) =
+            override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>, access: AccessControl) =
                 SourceRecordSaveResult(
                     listOf(SourceRecord(1, "key", "source", SourceRecordAnalysisStatus.PENDING, access)),
                     1, 0, 0,

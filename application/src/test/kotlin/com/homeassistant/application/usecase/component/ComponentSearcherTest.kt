@@ -21,7 +21,7 @@ import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.component.Component
 import kotlin.test.*
 
@@ -31,8 +31,8 @@ class ComponentSearcherTest {
     private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
     private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
     private val northEast = EmbeddingVector.normalized(listOf(1.0, 1.0))
-    private val onlyB = EpisodeAccess.restricted(listOf(UserId("b")))
-    private val ab = EpisodeAccess.restricted(listOf(a, UserId("b")))
+    private val onlyB = AccessControl.restricted(listOf(UserId("b")))
+    private val ab = AccessControl.restricted(listOf(a, UserId("b")))
 
     @Test fun `backbone components the requester can read are kept`() {
         val fixture = Fixture(
@@ -108,7 +108,7 @@ class ComponentSearcherTest {
     private fun degrees(angle: Double) =
         EmbeddingVector.normalized(listOf(kotlin.math.cos(Math.toRadians(angle)), kotlin.math.sin(Math.toRadians(angle))))
 
-    private fun component(id: Int, vector: EmbeddingVector, sourceEpisodeId: Int, access: EpisodeAccess = EpisodeAccess.PUBLIC) =
+    private fun component(id: Int, vector: EmbeddingVector, sourceEpisodeId: Int, access: AccessControl = AccessControl.PUBLIC) =
         Component(id, "c$id", sourceEpisodeId, access) to vector
 
     private inner class Fixture(vararg components: Pair<Component, EmbeddingVector>) {
@@ -119,7 +119,7 @@ class ComponentSearcherTest {
         var visible: Set<Int>? = null
 
         private val reader = object : ComponentRepository {
-            override fun findCovering(access: EpisodeAccess) = byId.values.filter { it.access.covers(access) }
+            override fun findCovering(access: AccessControl) = byId.values.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = byId.values.filter { it.isVisibleTo(userId) }
             override fun findUngrouped(limit: Int) = error("search never places Components")
             override fun save(extraction: EpisodeComponents) = error("search never saves Components")
@@ -163,8 +163,7 @@ class ComponentSearcherTest {
                                 "creator",
                                 "title $it",
                                 "episode $it",
-                                EpisodeAccess.PUBLIC.visibility,
-                                emptySet(),
+                                AccessControl.PUBLIC,
                                 listOf(1),
                                 it.toLong()
                             )

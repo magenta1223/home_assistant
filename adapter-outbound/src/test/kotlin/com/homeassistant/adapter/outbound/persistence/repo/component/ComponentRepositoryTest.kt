@@ -9,7 +9,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeReposi
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -24,7 +24,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 class ComponentRepositoryTest {
-    private val ab = EpisodeAccess.restricted(listOf(UserId("a"), UserId("b")))
+    private val ab = AccessControl.restricted(listOf(UserId("a"), UserId("b")))
 
     @Test
     fun `an extraction stores its statements with the source episode's access across restarts`() = withDatabase { db, path ->
@@ -39,7 +39,7 @@ class ComponentRepositoryTest {
     @Test
     fun `access conditions select the Components the domain access rules select`() = withDatabase { db, _ ->
         val repository = ComponentRepositoryImpl(db)
-        val accesses = listOf(EpisodeAccess.PUBLIC, ab, EpisodeAccess.restricted(listOf(UserId("a"))))
+        val accesses = listOf(AccessControl.PUBLIC, ab, AccessControl.restricted(listOf(UserId("a"))))
         val stored = accesses.mapIndexed { index, access ->
             repository.save(EpisodeComponents(createEpisode(db, "e$index", access), listOf("fact $index"))).single()
         }
@@ -68,11 +68,11 @@ class ComponentRepositoryTest {
 
         assertFails { repository.save(EpisodeComponents(episode, listOf("again"))) }
         assertFailsWith<IllegalArgumentException> { repository.save(EpisodeComponents(999, listOf("orphan"))) }
-        assertEquals(listOf("fact"), repository.findCovering(EpisodeAccess.PUBLIC).map { it.statement })
+        assertEquals(listOf("fact"), repository.findCovering(AccessControl.PUBLIC).map { it.statement })
         assertEquals(1L, transaction(db) { ComponentTable.selectAll().count() })
     }
 
-    private fun createEpisode(db: Database, name: String, access: EpisodeAccess = EpisodeAccess.PUBLIC): Int {
+    private fun createEpisode(db: Database, name: String, access: AccessControl = AccessControl.PUBLIC): Int {
         val record = SourceRecordRepositoryImpl(db).saveAll(
             SourceDescriptor("test", name), listOf(SourceRecordDraft(name, "source-$name")), access,
         ).recordsToAnalyze.single()

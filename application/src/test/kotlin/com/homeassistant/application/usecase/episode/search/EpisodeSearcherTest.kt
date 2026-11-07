@@ -1,5 +1,6 @@
 package com.homeassistant.application.usecase.episode.search
 
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.embedding.Embedding
@@ -10,7 +11,6 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.episode.Episode
-import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
@@ -53,7 +53,7 @@ class EpisodeSearcherTest {
         val generated = mutableListOf<String>()
         private val stored = mutableMapOf<EpisodeEmbeddingKey, Embedding<EpisodeEmbeddingKey>>()
         private val episodes = vectors.keys.mapIndexed { index, content ->
-            Episode(index + 1, "creator", "title", content, EpisodeVisibility.PUBLIC, emptySet(), listOf(1), (index + 1).toLong())
+            Episode(index + 1, "creator", "title", content, AccessControl.PUBLIC, listOf(1), (index + 1).toLong())
         }
 
         private val embeddings = object : EmbeddingGenerator {

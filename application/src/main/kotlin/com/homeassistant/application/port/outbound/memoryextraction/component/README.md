@@ -2,7 +2,7 @@
 
 `ComponentRepository` finds Components by an access condition or not yet in any Group, and saves the trusted
 ingestion write.
-Every access condition runs in the storage query, as the `EpisodeAccess` rules state it, so no caller filters what it
+Every access condition runs in the storage query, as the `AccessControl` rules state it, so no caller filters what it
 has already read. Writes are never an external mutation API.
 Importing a restricted source may legitimately exclude the importing user from its audience; this internal boundary
 does not infer authorization from that user.

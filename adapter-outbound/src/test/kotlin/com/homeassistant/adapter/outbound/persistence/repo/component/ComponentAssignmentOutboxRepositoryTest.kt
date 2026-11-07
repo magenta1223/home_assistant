@@ -8,7 +8,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeReposi
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -31,7 +31,7 @@ class ComponentAssignmentOutboxRepositoryTest {
                 episode,
                 "title",
                 "화분 물주기",
-                EpisodeAccess.restricted(listOf(user)),
+                AccessControl.restricted(listOf(user)),
                 listOf("화분 물주기")
             ), task.episode)
         assertEquals(1, task.attempt)
@@ -85,7 +85,7 @@ class ComponentAssignmentOutboxRepositoryTest {
 
     private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
         val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
-            EpisodeAccess.restricted(listOf(user))).recordsToAnalyze.single()
+            AccessControl.restricted(listOf(user))).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
            EpisodeProposal("title", content, listOf(record.id))
         }, listOf(record.id))).map { it.id }

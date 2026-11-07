@@ -9,15 +9,15 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAccess
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.domain.component.Component
-import com.homeassistant.domain.episode.EpisodeAccess
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepository {
-    override fun findCovering(access: EpisodeAccess): List<Component> = transaction(db) {
+    override fun findCovering(access: AccessControl): List<Component> = transaction(db) {
         fromEpisodes(EpisodeAccessCondition.covering(access))
     }
 
@@ -60,14 +60,14 @@ internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepo
         }
     }
 
-    private fun accessOf(episodeIds: List<Int>): Map<Int, EpisodeAccess> {
+    private fun accessOf(episodeIds: List<Int>): Map<Int, AccessControl> {
         if (episodeIds.isEmpty()) return emptyMap()
         val viewers = EpisodeViewerTable.selectAll().where { EpisodeViewerTable.episodeId inList episodeIds }
             .groupBy({ it[EpisodeViewerTable.episodeId] }, { it[EpisodeViewerTable.userId] })
         return EpisodeTable.select(EpisodeTable.id, EpisodeTable.visibility).where { EpisodeTable.id inList episodeIds }.associate { row ->
             val id = row[EpisodeTable.id]
-            val visibility = EpisodeVisibility.valueOf(row[EpisodeTable.visibility])
-            id to EpisodeAccess(visibility, if (visibility == EpisodeVisibility.PUBLIC) emptySet() else viewers[id].orEmpty().toSet())
+            val visibility = Visibility.valueOf(row[EpisodeTable.visibility])
+            id to AccessControl(visibility, if (visibility == Visibility.PUBLIC) emptySet() else viewers[id].orEmpty().toSet())
         }
     }
 

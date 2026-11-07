@@ -1,6 +1,6 @@
 package com.homeassistant.domain.component
 
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
 
 /**
@@ -11,7 +11,7 @@ data class Component(
     val id: Int,
     val statement: String,
     val sourceEpisodeId: Int,
-    val access: EpisodeAccess,
+    val access: AccessControl,
 ) {
     init {
         require(id > 0) { "component id must be positive" }

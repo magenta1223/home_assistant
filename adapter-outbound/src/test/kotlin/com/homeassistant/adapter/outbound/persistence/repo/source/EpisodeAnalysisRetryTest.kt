@@ -13,9 +13,9 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDocumentDraft
@@ -27,7 +27,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertSame
-import kotlin.test.assertTrue
 
 class EpisodeAnalysisRetryTest {
     @Test
@@ -36,15 +35,15 @@ class EpisodeAnalysisRetryTest {
         try {
             val db = DatabaseFactory.init(databasePath.toString())
             val sourceRecords = SourceRecordRepositoryImpl(db)
-            val request = request("same", EpisodeAccess.restricted(listOf(USER_ID)))
-            sourceRecords.saveAll(request.source.source, request.source.records, EpisodeAccess.PUBLIC)
+            val request = request("same", AccessControl.restricted(listOf(USER_ID)))
+            sourceRecords.saveAll(request.source.source, request.source.records, AccessControl.PUBLIC)
 
             val failure = assertFailsWith<ConflictingSourceAudienceException> {
                 service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeRepository())
                     .execute(request)
             }
 
-            assertEquals(EpisodeAccess.PUBLIC, failure.existingAccess)
+            assertEquals(AccessControl.PUBLIC, failure.existingAccess)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -58,7 +57,7 @@ class EpisodeAnalysisRetryTest {
             val sourceRecords = SourceRecordRepositoryImpl(db)
             val request = request(
                 "restricted",
-                EpisodeAccess.restricted(listOf(UserId("unknown-member"))),
+                AccessControl.restricted(listOf(UserId("unknown-member"))),
             )
 
             assertFailsWith<InvalidEpisodeAudienceException> {
@@ -143,7 +142,7 @@ class EpisodeAnalysisRetryTest {
             }
             val writer = RecordingEpisodeRepository()
             val service = service(sourceRecords, db, extractor, writer)
-            val request = request("a", EpisodeAccess.restricted(listOf(USER_ID)))
+            val request = request("a", AccessControl.restricted(listOf(USER_ID)))
 
             assertFailsWith<EpisodeAnalysisUnavailableException> { service.execute(request) }
             assertEquals(1, resubmit(sourceRecords, request).retriedRecordCount)
@@ -153,7 +152,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(1, retried.retriedRecordCount)
             assertEquals(0, retried.alreadyAnalyzedRecordCount)
             assertEquals(1, retried.episodeCount)
-            assertEquals(EpisodeVisibility.RESTRICTED, retried.visibility)
+            assertEquals(Visibility.RESTRICTED, retried.visibility)
             assertEquals(1, resubmit(sourceRecords, request).alreadyAnalyzedRecordCount)
 
             val duplicate = assertFailsWith<DuplicateSourceRecordsException> { service.execute(request) }
@@ -198,7 +197,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(1, result.retriedRecordCount)
             assertEquals(1, result.alreadyAnalyzedRecordCount)
             assertEquals(2, result.episodeCount)
-            assertEquals(EpisodeVisibility.PUBLIC, result.visibility)
+            assertEquals(Visibility.PUBLIC, result.visibility)
             assertEquals(listOf("pending", "new"), extractor.documents.single().records.map { it.deduplicationKey })
             assertEquals(3, sourceRecords.saveAll(source, listOf(draft("analyzed"), draft("pending"), draft("new"))).alreadyAnalyzedRecordCount)
         } finally {
@@ -222,7 +221,7 @@ class EpisodeAnalysisRetryTest {
         accessPolicy = { it == USER_ID },
     )
 
-    private fun request(key: String, access: EpisodeAccess = EpisodeAccess.PUBLIC) = EpisodeAnalysisRequest(
+    private fun request(key: String, access: AccessControl = AccessControl.PUBLIC) = EpisodeAnalysisRequest(
         userId = USER_ID.value,
         source = SourceDocumentDraft(SourceDescriptor("test", "source"), listOf(draft(key))),
         access = access,
@@ -271,7 +270,7 @@ class EpisodeAnalysisRetryTest {
                     createdByUserId = createdBy.value,
                     title = item.title,
                     content = item.content,
-                    visibility = EpisodeVisibility.PUBLIC,
+                    access = AccessControl.PUBLIC,
                     evidenceRefs = item.evidenceIds,
                     createdAt = (episodes.size + 1) * 1_000L,
                 ).also(episodes::add)

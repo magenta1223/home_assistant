@@ -16,7 +16,7 @@ import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -33,13 +33,13 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     fun `conversation context reads only the components and episodes the user can see`() {
         withRepositories("component-search-integration") { stores ->
             val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
-            val publicEpisode = stores.saveEpisode(member, "public", EpisodeAccess.PUBLIC)
+            val publicEpisode = stores.saveEpisode(member, "public", AccessControl.PUBLIC)
             val otherRestrictedEpisode = stores.saveEpisode(
                 UserId("member-2"),
                 "other-restricted",
-                EpisodeAccess.restricted(listOf(UserId("member-2"))),
+                AccessControl.restricted(listOf(UserId("member-2"))),
             )
-            val hiddenEpisode = stores.saveEpisode(UserId("member-2"), "hidden", EpisodeAccess.restricted(listOf(UserId("member-2"))))
+            val hiddenEpisode = stores.saveEpisode(UserId("member-2"), "hidden", AccessControl.restricted(listOf(UserId("member-2"))))
             listOf(publicEpisode, otherRestrictedEpisode, hiddenEpisode).forEach {
                 stores.components.save(EpisodeComponents(it.id, listOf("fact of ${it.content}")))
             }
@@ -72,7 +72,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     @Test
     fun `component storage preserves episode content and audience`() {
         withRepositories("component-placement-integration") { stores ->
-            val access = EpisodeAccess.restricted(listOf(UserId("other")))
+            val access = AccessControl.restricted(listOf(UserId("other")))
             val episode = stores.saveEpisode(member, "incoming", access)
             val before = stores.episodes.findVisibleTo(UserId("other"))
             val (component) = stores.components.save(EpisodeComponents(episode.id, listOf("fact")))
@@ -93,7 +93,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     private fun RepositoryStores.saveEpisode(
         userId: UserId,
         content: String,
-        access: EpisodeAccess,
+        access: AccessControl,
     ): Episode {
         val evidence = sourceRecords.saveAll(
             SourceDescriptor(type = "test", name = content),

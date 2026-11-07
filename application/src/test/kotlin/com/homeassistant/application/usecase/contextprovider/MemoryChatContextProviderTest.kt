@@ -4,8 +4,7 @@ import com.homeassistant.application.usecase.contextprovider.component.Component
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.Episode
-import com.homeassistant.domain.episode.EpisodeAccess
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
 import io.mockk.every
 import io.mockk.mockk
@@ -53,10 +52,10 @@ class MemoryChatContextProviderTest {
         return MemoryContextProvider(componentSearcher, episodeSearcher)
     }
 
-    private fun component(id: Int, statement: String) = Component(id, statement, id, EpisodeAccess.PUBLIC)
+    private fun component(id: Int, statement: String) = Component(id, statement, id, AccessControl.PUBLIC)
 
     private fun episode(id: Int, content: String, createdAt: Long) =
-        Episode(id, "creator", "title $id", content, EpisodeVisibility.PUBLIC, emptySet(), listOf(1), createdAt)
+        Episode(id, "creator", "title $id", content, AccessControl.PUBLIC, listOf(1), createdAt)
 
     private companion object {
         val USER_ID = UserId("member-1")

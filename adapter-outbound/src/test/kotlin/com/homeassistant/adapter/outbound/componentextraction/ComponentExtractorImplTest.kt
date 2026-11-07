@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.componentextraction
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.llm.CompletionImage
 import kotlin.test.Test
@@ -14,7 +14,7 @@ class ComponentExtractorImplTest {
         id = 1,
         title = "임신기간 단축근로 시간 정하기",
         content = "홍승민은 다음 주부터 임신기간 단축근로를 신청하기로 했다.",
-        access = EpisodeAccess.PUBLIC,
+        access = AccessControl.PUBLIC,
         messages = listOf("홍승민: 임신기간 단축 근로 다음주부터 신청하기로 햇는데", "동훈: 그러면 5퇴"),
     )
 

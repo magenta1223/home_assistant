@@ -1,8 +1,8 @@
 package com.homeassistant.domain.source
 
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 
 class SourceAccessConflictException(
     val sourceName: String,
-    val existingAccess: EpisodeAccess,
+    val existingAccess: AccessControl,
 ) : RuntimeException("Source records already exist with a different access scope: $sourceName")

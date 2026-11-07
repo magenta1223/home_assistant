@@ -9,7 +9,7 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.Visibility
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -94,7 +94,7 @@ class KnowledgeInjectionRoutesTest {
         assertEquals(HttpStatusCode.OK, response.status)
         val captured = analysis.requests.single()
         assertEquals("operator", captured.userId)
-        assertEquals(EpisodeVisibility.RESTRICTED, captured.access.visibility)
+        assertEquals(Visibility.RESTRICTED, captured.access.visibility)
         assertEquals(setOf("member-1", "member-2"), captured.access.allowedUserIds)
         assertEquals("text", captured.source.source.type)
     }

@@ -16,7 +16,7 @@ import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.component.Component
 import kotlin.test.*
 
@@ -25,14 +25,14 @@ class AssignEpisodeToComponentsTest {
     private val east = EmbeddingVector.normalized(listOf(1.0, 0.0))
     private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
     private val nearEast = EmbeddingVector.normalized(listOf(1.0, 0.2))
-    private val onlyB = EpisodeAccess.restricted(listOf(UserId("b")))
+    private val onlyB = AccessControl.restricted(listOf(UserId("b")))
 
     @Test fun `without components every long-term statement of the episode becomes a component`() {
         val fixture = Fixture()
         fixture.statements = mapOf(1 to listOf("홍승민은 임신기간 단축근로를 한다", " ", "홍승민은 임신기간 단축근로를 한다"))
         assertEquals(listOf(1), fixture.service.assign(fixture.episode(1)))
         assertEquals(listOf(Extraction(1, emptyList())), fixture.extractions)
-        assertEquals(listOf(Component(1, "홍승민은 임신기간 단축근로를 한다", 1, EpisodeAccess.PUBLIC)), fixture.components)
+        assertEquals(listOf(Component(1, "홍승민은 임신기간 단축근로를 한다", 1, AccessControl.PUBLIC)), fixture.components)
     }
 
     @Test fun `known knowledge is the nearest components every reader of the episode can read`() {
@@ -74,7 +74,7 @@ class AssignEpisodeToComponentsTest {
         val extractions = mutableListOf<Extraction>()
         var embeddingReady = true
 
-        fun add(statement: String, vector: EmbeddingVector, access: EpisodeAccess = EpisodeAccess.PUBLIC): Component {
+        fun add(statement: String, vector: EmbeddingVector, access: AccessControl = AccessControl.PUBLIC): Component {
             vectors = vectors + (statement to vector)
             return Component(components.size + 1, statement, 50 + components.size, access).also(components::add)
         }
@@ -91,13 +91,13 @@ class AssignEpisodeToComponentsTest {
             override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = episodeCache.getOrPut(embedding.key) { embedding }
         })
         private val componentRepository = object : ComponentRepository {
-            override fun findCovering(access: EpisodeAccess) = components.filter { it.access.covers(access) }
+            override fun findCovering(access: AccessControl) = components.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
             override fun findUngrouped(limit: Int) = error("assignment never places Components")
             override fun save(extraction: EpisodeComponents): List<Component> {
                 check(extracted.add(extraction.episodeId))
                 return extraction.statements.map {
-                    Component(components.size + 1, it, extraction.episodeId, EpisodeAccess.PUBLIC).also(components::add)
+                    Component(components.size + 1, it, extraction.episodeId, AccessControl.PUBLIC).also(components::add)
                 }
             }
         }
@@ -115,7 +115,7 @@ class AssignEpisodeToComponentsTest {
 
         val service = AssignEpisodeToComponents(componentRepository, episodeEmbeddings, componentEmbeddings, extractor, knownLimit)
 
-        fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", EpisodeAccess.PUBLIC, listOf("message $id"))
+        fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", AccessControl.PUBLIC, listOf("message $id"))
     }
 
     private data class Extraction(val episodeId: Int, val known: List<String>)

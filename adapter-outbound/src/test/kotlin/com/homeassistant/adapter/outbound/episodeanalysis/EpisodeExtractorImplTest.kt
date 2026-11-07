@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.episodeanalysis
 
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.llm.CompletionImage
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
@@ -110,7 +110,7 @@ class EpisodeExtractorImplTest {
     private fun document(recordCount: Int): SourceDocument = SourceDocument(
         source = SourceDescriptor(type = "test", name = "source"),
         records = (1..recordCount).map {
-            SourceRecord(it, "key-$it", "content-$it", SourceRecordAnalysisStatus.PENDING, EpisodeAccess.PUBLIC)
+            SourceRecord(it, "key-$it", "content-$it", SourceRecordAnalysisStatus.PENDING, AccessControl.PUBLIC)
         },
     )
 

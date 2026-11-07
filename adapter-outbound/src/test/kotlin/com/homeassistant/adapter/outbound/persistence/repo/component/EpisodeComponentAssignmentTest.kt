@@ -20,7 +20,7 @@ import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -36,7 +36,7 @@ class EpisodeComponentAssignmentTest {
     private val north = EmbeddingVector.normalized(listOf(0.0, 1.0))
     private val nearEast = EmbeddingVector.normalized(listOf(1.0, 0.2))
     private val user = UserId("owner")
-    private val access = EpisodeAccess.restricted(listOf(user))
+    private val access = AccessControl.restricted(listOf(user))
 
     @Test
     fun `extracted components are stored and grouped, and an extracted episode is never processed again`() = withDatabase { db, path ->

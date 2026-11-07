@@ -10,9 +10,9 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
@@ -60,7 +60,7 @@ internal class EpisodeRepositoryImpl(
                 ensureOutbox(existing[EpisodeTable.id], now)
                 existing.toEpisode()
             } else {
-                val access = EpisodeAccess.intersection(
+                val access = AccessControl.intersection(
                     item.evidenceIds.distinct().map(accessByRecordId::getValue),
                 )
                 val episodeId = EpisodeTable.insert {
@@ -109,10 +109,12 @@ internal class EpisodeRepositoryImpl(
             createdByUserId = this[EpisodeTable.createdByUserId],
             title = this[EpisodeTable.title],
             content = this[EpisodeTable.content],
-            visibility = EpisodeVisibility.valueOf(this[EpisodeTable.visibility]),
-            allowedUserIds = EpisodeViewerTable.select(EpisodeViewerTable.userId)
-                .where { EpisodeViewerTable.episodeId eq episodeId }
-                .mapTo(linkedSetOf()) { it[EpisodeViewerTable.userId] },
+            access = AccessControl(
+                Visibility.valueOf(this[EpisodeTable.visibility]),
+                EpisodeViewerTable.select(EpisodeViewerTable.userId)
+                    .where { EpisodeViewerTable.episodeId eq episodeId }
+                    .mapTo(linkedSetOf()) { it[EpisodeViewerTable.userId] },
+            ),
             evidenceRefs = evidenceRefs,
             createdAt = this[EpisodeTable.createdAt],
         )
@@ -122,31 +124,30 @@ internal class EpisodeRepositoryImpl(
         userId: UserId,
         episodeId: Int,
         createdAt: Long,
-        access: EpisodeAccess,
+        access: AccessControl,
     ): Episode {
         return Episode(
             id = episodeId,
             createdByUserId = userId.value,
             title = title,
             content = content,
-            visibility = access.visibility,
-            allowedUserIds = access.allowedUserIds,
+            access = access,
             evidenceRefs = evidenceIds,
             createdAt = createdAt,
         )
     }
 
-    private fun sourceAccess(sourceRecordId: Int): EpisodeAccess {
+    private fun sourceAccess(sourceRecordId: Int): AccessControl {
         val visibility = SourceRecordTable.select(SourceRecordTable.visibility)
             .where { SourceRecordTable.id eq sourceRecordId }
             .single()[SourceRecordTable.visibility]
-            .let(EpisodeVisibility::valueOf)
-        val viewers = if (visibility == EpisodeVisibility.PUBLIC) emptySet() else {
+            .let(Visibility::valueOf)
+        val viewers = if (visibility == Visibility.PUBLIC) emptySet() else {
             SourceRecordViewerTable.select(SourceRecordViewerTable.userId)
                 .where { SourceRecordViewerTable.sourceRecordId eq sourceRecordId }
                 .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
         }
-        return EpisodeAccess(visibility, viewers)
+        return AccessControl(visibility, viewers)
     }
 
     /**

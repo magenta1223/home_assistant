@@ -3,8 +3,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceReferenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
-import com.homeassistant.domain.episode.EpisodeAccess
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
@@ -24,7 +24,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
     override fun saveAll(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
-        access: EpisodeAccess,
+        access: AccessControl,
     ): SourceRecordSaveResult = transaction(db) {
         val recordsToAnalyze = mutableListOf<SourceRecord>()
         var importedRecordCount = 0
@@ -82,7 +82,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         )
     }
 
-    private fun SourceRecordDraft.toSourceRecord(id: Int, access: EpisodeAccess): SourceRecord =
+    private fun SourceRecordDraft.toSourceRecord(id: Int, access: AccessControl): SourceRecord =
         SourceRecord(
             id = id,
             deduplicationKey = deduplicationKey,
@@ -135,14 +135,14 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         sha256 = this[SourceReferenceTable.sha256],
     )
 
-    private fun ResultRow.toAccess(): EpisodeAccess {
+    private fun ResultRow.toAccess(): AccessControl {
         val recordId = this[SourceRecordTable.id]
-        val visibility = EpisodeVisibility.valueOf(this[SourceRecordTable.visibility])
-        val viewers = if (visibility == EpisodeVisibility.PUBLIC) emptySet() else {
+        val visibility = Visibility.valueOf(this[SourceRecordTable.visibility])
+        val viewers = if (visibility == Visibility.PUBLIC) emptySet() else {
             SourceRecordViewerTable.select(SourceRecordViewerTable.userId)
                 .where { SourceRecordViewerTable.sourceRecordId eq recordId }
                 .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
         }
-        return EpisodeAccess(visibility, viewers)
+        return AccessControl(visibility, viewers)
     }
 }

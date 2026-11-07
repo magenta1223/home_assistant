@@ -5,7 +5,7 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -76,7 +76,7 @@ class SourceRecordRepositoryTest {
         try {
             val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("text", "knowledge")
-            val existingAccess = EpisodeAccess.restricted(listOf(UserId("member-1")))
+            val existingAccess = AccessControl.restricted(listOf(UserId("member-1")))
             repository.saveAll(
                 source,
                 listOf(draft("same")),
@@ -87,7 +87,7 @@ class SourceRecordRepositoryTest {
                 repository.saveAll(
                     source,
                     listOf(draft("same")),
-                    EpisodeAccess.restricted(listOf(UserId("member-2"))),
+                    AccessControl.restricted(listOf(UserId("member-2"))),
                 )
             }
             assertEquals(existingAccess, failure.existingAccess)

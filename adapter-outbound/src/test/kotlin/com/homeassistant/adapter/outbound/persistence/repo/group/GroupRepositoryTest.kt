@@ -25,7 +25,7 @@ import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComp
 import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -47,7 +47,7 @@ class GroupRepositoryTest {
         val episodes = EpisodeRepositoryImpl(db)
         val source = SourceDescriptor("test", "private")
         val user = UserId("owner")
-        val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
+        val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user)))
             .recordsToAnalyze.single()
         val committed = episodes.save(EpisodeBatch(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
@@ -70,7 +70,7 @@ class GroupRepositoryTest {
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(beforeComponents, components.findVisibleTo(user))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
-        val resubmitted = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
+        val resubmitted = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user)))
         assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
     }
 
@@ -141,9 +141,9 @@ class GroupRepositoryTest {
     }
 
     @Test fun `visible groups hold only the members the user can read and leave out groups without one`() = withDatabase { db, _ ->
-        val embeddings = seed(db, 1, EpisodeAccess.PUBLIC, "public") +
-            seed(db, 1, EpisodeAccess.restricted(listOf(UserId("a"))), "a") +
-            seed(db, 1, EpisodeAccess.restricted(listOf(UserId("b"))), "b")
+        val embeddings = seed(db, 1, AccessControl.PUBLIC, "public") +
+            seed(db, 1, AccessControl.restricted(listOf(UserId("a"))), "a") +
+            seed(db, 1, AccessControl.restricted(listOf(UserId("b"))), "b")
         val repository = GroupRepositoryImpl(db)
         repository.save(change(incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings))
         repository.save(change(incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings))
@@ -200,7 +200,7 @@ class GroupRepositoryTest {
     private fun seed(
         db: Database,
         count: Int,
-        access: EpisodeAccess = EpisodeAccess.restricted(listOf(UserId("owner"))),
+        access: AccessControl = AccessControl.restricted(listOf(UserId("owner"))),
         key: String = "seed",
     ): Map<Int, Embedding<ComponentEmbeddingKey>> {
         val user = UserId("owner")

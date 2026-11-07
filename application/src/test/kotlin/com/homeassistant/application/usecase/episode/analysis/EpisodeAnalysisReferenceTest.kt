@@ -7,7 +7,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDocumentDraft
@@ -72,7 +72,7 @@ class EpisodeAnalysisReferenceTest {
         override fun saveAll(
             source: SourceDescriptor,
             records: List<SourceRecordDraft>,
-            access: EpisodeAccess,
+            access: AccessControl,
         ): SourceRecordSaveResult {
             drafts = records
             val saved = records.mapIndexed { index, draft ->

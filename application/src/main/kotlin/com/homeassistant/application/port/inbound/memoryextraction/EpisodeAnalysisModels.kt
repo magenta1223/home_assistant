@@ -1,14 +1,14 @@
 package com.homeassistant.application.port.inbound.memoryextraction
 
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.episode.EpisodeAccess
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceDocumentDraft
 
 data class EpisodeAnalysisRequest(
     val userId: String,
     val source: SourceDocumentDraft,
-    val access: EpisodeAccess = EpisodeAccess.PUBLIC,
+    val access: AccessControl = AccessControl.PUBLIC,
 )
 
 data class EpisodeAnalysisResult(
@@ -17,7 +17,7 @@ data class EpisodeAnalysisResult(
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,
-    val visibility: EpisodeVisibility,
+    val visibility: Visibility,
     val allowedUserIds: Set<String>,
     val episodeCount: Int,
     val episodes: List<EpisodeProposal>,
@@ -43,6 +43,6 @@ class InvalidKnowledgeReferenceException internal constructor(
 
 class ConflictingSourceAudienceException internal constructor(
     val sourceName: String,
-    val existingAccess: EpisodeAccess,
+    val existingAccess: AccessControl,
 ) : RuntimeException("source already exists with a different audience: $sourceName")
 

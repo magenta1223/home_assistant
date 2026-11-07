@@ -14,9 +14,9 @@ import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.episode.EpisodeVisibility
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -59,9 +59,9 @@ internal fun Route.knowledgeInjectionRoutes(
         val access = try {
             if (request.isPublic) {
                 require(request.allowedUserIds.isEmpty()) { "PUBLIC must not include allowedUserIds" }
-                EpisodeAccess.PUBLIC
+                AccessControl.PUBLIC
             } else {
-                EpisodeAccess.restricted(request.allowedUserIds.map(::UserId))
+                AccessControl.restricted(request.allowedUserIds.map(::UserId))
             }
         } catch (error: IllegalArgumentException) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (error.message ?: "invalid audience")))
@@ -194,7 +194,7 @@ private data class KnowledgeImportResponse(
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,
-    val visibility: EpisodeVisibility,
+    val visibility: Visibility,
     val allowedUserIds: Set<String>,
     val episodeCount: Int,
     val episodes: List<KnowledgeEpisodeResponse>,

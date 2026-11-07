@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.episode.EpisodeAccess
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -58,7 +58,7 @@ class EpisodeRepositoryTest {
             val record = sourceRecords.saveAll(
                 SourceDescriptor(type = "test", name = "visibility"),
                 listOf(SourceRecordDraft("private", "private")),
-                EpisodeAccess.restricted(listOf(uploader, participant)),
+                AccessControl.restricted(listOf(uploader, participant)),
             ).recordsToAnalyze.single()
             episodes.save(
                 episodeProposal(record.id, "private"),
@@ -86,12 +86,12 @@ class EpisodeRepositoryTest {
             val first = sourceRecords.saveAll(
                 SourceDescriptor("test", "first"),
                 listOf(SourceRecordDraft("first", "first")),
-                EpisodeAccess.restricted(listOf(member1, member2)),
+                AccessControl.restricted(listOf(member1, member2)),
             ).recordsToAnalyze.single()
             val second = sourceRecords.saveAll(
                 SourceDescriptor("test", "second"),
                 listOf(SourceRecordDraft("second", "second")),
-                EpisodeAccess.restricted(listOf(member2, member3)),
+                AccessControl.restricted(listOf(member2, member3)),
             ).recordsToAnalyze.single()
             val proposal = episodeProposal(first.id, "combined").copy(evidenceIds = listOf(first.id, second.id))
 

@@ -1,4 +1,4 @@
-package com.homeassistant.domain.episode
+package com.homeassistant.domain.access
 
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
@@ -7,16 +7,16 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class EpisodeAccessTest {
+class AccessControlTest {
     @Test
     fun `public is visible to every requester`() {
-        assertTrue(EpisodeAccess.PUBLIC.isVisibleTo(UserId("member-1")))
-        assertTrue(EpisodeAccess.PUBLIC.isVisibleTo(UserId("member-2")))
+        assertTrue(AccessControl.PUBLIC.isVisibleTo(UserId("member-1")))
+        assertTrue(AccessControl.PUBLIC.isVisibleTo(UserId("member-2")))
     }
 
     @Test
     fun `restricted access is visible only to selected users`() {
-        val access = EpisodeAccess.restricted(listOf(UserId("member-1"), UserId("member-2")))
+        val access = AccessControl.restricted(listOf(UserId("member-1"), UserId("member-2")))
 
         assertTrue(access.isVisibleTo(UserId("member-1")))
         assertTrue(access.isVisibleTo(UserId("member-2")))
@@ -25,11 +25,11 @@ class EpisodeAccessTest {
 
     @Test
     fun `combined evidence uses the intersection of restricted viewers`() {
-        val combined = EpisodeAccess.intersection(
+        val combined = AccessControl.intersection(
             listOf(
-                EpisodeAccess.PUBLIC,
-                EpisodeAccess.restricted(listOf(UserId("member-1"), UserId("member-2"))),
-                EpisodeAccess.restricted(listOf(UserId("member-2"), UserId("member-3"))),
+                AccessControl.PUBLIC,
+                AccessControl.restricted(listOf(UserId("member-1"), UserId("member-2"))),
+                AccessControl.restricted(listOf(UserId("member-2"), UserId("member-3"))),
             ),
         )
 
@@ -39,10 +39,10 @@ class EpisodeAccessTest {
     @Test
     fun `disjoint evidence viewers are rejected`() {
         assertFailsWith<IllegalArgumentException> {
-            EpisodeAccess.intersection(
+            AccessControl.intersection(
                 listOf(
-                    EpisodeAccess.restricted(listOf(UserId("member-1"))),
-                    EpisodeAccess.restricted(listOf(UserId("member-2"))),
+                    AccessControl.restricted(listOf(UserId("member-1"))),
+                    AccessControl.restricted(listOf(UserId("member-2"))),
                 ),
             )
         }

@@ -14,7 +14,6 @@ internal class DefaultApplicationServices(
     override val users: UserRegistry = UserRegistry.NONE,
     override val authentication: UserAuthentication = UserAuthentication.NONE,
     private val runtimes: List<Runtime>,
-    private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
     private val conversationGateway: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
@@ -22,15 +21,11 @@ internal class DefaultApplicationServices(
 
     override fun start() {
         runtimes.forEach(Runtime::start)
-        conversationExpiryWorker.start()
     }
 
     /** Releases everything even when one release fails, then throws the first failure with the others suppressed. */
     override fun close() {
-        val releases = listOf(
-            conversationExpiryWorker::close,
-            { conversationGateway?.close() },
-        ) + runtimes.asReversed().map { it::stop }
+        val releases = runtimes.asReversed().map { it::stop } + { conversationGateway?.close() }
         val failures = releases.mapNotNull { runCatching(it).exceptionOrNull() }
         failures.firstOrNull()?.let { first ->
             failures.drop(1).forEach(first::addSuppressed)

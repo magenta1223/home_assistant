@@ -115,14 +115,14 @@ object ApplicationServicesFactory {
                 chatGateway = it,
             )
         }
-        val conversationExpiryWorker = conversationGateway?.let {
-            EpisodeConversationExpiryWorker(
+        val chatClientExpiryWorker = conversationGateway?.let {
+            ChatClientExpiryWorker(
                 ExpireIdleChats(
                     sessions = repositories.episodeConversationSessions,
                     chatGateway = it,
                 ),
             )
-        } ?: ConversationExpiryWorker.NONE
+        }
         return DefaultApplicationServices(
             episodeAnalysis = episodeAnalysisService,
             chatService = episodeConversation,
@@ -132,8 +132,11 @@ object ApplicationServicesFactory {
                 repositories.userSessions,
                 Pbkdf2PasswordHasher(),
             ),
-            runtimes = listOf(ollamaEmbedding, ComponentAssignmentWorker(updateHierarchy)),
-            conversationExpiryWorker = conversationExpiryWorker,
+            runtimes = listOfNotNull(
+                ollamaEmbedding,
+                ComponentAssignmentWorker(updateHierarchy),
+                chatClientExpiryWorker,
+            ),
             conversationGateway = conversationGateway,
         )
     }

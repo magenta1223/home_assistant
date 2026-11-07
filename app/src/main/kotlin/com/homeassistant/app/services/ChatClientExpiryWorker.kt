@@ -1,30 +1,24 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
+import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 
-internal interface ConversationExpiryWorker : AutoCloseable {
-    fun start()
-
-    companion object {
-        val NONE = object : ConversationExpiryWorker {
-            override fun start() = Unit
-            override fun close() = Unit
-        }
-    }
-}
-// TODO: to inbound adapter
-internal class EpisodeConversationExpiryWorker(
+/**
+ * Runs [ExpireIdleChats] every [EXPIRY_CHECK_SECONDS].
+ * TODO: To inbound-adapter
+ */
+internal class ChatClientExpiryWorker(
     private val expireIdle: ExpireIdleChats,
-) : ConversationExpiryWorker {
+) : AbstractRuntime() {
     private val log = LoggerFactory.getLogger(javaClass)
     private val executor = Executors.newSingleThreadScheduledExecutor { task ->
         Thread(task, "episode-conversation-expiry").apply { isDaemon = true }
     }
 
-    override fun start() {
+    override fun onStart() {
         executor.scheduleWithFixedDelay(
             {
                 runCatching(expireIdle::execute)
@@ -38,7 +32,7 @@ internal class EpisodeConversationExpiryWorker(
         )
     }
 
-    override fun close() {
+    override fun onStop() {
         executor.shutdownNow()
     }
 

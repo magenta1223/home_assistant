@@ -6,23 +6,22 @@ import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import com.homeassistant.infrastructure.runtime.RuntimeState
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class DefaultApplicationServicesTest {
     @Test
-    fun `starts and closes only managed HTTP application resources`() {
+    fun `starts runtimes in order and stops them in reverse order before the conversation gateway`() {
         val events = mutableListOf<String>()
-        val embedding = RecordingEmbeddingRuntime(events)
-        val expiry = RecordingConversationExpiryWorker(events)
-        val assignment = RecordingComponentAssignmentWorker(events)
-        val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            runtimes = listOf(embedding, assignment),
-            conversationExpiryWorker = expiry,
-            conversationGateway = codex,
+            runtimes = listOf(
+                RecordingRuntime("embedding", events),
+                RecordingRuntime("assignment", events),
+                RecordingRuntime("expiry", events),
+            ),
+            conversationGateway = AutoCloseable { events += "codex.close" },
         )
 
         assertFalse(services.isReady)
@@ -35,10 +34,10 @@ class DefaultApplicationServicesTest {
                 "embedding.start",
                 "assignment.start",
                 "expiry.start",
-                "expiry.close",
-                "codex.close",
+                "expiry.stop",
                 "assignment.stop",
                 "embedding.stop",
+                "codex.close",
             ),
             events,
         )
@@ -46,77 +45,44 @@ class DefaultApplicationServicesTest {
     }
 
     @Test
-    fun `closes remaining resources when conversation expiry close fails`() {
+    fun `releases remaining resources when a runtime fails to stop`() {
         val events = mutableListOf<String>()
-        val embedding = RecordingEmbeddingRuntime(events)
-        val expiry = object : ConversationExpiryWorker {
-            override fun start() { events += "expiry.start" }
-            override fun close() {
-                events += "expiry.close"
-                error("close failed")
-            }
-        }
-        val codex = AutoCloseable { events += "codex.close" }
+        val embedding = RecordingRuntime("embedding", events)
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            runtimes = listOf(embedding),
-            conversationExpiryWorker = expiry,
-            conversationGateway = codex,
+            runtimes = listOf(
+                embedding,
+                RecordingRuntime("expiry", events, stopFailure = IllegalStateException("stop failed")),
+            ),
+            conversationGateway = AutoCloseable { events += "codex.close" },
         )
         services.start()
 
         assertFailsWith<IllegalStateException> { services.close() }
 
         assertEquals(
-            listOf(
-                "embedding.start",
-                "expiry.start",
-                "expiry.close",
-                "codex.close",
-                "embedding.stop",
-            ),
+            listOf("embedding.start", "expiry.start", "expiry.stop", "embedding.stop", "codex.close"),
             events,
         )
         assertEquals(RuntimeState.TERMINATED, embedding.state)
-    }
-
-    private class RecordingComponentAssignmentWorker(
-        private val events: MutableList<String>,
-    ) : AbstractRuntime() {
-        override fun onStart() {
-            events += "assignment.start"
-        }
-
-        override fun onStop() {
-            events += "assignment.stop"
-        }
     }
 
     private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
         override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
     }
 
-    private class RecordingEmbeddingRuntime(
+    private class RecordingRuntime(
+        private val name: String,
         private val events: MutableList<String>,
+        private val stopFailure: Throwable? = null,
     ) : AbstractRuntime() {
         override fun onStart() {
-            events += "embedding.start"
+            events += "$name.start"
         }
 
         override fun onStop() {
-            events += "embedding.stop"
-        }
-    }
-
-    private class RecordingConversationExpiryWorker(
-        private val events: MutableList<String>,
-    ) : ConversationExpiryWorker {
-        override fun start() {
-            events += "expiry.start"
-        }
-
-        override fun close() {
-            events += "expiry.close"
+            events += "$name.stop"
+            stopFailure?.let { throw it }
         }
     }
 }

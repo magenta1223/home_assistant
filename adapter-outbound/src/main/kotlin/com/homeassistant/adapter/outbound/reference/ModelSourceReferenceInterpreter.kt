@@ -16,7 +16,7 @@ import java.io.ByteArrayOutputStream
 import javax.imageio.ImageIO
 
 /** Uses model vision to produce faithful, segment-level evidence text from PDFs and images. */
-internal class ModelSourceReferenceInterpreter(
+class ModelSourceReferenceInterpreter(
     private val client: CompletionClient,
 ) : SourceReferenceInterpreter {
     override suspend fun interpret(reference: SourceReferenceDraft): List<SourceReferenceInterpretation> {
@@ -206,7 +206,3 @@ private data class ReferenceInterpretationItem(
     val segmentKey: String,
     val content: String,
 )
-
-object SourceReferenceInterpreterFactory {
-    fun create(client: CompletionClient): SourceReferenceInterpreter = ModelSourceReferenceInterpreter(client)
-}

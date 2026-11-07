@@ -1,9 +1,9 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
-import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorFactory
+import com.homeassistant.adapter.outbound.componentextraction.ModelComponentKnowledgeExtractor
+import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractor
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
+import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
 import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryHierarchyService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
@@ -31,11 +31,11 @@ internal class MemoryExtractionModule(
 ) {
     /** Turns source records into Episodes. */
     val episodeAnalysis = EpisodeAnalysisService(
-        episodeExtractor = EpisodeExtractorFactory.create(completionClient),
+        episodeExtractor = EpisodeExtractor(completionClient),
         sourceRecords = repositories.sourceRecords,
         episodes = repositories.episodes,
         accessPolicy = accessPolicy,
-        referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
+        referenceInterpreter = ModelSourceReferenceInterpreter(completionClient),
     )
 
     private val updateHierarchy = UpdateMemoryHierarchyService(
@@ -45,7 +45,7 @@ internal class MemoryExtractionModule(
             repositories.components,
             episodeEmbeddings,
             componentEmbeddings,
-            ComponentKnowledgeExtractorFactory.create(completionClient),
+            ModelComponentKnowledgeExtractor(completionClient),
         ),
         OrganizeComponentIntoGroups(
             repositories.groups,

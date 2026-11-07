@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
  * directly. Otherwise the model first predicts the episode from its title and the known knowledge alone, then keeps only
  * the knowledge in the episode's messages that the prediction missed or got wrong.
  */
-internal class ModelComponentKnowledgeExtractor(private val client: CompletionClient) : ComponentKnowledgeExtractor {
+class ModelComponentKnowledgeExtractor(private val client: CompletionClient) : ComponentKnowledgeExtractor {
     override fun extract(episode: PendingEpisode, known: List<String>): List<String> = runBlocking {
         if (known.isEmpty()) return@runBlocking statements(COLD_START, ColdStartInput(episode.title, episode.content).encodeToString())
         val prediction = client.complete(PREDICTION, PredictionInput(episode.title, known).encodeToString(), PREDICTION_SCHEMA)
@@ -60,7 +60,3 @@ private data class PredictionResponse(val prediction: String)
 
 @Serializable
 private data class StatementsResponse(val statements: List<String>)
-
-object ComponentKnowledgeExtractorFactory {
-    fun create(client: CompletionClient): ComponentKnowledgeExtractor = ModelComponentKnowledgeExtractor(client)
-}

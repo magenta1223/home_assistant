@@ -20,14 +20,10 @@ internal object CodexAppServerFactory {
             model = model,
             reasoningEffort = reasoningEffort,
         ) ?: return null
-        return prepare(DefaultCodexAppServer(config))
+        return installed(DefaultCodexAppServer(config))
     }
 
-    /** Returns [server] once it is available and initialized; otherwise closes it and returns null. */
-    internal fun prepare(server: DefaultCodexAppServer): ChatClient? =
-        server.takeIf { runCatching(it::prepare).getOrDefault(false) }
-            ?: run {
-                server.close()
-                null
-            }
+    /** Returns [server] when its Codex CLI is installed, without starting it; otherwise null. */
+    internal fun installed(server: DefaultCodexAppServer): DefaultCodexAppServer? =
+        server.takeIf { runCatching(it::isInstalled).getOrDefault(false) }
 }

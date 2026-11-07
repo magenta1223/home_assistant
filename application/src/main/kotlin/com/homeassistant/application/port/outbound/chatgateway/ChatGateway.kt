@@ -13,7 +13,7 @@ sealed interface ChatGatewayResult {
 }
 
 /** Starts, continues, and ends provider-neutral conversations. */
-interface ChatGateway : AutoCloseable {
+interface ChatGateway {
     fun begin(): Result<ChatId>
 
     fun chat(

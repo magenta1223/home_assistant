@@ -12,7 +12,7 @@ class AgentChatGateway(
 ) : ChatGateway {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    override fun begin(): Result<ChatId> = client.begin().map(::ChatId)
+    override fun begin(): Result<ChatId> = client.openChat().map(::ChatId)
 
     override fun chat(chatId: ChatId, prompt: String): ChatGatewayResult =
         client.send(chatId.value, prompt).fold(
@@ -24,10 +24,6 @@ class AgentChatGateway(
         )
 
     override fun end(chatId: ChatId) {
-        client.end(chatId.value)
-    }
-
-    override fun close() {
-        client.close()
+        client.closeChat(chatId.value)
     }
 }

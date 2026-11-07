@@ -5,45 +5,46 @@ import com.homeassistant.llm.claude.cli.ClaudeProcessRunner
 import com.homeassistant.llm.claude.cli.ClaudeStreamJson
 import com.homeassistant.llm.claude.cli.SystemClaudeProcessRunner
 import com.homeassistant.llm.ChatClient
+import com.homeassistant.infrastructure.runtime.AbstractRuntime
+import com.homeassistant.infrastructure.runtime.RuntimeState
 import org.slf4j.LoggerFactory
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicBoolean
 
 internal class ClaudeChatException(val category: String) : RuntimeException(category)
 
 /**
  * Keeps each chat as a persisted Claude Code session. A chat id is a session UUID chosen here: its
  * first turn creates the session with `--session-id`, and later turns load its history with `--resume`.
+ * It accepts chats only while running; stopping forgets the chats whose first turn has not run.
  */
 internal class ClaudeChatClient(
     private val config: ClaudeChatConfig,
     private val runner: ClaudeProcessRunner = SystemClaudeProcessRunner,
-) : ChatClient {
+) : AbstractRuntime(), ChatClient {
     private val log = LoggerFactory.getLogger(javaClass)
     private val unstartedChats = ConcurrentHashMap.newKeySet<String>()
     private val activeTurns = ConcurrentHashMap.newKeySet<String>()
-    private val closed = AtomicBoolean(false)
-
-    override fun begin(): Result<String> {
-        if (closed.get()) return Result.failure(ClaudeChatException("CLOSED"))
+    override fun openChat(): Result<String> {
+        if (state != RuntimeState.RUNNING) return Result.failure(ClaudeChatException("NOT_RUNNING"))
         val chatId = UUID.randomUUID().toString()
         unstartedChats += chatId
         return Result.success(chatId)
     }
 
-    override fun end(chatId: String) {
+    override fun closeChat(chatId: String) {
         unstartedChats.remove(chatId)
     }
 
-    override fun close() {
-        closed.set(true)
+    override fun onStart() = Unit
+
+    override fun onStop() {
         unstartedChats.clear()
     }
 
     override fun send(chatId: String, prompt: String): Result<String> {
         return try {
-            if (closed.get()) throw ClaudeChatException("CLOSED")
+            if (state != RuntimeState.RUNNING) throw ClaudeChatException("NOT_RUNNING")
             if (!SESSION_ID_PATTERN.matches(chatId)) throw ClaudeChatException("INVALID_CHAT_ID")
             if (prompt.isBlank()) throw ClaudeChatException("EMPTY_PROMPT")
             if (!activeTurns.add(chatId)) throw ClaudeChatException("CHAT_BUSY")

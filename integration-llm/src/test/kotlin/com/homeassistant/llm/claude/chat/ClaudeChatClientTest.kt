@@ -26,7 +26,7 @@ class ClaudeChatClientTest {
     fun `first turn creates the session and later turns resume it in the fixed working directory`() {
         val runner = RecordingRunner()
         val client = client(runner)
-        val conversation = client.begin().getOrThrow()
+        val conversation = client.openChat().getOrThrow()
 
         assertEquals("first", client.send(conversation, "hello").getOrThrow())
         assertEquals("first", client.send(conversation, "again").getOrThrow())
@@ -53,7 +53,7 @@ class ClaudeChatClientTest {
     fun `a failed first turn retries session creation`() {
         val runner = RecordingRunner(ClaudeProcessOutput(-1, "", "", timedOut = true))
         val client = client(runner)
-        val conversation = client.begin().getOrThrow()
+        val conversation = client.openChat().getOrThrow()
 
         assertEquals("TIMEOUT", client.send(conversation, "hello").failureCategory())
         runner.output = ClaudeProcessOutput(0, ANSWER, "")
@@ -66,7 +66,7 @@ class ClaudeChatClientTest {
     fun `invalid requests and failed results are reported by category`() {
         val runner = RecordingRunner(ClaudeProcessOutput(1, """{"type":"result","is_error":true}""", ""))
         val client = client(runner)
-        val chatId = client.begin().getOrThrow()
+        val chatId = client.openChat().getOrThrow()
 
         assertEquals("INVALID_CHAT_ID", client.send("not-a-uuid", "hi").failureCategory())
         assertEquals("EMPTY_PROMPT", client.send(chatId, " ").failureCategory())
@@ -75,9 +75,9 @@ class ClaudeChatClientTest {
         assertEquals("NO_RESULT", client.send(chatId, "hi").failureCategory())
         runner.output = ClaudeProcessOutput(0, """{"type":"result","is_error":false,"result":" "}""", "")
         assertEquals("EMPTY_ANSWER", client.send(chatId, "hi").failureCategory())
-        client.close()
-        assertEquals("CLOSED", client.send(chatId, "hi").failureCategory())
-        assertTrue(client.begin().isFailure)
+        client.stop()
+        assertEquals("NOT_RUNNING", client.send(chatId, "hi").failureCategory())
+        assertTrue(client.openChat().isFailure)
     }
 
     @Test
@@ -90,7 +90,7 @@ class ClaudeChatClientTest {
             ClaudeProcessOutput(0, ANSWER, "")
         }
         val client = client(runner)
-        val conversation = client.begin().getOrThrow()
+        val conversation = client.openChat().getOrThrow()
         val first = thread { client.send(conversation, "first") }
 
         assertTrue(entered.await(5, TimeUnit.SECONDS))
@@ -102,7 +102,7 @@ class ClaudeChatClientTest {
 
     private fun config() = ClaudeChatConfig.local(Duration.ofSeconds(5), "claude-test", temporaryDirectory)!!
 
-    private fun client(runner: ClaudeProcessRunner) = ClaudeChatClient(config(), runner)
+    private fun client(runner: ClaudeProcessRunner) = ClaudeChatClient(config(), runner).also(ClaudeChatClient::start)
 
     private fun Result<String>.failureCategory(): String? =
         (exceptionOrNull() as? ClaudeChatException)?.category

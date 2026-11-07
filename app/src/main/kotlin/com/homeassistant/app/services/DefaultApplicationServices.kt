@@ -14,7 +14,6 @@ internal class DefaultApplicationServices(
     override val users: UserRegistry = UserRegistry.NONE,
     override val authentication: UserAuthentication = UserAuthentication.NONE,
     private val runtimes: List<Runtime>,
-    private val conversationGateway: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
         get() = runtimes.all { it.state == RuntimeState.RUNNING }
@@ -23,10 +22,9 @@ internal class DefaultApplicationServices(
         runtimes.forEach(Runtime::start)
     }
 
-    /** Releases everything even when one release fails, then throws the first failure with the others suppressed. */
+    /** Stops every runtime even when one fails, then throws the first failure with the others suppressed. */
     override fun close() {
-        val releases = runtimes.asReversed().map { it::stop } + { conversationGateway?.close() }
-        val failures = releases.mapNotNull { runCatching(it).exceptionOrNull() }
+        val failures = runtimes.asReversed().mapNotNull { runCatching(it::stop).exceptionOrNull() }
         failures.firstOrNull()?.let { first ->
             failures.drop(1).forEach(first::addSuppressed)
             throw first

@@ -8,7 +8,6 @@ import com.homeassistant.llm.codex.transport.protocol.AppServerTurn
 import com.homeassistant.llm.codex.transport.protocol.AppServerTurnReference
 import com.homeassistant.llm.codex.transport.protocol.ThreadResult
 import com.homeassistant.llm.codex.transport.protocol.TurnStartResult
-import com.homeassistant.llm.ChatClient
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.nio.file.Files
@@ -26,8 +25,8 @@ class DefaultCodexAppServerTest {
         val transport = FakeCodexAppServerTransport()
         val server = server(transport)
         try {
-            val firstThread = server.begin().getOrThrow()
-            val secondThread = server.begin().getOrThrow()
+            val firstThread = server.openChat().getOrThrow()
+            val secondThread = server.openChat().getOrThrow()
 
             assertEquals(1, transport.startCount)
             assertNotEquals(firstThread, secondThread)
@@ -44,7 +43,7 @@ class DefaultCodexAppServerTest {
                 assertEquals("false", schema["additionalProperties"]?.jsonPrimitive?.content)
             }
         } finally {
-            server.close()
+            server.stop()
         }
     }
 
@@ -55,12 +54,12 @@ class DefaultCodexAppServerTest {
         try {
             transport.makeUnavailable()
 
-            val result = server.begin()
+            val result = server.openChat()
 
             assertEquals("APP_SERVER_UNAVAILABLE", result.exceptionOrNull()?.message)
             assertEquals(0, transport.methods.count { it == "thread/start" })
         } finally {
-            server.close()
+            server.stop()
         }
     }
 
@@ -69,7 +68,7 @@ class DefaultCodexAppServerTest {
         val transport = FakeCodexAppServerTransport()
         val server = server(transport)
         try {
-            val threadId = server.begin().getOrThrow()
+            val threadId = server.openChat().getOrThrow()
             server.send(threadId, "first")
 
             val result = server.send(threadId, "follow up")
@@ -77,7 +76,7 @@ class DefaultCodexAppServerTest {
             assertEquals("structured answer", result.getOrThrow())
             assertEquals(0, transport.methods.count { it == "thread/resume" })
         } finally {
-            server.close()
+            server.stop()
         }
     }
 
@@ -86,16 +85,16 @@ class DefaultCodexAppServerTest {
         val transport = FakeCodexAppServerTransport()
         val server = server(transport)
         try {
-            val threadId = server.begin().getOrThrow()
+            val threadId = server.openChat().getOrThrow()
             server.send(threadId, "first")
 
-            server.end(threadId)
+            server.closeChat(threadId)
             server.send(threadId, "follow up")
 
             assertEquals(listOf(threadId), transport.unsubscribedThreads)
             assertEquals(1, transport.methods.count { it == "thread/resume" })
         } finally {
-            server.close()
+            server.stop()
         }
     }
 
@@ -104,12 +103,12 @@ class DefaultCodexAppServerTest {
         val transport = FakeCodexAppServerTransport(answerPayload = "plain text")
         val server = server(transport)
         try {
-            val threadId = server.begin().getOrThrow()
+            val threadId = server.openChat().getOrThrow()
             val result = server.send(threadId, "prompt")
 
             assertEquals("INVALID_STRUCTURED_ANSWER", result.exceptionOrNull()?.message)
         } finally {
-            server.close()
+            server.stop()
         }
     }
 
@@ -118,13 +117,13 @@ class DefaultCodexAppServerTest {
         val transport = FakeCodexAppServerTransport(reportProtocolError = true)
         val server = server(transport)
         try {
-            val threadId = server.begin().getOrThrow()
+            val threadId = server.openChat().getOrThrow()
 
             val result = server.send(threadId, "prompt")
 
             assertEquals("INVALID_APP_SERVER_MESSAGE", result.exceptionOrNull()?.message)
         } finally {
-            server.close()
+            server.stop()
         }
     }
 
@@ -133,20 +132,16 @@ class DefaultCodexAppServerTest {
         assertNull(parseStructuredAnswer("""{"answer":"valid","extra":true}"""))
     }
 
-    private fun server(transport: FakeCodexAppServerTransport): ChatClient =
-        requireNotNull(
-            CodexAppServerFactory.prepare(
-                DefaultCodexAppServer(
-                    config = CodexConversationConfig(
-                        executable = "unused",
-                        workDir = Files.createTempDirectory("codex-app-server-test-"),
-                        timeout = Duration.ofSeconds(5),
-                    ),
-                    transport = transport,
-                    availabilityProbe = { true },
-                ),
+    private fun server(transport: FakeCodexAppServerTransport): DefaultCodexAppServer =
+        DefaultCodexAppServer(
+            config = CodexConversationConfig(
+                executable = "unused",
+                workDir = Files.createTempDirectory("codex-app-server-test-"),
+                timeout = Duration.ofSeconds(5),
             ),
-        )
+            transport = transport,
+            availabilityProbe = { true },
+        ).also(DefaultCodexAppServer::start)
 
     private class FakeCodexAppServerTransport(
         private val answerPayload: String = "{\"answer\":\"structured answer\"}",

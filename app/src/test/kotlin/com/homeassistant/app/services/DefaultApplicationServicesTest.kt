@@ -12,16 +12,16 @@ import kotlin.test.assertTrue
 
 class DefaultApplicationServicesTest {
     @Test
-    fun `starts runtimes in order and stops them in reverse order before the conversation gateway`() {
+    fun `starts runtimes in order and stops them in reverse order`() {
         val events = mutableListOf<String>()
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
             runtimes = listOf(
                 RecordingRuntime("embedding", events),
+                RecordingRuntime("codex", events),
                 RecordingRuntime("assignment", events),
                 RecordingRuntime("expiry", events),
             ),
-            conversationGateway = AutoCloseable { events += "codex.close" },
         )
 
         assertFalse(services.isReady)
@@ -32,12 +32,13 @@ class DefaultApplicationServicesTest {
         assertEquals(
             listOf(
                 "embedding.start",
+                "codex.start",
                 "assignment.start",
                 "expiry.start",
                 "expiry.stop",
                 "assignment.stop",
+                "codex.stop",
                 "embedding.stop",
-                "codex.close",
             ),
             events,
         )
@@ -45,7 +46,7 @@ class DefaultApplicationServicesTest {
     }
 
     @Test
-    fun `releases remaining resources when a runtime fails to stop`() {
+    fun `stops remaining runtimes when one fails to stop`() {
         val events = mutableListOf<String>()
         val embedding = RecordingRuntime("embedding", events)
         val services = DefaultApplicationServices(
@@ -54,14 +55,13 @@ class DefaultApplicationServicesTest {
                 embedding,
                 RecordingRuntime("expiry", events, stopFailure = IllegalStateException("stop failed")),
             ),
-            conversationGateway = AutoCloseable { events += "codex.close" },
         )
         services.start()
 
         assertFailsWith<IllegalStateException> { services.close() }
 
         assertEquals(
-            listOf("embedding.start", "expiry.start", "expiry.stop", "embedding.stop", "codex.close"),
+            listOf("embedding.start", "expiry.start", "expiry.stop", "embedding.stop"),
             events,
         )
         assertEquals(RuntimeState.TERMINATED, embedding.state)

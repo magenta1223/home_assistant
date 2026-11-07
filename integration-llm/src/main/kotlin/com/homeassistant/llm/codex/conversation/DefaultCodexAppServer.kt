@@ -10,6 +10,8 @@ import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
 import com.homeassistant.llm.codex.transport.protocol.ThreadConfig
 import com.homeassistant.llm.ChatClient
+import com.homeassistant.infrastructure.runtime.AbstractRuntime
+import com.homeassistant.infrastructure.runtime.RuntimeState
 import kotlinx.schema.generator.json.JsonSchemaConfig
 import kotlinx.schema.generator.json.serialization.SerializationClassJsonSchemaGenerator
 import kotlinx.serialization.ExperimentalSerializationApi
@@ -27,28 +29,46 @@ import java.util.concurrent.TimeoutException
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * Runs one Codex app server process for every conversation while it is a running [AbstractRuntime]. Starting never
+ * fails the runtime: an app server that is not up yet, or that exited, is started again on the next operation or
+ * after a short delay.
+ */
 internal class DefaultCodexAppServer(
     private val config: CodexConversationConfig,
     private val transport: CodexAppServerTransport = DefaultCodexAppServerTransport(
         StdioProcessTransport(appServerCommand(config), config.workDir),
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
-) : ChatClient, CodexAppServerTransport.Listener {
+) : AbstractRuntime(), ChatClient, CodexAppServerTransport.Listener {
     private val log = LoggerFactory.getLogger(javaClass)
     private val activeTurns = ConcurrentHashMap<String, TurnState>()
     private val loadedThreads = ConcurrentHashMap.newKeySet<String>()
     private val ready = AtomicBoolean(false)
-    private val closed = AtomicBoolean(false)
     private val restartScheduled = AtomicBoolean(false)
     private val lifecycleLock = Any()
     private val restarter = Executors.newSingleThreadScheduledExecutor { task ->
         Thread(task, "codex-app-server-restart").apply { isDaemon = true }
     }
 
-    internal fun prepare(): Boolean = availabilityProbe() && startServer()
+    /** Reports whether the Codex CLI answers its version check. */
+    internal fun isInstalled(): Boolean = availabilityProbe()
+
+    override fun onStart() {
+        if (!startServer()) log.warn("Codex app server is not up yet; the next operation starts it again")
+    }
+
+    override fun onStop() {
+        ready.set(false)
+        restarter.shutdownNow()
+        failActiveTurns("APP_SERVER_CLOSED")
+        activeTurns.clear()
+        transport.close()
+        loadedThreads.clear()
+    }
 
     private fun startServer(): Boolean = synchronized(lifecycleLock) {
-        if (closed.get()) return false
+        if (!isServing()) return false
         val startedAt = System.nanoTime()
         if (!transport.start(this)) {
             log.warn("Latency stage=codex-app-server-start result=failure elapsedMs={}", elapsedMillis(startedAt))
@@ -90,7 +110,7 @@ internal class DefaultCodexAppServer(
         }
     }
 
-    override fun begin(): Result<String> = executeOperation("create") { deadline ->
+    override fun openChat(): Result<String> = executeOperation("create") { deadline ->
         val response = await(transport.startThread(threadStartMessage()), deadline.remaining())
         val threadId = response.thread.id.takeIf(CODEX_THREAD_ID_PATTERN::matches)
             ?: throw CodexConversationException("INVALID_THREAD_ID")
@@ -115,7 +135,7 @@ internal class DefaultCodexAppServer(
         runTurn(threadIdValue, prompt, deadline)
     }
 
-    override fun end(chatId: String) {
+    override fun closeChat(chatId: String) {
         val threadIdValue = chatId
         if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
         loadedThreads.remove(threadIdValue)
@@ -132,16 +152,6 @@ internal class DefaultCodexAppServer(
         }
     }
 
-    override fun close() {
-        if (!closed.compareAndSet(false, true)) return
-        ready.set(false)
-        restarter.shutdownNow()
-        failActiveTurns("APP_SERVER_CLOSED")
-        activeTurns.clear()
-        transport.close()
-        loadedThreads.clear()
-    }
-
     private fun <T> executeOperation(
         operation: String,
         block: (Deadline) -> T,
@@ -149,7 +159,7 @@ internal class DefaultCodexAppServer(
         if (!startServer()) return Result.failure(CodexConversationException("APP_SERVER_UNAVAILABLE"))
         val startedAt = System.nanoTime()
         val result = try {
-            if (closed.get()) throw CodexConversationException("APP_SERVER_CLOSED")
+            if (!isServing()) throw CodexConversationException("APP_SERVER_CLOSED")
             block(Deadline(config.timeout))
         } catch (error: CodexConversationException) {
             return Result.failure(error)
@@ -238,14 +248,16 @@ internal class DefaultCodexAppServer(
         loadedThreads.clear()
         failActiveTurns("APP_SERVER_EXITED")
         activeTurns.clear()
-        if (!closed.get()) scheduleRestart(RESTART_DELAY_SECONDS)
+        if (isServing()) scheduleRestart(RESTART_DELAY_SECONDS)
     }
 
+    private fun isServing(): Boolean = state == RuntimeState.STARTING || state == RuntimeState.RUNNING
+
     private fun scheduleRestart(delaySeconds: Long) {
-        if (!restartScheduled.compareAndSet(false, true) || closed.get()) return
+        if (!restartScheduled.compareAndSet(false, true) || !isServing()) return
         restarter.schedule({
             restartScheduled.set(false)
-            if (!closed.get() && !startServer()) scheduleRestart(RETRY_DELAY_SECONDS)
+            if (isServing() && !startServer()) scheduleRestart(RETRY_DELAY_SECONDS)
         }, delaySeconds, TimeUnit.SECONDS)
     }
 

@@ -94,10 +94,11 @@ object ApplicationServicesFactory {
         val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
             ?.toLongOrNull()
             ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
-        val conversationGateway = AgentClientFactory.conversation(
+        val chatClient = AgentClientFactory.conversation(
             backend = agentBackend,
             timeout = Duration.ofSeconds(agentTimeoutSeconds),
-        )?.let(::AgentChatGateway)
+        )
+        val conversationGateway = chatClient?.let(::AgentChatGateway)
         log.info(
             "Agent backend={} conversation={}",
             agentBackend,
@@ -134,10 +135,10 @@ object ApplicationServicesFactory {
             ),
             runtimes = listOfNotNull(
                 ollamaEmbedding,
+                chatClient,
                 ComponentAssignmentWorker(updateHierarchy),
                 chatClientExpiryWorker,
             ),
-            conversationGateway = conversationGateway,
         )
     }
 

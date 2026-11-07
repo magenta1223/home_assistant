@@ -2,11 +2,11 @@ package com.homeassistant.adapter.outbound.conversation
 
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
+import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import com.homeassistant.llm.ChatClient
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
-import kotlin.test.assertTrue
 
 class AgentChatGatewayTest {
     @Test
@@ -19,13 +19,11 @@ class AgentChatGatewayTest {
             gateway.chat(conversationId, "prompt"),
         )
         gateway.end(conversationId)
-        gateway.close()
 
         assertEquals(ChatId("conversation-1"), conversationId)
         assertEquals("answer", reply.answer)
         assertEquals(listOf("conversation-1" to "prompt"), client.turns)
         assertEquals(listOf("conversation-1"), client.ended)
-        assertTrue(client.closed)
     }
 
     @Test
@@ -42,24 +40,22 @@ class AgentChatGatewayTest {
 
     private class RecordingClient(
         private val turnResult: Result<String> = Result.success("answer"),
-    ) : ChatClient {
+    ) : AbstractRuntime(), ChatClient {
         val turns = mutableListOf<Pair<String, String>>()
         val ended = mutableListOf<String>()
-        var closed = false
-
-        override fun begin(): Result<String> = Result.success("conversation-1")
+        override fun openChat(): Result<String> = Result.success("conversation-1")
 
         override fun send(chatId: String, prompt: String): Result<String> {
             turns += chatId to prompt
             return turnResult
         }
 
-        override fun end(chatId: String) {
+        override fun closeChat(chatId: String) {
             ended += chatId
         }
 
-        override fun close() {
-            closed = true
-        }
+        override fun onStart() = Unit
+
+        override fun onStop() = Unit
     }
 }

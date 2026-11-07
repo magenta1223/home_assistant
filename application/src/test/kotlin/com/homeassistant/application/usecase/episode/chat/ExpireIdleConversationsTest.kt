@@ -46,7 +46,6 @@ class ExpireIdleConversationsTest {
         override fun end(chatId: ChatId) {
             ended += chatId.value
         }
-        override fun close() = Unit
     }
 
     private class ExpiringStore(sessions: List<ChatSession>) : ChatSessionStore {

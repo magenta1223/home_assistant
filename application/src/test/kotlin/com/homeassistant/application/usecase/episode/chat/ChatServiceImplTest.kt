@@ -260,8 +260,6 @@ class ChatServiceImplTest {
         override fun end(chatId: ChatId) {
             endedThreadIds += chatId.value
         }
-
-        override fun close() = Unit
     }
 
     private class RecordingSessionStore(

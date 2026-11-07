@@ -1,5 +1,6 @@
 package com.homeassistant.llm.codex.conversation
 
+import com.homeassistant.infrastructure.runtime.RuntimeState
 import com.homeassistant.llm.codex.transport.CodexAppServerTransport
 import com.homeassistant.llm.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.llm.codex.transport.protocol.ThreadResult
@@ -15,29 +16,40 @@ import kotlin.test.assertTrue
 
 class CodexAppServerFactoryTest {
     @Test
-    fun `returns one initialized app server`() {
+    fun `returns an installed app server without starting it`() {
         val transport = InitializingTransport()
 
-        val server = CodexAppServerFactory.prepare(
+        val server = CodexAppServerFactory.installed(
             DefaultCodexAppServer(config(), transport, availabilityProbe = { true }),
         )
 
         assertNotNull(server)
-        assertEquals(1, transport.startCount)
-        assertEquals(1, transport.initializeCount)
-        server.close()
+        assertEquals(0, transport.startCount)
     }
 
     @Test
-    fun `closes resources when preparation fails`() {
+    fun `initializes the app server once when it starts and closes it when it stops`() {
+        val transport = InitializingTransport()
+        val server = DefaultCodexAppServer(config(), transport, availabilityProbe = { true })
+
+        server.start()
+
+        assertEquals(RuntimeState.RUNNING, server.state)
+        assertEquals(1, transport.startCount)
+        assertEquals(1, transport.initializeCount)
+        server.stop()
+        assertTrue(transport.closed)
+    }
+
+    @Test
+    fun `returns nothing when the Codex CLI is not installed`() {
         val transport = InitializingTransport()
 
-        val server = CodexAppServerFactory.prepare(
+        val server = CodexAppServerFactory.installed(
             DefaultCodexAppServer(config(), transport, availabilityProbe = { false }),
         )
 
         assertNull(server)
-        assertTrue(transport.closed)
         assertEquals(0, transport.startCount)
     }
 

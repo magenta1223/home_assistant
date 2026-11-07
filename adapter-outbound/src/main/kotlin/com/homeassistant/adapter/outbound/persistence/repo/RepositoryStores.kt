@@ -3,9 +3,8 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
-import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserRepository
 import com.homeassistant.application.port.outbound.identity.UserSessionRepository
-import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
@@ -21,7 +20,6 @@ data class RepositoryStores(
     val componentAssignmentOutbox: ComponentAssignmentOutbox,
     val episodeEmbeddings: EpisodeEmbeddingRepository,
     val chatSessions: ChatSessionStore,
-    val users: UserStore,
-    val userCredentials: UserCredentialStore,
+    val users: UserRepository,
     val userSessions: UserSessionRepository,
 )

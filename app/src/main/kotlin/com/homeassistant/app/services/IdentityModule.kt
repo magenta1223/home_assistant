@@ -12,7 +12,7 @@ internal class IdentityModule(repositories: RepositoryStores) {
 
     /** Registers people and keeps them logged in with sessions. */
     val authentication = UserAuthenticationService(
-        repositories.userCredentials,
+        repositories.users,
         repositories.userSessions,
         Pbkdf2PasswordHasher(),
     )

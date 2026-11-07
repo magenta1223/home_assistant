@@ -6,8 +6,9 @@ import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserNameTakenException
 import com.homeassistant.application.port.outbound.identity.PasswordHasher
 import com.homeassistant.application.port.outbound.identity.StoredSession
-import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserNameConflict
 import com.homeassistant.application.port.outbound.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.UserRepository
 import com.homeassistant.application.port.outbound.identity.UserSessionRepository
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
@@ -18,23 +19,26 @@ import java.time.Duration
 import java.util.Base64
 import java.util.UUID
 
-/** Orchestrates registration and login over the credential, session and hashing ports. */
+/** Orchestrates registration and login over the user, session and hashing ports. */
 class UserAuthenticationService(
-    private val credentials: UserCredentialStore,
+    private val users: UserRepository,
     private val sessions: UserSessionRepository,
     private val hasher: PasswordHasher,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : UserAuthentication {
     override fun signUp(name: String, password: Password): RegisteredUser {
         val user = RegisteredUser(UserId("member-${UUID.randomUUID()}"), name.trim())
-        return when (credentials.register(user, hasher.hash(password))) {
-            UserRegistration.REGISTERED -> user
-            UserRegistration.NAME_TAKEN -> throw UserNameTakenException(user.displayName)
-        }
+        return runCatching { users.save(UserRegistration(user, hasher.hash(password))) }.fold(
+            onSuccess = { it },
+            onFailure = { error ->
+                if (error !is UserNameConflict) throw error
+                throw UserNameTakenException(user.displayName)
+            },
+        )
     }
 
     override fun login(name: String, password: Password): LoginSession {
-        val credential = credentials.findByName(name.trim())
+        val credential = users.findCredentialByName(name.trim())
             ?.takeIf { hasher.matches(password, it.passwordHash) }
             ?: throw InvalidCredentialsException()
         val now = clock()

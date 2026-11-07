@@ -12,16 +12,16 @@
 sequenceDiagram
     participant Caller as Application caller
     participant Registry as UserRegistryService
-    participant Store as UserStore
+    participant Users as UserRepository
 
     Caller->>Registry: list()
-    Registry->>Store: list()
-    Store-->>Registry: 표시 이름이 있는 RegisteredUser 목록
+    Registry->>Users: findAll()
+    Users-->>Registry: 표시 이름이 있는 RegisteredUser 목록
     Registry-->>Caller: RegisteredUser 목록
 
     Caller->>Registry: isAuthorized(userId)
-    Registry->>Store: isRegistered(userId)
-    Store-->>Registry: true 또는 false
+    Registry->>Users: findById(userId)
+    Users-->>Registry: RegisteredUser 또는 null
     Registry-->>Caller: authorization result
 ```
 
@@ -31,18 +31,18 @@ sequenceDiagram
 sequenceDiagram
     participant Http as HTTP route
     participant Auth as UserAuthenticationService
-    participant Credentials as UserCredentialStore
+    participant Users as UserRepository
     participant Hasher as PasswordHasher
     participant Sessions as UserSessionRepository
 
     Http->>Auth: signUp(name, password)
     Auth->>Hasher: hash(password)
-    Auth->>Credentials: register(user, hash)
-    Credentials-->>Auth: REGISTERED 또는 NAME_TAKEN
+    Auth->>Users: save(UserRegistration(user, hash))
+    Users-->>Auth: RegisteredUser 또는 UserNameConflict
     Auth-->>Http: RegisteredUser 또는 UserNameTakenException
 
     Http->>Auth: login(name, password)
-    Auth->>Credentials: findByName(name)
+    Auth->>Users: findCredentialByName(name)
     Auth->>Hasher: matches(password, hash)
     Auth->>Sessions: deleteExpiredBy(now), save(세션 id 해시, userId, 만료)
     Auth-->>Http: LoginSession 또는 InvalidCredentialsException

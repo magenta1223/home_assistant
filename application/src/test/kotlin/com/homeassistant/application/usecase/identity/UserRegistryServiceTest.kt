@@ -1,6 +1,7 @@
 package com.homeassistant.application.usecase.identity
 
-import com.homeassistant.application.port.outbound.identity.UserStore
+import com.homeassistant.application.port.outbound.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.UserRepository
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test
@@ -12,16 +13,20 @@ class UserRegistryServiceTest {
     @Test
     fun `lists stored users and authorizes only registered ones`() {
         val member = RegisteredUser(UserId("member-1"), "홍길동")
-        val service = UserRegistryService(FixedStore(member))
+        val service = UserRegistryService(FixedUsers(member))
 
         assertEquals(listOf(member), service.list())
         assertTrue(service.isAuthorized(UserId("member-1")))
         assertFalse(service.isAuthorized(UserId("member-2")))
     }
 
-    private class FixedStore(private vararg val users: RegisteredUser) : UserStore {
-        override fun list(): List<RegisteredUser> = users.toList()
+    private class FixedUsers(private vararg val users: RegisteredUser) : UserRepository {
+        override fun findAll(): List<RegisteredUser> = users.toList()
 
-        override fun isRegistered(userId: UserId): Boolean = users.any { it.userId == userId }
+        override fun findById(userId: UserId): RegisteredUser? = users.find { it.userId == userId }
+
+        override fun findCredentialByName(name: String) = error("unused")
+
+        override fun save(registration: UserRegistration) = error("unused")
     }
 }

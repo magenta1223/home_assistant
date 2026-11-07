@@ -7,8 +7,9 @@ import com.homeassistant.application.port.outbound.identity.PasswordHash
 import com.homeassistant.application.port.outbound.identity.PasswordHasher
 import com.homeassistant.application.port.outbound.identity.StoredCredential
 import com.homeassistant.application.port.outbound.identity.StoredSession
-import com.homeassistant.application.port.outbound.identity.UserCredentialStore
+import com.homeassistant.application.port.outbound.identity.UserNameConflict
 import com.homeassistant.application.port.outbound.identity.UserRegistration
+import com.homeassistant.application.port.outbound.identity.UserRepository
 import com.homeassistant.application.port.outbound.identity.UserSessionRepository
 import com.homeassistant.application.usecase.identity.UserAuthenticationService
 import com.homeassistant.infrastructure.serialization.JsonSerializer
@@ -142,7 +143,7 @@ class HttpLoginRoutesTest {
             users = object : UserRegistry {
                 override fun list() = listOf(MACHINE)
             },
-            authentication = UserAuthenticationService(InMemoryCredentials(), InMemorySessions(), PlainHasher),
+            authentication = UserAuthenticationService(InMemoryUsers(), InMemorySessions(), PlainHasher),
         )
     }
 
@@ -168,16 +169,22 @@ class HttpLoginRoutesTest {
         override fun matches(password: Password, hash: PasswordHash) = hash == hash(password)
     }
 
-    private class InMemoryCredentials : UserCredentialStore {
-        private val users = mutableMapOf<String, StoredCredential>()
+    private class InMemoryUsers : UserRepository {
+        private val registrations = mutableMapOf<String, UserRegistration>()
 
-        override fun register(user: RegisteredUser, passwordHash: PasswordHash): UserRegistration {
-            if (user.displayName in users) return UserRegistration.NAME_TAKEN
-            users[user.displayName] = StoredCredential(user.userId, passwordHash)
-            return UserRegistration.REGISTERED
+        override fun findAll() = registrations.values.map { it.user }
+
+        override fun findById(userId: UserId) = registrations.values.map { it.user }.find { it.userId == userId }
+
+        override fun findCredentialByName(name: String) =
+            registrations[name]?.let { StoredCredential(it.user.userId, it.passwordHash) }
+
+        override fun save(registration: UserRegistration): RegisteredUser {
+            val name = registration.user.displayName
+            if (name in registrations) throw UserNameConflict(name)
+            registrations[name] = registration
+            return registration.user
         }
-
-        override fun findByName(name: String) = users[name]
     }
 
     private class InMemorySessions : UserSessionRepository {

@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.componentextraction
 
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
 import com.homeassistant.infrastructure.serialization.JsonSerializer.encodeToString
@@ -13,7 +13,7 @@ import kotlinx.serialization.Serializable
  * directly. Otherwise the model first predicts the episode from its title and the known knowledge alone, then keeps only
  * the knowledge in the episode's messages that the prediction missed or got wrong.
  */
-class ModelComponentKnowledgeExtractor(private val client: CompletionClient) : ComponentKnowledgeExtractor {
+class ComponentExtractorImpl(private val client: CompletionClient) : ComponentExtractor {
     override fun extract(episode: PendingEpisode, known: List<String>): List<String> = runBlocking {
         if (known.isEmpty()) return@runBlocking statements(COLD_START, ColdStartInput(episode.title, episode.content).encodeToString())
         val prediction = client.complete(PREDICTION, PredictionInput(episode.title, known).encodeToString(), PREDICTION_SCHEMA)

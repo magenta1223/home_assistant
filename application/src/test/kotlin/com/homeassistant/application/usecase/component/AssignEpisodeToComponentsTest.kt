@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.component
 
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
@@ -107,7 +107,7 @@ class AssignEpisodeToComponentsTest {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: Embedding<ComponentEmbeddingKey>) = componentCache.getOrPut(embedding.key) { embedding }
         })
-        private val extractor = ComponentKnowledgeExtractor { episode, known ->
+        private val extractor = ComponentExtractor { episode, known ->
             extractions.add(Extraction(episode.id, known))
             if (episode.id in failing) error("model unavailable")
             statements[episode.id].orEmpty()

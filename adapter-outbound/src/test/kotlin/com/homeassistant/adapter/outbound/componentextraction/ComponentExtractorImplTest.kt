@@ -9,7 +9,7 @@ import kotlin.test.assertContains
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
-class ModelComponentKnowledgeExtractorTest {
+class ComponentExtractorImplTest {
     private val episode = PendingEpisode(
         id = 1,
         title = "임신기간 단축근로 시간 정하기",
@@ -22,7 +22,7 @@ class ModelComponentKnowledgeExtractorTest {
     fun `without known knowledge the episode itself is read once`() {
         val client = RecordingClient(mutableListOf("""{"statements":["홍승민은 임신기간 단축근로를 한다"]}"""))
 
-        val statements = ModelComponentKnowledgeExtractor(client).extract(episode, emptyList())
+        val statements = ComponentExtractorImpl(client).extract(episode, emptyList())
 
         assertEquals(listOf("홍승민은 임신기간 단축근로를 한다"), statements)
         assertContains(client.calls.single().userMessage, episode.content)
@@ -37,7 +37,7 @@ class ModelComponentKnowledgeExtractorTest {
             """{"statements":["홍승민 회사의 정기 리더 회의는 월요일 3시다"]}""",
         ))
 
-        val statements = ModelComponentKnowledgeExtractor(client).extract(episode, listOf("홍승민은 임신 중이다"))
+        val statements = ComponentExtractorImpl(client).extract(episode, listOf("홍승민은 임신 중이다"))
 
         assertEquals(listOf("홍승민 회사의 정기 리더 회의는 월요일 3시다"), statements)
         val (prediction, comparison) = client.calls

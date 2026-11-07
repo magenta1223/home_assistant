@@ -10,7 +10,7 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssign
 import com.homeassistant.application.port.inbound.memoryextraction.MemoryHierarchyUpdate
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
@@ -156,7 +156,7 @@ class UpdateMemoryHierarchyServiceTest {
             componentRepository,
             PrepareEpisodeEmbedding(texts, EpisodeCache()),
             PrepareComponentEmbedding(componentRepository, texts, ComponentCache()),
-            ComponentKnowledgeExtractor { episode, _ ->
+            ComponentExtractor { episode, _ ->
                 if (episode.id in failingEpisodes) error("model unavailable")
                 statements[episode.id].orEmpty()
             },

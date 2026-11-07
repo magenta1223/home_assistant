@@ -8,7 +8,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepository
 import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
@@ -92,7 +92,7 @@ class EpisodeComponentAssignmentTest {
 //        assertEquals(OutboxRow("COMPLETED", 2, null), outboxRow(db, episode))
 //    }
 
-    private class FakeExtractor(private val statements: Map<String, List<String>>) : ComponentKnowledgeExtractor {
+    private class FakeExtractor(private val statements: Map<String, List<String>>) : ComponentExtractor {
         val known = mutableListOf<List<String>>()
         val messages = mutableListOf<List<String>>()
 
@@ -115,7 +115,7 @@ class EpisodeComponentAssignmentTest {
     private fun assignmentRound(
         db: Database,
         vectors: Map<String, EmbeddingVector>,
-        extractor: ComponentKnowledgeExtractor,
+        extractor: ComponentExtractor,
     ): List<List<Int>> {
         val groups = GroupRepositoryImpl(db)
         val store = ComponentRepositoryImpl(db)

@@ -1,6 +1,6 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.outbound.componentextraction.ModelComponentKnowledgeExtractor
+import com.homeassistant.adapter.outbound.componentextraction.ComponentExtractorImpl
 import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractor
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
@@ -45,7 +45,7 @@ internal class MemoryExtractionModule(
             repositories.components,
             episodeEmbeddings,
             componentEmbeddings,
-            ModelComponentKnowledgeExtractor(completionClient),
+            ComponentExtractorImpl(completionClient),
         ),
         OrganizeComponentIntoGroups(
             repositories.groups,

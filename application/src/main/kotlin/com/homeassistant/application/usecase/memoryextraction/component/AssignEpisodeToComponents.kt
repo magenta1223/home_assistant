@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.memoryextraction.component
 
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentKnowledgeExtractor
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
@@ -17,7 +17,7 @@ class AssignEpisodeToComponents(
     private val components: ComponentRepository,
     private val episodeEmbeddings: PrepareEpisodeEmbedding,
     private val componentEmbeddings: PrepareComponentEmbedding,
-    private val extractor: ComponentKnowledgeExtractor,
+    private val extractor: ComponentExtractor,
     private val knownLimit: Int = DEFAULT_KNOWN_LIMIT,
 ) {
     init { require(knownLimit > 0) { "knownLimit must be positive" } }

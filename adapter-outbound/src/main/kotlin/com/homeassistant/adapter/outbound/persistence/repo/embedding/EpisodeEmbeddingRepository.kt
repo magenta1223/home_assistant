@@ -2,7 +2,6 @@ package com.homeassistant.adapter.outbound.persistence.repo.embedding
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
-import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.port.outbound.embedding.Embedding
@@ -23,7 +22,7 @@ internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmb
             it[contentHash] = embedding.key.contentHash
             it[model] = embedding.key.space.model
             it[inputFormat] = embedding.key.space.inputFormat
-            it[vector] = GroupStorageCodec.vector(embedding.vector)
+            it[vector] = EmbeddingVectorCodec.encode(embedding.vector)
         }
         val episode = EpisodeTable.selectAll().where { EpisodeTable.id eq embedding.key.episodeId }.singleOrNull()
         require(episode != null && contentFingerprint(episode[EpisodeTable.content]) == embedding.key.contentHash) {
@@ -45,7 +44,7 @@ internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmb
                 row[EpisodeEmbeddingTable.episodeId], row[EpisodeEmbeddingTable.contentHash],
                 EmbeddingSpace(row[EpisodeEmbeddingTable.model], row[EpisodeEmbeddingTable.inputFormat])
             ),
-            GroupStorageCodec.vector(row[EpisodeEmbeddingTable.vector]),
+            EmbeddingVectorCodec.decode(row[EpisodeEmbeddingTable.vector]),
         )
     }
 }

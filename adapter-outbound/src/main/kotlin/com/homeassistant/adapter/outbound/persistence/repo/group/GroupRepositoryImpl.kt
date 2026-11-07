@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.EmbeddingVectorCodec
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAccessCondition
@@ -48,7 +49,7 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
                     row[GroupTable.id], byGroup.getValue(row[GroupTable.id])
                     .map { it[GroupMembershipTable.componentId] }.toSet()
                 ), row[GroupTable.revision],
-                GroupStorageCodec.vector(row[GroupTable.centroid])
+                EmbeddingVectorCodec.decode(row[GroupTable.centroid])
             )
         }
     }
@@ -81,7 +82,7 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
 
     private fun verifyEmbeddings(change: GroupChange) {
         val stored = ComponentEmbeddingTable.selectAll().where {
-            ComponentEmbeddingTable.key inList change.embeddings.values.map { GroupStorageCodec.key(it.key) }
+            ComponentEmbeddingTable.key inList change.embeddings.values.map { ComponentEmbeddingRepository.key(it.key) }
         }.map { ComponentEmbeddingRepository.decode(it) }.associateBy { it.key.componentId }
         require(stored == change.embeddings) { "expected immutable vectors are missing or changed" }
         val versions = ComponentTable.selectAll().where { ComponentTable.id inList stored.keys }
@@ -107,20 +108,20 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
                 is GroupTarget.Existing -> {
                     GroupTable.update({ GroupTable.id eq target.id }) {
                         it[revision] = change.expectedGroups.getValue(target.id) + 1
-                        it[centroid] = GroupStorageCodec.vector(result.centroid)
+                        it[centroid] = EmbeddingVectorCodec.encode(result.centroid)
                     }
                     target.id
                 }
                 is GroupTarget.Created -> GroupTable.insert {
                     it[revision] = 1
-                    it[centroid] = GroupStorageCodec.vector(result.centroid)
+                    it[centroid] = EmbeddingVectorCodec.encode(result.centroid)
                 }[GroupTable.id]
             }
             result.componentIds.sorted().forEach { component ->
                 GroupMembershipTable.insert {
                     it[componentId] = component
                     it[groupId] = id
-                    it[embeddingKey] = GroupStorageCodec.key(change.embeddings.getValue(component).key)
+                    it[embeddingKey] = ComponentEmbeddingRepository.key(change.embeddings.getValue(component).key)
                 }
             }
             id

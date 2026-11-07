@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.group
 
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
 import com.homeassistant.domain.embedding.EmbeddingGeometry
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents

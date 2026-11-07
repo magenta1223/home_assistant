@@ -3,8 +3,8 @@ package com.homeassistant.application.usecase.episode.search
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.embedding.Embedding
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding

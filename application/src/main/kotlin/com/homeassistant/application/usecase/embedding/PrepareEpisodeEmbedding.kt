@@ -3,8 +3,8 @@ package com.homeassistant.application.usecase.embedding
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
 
 /** Provides an episode's vector for Component placement, generating and storing it only when its content is not stored yet. */
 class PrepareEpisodeEmbedding(

@@ -6,8 +6,8 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCod
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.port.outbound.embedding.Embedding
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import org.jetbrains.exposed.sql.*

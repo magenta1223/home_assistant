@@ -4,8 +4,8 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCod
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.application.port.outbound.embedding.Embedding
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import org.jetbrains.exposed.sql.*

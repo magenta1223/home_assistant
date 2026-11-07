@@ -1,5 +1,6 @@
 package com.homeassistant.application.port.outbound.memoryextraction.group
 
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.embedding.EmbeddingVector

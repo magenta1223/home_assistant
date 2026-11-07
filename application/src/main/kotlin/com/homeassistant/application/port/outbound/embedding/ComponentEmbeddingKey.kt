@@ -1,7 +1,4 @@
-package com.homeassistant.application.port.outbound.memoryextraction.group
-
-import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.embedding.contentFingerprint
+package com.homeassistant.application.port.outbound.embedding
 
 data class ComponentEmbeddingKey(val componentId: Int, val version: String, val space: EmbeddingSpace) {
     init { require(componentId > 0 && version.isNotBlank()) }
@@ -12,5 +9,3 @@ data class ComponentEmbeddingKey(val componentId: Int, val version: String, val 
             ComponentEmbeddingKey(componentId, contentFingerprint(statement), space)
     }
 }
-
-class GroupRebuildRequired(message: String) : IllegalStateException(message)

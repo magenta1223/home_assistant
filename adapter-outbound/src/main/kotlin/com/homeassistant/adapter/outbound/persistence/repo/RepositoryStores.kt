@@ -8,8 +8,8 @@ import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 
 data class RepositoryStores(

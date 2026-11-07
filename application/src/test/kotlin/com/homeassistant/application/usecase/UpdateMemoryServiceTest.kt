@@ -12,11 +12,11 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.embedding.Embedding
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange

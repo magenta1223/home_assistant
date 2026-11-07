@@ -1,6 +1,4 @@
-package com.homeassistant.application.port.outbound.memoryextraction.group
-
-import com.homeassistant.application.port.outbound.embedding.Embedding
+package com.homeassistant.application.port.outbound.embedding
 
 interface ComponentEmbeddingStore {
     fun find(key: ComponentEmbeddingKey): Embedding<ComponentEmbeddingKey>?

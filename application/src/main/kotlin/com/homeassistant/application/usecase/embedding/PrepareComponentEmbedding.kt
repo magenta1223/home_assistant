@@ -3,8 +3,8 @@ package com.homeassistant.application.usecase.embedding
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
 import com.homeassistant.domain.component.Component
 
 /**

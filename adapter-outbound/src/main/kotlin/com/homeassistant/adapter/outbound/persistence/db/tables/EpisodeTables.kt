@@ -8,8 +8,7 @@ internal object EpisodeTable : Table("episodes") {
     val title = text("title")
     val content = text("content")
     val visibility = text("visibility")
-    /** Null only for canonical episodes created before durable batch persistence was introduced. */
-    val idempotencyKey = text("idempotency_key").nullable()
+    val idempotencyKey = text("idempotency_key")
     val createdAt = long("created_at")
     override val primaryKey = PrimaryKey(id)
 

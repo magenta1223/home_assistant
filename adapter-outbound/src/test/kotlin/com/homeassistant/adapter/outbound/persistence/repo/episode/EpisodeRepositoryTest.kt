@@ -2,69 +2,20 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
-import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.episode.EpisodeProposal
-import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.nio.file.Files
-import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.update
-import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class EpisodeRepositoryTest {
-    @Test
-    fun `legacy private episode migrates to creator-only restricted access`() {
-        val databasePath = Files.createTempFile("legacy-private-episode", ".db")
-        try {
-            val database = DatabaseFactory.init(databasePath.toString())
-            val sourceRecords = SourceRecordRepositoryImpl(database)
-            val episodes = EpisodeRepositoryImpl(database)
-            val creator = UserId("member-1")
-            val evidence = sourceRecords.saveAll(
-                SourceDescriptor("test", "legacy"),
-                listOf(SourceRecordDraft("legacy", "legacy")),
-            ).recordsToAnalyze.single()
-            val episode = episodes.save(episodeProposal(evidence.id, "legacy"), creator)
-            transaction(database) {
-                EpisodeTable.update({ EpisodeTable.id eq episode.id }) { it[visibility] = "PRIVATE" }
-                SourceRecordTable.update({ SourceRecordTable.id eq evidence.id }) {
-                    it[audienceExplicit] = false
-                }
-            }
-
-            val migratedDatabase = DatabaseFactory.init(databasePath.toString())
-            val migratedEpisodes = EpisodeRepositoryImpl(migratedDatabase)
-
-            assertEquals(EpisodeVisibility.RESTRICTED, migratedEpisodes.findVisibleTo(creator).single().visibility)
-            assertEquals(setOf(creator.value), migratedEpisodes.findVisibleTo(creator).single().allowedUserIds)
-            assertEquals(0, migratedEpisodes.findVisibleTo(UserId("member-2")).size)
-            transaction(migratedDatabase) {
-                assertEquals(
-                    EpisodeVisibility.RESTRICTED.name,
-                    SourceRecordTable.selectAll().where { SourceRecordTable.id eq evidence.id }.single()[SourceRecordTable.visibility],
-                )
-                assertEquals(
-                    listOf(creator.value),
-                    SourceRecordViewerTable.selectAll().where { SourceRecordViewerTable.sourceRecordId eq evidence.id }
-                        .map { it[SourceRecordViewerTable.userId] },
-                )
-            }
-        } finally {
-            Files.deleteIfExists(databasePath)
-        }
-    }
-
     @Test
     fun `stores the title and one creation time and reads them from an existing episode`() {
         val databasePath = Files.createTempFile("episode-created-at", ".db")

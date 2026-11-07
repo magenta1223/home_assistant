@@ -36,52 +36,15 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             if (!seenDeduplicationKeys.add(record.deduplicationKey)) {
                 return@forEach
             }
-            var existing = SourceRecordTable.selectAll()
+            val existing = SourceRecordTable.selectAll()
                 .where {
                     (SourceRecordTable.sourceType eq source.type) and
                         (SourceRecordTable.deduplicationKey eq record.deduplicationKey)
                 }
                 .singleOrNull()
-            if (existing == null && record.deduplicationAliases.isNotEmpty()) {
-                val aliasMatches = SourceRecordTable.selectAll()
-                    .where {
-                        (SourceRecordTable.sourceType eq source.type) and
-                            (SourceRecordTable.deduplicationKey inList record.deduplicationAliases)
-                    }
-                    .limit(2)
-                    .toList()
-                check(aliasMatches.size <= 1) {
-                    "Multiple source records match deduplication aliases for ${record.deduplicationKey}"
-                }
-                existing = aliasMatches.singleOrNull()
-                existing?.let { legacy ->
-                    val referenceId = record.reference?.let(::saveReference)
-                    SourceRecordTable.update({ SourceRecordTable.id eq legacy[SourceRecordTable.id] }) {
-                        it[deduplicationKey] = record.deduplicationKey
-                        it[content] = record.content
-                        it[recordedAt] = record.recordedAt
-                        if (referenceId != null) it[SourceRecordTable.referenceId] = referenceId
-                    }
-                    existing = SourceRecordTable.selectAll()
-                        .where { SourceRecordTable.id eq legacy[SourceRecordTable.id] }
-                        .single()
-                }
-            }
             if (existing != null) {
-                val existingAccess = if (existing[SourceRecordTable.audienceExplicit]) {
-                    existing.toAccess().also { storedAccess ->
-                        if (storedAccess != access) throw SourceAccessConflictException(source.name, storedAccess)
-                    }
-                } else {
-                    assignAccess(existing[SourceRecordTable.id], access)
-                    access
-                }
-                val existingRecord = existing.toSourceRecord().copy(access = existingAccess).let { stored ->
-                    if (stored.deduplicationKey == record.deduplicationKey) stored else stored.copy(
-                        deduplicationKey = record.deduplicationKey,
-                        content = record.content,
-                    )
-                }
+                val existingRecord = existing.toSourceRecord()
+                if (existingRecord.access != access) throw SourceAccessConflictException(source.name, existingRecord.access)
                 if (existingRecord.analysisStatus == SourceRecordAnalysisStatus.PENDING) {
                     recordsToAnalyze += existingRecord
                     retriedRecordCount++
@@ -100,7 +63,6 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 it[recordedAt] = record.recordedAt
                 it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
                 it[visibility] = access.visibility.name
-                it[audienceExplicit] = true
                 it[SourceRecordTable.referenceId] = referenceId
             }[SourceRecordTable.id]
             access.allowedUserIds.forEach { allowedUserId ->
@@ -182,21 +144,5 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
                 .mapTo(linkedSetOf()) { it[SourceRecordViewerTable.userId] }
         }
         return EpisodeAccess(visibility, viewers)
-    }
-
-    private fun assignAccess(recordId: Int, access: EpisodeAccess) {
-        SourceRecordViewerTable.deleteWhere {
-            SourceRecordViewerTable.sourceRecordId eq recordId
-        }
-        SourceRecordTable.update({ SourceRecordTable.id eq recordId }) {
-            it[visibility] = access.visibility.name
-            it[audienceExplicit] = true
-        }
-        access.allowedUserIds.forEach { allowedUserId ->
-            SourceRecordViewerTable.insert {
-                it[SourceRecordViewerTable.sourceRecordId] = recordId
-                it[userId] = allowedUserId
-            }
-        }
     }
 }

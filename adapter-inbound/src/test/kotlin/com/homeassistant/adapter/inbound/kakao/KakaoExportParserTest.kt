@@ -33,10 +33,6 @@ class KakaoExportParserTest {
             first.records.map { it.deduplicationKey },
             renamed.records.map { it.deduplicationKey },
         )
-        assertNotEquals(
-            first.records.map { it.deduplicationAliases },
-            renamed.records.map { it.deduplicationAliases },
-        )
     }
 
     @Test
@@ -57,32 +53,6 @@ class KakaoExportParserTest {
 
         assertEquals("민수: 아침 약은 먹었어?", record.content)
         assertEquals(Instant.parse("2025-01-02T00:03:00Z").toEpochMilli(), record.recordedAt)
-    }
-
-    @Test
-    fun `same-name historical fingerprint is exposed as a migration alias`() {
-        val sourceName = "kakao-export.txt"
-        val record = KakaoExportParser.parse(
-            sourceName,
-            "2025년 1월 2일 오전 9:03, 민수 : 아침 약은 먹었어?",
-        ).records.single()
-
-        assertEquals(
-            setOf(sha256("$sourceName\u001F민수\u001F2025년 1월 2일 오전 9:03\u001F아침 약은 먹었어?")),
-            record.deduplicationAliases,
-        )
-    }
-
-    @Test
-    fun `historical bracket fingerprint retains the following date separator`() {
-        val sourceName = "bracket-export.txt"
-        val record = KakaoExportParser.parse(sourceName, fixture(sourceName)).records[1]
-        val legacyContent = "응\n두 알 먹었어\n--------------- 2025년 1월 3일 금요일 ---------------"
-
-        assertEquals(
-            setOf(sha256("$sourceName\u001F영희\u001F오전 9:04\u001F$legacyContent")),
-            record.deduplicationAliases,
-        )
     }
 
     @Test

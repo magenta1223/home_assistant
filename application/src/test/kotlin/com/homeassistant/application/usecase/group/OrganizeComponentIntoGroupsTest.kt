@@ -37,13 +37,12 @@ class OrganizeComponentIntoGroupsTest {
         assertTrue(fixture.writes.isEmpty())
     }
 
-    @Test fun `conflict rereads snapshot and replans with a new key without regenerating embedding`() {
+    @Test fun `conflict rereads snapshot and replans without regenerating embedding`() {
         val fixture = Fixture()
         fixture.write = { if (fixture.writes.size == 1) throw GroupChangeConflict("lost") else saved(it) }
         assertIs<ComponentOrganizationOutcome.Organized>(fixture.organize(1))
         assertEquals(2, fixture.reads)
         assertEquals(1, fixture.generated)
-        assertEquals(2, fixture.writes.map { it.operationKey }.distinct().size)
     }
 
     @Test fun `conflicts are bounded and cached vectors survive retry calls`() {

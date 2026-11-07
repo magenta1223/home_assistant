@@ -13,7 +13,6 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupT
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
 import com.homeassistant.domain.group.*
-import java.util.UUID
 
 /**
  * Places one pending Component into a Group, splitting it when the planner says so, and retries on a fresh snapshot up to
@@ -71,11 +70,11 @@ class OrganizeComponentIntoGroups(
         val allEmbeddings = snapshot.embeddings + (incoming.key.componentId to incoming)
         val results = decision.partition.parts.mapIndexed { index, ids ->
             val target = if (index == 0 && selected.isNotEmpty()) GroupTarget.Existing(selected.single().group.id)
-                else GroupTarget.Created("part-$index")
+                else GroupTarget.Created
             ResultingGroup(target, ids, EmbeddingGeometry.centroid(ids.sorted().map { allEmbeddings.getValue(it).vector }))
         }
         return GroupChange(
-            UUID.randomUUID().toString(), selected.associate { it.group.id to it.revision },
+            selected.associate { it.group.id to it.revision },
             setOf(incoming.key.componentId), results, allEmbeddings.filterKeys { it in componentIds },
         )
     }

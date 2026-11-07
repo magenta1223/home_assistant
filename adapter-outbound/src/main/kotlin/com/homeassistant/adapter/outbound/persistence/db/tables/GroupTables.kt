@@ -25,10 +25,3 @@ internal object GroupMembershipTable : Table("component_group_memberships") {
     val embeddingKey = text("embedding_key").references(ComponentEmbeddingTable.key)
     override val primaryKey = PrimaryKey(componentId)
 }
-
-internal object GroupReceiptTable : Table("component_group_receipts") {
-    val operationKey = text("operation_key")
-    val request = text("request")
-    val groupIds = text("group_ids")
-    override val primaryKey = PrimaryKey(operationKey)
-}

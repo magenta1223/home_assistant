@@ -10,7 +10,6 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Result
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.group.GroupMerge
 import com.homeassistant.domain.group.GroupMergePolicy
-import java.util.UUID
 
 /**
  * Merges single-Component Groups into neighbors, one merge at a time on a fresh snapshot, until the policy finds none or
@@ -58,7 +57,7 @@ class MergeSmallGroups(
         val componentIds = selected.flatMap { it.group.componentIds }.toSet()
         val embeddings = snapshot.embeddings.filterKeys { it in componentIds }
         return GroupChange(
-            UUID.randomUUID().toString(), selected.associate { it.group.id to it.revision }, emptySet(),
+            selected.associate { it.group.id to it.revision }, emptySet(),
             listOf(
                 ResultingGroup(
                     GroupTarget.Existing(merge.survivor), componentIds,

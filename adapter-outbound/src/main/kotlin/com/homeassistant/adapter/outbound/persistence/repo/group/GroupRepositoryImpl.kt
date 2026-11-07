@@ -15,9 +15,12 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Pendin
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.domain.group.*
+import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.sqlite.SQLiteErrorCode
+import org.sqlite.SQLiteException
 
 internal class GroupRepositoryImpl(private val db: Database) : PendingComponentSource, GroupRepository {
     override fun pending(limit: Int): List<PendingComponent> = transaction(db) {
@@ -63,32 +66,15 @@ internal class GroupRepositoryImpl(private val db: Database) : PendingComponentS
         }
     }
 
-    override fun save(change: GroupChange): List<Group> = transaction(db) {
-        applyAtomically(change).zip(change.resultingGroups) { id, result -> Group(id, result.componentIds) }
-    }
-
-    /** The ids of the resulting Groups; a change saved before returns the ids it was saved with. */
-    private fun applyAtomically(change: GroupChange): List<Int> {
-        val request = GroupStorageCodec.request(change)
-        // The first statement is a write: SQLite serializes writers before reading revisions.
-        // A rejected change rolls this reservation back together with every other write.
-        GroupReceiptTable.insertIgnore {
-            it[operationKey] = change.operationKey
-            it[GroupReceiptTable.request] = request
-            it[groupIds] = ""
+    override fun save(change: GroupChange): List<Group> = try {
+        transaction(db) {
+            verifyRevisionAndPartition(change)
+            verifyEmbeddings(change)
+            replaceGroups(change).zip(change.resultingGroups) { id, result -> Group(id, result.componentIds) }
         }
-        val receipt = GroupReceiptTable.selectAll().where { GroupReceiptTable.operationKey eq change.operationKey }.single()
-        require(receipt[GroupReceiptTable.request] == request) { "operation key reused with different content" }
-        if (receipt[GroupReceiptTable.groupIds].isNotEmpty()) {
-            return GroupStorageCodec.ids(receipt[GroupReceiptTable.groupIds])
-        }
-        verifyRevisionAndPartition(change)
-        verifyEmbeddings(change)
-        val ids = replaceGroups(change)
-        GroupReceiptTable.update({ GroupReceiptTable.operationKey eq change.operationKey }) {
-            it[groupIds] = GroupStorageCodec.ids(ids)
-        }
-        return ids
+    } catch (error: ExposedSQLException) {
+        if (!error.isBusy()) throw error
+        throw GroupChangeConflict("a concurrent write held the database", error)
     }
 
     private fun verifyRevisionAndPartition(change: GroupChange) {
@@ -157,4 +143,8 @@ internal class GroupRepositoryImpl(private val db: Database) : PendingComponentS
     }
 
     private fun concurrentChange() = GroupChangeConflict("a concurrent change updated the expected Groups")
+
+    /** True when SQLite refused the write because another connection held the database lock. */
+    private fun ExposedSQLException.isBusy(): Boolean =
+        (cause as? SQLiteException)?.resultCode?.let { it.code and 0xFF == SQLiteErrorCode.SQLITE_BUSY.code } == true
 }

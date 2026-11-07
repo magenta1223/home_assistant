@@ -84,14 +84,13 @@ Group 요약·kNN 검색·entropy 기반 원문 확장은 구현하지 않는다
 - 임베딩과 모든 정책 계산은 DB transaction 밖에서 수행한다.
 - 캐시는 Component ID·벡터 버전·모델·입력 규약으로 구분한다. 같은 key는 첫 저장 벡터를 재사용한다.
 - 유한하지 않은 값·영벡터·차원 불일치·계산 불가능한 centroid는 성공으로 처리하지 않는다.
-- Group 소속·centroid·revision·receipt는 한 transaction으로 확정한다. 실패 시 모두 롤백한다.
+- Group 소속·centroid·revision은 한 transaction으로 확정한다. 실패 시 모두 롤백한다.
 - 모델·규약·차원이 바뀌면 `GroupRebuildRequired`를 던지고, `UpdateMemoryHierarchyService`는 그 회차의 배치를 멈추고 병합하지 않는다. Component 문장은 바뀌지 않으므로 이미 배치된 Component의
   벡터 버전도 바뀌지 않는다.
   모델 이름이 같아도 실제 가중치를 교체했다면 식별자를 변경해야 한다. 자동 재구성은 후속 작업이다.
 - 개별 Component 실패는 `UpdateMemoryHierarchyService`가 그 Component만 `Failed`로 남기고, 충돌 3회 소진은 `ConflictExhausted`다. 뒤의 독립 Component는 계속 처리한다.
   취소 예외는 삼키지 않는다. Pending 조회 자체의 저장소 장애는 호출자에게 전파한다.
 - 저장 성공 후 호출이 중단되어도 다음 실행은 Group 미소속 Component만 조회한다.
-  저장 요청 자체를 재전송할 때에는 같은 operation key와 내용을 사용하면 같은 ID를 받는다.
 - 재시작 시 자동 실행하지 않는다. 다음 명시적 호출로 미처리를 이어간다. 영구 실패 Component가 반복
   batch 앞부분을 차지하는 문제의 backoff·격리 및 worker는 후속 범위다.
 - 전체 Group snapshot을 읽으며 점수 계산은 Group 수에 따라 증가한다. ANN·증분 최적화는 없다.

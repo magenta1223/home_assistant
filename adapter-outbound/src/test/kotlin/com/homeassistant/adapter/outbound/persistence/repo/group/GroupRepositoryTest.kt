@@ -76,47 +76,34 @@ class GroupRepositoryTest {
         assertEquals(beforeSources, sources.findBySource(source))
     }
 
-    @Test fun `receipt returns original ids before revision validation and rejects changed payload`() = withDatabase { db, _ ->
+    @Test fun `stale revision and already assigned incoming reject`() = withDatabase { db, _ ->
         val embeddings = seed(db, 2)
         val repository = GroupRepositoryImpl(db)
-        val create = change("create", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)
-        val id = repository.save(create).single().id
-        assertEquals(listOf(id), repository.save(create).map { it.id })
-        repository.save(change("attach", mapOf(id to 1), setOf(2), listOf(setOf(1, 2)), embeddings, id))
-        assertEquals(listOf(id), repository.save(create).map { it.id })
-        assertFailsWith<IllegalArgumentException> { repository.save(create.copy(incomingComponentIds = setOf(2))) }
-        assertEquals(setOf(1, 2), repository.findSnapshot().groups.single().group.componentIds)
-    }
-
-    @Test fun `stale revision and already assigned incoming reject without reserving operation keys`() = withDatabase { db, _ ->
-        val embeddings = seed(db, 2)
-        val repository = GroupRepositoryImpl(db)
-        val id = repository.save(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
-        val stale = change("b", mapOf(id to 9), setOf(2), listOf(setOf(1, 2)), embeddings, id)
+        val id = repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
+        val stale = change(mapOf(id to 9), setOf(2), listOf(setOf(1, 2)), embeddings, id)
         assertFailsWith<GroupChangeConflict> { repository.save(stale) }
-        assertFailsWith<GroupChangeConflict> { repository.save(change("c", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)) }
-        assertEquals(1L, transaction(db) { GroupReceiptTable.selectAll().count() })
+        assertFailsWith<GroupChangeConflict> { repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)) }
         repository.save(stale.copy(expectedGroups = mapOf(id to 1)))
     }
 
-    @Test fun `merge storage contract replaces multiple groups atomically and preserves retained id`() = withDatabase { db, _ ->
+    @Test fun `merge storage contract replaces multiple groups atomically, preserves retained id and rejects a replay`() = withDatabase { db, _ ->
         val embeddings = seed(db, 2)
         val repository = GroupRepositoryImpl(db)
-        val first = repository.save(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
-        val second = repository.save(change("b", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = embeddings)).single().id
-        val merge = change("merge", mapOf(first to 1, second to 1), emptySet(), listOf(setOf(1, 2)), embeddings, first)
+        val first = repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
+        val second = repository.save(change(incoming = setOf(2), parts = listOf(setOf(2)), embeddings = embeddings)).single().id
+        val merge = change(mapOf(first to 1, second to 1), emptySet(), listOf(setOf(1, 2)), embeddings, first)
         assertEquals(listOf(first), repository.save(merge).map { it.id })
         val group = repository.findSnapshot().groups.single()
         assertEquals(Group(first, setOf(1, 2)), group.group)
         assertEquals(2L, group.revision)
-        assertEquals(listOf(first), repository.save(merge).map { it.id })
+        assertFailsWith<GroupChangeConflict> { repository.save(merge) }
     }
 
     @Test fun `a single-component group merges into its neighbor and is deleted`() = withDatabase { db, _ ->
         val embeddings = seed(db, 3)
         val repository = GroupRepositoryImpl(db)
-        val pair = repository.save(change("a", incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings)).single().id
-        val single = repository.save(change("b", incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings)).single().id
+        val pair = repository.save(change(incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings)).single().id
+        val single = repository.save(change(incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings)).single().id
 
         val outcomes = MergeSmallGroups(repository, GroupMergePolicy(GroupPolicySettings())).execute()
 
@@ -124,35 +111,33 @@ class GroupRepositoryTest {
         assertEquals(listOf(Group(pair, setOf(1, 2, 3))), repository.findSnapshot().groups.map { it.group })
     }
 
-    @Test fun `missing stolen omitted components and incorrect centroid roll back receipt and groups`() = withDatabase { db, _ ->
+    @Test fun `missing stolen omitted components and incorrect centroid roll back groups`() = withDatabase { db, _ ->
         val embeddings = seed(db, 3)
         val repository = GroupRepositoryImpl(db)
-        val id = repository.save(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
+        val id = repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
         val invalid = listOf(
-            change("omit", mapOf(id to 1), setOf(2), listOf(setOf(2)), embeddings, id),
-            change("steal", incoming = setOf(2), parts = listOf(setOf(1, 2)), embeddings = embeddings),
-            change("extra", incoming = setOf(2), parts = listOf(setOf(2, 3)), embeddings = embeddings),
-            change("wrong-centroid", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = embeddings).let {
+            change(mapOf(id to 1), setOf(2), listOf(setOf(2)), embeddings, id),
+            change(incoming = setOf(2), parts = listOf(setOf(1, 2)), embeddings = embeddings),
+            change(incoming = setOf(2), parts = listOf(setOf(2, 3)), embeddings = embeddings),
+            change(incoming = setOf(2), parts = listOf(setOf(2)), embeddings = embeddings).let {
                 it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = EmbeddingVector.normalized(listOf(0.0, 1.0))) })
             },
-            change("missing", incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
+            change(incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
                 mapOf(999 to Embedding(PendingComponent(999, "1").embeddingKey(space), vector))),
         )
         invalid.forEach { assertFailsWith<IllegalArgumentException> { repository.save(it) } }
         assertEquals(setOf(1), repository.findSnapshot().groups.single().group.componentIds)
-        assertEquals(1L, transaction(db) { GroupReceiptTable.selectAll().count() })
     }
 
-    @Test fun `failure during membership replacement rolls back revision centroid and receipt`() = withDatabase { db, _ ->
+    @Test fun `failure during membership replacement rolls back revision and centroid`() = withDatabase { db, _ ->
         val embeddings = seed(db, 2)
         val repository = GroupRepositoryImpl(db)
-        val id = repository.save(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
+        val id = repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
         val before = repository.findSnapshot()
         transaction(db) { exec("CREATE TRIGGER fail_group BEFORE INSERT ON component_group_memberships BEGIN SELECT RAISE(ABORT, 'forced'); END") }
-        val attach = change("b", mapOf(id to 1), setOf(2), listOf(setOf(1, 2)), embeddings, id)
+        val attach = change(mapOf(id to 1), setOf(2), listOf(setOf(1, 2)), embeddings, id)
         assertFails { repository.save(attach) }
         assertEquals(before, repository.findSnapshot())
-        assertEquals(1L, transaction(db) { GroupReceiptTable.selectAll().count() })
         transaction(db) { exec("DROP TRIGGER fail_group") }
         repository.save(attach)
     }
@@ -162,8 +147,8 @@ class GroupRepositoryTest {
             seed(db, 1, EpisodeAccess.restricted(listOf(UserId("a"))), "a") +
             seed(db, 1, EpisodeAccess.restricted(listOf(UserId("b"))), "b")
         val repository = GroupRepositoryImpl(db)
-        repository.save(change("shared", incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings))
-        repository.save(change("private", incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings))
+        repository.save(change(incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings))
+        repository.save(change(incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings))
         val stored = repository.findSnapshot().groups
         val components = ComponentRepositoryImpl(db).findByIds(embeddings.keys).associateBy { it.id }
 
@@ -184,7 +169,7 @@ class GroupRepositoryTest {
         try {
             val futures = (1..2).map { attempt -> pool.submit<Result<List<Group>>> {
                 start.await()
-                runCatching { repository.save(change("race-$attempt", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)) }
+                runCatching { repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)) }
             } }
             start.countDown()
             val results = futures.map { it.get(20, TimeUnit.SECONDS) }
@@ -197,7 +182,7 @@ class GroupRepositoryTest {
     @Test fun `embedding cache survives restart and group model mixing requires rebuild`() = withDatabase { db, path ->
         val embeddings = seed(db, 2)
         val repository = GroupRepositoryImpl(db)
-        repository.save(change("a", incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings))
+        repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings))
         val restarted = ComponentEmbeddingRepository(DatabaseFactory.init(path))
         assertEquals(embeddings.getValue(1), restarted.find(embeddings.getValue(1).key))
         // The first vector for a cache key wins even if another embedding request returns different coordinates.
@@ -208,7 +193,7 @@ class GroupRepositoryTest {
         )
         )) })
         assertFailsWith<GroupRebuildRequired> {
-            repository.save(change("mixed", incoming = setOf(2), parts = listOf(setOf(2)), embeddings = mapOf(2 to replacement)))
+            repository.save(change(incoming = setOf(2), parts = listOf(setOf(2)), embeddings = mapOf(2 to replacement)))
         }
         assertEquals(1, repository.findSnapshot().groups.size)
     }
@@ -240,15 +225,14 @@ class GroupRepositoryTest {
     }
 
     private fun change(
-        key: String,
         expected: Map<Int, Long> = emptyMap(),
         incoming: Set<Int>,
         parts: List<Set<Int>>,
         embeddings: Map<Int, Embedding<ComponentEmbeddingKey>>,
         retain: Int? = null,
-    ): GroupChange = GroupChange(key, expected, incoming, parts.mapIndexed { index, ids ->
+    ): GroupChange = GroupChange(expected, incoming, parts.mapIndexed { index, ids ->
         ResultingGroup(
-            if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created("$index"),
+            if (index == 0 && retain != null) GroupTarget.Existing(retain) else GroupTarget.Created,
             ids, EmbeddingGeometry.centroid(ids.sorted().map { embeddings.getValue(it).vector })
         )
     }, embeddings.filterKeys { it in parts.flatten() })

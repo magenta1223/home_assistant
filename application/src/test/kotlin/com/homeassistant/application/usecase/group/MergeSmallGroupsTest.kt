@@ -37,7 +37,6 @@ class MergeSmallGroupsTest {
 
         assertEquals(listOf(GroupMergeOutcome.ConflictExhausted), merger(store).execute())
         assertEquals(3, store.writes.size)
-        assertEquals(3, store.writes.map { it.operationKey }.distinct().size)
     }
 
     private fun merger(store: Store) = MergeSmallGroups(store, GroupMergePolicy(GroupPolicySettings()))

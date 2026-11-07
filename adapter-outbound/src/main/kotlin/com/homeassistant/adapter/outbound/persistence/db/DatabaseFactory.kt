@@ -19,7 +19,6 @@ internal object DatabaseFactory {
                 ComponentEmbeddingTable,
                 GroupTable,
                 GroupMembershipTable,
-                GroupReceiptTable,
                 SourceReferenceTable,
                 SourceRecordTable,
                 SourceRecordViewerTable,

@@ -3,8 +3,8 @@ package com.homeassistant.application.port.outbound.memoryextraction.group
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.group.Group
 
-/** A [GroupChange] lost to a concurrent change: an expected Group revision no longer matches. */
-class GroupChangeConflict(message: String) : IllegalStateException(message)
+/** A [GroupChange] lost to a concurrent change: an expected Group revision no longer matches or another write held the store. */
+class GroupChangeConflict(message: String, cause: Throwable? = null) : IllegalStateException(message, cause)
 
 /** Stored Groups. Trusted internal metadata only; this is not an ACL-filtered user projection. */
 interface GroupRepository {
@@ -23,9 +23,8 @@ interface GroupRepository {
 
     /**
      * Atomically checks revisions, validates the exact partition and replaces membership and centroids; returns the
-     * resulting Groups in [GroupChange.resultingGroups] order. A change whose operation key was saved before returns
-     * the Groups as that change saved them.
-     * @throws GroupChangeConflict when an expected Group revision changed.
+     * resulting Groups in [GroupChange.resultingGroups] order.
+     * @throws GroupChangeConflict when an expected Group revision changed or a concurrent write held the database.
      */
     fun save(change: GroupChange): List<Group>
 }

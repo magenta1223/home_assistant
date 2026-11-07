@@ -33,13 +33,13 @@ class ChatServiceRoutesTest {
             configureTestRoutes(RecordingChatService(ChatResult.AnswerReady("unused")))
         }
 
-        val response = client.get(AppConfig.ROUTE_EPISODE_CONVERSATION_PAGE)
+        val response = client.get("/conversation")
         val html = response.bodyAsText()
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(html.contains("Episode Conversation"))
         assertTrue(html.contains(AppConfig.ROUTE_EPISODE_CONVERSATION))
-        assertTrue(html.contains(HTTP_AUTH_SESSION_SCRIPT_ROUTE))
+        assertTrue(html.contains("/assets/http-auth-session.js"))
         assertTrue(!html.contains("localStorage"))
         assertTrue(!html.contains("sessionStorage"))
     }

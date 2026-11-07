@@ -7,6 +7,7 @@ import com.homeassistant.application.port.inbound.chatservice.ChatService
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
+import io.ktor.server.http.content.staticResources
 import io.ktor.server.routing.routing
 
 fun Application.configureRoutes(
@@ -21,9 +22,8 @@ fun Application.configureRoutes(
     configureHttpAuthentication(httpApiKeys, authentication)
     routing {
         healthRoutes(readiness)
-        knowledgePageRoute()
-        episodeConversationPageRoute()
-        httpAuthAssetRoutes()
+        // The pages and their scripts under resources/static, served at their own paths without the .html suffix.
+        staticResources("/", "static") { extensions("html") }
         publicLoginRoutes(authentication)
         authenticate(*HTTP_AUTHENTICATION_NAMES) {
             sessionStatusRoute()

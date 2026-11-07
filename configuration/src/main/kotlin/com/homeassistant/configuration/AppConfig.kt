@@ -17,8 +17,6 @@ object AppConfig {
     const val DEFAULT_AGENT_TIMEOUT_SECONDS = 600L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"
     const val ROUTE_HEALTH              = "/health"
-    const val ROUTE_KNOWLEDGE_PAGE = "/knowledge"
-    const val ROUTE_EPISODE_CONVERSATION_PAGE = "/conversation"
     const val ROUTE_KNOWLEDGE_USERS = "/api/knowledge/users"
     const val ROUTE_KNOWLEDGE_IMPORT_ANALYZE = "/api/knowledge/import/analyze"
     const val ROUTE_EPISODE_CONVERSATION = "/api/episode/conversation"

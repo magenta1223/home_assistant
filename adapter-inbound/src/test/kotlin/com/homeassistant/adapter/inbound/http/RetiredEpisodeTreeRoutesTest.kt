@@ -18,14 +18,14 @@ class RetiredEpisodeTreeRoutesTest {
         }
         assertEquals(HttpStatusCode.NotFound, client.get("/episodes").status)
         assertEquals(HttpStatusCode.NotFound, client.get("/api/episode/tree").status)
-        val script = client.get(HTTP_AUTH_SESSION_SCRIPT_ROUTE)
+        val script = client.get("/assets/http-auth-session.js")
         assertEquals(HttpStatusCode.OK, script.status)
         assertContains(script.bodyAsText(), HTTP_LOGIN_ROUTE)
         assertFalse(script.bodyAsText().contains("localStorage"))
         for (path in listOf("/knowledge", "/conversation")) {
             val page = client.get(path)
             assertEquals(HttpStatusCode.OK, page.status)
-            assertContains(page.bodyAsText(), HTTP_AUTH_SESSION_SCRIPT_ROUTE)
+            assertContains(page.bodyAsText(), "/assets/http-auth-session.js")
             assertFalse(page.bodyAsText().contains("href=\"/episodes\""))
         }
     }

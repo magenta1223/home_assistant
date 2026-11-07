@@ -20,26 +20,15 @@ import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
-import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
 import io.ktor.server.request.receive
 import io.ktor.server.response.respond
-import io.ktor.server.response.respondText
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import kotlinx.serialization.Serializable
 import java.util.Base64
-
-internal fun Route.knowledgePageRoute() {
-    get(AppConfig.ROUTE_KNOWLEDGE_PAGE) {
-        val html = requireNotNull(javaClass.getResource("/knowledge.html")) {
-            "knowledge.html is missing"
-        }.readText()
-        call.respondText(html, ContentType.Text.Html)
-    }
-}
 
 internal fun Route.knowledgeInjectionRoutes(
     episodeAnalysis: EpisodeAnalysis,

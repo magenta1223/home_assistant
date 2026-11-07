@@ -47,12 +47,12 @@ class KnowledgeInjectionRoutesTest {
             configureRoutes(RecordingEpisodeAnalysis())
         }
 
-        val response = client.get(AppConfig.ROUTE_KNOWLEDGE_PAGE)
+        val response = client.get("/knowledge")
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.bodyAsText().contains("지식 주입"))
-        assertTrue(response.bodyAsText().contains(AppConfig.ROUTE_EPISODE_CONVERSATION_PAGE))
-        assertTrue(response.bodyAsText().contains(HTTP_AUTH_SESSION_SCRIPT_ROUTE))
+        assertTrue(response.bodyAsText().contains("/conversation"))
+        assertTrue(response.bodyAsText().contains("/assets/http-auth-session.js"))
         assertTrue(!response.bodyAsText().contains("localStorage"))
         assertTrue(!response.bodyAsText().contains("sessionStorage"))
     }

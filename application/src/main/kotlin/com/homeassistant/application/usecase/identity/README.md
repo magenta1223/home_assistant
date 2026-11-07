@@ -33,7 +33,7 @@ sequenceDiagram
     participant Auth as UserAuthenticationService
     participant Credentials as UserCredentialStore
     participant Hasher as PasswordHasher
-    participant Sessions as UserSessionStore
+    participant Sessions as UserSessionRepository
 
     Http->>Auth: signUp(name, password)
     Auth->>Hasher: hash(password)
@@ -44,12 +44,12 @@ sequenceDiagram
     Http->>Auth: login(name, password)
     Auth->>Credentials: findByName(name)
     Auth->>Hasher: matches(password, hash)
-    Auth->>Sessions: deleteExpired(now), save(세션 id 해시, userId, 만료)
+    Auth->>Sessions: deleteExpiredBy(now), save(세션 id 해시, userId, 만료)
     Auth-->>Http: LoginSession 또는 InvalidCredentialsException
 
     Http->>Auth: resolveSession(sessionId)
-    Auth->>Sessions: findUser(세션 id 해시, now)
-    Sessions-->>Auth: 만료 전이면 UserId
+    Auth->>Sessions: findUnexpired(세션 id 해시, now)
+    Sessions-->>Auth: 만료 전이면 StoredSession
     Auth-->>Http: UserId 또는 null
 ```
 

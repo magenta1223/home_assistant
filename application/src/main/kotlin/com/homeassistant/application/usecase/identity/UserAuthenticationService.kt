@@ -8,7 +8,7 @@ import com.homeassistant.application.port.outbound.identity.PasswordHasher
 import com.homeassistant.application.port.outbound.identity.StoredSession
 import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserRegistration
-import com.homeassistant.application.port.outbound.identity.UserSessionStore
+import com.homeassistant.application.port.outbound.identity.UserSessionRepository
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
@@ -21,7 +21,7 @@ import java.util.UUID
 /** Orchestrates registration and login over the credential, session and hashing ports. */
 class UserAuthenticationService(
     private val credentials: UserCredentialStore,
-    private val sessions: UserSessionStore,
+    private val sessions: UserSessionRepository,
     private val hasher: PasswordHasher,
     private val clock: () -> Long = System::currentTimeMillis,
 ) : UserAuthentication {
@@ -38,15 +38,15 @@ class UserAuthenticationService(
             ?.takeIf { hasher.matches(password, it.passwordHash) }
             ?: throw InvalidCredentialsException()
         val now = clock()
-        sessions.deleteExpired(now)
+        sessions.deleteExpiredBy(now)
         val sessionId = newSessionId()
         sessions.save(StoredSession(hash(sessionId), credential.userId, now + SESSION_LIFETIME.toMillis()))
         return LoginSession(sessionId, SESSION_LIFETIME)
     }
 
-    override fun logout(sessionId: String) = sessions.delete(hash(sessionId))
+    override fun logout(sessionId: String) = sessions.deleteByIdHash(hash(sessionId))
 
-    override fun resolveSession(sessionId: String): UserId? = sessions.findUser(hash(sessionId), clock())
+    override fun resolveSession(sessionId: String): UserId? = sessions.findUnexpired(hash(sessionId), clock())?.userId
 
     private fun newSessionId(): String {
         val bytes = ByteArray(SESSION_ID_BYTES).also(SecureRandom()::nextBytes)

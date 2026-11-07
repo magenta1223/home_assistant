@@ -6,7 +6,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeReposi
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
-import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
+import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
@@ -27,7 +27,7 @@ object RepositoryFactory {
             chatSessions = ChatSessionRepository(db),
             users = UserRepository(db),
             userCredentials = UserCredentialRepository(db),
-            userSessions = UserSessionRepository(db),
+            userSessions = UserSessionRepositoryImpl(db),
         )
     }
 }

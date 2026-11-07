@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
 import com.homeassistant.application.port.outbound.identity.UserCredentialStore
-import com.homeassistant.application.port.outbound.identity.UserSessionStore
+import com.homeassistant.application.port.outbound.identity.UserSessionRepository
 import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
@@ -23,5 +23,5 @@ data class RepositoryStores(
     val chatSessions: ChatSessionStore,
     val users: UserStore,
     val userCredentials: UserCredentialStore,
-    val userSessions: UserSessionStore,
+    val userSessions: UserSessionRepository,
 )

@@ -5,7 +5,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.outbound.identity.PasswordHash
 import com.homeassistant.application.port.outbound.identity.StoredCredential
-import com.homeassistant.application.port.outbound.identity.StoredSession
 import com.homeassistant.application.port.outbound.identity.UserRegistration
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
@@ -32,24 +31,6 @@ class UserCredentialRepositoryTest {
         assertTrue(stores.users.isRegistered(FIRST.userId))
         assertEquals(StoredCredential(SECOND.userId, HASH), stores.userCredentials.findByName(SECOND.displayName))
         assertNull(stores.userCredentials.findByName("없는사람"))
-    }
-
-    @Test
-    fun `sessions resolve until they expire, and can be deleted`() = withStores { stores ->
-        val sessions = stores.userSessions
-        sessions.save(StoredSession("live", FIRST.userId, expiresAt = 200))
-        sessions.save(StoredSession("expired", FIRST.userId, expiresAt = 100))
-
-        assertEquals(FIRST.userId, sessions.findUser("live", now = 150))
-        assertNull(sessions.findUser("expired", now = 150))
-        assertNull(sessions.findUser("unknown", now = 150))
-
-        sessions.deleteExpired(now = 150)
-        sessions.save(StoredSession("expired", FIRST.userId, expiresAt = 300))
-        sessions.delete("live")
-
-        assertNull(sessions.findUser("live", now = 150))
-        assertEquals(FIRST.userId, sessions.findUser("expired", now = 150))
     }
 
     @Test

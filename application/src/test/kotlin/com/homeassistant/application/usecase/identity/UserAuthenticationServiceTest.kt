@@ -8,10 +8,9 @@ import com.homeassistant.application.port.outbound.identity.StoredCredential
 import com.homeassistant.application.port.outbound.identity.StoredSession
 import com.homeassistant.application.port.outbound.identity.UserCredentialStore
 import com.homeassistant.application.port.outbound.identity.UserRegistration
-import com.homeassistant.application.port.outbound.identity.UserSessionStore
+import com.homeassistant.application.port.outbound.identity.UserSessionRepository
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
-import com.homeassistant.domain.identity.UserId
 import java.time.Duration
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -104,21 +103,21 @@ class UserAuthenticationServiceTest {
         override fun findByName(name: String) = users[name]
     }
 
-    private class InMemorySessions : UserSessionStore {
+    private class InMemorySessions : UserSessionRepository {
         val stored = mutableMapOf<String, StoredSession>()
 
-        override fun save(session: StoredSession) {
+        override fun findUnexpired(idHash: String, now: Long) = stored[idHash]?.takeIf { it.expiresAt > now }
+
+        override fun save(session: StoredSession): StoredSession {
             stored[session.idHash] = session
+            return session
         }
 
-        override fun findUser(idHash: String, now: Long): UserId? =
-            stored[idHash]?.takeIf { it.expiresAt > now }?.userId
-
-        override fun delete(idHash: String) {
+        override fun deleteByIdHash(idHash: String) {
             stored.remove(idHash)
         }
 
-        override fun deleteExpired(now: Long) {
+        override fun deleteExpiredBy(now: Long) {
             stored.values.removeIf { it.expiresAt <= now }
         }
     }

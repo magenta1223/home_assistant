@@ -16,14 +16,12 @@ import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbedd
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
-        val groups = GroupRepositoryImpl(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
             components = ComponentRepositoryImpl(db),
-            pendingComponents = groups,
             componentEmbeddings = ComponentEmbeddingRepository(db),
-            groups = groups,
+            groups = GroupRepositoryImpl(db),
             componentAssignmentOutbox = ComponentAssignmentOutboxRepository(db),
             episodeEmbeddings = EpisodeEmbeddingRepository(db),
             chatSessions = ChatSessionRepository(db),

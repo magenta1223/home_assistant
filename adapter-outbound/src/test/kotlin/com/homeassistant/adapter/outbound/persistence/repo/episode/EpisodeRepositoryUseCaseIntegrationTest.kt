@@ -51,7 +51,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             }
             val search = ComponentSearcher(
                 stores.components, stores.groups, texts, stores.episodes,
-                PrepareComponentEmbedding(stores.components, texts, stores.componentEmbeddings),
+                PrepareComponentEmbedding(texts, stores.componentEmbeddings),
                 UserAccessPolicy { it == member },
             )
 
@@ -77,7 +77,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             val before = stores.episodes.findVisibleTo(UserId("other"))
             val (component) = stores.components.save(EpisodeComponents(episode.id, listOf("fact")))
             assertEquals(access, component.access)
-            assertEquals(access, stores.components.findByIds(listOf(component.id)).single().access)
+            assertEquals(access, stores.components.findVisibleTo(UserId("other")).single().access)
             assertEquals(before, stores.episodes.findVisibleTo(UserId("other")))
         }
     }

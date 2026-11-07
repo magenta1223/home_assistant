@@ -119,9 +119,9 @@ class ComponentSearcherTest {
         var visible: Set<Int>? = null
 
         private val reader = object : ComponentRepository {
-            override fun findByIds(ids: Collection<Int>) = ids.mapNotNull { byId[it] }
             override fun findCovering(access: EpisodeAccess) = byId.values.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = byId.values.filter { it.isVisibleTo(userId) }
+            override fun findUngrouped(limit: Int) = error("search never places Components")
             override fun save(extraction: EpisodeComponents) = error("search never saves Components")
         }
         private val cache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
@@ -132,7 +132,6 @@ class ComponentSearcherTest {
             override fun embedQuery(text: String): EmbeddingVector { queries.add(text); return east }
         }
         private val componentEmbeddings = PrepareComponentEmbedding(
-            reader,
             embeddings,
             object : ComponentEmbeddingStore {
                 override fun find(key: ComponentEmbeddingKey) = cache[key]

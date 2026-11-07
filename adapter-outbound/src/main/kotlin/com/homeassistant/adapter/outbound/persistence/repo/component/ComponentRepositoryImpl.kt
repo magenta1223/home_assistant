@@ -4,6 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtract
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeViewerTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.GroupMembershipTable
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAccessCondition
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
@@ -16,14 +17,19 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
 import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepository {
-    override fun findByIds(ids: Collection<Int>): List<Component> = transaction(db) { withIds(ids) }
-
     override fun findCovering(access: EpisodeAccess): List<Component> = transaction(db) {
         fromEpisodes(EpisodeAccessCondition.covering(access))
     }
 
     override fun findVisibleTo(userId: UserId): List<Component> = transaction(db) {
         fromEpisodes(EpisodeAccessCondition.visibleTo(userId))
+    }
+
+    override fun findUngrouped(limit: Int): List<Component> = transaction(db) {
+        require(limit > 0)
+        components(ComponentTable.selectAll().where {
+            notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
+        }.limit(limit))
     }
 
     /** A second extraction of the same episode violates the extraction key and rolls back the whole write. */

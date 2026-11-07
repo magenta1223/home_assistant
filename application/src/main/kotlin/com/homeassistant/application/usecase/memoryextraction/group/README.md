@@ -2,28 +2,27 @@
 
 명시적으로 저장된 Component를 component로 사용해 Group을 생성·배치·분할한다.
 `OrganizeComponentIntoGroups.organize(component)`가 담당하며 inbound port가 아니다.
-`UpdateMemoryHierarchyService`가 회차마다 아직 Group에 없는 Component(`PendingComponentSource`)를 읽어 하나씩 부른다.
+`UpdateMemoryHierarchyService`가 회차마다 아직 Group에 없는 Component(`ComponentRepository.findUngrouped`)를 읽어 하나씩 부른다.
 
 ## 책임과 정상 흐름
 
 `OrganizeComponentIntoGroups`는 한 Component의 배치와 충돌 재시도, `PrepareComponentEmbedding`은 Component 벡터 버전과 규약에 맞는 벡터 재사용·생성을 담당한다.
-Group은 Component ID와 벡터 버전만 받는다. 벡터는 캐시에 없을 때 `PrepareComponentEmbedding`이 `ComponentRepository.findByIds`로 문장을 읽어 `EmbeddingGenerator.embedDocument`로 만든다.
+벡터는 캐시에 없을 때 `PrepareComponentEmbedding`이 받은 Component의 문장을 `EmbeddingGenerator.embedDocument`로 임베딩해 만든다.
 배치·분할 판단은 `domain/group/GroupOrganizationPlanner`가 순수 정책을 조합한다.
 Application은 provider·DB 타입을 참조하지 않고 output port를 호출한다.
 
 ```mermaid
 sequenceDiagram
     participant Update as UpdateMemoryHierarchyService
-    participant Pending as PendingComponentSource
+    participant Components as ComponentRepository
     participant One as OrganizeComponentIntoGroups
     participant Snapshots as GroupRepository
     participant Embedding as PrepareComponentEmbedding
     participant Cache as ComponentEmbeddingStore
-    participant Components as ComponentRepository
     participant Generator as EmbeddingGenerator
     participant Policy as GroupOrganizationPlanner
     participant Writer as GroupRepository
-    Update->>Pending: pending(limit)
+    Update->>Components: findUngrouped(limit)
     loop Component ID 순서, 최대 limit개
         Update->>One: organize(component)
         One->>Snapshots: findSnapshot()
@@ -31,7 +30,6 @@ sequenceDiagram
         One->>Embedding: prepare(component)
         Embedding->>Cache: find(key)
         opt 캐시 없음
-            Embedding->>Components: findByIds(id)
             Embedding->>Generator: embedDocument(statement)
             Embedding->>Cache: save(embedding)
         end

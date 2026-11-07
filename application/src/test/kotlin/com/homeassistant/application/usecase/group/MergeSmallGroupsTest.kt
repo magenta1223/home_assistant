@@ -10,7 +10,7 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
+import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.domain.group.*
@@ -54,10 +54,7 @@ class MergeSmallGroupsTest {
             reads++
             val embeddings = groups.values.flatten().associateWith {
                 Embedding(
-                    PendingComponent(
-                        it,
-                        "1"
-                    ).embeddingKey(space), east
+                    ComponentEmbeddingKey(it, "1", space), east
                 )
             }
             return GroupSnapshot(groups.map { (id, components) ->

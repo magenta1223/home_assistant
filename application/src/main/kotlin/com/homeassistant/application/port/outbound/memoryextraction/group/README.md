@@ -4,7 +4,6 @@
 
 | Port | 계약 |
 |---|---|
-| `PendingComponentSource` | Group 미소속 Component ID·벡터 버전을 ID 순서로 제한 조회 |
 | `ComponentEmbeddingStore` | key별 불변 벡터 저장; 요청 버전이 지난 벡터는 거절; 경쟁 생성 시 먼저 저장한 벡터 반환 |
 | `GroupRepository` | `findSnapshot`: 같은 DB snapshot의 Group 소속·revision·centroid·사용된 Component 벡터 조회 (조직·검색용, ACL 필터 없음). `findVisibleTo`: 사용자가 읽을 수 있는 소속만 남긴 Group과 저장된 중심 (검색용, 읽을 수 있는 소속이 없는 Group은 제외). `save`: 기존 Group 집합을 결과 Group 집합으로 원자 교체 |
 

@@ -22,11 +22,7 @@ internal class EmbeddingModule(repositories: RepositoryStores) {
     val episodeEmbeddings = PrepareEpisodeEmbedding(ollama, repositories.episodeEmbeddings)
 
     /** Provides stored or newly generated Component embeddings. */
-    val componentEmbeddings = PrepareComponentEmbedding(
-        repositories.components,
-        ollama,
-        repositories.componentEmbeddings,
-    )
+    val componentEmbeddings = PrepareComponentEmbedding(ollama, repositories.componentEmbeddings)
 
     /** The managed Ollama server. */
     val runtimes: List<Runtime> = listOf(ollama)

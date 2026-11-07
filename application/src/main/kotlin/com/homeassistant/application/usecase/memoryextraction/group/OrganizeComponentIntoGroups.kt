@@ -10,12 +10,12 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupR
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
+import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.group.*
 
 /**
- * Places one pending Component into a Group, splitting it when the planner says so, and retries on a fresh snapshot up to
+ * Places one ungrouped Component into a Group, splitting it when the planner says so, and retries on a fresh snapshot up to
  * [maxAttempts] times when a concurrent change wins the write.
  */
 class OrganizeComponentIntoGroups(
@@ -30,7 +30,7 @@ class OrganizeComponentIntoGroups(
      * Places [component] and returns the Groups it changed, or why nothing was written.
      * @throws GroupRebuildRequired when stored Group vectors are outdated or come from another embedding space or dimension.
      */
-    fun organize(component: PendingComponent): ComponentOrganizationOutcome {
+    fun organize(component: Component): ComponentOrganizationOutcome {
         val initial = groups.findSnapshot()
         validateSpace(initial)
         if (initial.embeddings.containsKey(component.id)) return ComponentOrganizationOutcome.AlreadyOrganized

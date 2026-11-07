@@ -33,7 +33,7 @@ class ComponentRepositoryTest {
 
         val expected = listOf(Component(saved[0].id, "first fact", episode, ab), Component(saved[1].id, "second fact", episode, ab))
         assertEquals(expected, saved)
-        assertEquals(expected.drop(1), ComponentRepositoryImpl(DatabaseFactory.init(path)).findByIds(listOf(saved[1].id)))
+        assertEquals(expected, ComponentRepositoryImpl(DatabaseFactory.init(path)).findVisibleTo(UserId("a")))
     }
 
     @Test
@@ -70,7 +70,6 @@ class ComponentRepositoryTest {
         assertFailsWith<IllegalArgumentException> { repository.save(EpisodeComponents(999, listOf("orphan"))) }
         assertEquals(listOf("fact"), repository.findCovering(EpisodeAccess.PUBLIC).map { it.statement })
         assertEquals(1L, transaction(db) { ComponentTable.selectAll().count() })
-        assertTrue(repository.findByIds(emptyList()).isEmpty())
     }
 
     private fun createEpisode(db: Database, name: String, access: EpisodeAccess = EpisodeAccess.PUBLIC): Int {

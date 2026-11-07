@@ -8,12 +8,12 @@ import com.homeassistant.application.port.inbound.memoryextraction.MemoryUpdateR
 import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemory
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
+import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
+import com.homeassistant.domain.component.Component
 import java.time.Clock
 import java.util.concurrent.CancellationException
 
@@ -24,7 +24,7 @@ import java.util.concurrent.CancellationException
  */
 class UpdateMemoryService(
     private val outbox: ComponentAssignmentOutbox,
-    private val pendingComponents: PendingComponentSource,
+    private val components: ComponentRepository,
     private val assignEpisode: AssignEpisodeToComponents,
     private val organizeComponent: OrganizeComponentIntoGroups,
     private val mergeSmallGroups: MergeSmallGroups,
@@ -51,12 +51,12 @@ class UpdateMemoryService(
 
     /** Places up to [batchSize] unplaced Components, stopping at the first [GroupRebuildRequired]. */
     private fun placeUnplacedComponents(batchSize: Int): Placement {
-        val components = mutableListOf<ComponentPlacementResult>()
+        val placed = mutableListOf<ComponentPlacementResult>()
         return try {
-            pendingComponents.pending(batchSize).mapTo(components) { ComponentPlacementResult(it.id, place(it)) }
-            Placement.Completed(components)
+            components.findUngrouped(batchSize).mapTo(placed) { ComponentPlacementResult(it.id, place(it)) }
+            Placement.Completed(placed)
         } catch (rebuild: GroupRebuildRequired) {
-            Placement.Stopped(components, rebuild.message.orEmpty())
+            Placement.Stopped(placed, rebuild.message.orEmpty())
         }
     }
 
@@ -86,7 +86,7 @@ class UpdateMemoryService(
     }
 
     /** Places [component]; a [GroupRebuildRequired] is rethrown because it affects every Component. */
-    private fun place(component: PendingComponent): ComponentPlacementOutcome {
+    private fun place(component: Component): ComponentPlacementOutcome {
         return runCatching { organizeComponent.organize(component) }
             .fold(
                 onSuccess = { organization -> ComponentPlacementOutcome.Placed(organization) },

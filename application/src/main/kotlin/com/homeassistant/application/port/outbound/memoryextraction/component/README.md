@@ -1,6 +1,7 @@
 # Component maintenance storage contract
 
-`ComponentRepository` finds Components by ids or by an access condition and saves the trusted ingestion write.
+`ComponentRepository` finds Components by an access condition or not yet in any Group, and saves the trusted
+ingestion write.
 Every access condition runs in the storage query, as the `EpisodeAccess` rules state it, so no caller filters what it
 has already read. Writes are never an external mutation API.
 Importing a restricted source may legitimately exclude the importing user from its audience; this internal boundary

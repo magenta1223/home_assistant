@@ -10,7 +10,6 @@ import com.homeassistant.domain.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.memoryextraction.group.pending
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.retrieval.BackboneSelection
 
@@ -33,7 +32,7 @@ class ComponentSearcher(
     fun search(userId: UserId, query: String): List<Component> {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
         val readable = components.findVisibleTo(userId)
-        val vectors = readable.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
+        val vectors = readable.associate { it.id to componentEmbeddings.prepare(it).vector }
         if (vectors.isEmpty()) return emptyList()
         val question = queries.embedQuery(query.trim())
         val withReadableSource = withReadableSource(userId, readable)

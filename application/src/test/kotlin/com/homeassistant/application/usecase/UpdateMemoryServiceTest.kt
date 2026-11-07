@@ -21,8 +21,6 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
@@ -91,7 +89,7 @@ class UpdateMemoryServiceTest {
         val fixture = Fixture(claimable = 0, unplaced = 2)
         fixture.snapshot = GroupSnapshot(
             listOf(StoredGroup(Group(4, setOf(9)), 1, VECTOR)),
-            mapOf(9 to Embedding(PendingComponent(9, "9").embeddingKey(EmbeddingSpace("old", "v1")), VECTOR)),
+            mapOf(9 to Embedding(ComponentEmbeddingKey(9, "9", EmbeddingSpace("old", "v1")), VECTOR)),
         )
         val update = assertIs<MemoryUpdateResult.RebuildRequired>(fixture.service.execute(20))
         assertTrue(update.components.isEmpty())
@@ -145,9 +143,9 @@ class UpdateMemoryServiceTest {
             override fun embedQuery(text: String) = VECTOR
         }
         private val componentRepository = object : ComponentRepository {
-            override fun findByIds(ids: Collection<Int>) = components.filter { it.id in ids }
             override fun findCovering(access: EpisodeAccess) = components.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
+            override fun findUngrouped(limit: Int) = error("assignment never places Components")
             override fun save(extraction: EpisodeComponents) = extraction.statements.map {
                 Component(components.size + 1, it, extraction.episodeId, EpisodeAccess.PUBLIC).also(components::add)
             }
@@ -155,7 +153,7 @@ class UpdateMemoryServiceTest {
         private val assignEpisode = AssignEpisodeToComponents(
             componentRepository,
             PrepareEpisodeEmbedding(texts, EpisodeCache()),
-            PrepareComponentEmbedding(componentRepository, texts, ComponentCache()),
+            PrepareComponentEmbedding(texts, ComponentCache()),
             ComponentExtractor { episode, _ ->
                 if (episode.id in failingEpisodes) error("model unavailable")
                 statements[episode.id].orEmpty()
@@ -163,9 +161,9 @@ class UpdateMemoryServiceTest {
         )
 
         private val unplacedComponents = object : ComponentRepository {
-            override fun findByIds(ids: Collection<Int>) = ids.map(::unplacedComponent)
             override fun findCovering(access: EpisodeAccess) = (1..unplaced).map(::unplacedComponent)
             override fun findVisibleTo(userId: UserId) = (1..unplaced).map(::unplacedComponent)
+            override fun findUngrouped(limit: Int) = (1..unplaced).map(::unplacedComponent)
             override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
         }
         private val groups = object : GroupRepository {
@@ -180,13 +178,11 @@ class UpdateMemoryServiceTest {
 
         val service = UpdateMemoryService(
             outbox = outbox,
-            pendingComponents = object : PendingComponentSource {
-                override fun pending(limit: Int) = (1..unplaced).map { PendingComponent(it, "$it") }
-            },
+            components = unplacedComponents,
             assignEpisode = assignEpisode,
             organizeComponent = OrganizeComponentIntoGroups(
                 groups,
-                PrepareComponentEmbedding(unplacedComponents, texts, ComponentCache()),
+                PrepareComponentEmbedding(texts, ComponentCache()),
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)),
             ),
             mergeSmallGroups = MergeSmallGroups(groups, GroupMergePolicy(settings)),

@@ -18,9 +18,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupC
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
-import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
@@ -54,7 +52,7 @@ class GroupRepositoryTest {
             listOf(record.id)))
         val components = ComponentRepositoryImpl(db)
         val ids = committed.map { components.save(EpisodeComponents(it.id, listOf("knowledge of ${it.content}"))).single().id }.toSet()
-        val beforeComponents = components.findByIds(ids)
+        val beforeComponents = components.findVisibleTo(user)
         val beforeEpisodes = episodes.findVisibleTo(user)
         val first = organizePending(db, 2, limit = 3)
         assertEquals(3, first.size)
@@ -69,7 +67,7 @@ class GroupRepositoryTest {
         assertEquals(ids, snapshot.groups.flatMap { it.group.componentIds }.toSet())
         assertEquals(ids.size, snapshot.groups.sumOf { it.group.componentIds.size })
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
-        assertEquals(beforeComponents, components.findByIds(ids))
+        assertEquals(beforeComponents, components.findVisibleTo(user))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
         val resubmitted = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
         assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
@@ -122,7 +120,7 @@ class GroupRepositoryTest {
                 it.copy(resultingGroups = it.resultingGroups.map { result -> result.copy(centroid = EmbeddingVector.normalized(listOf(0.0, 1.0))) })
             },
             change(incoming = setOf(999), parts = listOf(setOf(999)), embeddings =
-                mapOf(999 to Embedding(PendingComponent(999, "1").embeddingKey(space), vector))),
+                mapOf(999 to Embedding(ComponentEmbeddingKey(999, "1", space), vector))),
         )
         invalid.forEach { assertFailsWith<IllegalArgumentException> { repository.save(it) } }
         assertEquals(setOf(1), repository.findSnapshot().groups.single().group.componentIds)
@@ -149,11 +147,12 @@ class GroupRepositoryTest {
         repository.save(change(incoming = setOf(1, 2), parts = listOf(setOf(1, 2)), embeddings = embeddings))
         repository.save(change(incoming = setOf(3), parts = listOf(setOf(3)), embeddings = embeddings))
         val stored = repository.findSnapshot().groups
-        val components = ComponentRepositoryImpl(db).findByIds(embeddings.keys).associateBy { it.id }
+        val components = ComponentRepositoryImpl(db)
 
         listOf("a", "b", "c").map(::UserId).forEach { user ->
+            val readable = components.findVisibleTo(user).map { it.id }.toSet()
             val expected = stored.mapNotNull { group ->
-                val visible = group.group.componentIds.filter { components.getValue(it).isVisibleTo(user) }.toSet()
+                val visible = group.group.componentIds.filter { it in readable }.toSet()
                 if (visible.isEmpty()) null else group.copy(group = Group(group.group.id, visible))
             }
             assertEquals(expected, repository.findVisibleTo(user))
@@ -213,13 +212,7 @@ class GroupRepositoryTest {
         return episodes.associate { episode ->
             val statement = "knowledge of ${episode.content}"
             val id = components.save(EpisodeComponents(episode.id, listOf(statement))).single().id
-            id to store.save(
-                Embedding(
-                    PendingComponent(id, contentFingerprint(statement)).embeddingKey(
-                        space
-                    ), vector
-                )
-            )
+            id to store.save(Embedding(ComponentEmbeddingKey.of(id, statement, space), vector))
         }
     }
 
@@ -248,10 +241,10 @@ class GroupRepositoryTest {
         val settings = GroupPolicySettings(maxComponents = maxComponents)
         val organizer = OrganizeComponentIntoGroups(
             repository,
-            PrepareComponentEmbedding(ComponentRepositoryImpl(db), generator, ComponentEmbeddingRepository(db)),
+            PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
-        return repository.pending(limit).map(organizer::organize)
+        return ComponentRepositoryImpl(db).findUngrouped(limit).map(organizer::organize)
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

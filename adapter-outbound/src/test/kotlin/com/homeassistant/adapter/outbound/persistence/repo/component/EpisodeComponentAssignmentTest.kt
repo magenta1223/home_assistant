@@ -53,7 +53,7 @@ class EpisodeComponentAssignmentTest {
         assertEquals(listOf(
             Component(1, "보일러는 매년 가을에 점검한다", boiler, access),
             Component(2, "월세 이체일은 25일이다", rent, access),
-        ), ComponentRepositoryImpl(db).findByIds(listOf(1, 2)))
+        ), ComponentRepositoryImpl(db).findCovering(access))
         assertEquals(listOf(listOf(1), listOf(2)), first)
         assertEquals(setOf(1, 2), GroupRepositoryImpl(db).findSnapshot().groups.flatMap { it.group.componentIds }.toSet())
 
@@ -126,11 +126,7 @@ class EpisodeComponentAssignmentTest {
             override fun embedQuery(text: String) = vectors.getValue(text)
         }
         val episodeEmbeddings = PrepareEpisodeEmbedding(texts, EpisodeEmbeddingRepository(db))
-        val componentEmbeddings = PrepareComponentEmbedding(
-            store,
-            texts,
-            ComponentEmbeddingRepository(db)
-        )
+        val componentEmbeddings = PrepareComponentEmbedding(texts, ComponentEmbeddingRepository(db))
         val settings = GroupPolicySettings()
         val assign = AssignEpisodeToComponents(store, episodeEmbeddings, componentEmbeddings, extractor)
         val outbox = ComponentAssignmentOutboxRepository(db)
@@ -141,7 +137,7 @@ class EpisodeComponentAssignmentTest {
             groups, componentEmbeddings,
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
-        groups.pending(10).forEach(organizer::organize)
+        store.findUngrouped(10).forEach(organizer::organize)
         return assigned
     }
 

@@ -40,7 +40,7 @@ internal class MemoryExtractionModule(
 
     private val updateHierarchy = UpdateMemoryService(
         repositories.componentAssignmentOutbox,
-        repositories.pendingComponents,
+        repositories.components,
         AssignEpisodeToComponents(
             repositories.components,
             episodeEmbeddings,

@@ -5,7 +5,6 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.memoryextraction.group.pending
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.embedding.EmbeddingVector
 
@@ -32,7 +31,7 @@ class AssignEpisodeToComponents(
         val statements = extractor.extract(episode, knownNear(episode, vector))
             .map(String::trim).filter(String::isNotEmpty).distinct()
         val saved = components.save(EpisodeComponents(episode.id, statements))
-        saved.forEach { componentEmbeddings.prepare(it.pending()) }
+        saved.forEach { componentEmbeddings.prepare(it) }
         return saved.map { it.id }
     }
 
@@ -43,7 +42,7 @@ class AssignEpisodeToComponents(
     private fun knownNear(episode: PendingEpisode, vector: EmbeddingVector): List<String> {
         val known = components.findCovering(episode.access)
         if (known.isEmpty()) return emptyList()
-        val vectors = known.associate { it.id to componentEmbeddings.prepare(it.pending()).vector }
+        val vectors = known.associate { it.id to componentEmbeddings.prepare(it).vector }
         val statements = known.associate { it.id to it.statement }
         return EmbeddingGeometry.nearest(vector, vectors, knownLimit).map { statements.getValue(it.first) }
     }

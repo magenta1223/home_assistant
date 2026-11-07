@@ -11,8 +11,6 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupR
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.domain.group.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
@@ -22,19 +20,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 import org.sqlite.SQLiteErrorCode
 import org.sqlite.SQLiteException
 
-internal class GroupRepositoryImpl(private val db: Database) : PendingComponentSource, GroupRepository {
-    override fun pending(limit: Int): List<PendingComponent> = transaction(db) {
-        require(limit > 0)
-        ComponentTable.selectAll().where {
-            notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
-        }.orderBy(ComponentTable.id).limit(limit).map {
-            PendingComponent(
-                it[ComponentTable.id],
-                ComponentEmbeddingRepository.version(it)
-            )
-        }
-    }
-
+internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
     override fun findSnapshot(): GroupSnapshot = transaction(db) {
         val memberships = GroupMembershipTable.selectAll().toList()
         val keys = memberships.map { it[GroupMembershipTable.embeddingKey] }

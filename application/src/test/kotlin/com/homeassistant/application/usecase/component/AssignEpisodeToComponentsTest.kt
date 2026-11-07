@@ -91,9 +91,9 @@ class AssignEpisodeToComponentsTest {
             override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = episodeCache.getOrPut(embedding.key) { embedding }
         })
         private val componentRepository = object : ComponentRepository {
-            override fun findByIds(ids: Collection<Int>) = components.filter { it.id in ids }
             override fun findCovering(access: EpisodeAccess) = components.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
+            override fun findUngrouped(limit: Int) = error("assignment never places Components")
             override fun save(extraction: EpisodeComponents): List<Component> {
                 check(extracted.add(extraction.episodeId))
                 return extraction.statements.map {
@@ -102,7 +102,7 @@ class AssignEpisodeToComponentsTest {
             }
         }
         private val componentCache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
-        private val componentEmbeddings = PrepareComponentEmbedding(componentRepository, texts, object :
+        private val componentEmbeddings = PrepareComponentEmbedding(texts, object :
             ComponentEmbeddingStore {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: Embedding<ComponentEmbeddingKey>) = componentCache.getOrPut(embedding.key) { embedding }

@@ -1,8 +1,6 @@
 package com.homeassistant.application.usecase.group
 
 import com.homeassistant.domain.embedding.EmbeddingVector
-import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
-import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.domain.identity.UserId
@@ -15,7 +13,6 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupSnapshot
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupTarget
-import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
@@ -66,7 +63,7 @@ class OrganizeComponentIntoGroupsTest {
 
     @Test fun `model change is reported before any embedding or write`() {
         val fixture = Fixture()
-        val embedding = Embedding(PendingComponent(9, "9").embeddingKey(EmbeddingSpace("old", "v1")), vector)
+        val embedding = Embedding(ComponentEmbeddingKey(9, "9", EmbeddingSpace("old", "v1")), vector)
         fixture.snapshot = GroupSnapshot(listOf(StoredGroup(Group(4, setOf(9)), 1, vector)), mapOf(9 to embedding))
         assertFailsWith<GroupRebuildRequired> { fixture.organize(1) }
         assertEquals(0, fixture.generated)
@@ -77,7 +74,7 @@ class OrganizeComponentIntoGroupsTest {
         val fixture = Fixture()
         fixture.snapshot = GroupSnapshot(
             listOf(StoredGroup(Group(4, setOf(9)), 1, vector)),
-            mapOf(9 to Embedding(PendingComponent(9, "9").embeddingKey(space), vector))
+            mapOf(9 to Embedding(ComponentEmbeddingKey(9, "9", space), vector))
         )
         fixture.generate = { EmbeddingVector.normalized(listOf(1.0)) }
         assertFailsWith<GroupRebuildRequired> { fixture.organize(1) }
@@ -90,7 +87,7 @@ class OrganizeComponentIntoGroupsTest {
         val fixture = Fixture(maxComponents = 2)
         fixture.snapshot = GroupSnapshot(
             listOf(StoredGroup(Group(4, setOf(8, 9)), 7, vector)),
-            (8..9).associateWith { Embedding(PendingComponent(it, "$it").embeddingKey(space), vector) })
+            (8..9).associateWith { Embedding(ComponentEmbeddingKey(it, "$it", space), vector) })
         assertIs<GroupSplit.Divided>(assertIs<ComponentOrganizationOutcome.Organized>(fixture.organize(1)).split)
         val change = fixture.writes.single()
         assertEquals(mapOf(4 to 7L), change.expectedGroups)
@@ -107,12 +104,6 @@ class OrganizeComponentIntoGroupsTest {
         var generated = 0
         var generate: (String) -> EmbeddingVector = { vector }
         var write: (GroupChange) -> List<Group> = ::saved
-        private val components = object : ComponentRepository {
-            override fun findByIds(ids: Collection<Int>) = ids.map { Component(it, "$it", it, EpisodeAccess.PUBLIC) }
-            override fun findCovering(access: EpisodeAccess) = emptyList<Component>()
-            override fun findVisibleTo(userId: UserId) = emptyList<Component>()
-            override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
-        }
         private val generator = object : EmbeddingGenerator {
             override val space = this@OrganizeComponentIntoGroupsTest.space
             override fun isAvailable() = true
@@ -129,14 +120,14 @@ class OrganizeComponentIntoGroupsTest {
             override fun save(change: GroupChange): List<Group> { writes.add(change); return write(change) }
         }
         private val service = OrganizeComponentIntoGroups(
-            groups, PrepareComponentEmbedding(components, generator, store),
+            groups, PrepareComponentEmbedding(generator, store),
             GroupOrganizationPlanner(
                 GroupPlacementPolicy(GroupPolicySettings(maxComponents = maxComponents)),
                 GroupSplitPolicy(GroupPolicySettings(maxComponents = maxComponents))
             )
         )
 
-        fun organize(id: Int) = service.organize(PendingComponent(id, "$id"))
+        fun organize(id: Int) = service.organize(Component(id, "$id", id, EpisodeAccess.PUBLIC))
     }
 
     private fun saved(change: GroupChange) = change.resultingGroups.mapIndexed { index, result -> Group(10 + index, result.componentIds) }

@@ -57,13 +57,15 @@ sequenceDiagram
     actor User
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as EpisodeConversation
-    participant Sessions as EpisodeConversationSessionStore
+    participant Receipts as ChatReceiptRepository
+    participant Sessions as ChatSessionStore
     participant Context as EpisodeConversationContextSource
     participant Gateway as ConversationGateway
 
     User->>HTTP: question + requestId
     HTTP->>Conversation: answer(authenticated user, request key, question)
-    Conversation->>Sessions: claimRequest + lease(idle=10분)
+    Conversation->>Receipts: save(Claim)
+    Conversation->>Sessions: lease(idle=10분)
     Conversation->>Context: context(userId, question)
     opt 활성 session 없음 및 검색 결과 있음
         Conversation->>Gateway: begin()
@@ -73,7 +75,7 @@ sequenceDiagram
         Conversation->>Gateway: continueConversation(conversationId, prompt)
         Gateway-->>Conversation: answer
     end
-    Conversation->>Sessions: markAnswerReady
+    Conversation->>Receipts: save(AnswerReady)
     Conversation-->>HTTP: AnswerReady / AlreadyHandled / Failed
     HTTP-->>User: HTTP response
 ```

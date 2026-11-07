@@ -3,6 +3,7 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.inbound.chatservice.Chat
+import com.homeassistant.application.port.outbound.chatgateway.StaleProcessingFailure
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
@@ -50,11 +51,11 @@ internal class ChatModule(
     /** Fails chats a previous run left processing, then serves chats with memory context. */
     private fun memoryBackedChat(gateway: AgentChatGateway): Chat {
         val now = System.currentTimeMillis()
-        repositories.chatSessions.failStaleProcessing(
-            before = now - ChatService.SESSION_IDLE_TIMEOUT_MILLIS,
-            now = now,
+        repositories.chatReceipts.save(
+            StaleProcessingFailure(before = now - ChatService.SESSION_IDLE_TIMEOUT_MILLIS, now = now),
         )
         return ChatService(
+            receipts = repositories.chatReceipts,
             sessions = repositories.chatSessions,
             contextSource = ContextAssembler(listOf(MemoryContextProvider(componentSearcher(), episodeSearcher()))),
             chatGateway = gateway,

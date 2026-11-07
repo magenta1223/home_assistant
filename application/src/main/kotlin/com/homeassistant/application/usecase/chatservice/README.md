@@ -9,16 +9,17 @@
 sequenceDiagram
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as HandleEpisodeConversation
-    participant Sessions as EpisodeConversationSessionStore
+    participant Receipts as ChatReceiptRepository
+    participant Sessions as ChatSessionStore
     participant Context as EpisodeConversationContextSource
     participant Prompt as EpisodeConversationPromptBuilder
     participant Gateway as ConversationGateway
 
     HTTP->>Conversation: answer(request)
-    Conversation->>Sessions: claimRequest(requestKey)
-    alt 이미 처리 중이거나 처리됨
-        Conversation->>Sessions: receipt(requestKey)
-        Sessions-->>Conversation: 기존 receipt
+    Conversation->>Receipts: save(Claim(requestKey))
+    alt ChatReceiptConflict: 이미 처리 중이거나 처리됨
+        Conversation->>Receipts: findByKey(requestKey)
+        Receipts-->>Conversation: 기존 receipt
         Conversation-->>HTTP: 기존 AnswerReady 또는 AlreadyHandled
     else 새 요청 claim
         Conversation->>Sessions: lease(participant, idle=10분)
@@ -28,22 +29,25 @@ sequenceDiagram
         end
         Conversation->>Context: context(userId, question)
         alt 읽을 수 있는 Component 없음
-            Conversation->>Sessions: markAnswerReady(고정 no-match 답변)
+            Conversation->>Receipts: save(AnswerReady(고정 no-match 답변))
             Conversation-->>HTTP: AnswerReady
         else context 존재
             Conversation->>Prompt: build(reference, question)
             alt 활성 session 없음
                 Conversation->>Gateway: begin()
                 Gateway-->>Conversation: conversationId
-                Conversation->>Sessions: createAndActivate + attachSession
+                Conversation->>Sessions: createAndActivate
+                Conversation->>Receipts: save(AttachSession)
             end
             Conversation->>Gateway: continueConversation(conversationId, prompt)
             alt turn 성공
-                Conversation->>Sessions: touch + markAnswerReady
+                Conversation->>Sessions: touch
+                Conversation->>Receipts: save(AnswerReady)
                 Conversation-->>HTTP: AnswerReady
             else turn 실패
                 Conversation->>Gateway: end(conversationId)
-                Conversation->>Sessions: markFailed + clearActive
+                Conversation->>Sessions: clearActive
+                Conversation->>Receipts: save(Fail)
                 Conversation-->>HTTP: Failed
             end
         end
@@ -56,7 +60,7 @@ sequenceDiagram
 sequenceDiagram
     participant Worker as EpisodeConversationExpiryWorker
     participant Expiry as ExpireIdleEpisodeConversations
-    participant Sessions as EpisodeConversationSessionStore
+    participant Sessions as ChatSessionStore
     participant Gateway as ConversationGateway
 
     loop 짧은 주기

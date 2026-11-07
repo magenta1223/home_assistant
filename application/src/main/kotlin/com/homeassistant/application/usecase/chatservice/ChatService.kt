@@ -7,6 +7,9 @@ import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptChange
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConflict
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
@@ -22,6 +25,7 @@ import java.time.Duration
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
 class ChatService(
+    private val receipts: ChatReceiptRepository,
     private val sessions: ChatSessionStore,
     private val contextSource: ContextSource,
     private val chatGateway: ChatGateway,
@@ -31,7 +35,13 @@ class ChatService(
 
     override fun answer(request: ChatRequest): ChatResult {
         // TODO: ORCHESTRATION
-        sessions.claimRequest(request.key, now()) ?: return existingResult(request.key)
+        runCatching { receipts.save(ChatReceiptChange.Claim(request.key, now())) }.fold(
+            onSuccess = {},
+            onFailure = { error ->
+                if (error !is ChatReceiptConflict) throw error
+                return existingResult(request.key)
+            },
+        )
 
         val active = when (val lease = sessions.lease(request.userId, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
             is ChatSessionLease.Active -> lease.session
@@ -50,7 +60,7 @@ class ChatService(
                 error.javaClass.simpleName,
                 elapsedMillis(contextStartedAt),
             )
-            sessions.markFailed(request.key, now())
+            receipts.save(ChatReceiptChange.Fail(request.key, now()))
             return ChatResult.Failed
         }
         log.info(
@@ -75,7 +85,7 @@ class ChatService(
         return when (result) {
             ChatGatewayResult.Failure -> {
                 chatGateway.end(session.chatId)
-                sessions.markFailed(request.key, now())
+                receipts.save(ChatReceiptChange.Fail(request.key, now()))
                 sessions.clearActive(request.userId)
                 ChatResult.Failed
             }
@@ -87,7 +97,7 @@ class ChatService(
     }
 
     private fun existingResult(key: ChatRequestKey): ChatResult {
-        val receipt = sessions.receipt(key) ?: return ChatResult.AlreadyHandled
+        val receipt = receipts.findByKey(key) ?: return ChatResult.AlreadyHandled
         return if (receipt.status == ChatRequestStatus.ANSWER_READY) {
             receipt.answerText
                 ?.takeIf(String::isNotBlank)
@@ -102,7 +112,7 @@ class ChatService(
         key: ChatRequestKey,
         answer: String,
     ): ChatResult.AnswerReady {
-        sessions.markAnswerReady(key, answer, now())
+        receipts.save(ChatReceiptChange.AnswerReady(key, answer, now()))
         return ChatResult.AnswerReady(answer)
     }
 
@@ -111,7 +121,7 @@ class ChatService(
         return try {
             chatId = chatGateway.begin().getOrThrow()
             sessions.createAndActivate(request.userId, chatId, now()).also { session ->
-                sessions.attachSession(request.key, session.id, now())
+                receipts.save(ChatReceiptChange.AttachSession(request.key, session.id, now()))
             }
         } catch (error: Exception) {
             log.warn("Episode conversation session start failed category={}", error.javaClass.simpleName)
@@ -119,7 +129,7 @@ class ChatService(
                 chatGateway.end(it)
                 sessions.clearActive(request.userId)
             }
-            sessions.markFailed(request.key, now())
+            receipts.save(ChatReceiptChange.Fail(request.key, now()))
             null
         }
     }

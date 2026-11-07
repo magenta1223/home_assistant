@@ -1,10 +1,8 @@
 package com.homeassistant.application.usecase.episode.chat
 
-import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
@@ -57,11 +55,6 @@ class ExpireIdleConversationsTest {
             return expired
         }
 
-        override fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt? = error("unused")
-        override fun receipt(key: ChatRequestKey): ChatReceipt? = error("unused")
-        override fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long) = error("unused")
-        override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) = error("unused")
-        override fun markFailed(key: ChatRequestKey, now: Long) = error("unused")
         override fun createAndActivate(
             userId: UserId,
             chatId: ChatId,
@@ -74,7 +67,6 @@ class ExpireIdleConversationsTest {
         ): ChatSessionLease = error("unused")
         override fun clearActive(userId: UserId) = error("unused")
         override fun touch(userId: UserId, sessionId: Int, now: Long) = error("unused")
-        override fun failStaleProcessing(before: Long, now: Long): Int = error("unused")
     }
 
     private companion object {

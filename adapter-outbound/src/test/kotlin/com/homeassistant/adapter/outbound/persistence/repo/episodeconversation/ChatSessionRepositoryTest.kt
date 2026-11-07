@@ -1,39 +1,27 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
-import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertNotNull
-import kotlin.test.assertNull
 import kotlin.test.assertIs
 
 class ChatSessionRepositoryTest {
     @Test
-    fun `persists request answers and active conversation state`() {
+    fun `leases the active conversation of its user`() {
         val databasePath = Files.createTempFile("episode-conversation", ".db")
         try {
             val store = RepositoryFactory.create(databasePath.toString()).chatSessions
 
-            assertNotNull(store.claimRequest(KEY, 100))
-            assertNull(store.claimRequest(KEY, 101))
-            val session = store.createAndActivate(USER_ID, ChatId("thread-1"), 102)
-            store.attachSession(KEY, session.id, 103)
-            store.markAnswerReady(KEY, "answer", 104)
+            store.createAndActivate(USER_ID, ChatId("thread-1"), 102)
 
-            val ready = store.receipt(KEY)
-            assertEquals(ChatRequestStatus.ANSWER_READY, ready?.status)
-            assertEquals("answer", ready?.answerText)
             val lease = assertIs<ChatSessionLease.Active>(
                 store.lease(USER_ID, 105, 600_000),
             )
             assertEquals(ChatId("thread-1"), lease.session.chatId)
-
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -71,6 +59,5 @@ class ChatSessionRepositoryTest {
 
     private companion object {
         val USER_ID = UserId("member-1")
-        val KEY = ChatRequestKey(USER_ID, "request-1")
     }
 }

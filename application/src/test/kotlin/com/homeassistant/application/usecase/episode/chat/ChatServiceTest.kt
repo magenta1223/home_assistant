@@ -7,10 +7,14 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
 import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptChange
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConflict
+import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.StaleProcessingFailure
 import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
 import com.homeassistant.application.usecase.chatservice.ChatService
@@ -41,15 +45,15 @@ class ChatServiceTest {
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
         assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
-        assertEquals(ChatRequestStatus.ANSWER_READY, store.receipt(REQUEST.key)?.status)
+        assertEquals(ChatRequestStatus.ANSWER_READY, store.findByKey(REQUEST.key)?.status)
 
     }
 
     @Test
     fun `returns a stored answer without invoking the model again`() {
         val store = RecordingSessionStore().apply {
-            claimRequest(REQUEST.key, NOW)
-            markAnswerReady(REQUEST.key, "stored answer", NOW)
+            save(ChatReceiptChange.Claim(REQUEST.key, NOW))
+            save(ChatReceiptChange.AnswerReady(REQUEST.key, "stored answer", NOW))
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ -> error("context must not be rebuilt") }
@@ -198,7 +202,7 @@ class ChatServiceTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(null, client.executedThreadId)
-        assertEquals(ChatRequestStatus.FAILED, store.receipt(REQUEST.key)?.status)
+        assertEquals(ChatRequestStatus.FAILED, store.findByKey(REQUEST.key)?.status)
     }
 
     @Test
@@ -223,6 +227,7 @@ class ChatServiceTest {
         client: RecordingChatGateway,
         chatContext: (UserId, String) -> ChatContext,
     ) = ChatService(
+        receipts = store,
         sessions = store,
         contextSource = ContextSource(chatContext),
         chatGateway = client,
@@ -265,38 +270,39 @@ class ChatServiceTest {
     private class RecordingSessionStore(
         private val failAttachSession: Boolean = false,
         private val events: MutableList<String>? = null,
-    ) : ChatSessionStore {
+    ) : ChatSessionStore, ChatReceiptRepository {
         private val receipts = mutableMapOf<ChatRequestKey, ChatReceipt>()
         private val activeSessions = mutableMapOf<UserId, ChatSession>()
         private var nextSessionId = 1
 
-        override fun claimRequest(key: ChatRequestKey, now: Long): ChatReceipt? {
-            if (key in receipts) return null
-            return receipt(key, ChatRequestStatus.PROCESSING, now).also { receipts[key] = it }
+        override fun findByKey(key: ChatRequestKey): ChatReceipt? = receipts[key]
+
+        override fun save(change: ChatReceiptChange): ChatReceipt {
+            val receipt = when (change) {
+                is ChatReceiptChange.Claim -> {
+                    if (change.key in receipts) throw ChatReceiptConflict(change.key)
+                    ChatReceipt(change.key, ChatRequestStatus.PROCESSING, createdAt = change.now, updatedAt = change.now)
+                }
+                is ChatReceiptChange.AttachSession -> {
+                    events?.add("attachSession")
+                    if (failAttachSession) error("attach failed")
+                    receipts.getValue(change.key).copy(sessionId = change.sessionId, updatedAt = change.now)
+                }
+                is ChatReceiptChange.AnswerReady -> receipts.getValue(change.key).copy(
+                    status = ChatRequestStatus.ANSWER_READY,
+                    answerText = change.answer,
+                    updatedAt = change.now,
+                )
+                is ChatReceiptChange.Fail -> receipts.getValue(change.key).copy(
+                    status = ChatRequestStatus.FAILED,
+                    updatedAt = change.now,
+                )
+            }
+            receipts[change.key] = receipt
+            return receipt
         }
 
-        override fun receipt(key: ChatRequestKey): ChatReceipt? = receipts[key]
-
-        override fun attachSession(key: ChatRequestKey, sessionId: Int, now: Long) {
-            events?.add("attachSession")
-            if (failAttachSession) error("attach failed")
-            receipts[key] = receipts.getValue(key).copy(sessionId = sessionId, updatedAt = now)
-        }
-
-        override fun markAnswerReady(key: ChatRequestKey, answer: String, now: Long) {
-            receipts[key] = receipts.getValue(key).copy(
-                status = ChatRequestStatus.ANSWER_READY,
-                answerText = answer,
-                updatedAt = now,
-            )
-        }
-
-        override fun markFailed(key: ChatRequestKey, now: Long) {
-            receipts[key] = receipts.getValue(key).copy(
-                status = ChatRequestStatus.FAILED,
-                updatedAt = now,
-            )
-        }
+        override fun save(failure: StaleProcessingFailure): List<ChatReceipt> = error("unused")
 
         override fun createAndActivate(
             userId: UserId,
@@ -341,19 +347,6 @@ class ChatServiceTest {
             expired.forEach { activeSessions.remove(it.userId) }
             return expired
         }
-
-        override fun failStaleProcessing(before: Long, now: Long): Int = 0
-
-        private fun receipt(
-            key: ChatRequestKey,
-            status: ChatRequestStatus,
-            now: Long,
-        ) = ChatReceipt(
-            key = key,
-            status = status,
-            createdAt = now,
-            updatedAt = now,
-        )
     }
 
     private companion object {

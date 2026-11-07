@@ -2,15 +2,10 @@ package com.homeassistant.application.usecase.chatservice
 
 import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
-import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptChange
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConflict
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
-import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionConflict
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
@@ -29,7 +24,6 @@ import java.time.Duration
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
 class ChatService(
-    private val receipts: ChatReceiptRepository,
     private val sessions: ChatSessionRepository,
     private val contextSource: ContextSource,
     private val chatGateway: ChatGateway,
@@ -39,14 +33,6 @@ class ChatService(
 
     override fun answer(request: ChatRequest): ChatResult {
         // TODO: ORCHESTRATION
-        runCatching { receipts.save(ChatReceiptChange.Claim(request.key, now())) }.fold(
-            onSuccess = {},
-            onFailure = { error ->
-                if (error !is ChatReceiptConflict) throw error
-                return existingResult(request.key)
-            },
-        )
-
         val active = resumeActiveSession(request.userId)
         val contextStartedAt = System.nanoTime()
         val context = try {
@@ -57,7 +43,6 @@ class ChatService(
                 error.javaClass.simpleName,
                 elapsedMillis(contextStartedAt),
             )
-            receipts.save(ChatReceiptChange.Fail(request.key, now()))
             return ChatResult.Failed
         }
         log.info(
@@ -66,7 +51,7 @@ class ChatService(
             context.hasMatches,
             if (active == null) "start" else "resume",
         )
-        if (!context.hasMatches) return answerReady(request.key, NO_MATCH_ANSWER)
+        if (!context.hasMatches) return ChatResult.AnswerReady(NO_MATCH_ANSWER)
 
         val prompt = ChatPromptBuilder.build(context.reference, request.question)
         val session = active ?: createSession(request) ?: return ChatResult.Failed
@@ -82,34 +67,13 @@ class ChatService(
         return when (result) {
             ChatGatewayResult.Failure -> {
                 release(session)
-                receipts.save(ChatReceiptChange.Fail(request.key, now()))
-                ChatResult.Failed
+                    ChatResult.Failed
             }
             is ChatGatewayResult.Success -> {
                 renew(session)
-                answerReady(request.key, result.answer)
+                ChatResult.AnswerReady(result.answer)
             }
         }
-    }
-
-    private fun existingResult(key: ChatRequestKey): ChatResult {
-        val receipt = receipts.findByKey(key) ?: return ChatResult.AlreadyHandled
-        return if (receipt.status == ChatRequestStatus.ANSWER_READY) {
-            receipt.answerText
-                ?.takeIf(String::isNotBlank)
-                ?.let(ChatResult::AnswerReady)
-                ?: ChatResult.AlreadyHandled
-        } else {
-            ChatResult.AlreadyHandled
-        }
-    }
-
-    private fun answerReady(
-        key: ChatRequestKey,
-        answer: String,
-    ): ChatResult.AnswerReady {
-        receipts.save(ChatReceiptChange.AnswerReady(key, answer, now()))
-        return ChatResult.AnswerReady(answer)
     }
 
     /** The user's active session renewed now, or null when there is none; an idle one is released instead. */
@@ -138,34 +102,24 @@ class ChatService(
             .forEach { chatGateway.end(it.chatId) }
     }
 
-    /** A new provider chat made the user's active session and attached to the request, or null when that failed. */
+    /** A new provider chat made the user's active session, or null when that failed. */
     private fun createSession(request: ChatRequest): ChatSession? =
         chatGateway.begin().fold(
-            onSuccess = { chatId -> activate(request, chatId) },
-            onFailure = { error -> failSessionStart(request.key, error) },
+            onSuccess = { chatId -> activate(request.userId, chatId) },
+            onFailure = ::failSessionStart,
         )
 
-    private fun activate(request: ChatRequest, chatId: ChatId): ChatSession? =
-        runCatching { sessions.save(ChatSessionStart(request.userId, chatId, now())) }.fold(
-            onSuccess = { session -> attach(request.key, session) },
+    private fun activate(userId: UserId, chatId: ChatId): ChatSession? =
+        runCatching { sessions.save(ChatSessionStart(userId, chatId, now())) }.fold(
+            onSuccess = { it },
             onFailure = { error ->
                 chatGateway.end(chatId)
-                failSessionStart(request.key, error)
+                failSessionStart(error)
             },
         )
 
-    private fun attach(key: ChatRequestKey, session: ChatSession): ChatSession? =
-        runCatching { receipts.save(ChatReceiptChange.AttachSession(key, session.id, now())) }.fold(
-            onSuccess = { session },
-            onFailure = { error ->
-                release(session)
-                failSessionStart(key, error)
-            },
-        )
-
-    private fun failSessionStart(key: ChatRequestKey, error: Throwable): ChatSession? {
+    private fun failSessionStart(error: Throwable): ChatSession? {
         log.warn("Episode conversation session start failed category={}", error.javaClass.simpleName)
-        receipts.save(ChatReceiptChange.Fail(key, now()))
         return null
     }
 

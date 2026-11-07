@@ -13,7 +13,6 @@ import io.ktor.server.routing.post
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import java.util.UUID
 
 internal fun Route.chatRoutes(
     episodeChat: Chat?,
@@ -34,10 +33,9 @@ internal fun Route.chatRoutes(
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid request"))
             return@post
         }
-        val requestId = request.requestId.trim()
         val question = request.question.trim()
-        if (!isUuid(requestId) || question.isEmpty() || question.length > MAX_QUESTION_LENGTH) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "valid requestId and question are required"))
+        if (question.isEmpty() || question.length > MAX_QUESTION_LENGTH) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "question is required"))
             return@post
         }
 
@@ -46,7 +44,6 @@ internal fun Route.chatRoutes(
             episodeChat.answer(
                 ChatRequest(
                     userId = userId,
-                    requestId = requestId,
                     question = question,
                 ),
             )
@@ -56,10 +53,6 @@ internal fun Route.chatRoutes(
                 HttpStatusCode.OK,
                 HttpChatResponse(answer = result.answer),
             )
-            ChatResult.AlreadyHandled -> call.respond(
-                HttpStatusCode.Conflict,
-                mapOf("error" to "request already handled"),
-            )
             ChatResult.Failed -> call.respond(
                 HttpStatusCode.ServiceUnavailable,
                 mapOf("error" to "episode conversation unavailable"),
@@ -68,12 +61,8 @@ internal fun Route.chatRoutes(
     }
 }
 
-private fun isUuid(value: String): Boolean =
-    runCatching { UUID.fromString(value).toString() == value.lowercase() }.getOrDefault(false)
-
 @Serializable
 internal data class HttpChatRequest(
-    val requestId: String,
     val question: String,
 )
 

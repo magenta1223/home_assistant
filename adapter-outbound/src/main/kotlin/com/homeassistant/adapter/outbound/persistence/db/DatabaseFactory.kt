@@ -24,7 +24,6 @@ internal object DatabaseFactory {
                 ComponentAssignmentOutboxTable,
                 ChatSessionTable,
                 ActiveChatSessionTable,
-                ChatReceiptTable,
                 UserTable,
                 UserCredentialTable,
                 UserSessionTable,

@@ -56,7 +56,6 @@ class ChatRoutesTest {
             contentType(ContentType.Application.Json)
             setBody(
                 """{
-                  "requestId":"$REQUEST_ID",
                   "question":" 무엇을 기억하고 있어? ",
                   "userId":"intruder"
                 }""".trimIndent(),
@@ -67,7 +66,6 @@ class ChatRoutesTest {
         assertTrue(response.bodyAsText().contains("기억 기반 답변"))
         val captured = conversation.requests.single()
         assertEquals(UserId("member-1"), captured.userId)
-        assertEquals(REQUEST_ID, captured.requestId)
         assertEquals("무엇을 기억하고 있어?", captured.question)
     }
 
@@ -90,8 +88,8 @@ class ChatRoutesTest {
             )
         }
 
-        postConversation(API_TOKEN, REQUEST_ID)
-        postConversation(SECOND_API_TOKEN, SECOND_REQUEST_ID)
+        postConversation(API_TOKEN)
+        postConversation(SECOND_API_TOKEN)
 
         assertEquals(listOf(UserId("member-1"), UserId("member-2")), conversation.requests.map { it.userId })
     }
@@ -106,7 +104,7 @@ class ChatRoutesTest {
             HttpStatusCode.Unauthorized,
             client.post(AppConfig.ROUTE_EPISODE_CONVERSATION) {
                 contentType(ContentType.Application.Json)
-                setBody("""{"requestId":"$REQUEST_ID","question":"질문"}""")
+                setBody("""{"question":"질문"}""")
             }.status,
         )
     }
@@ -119,17 +117,8 @@ class ChatRoutesTest {
 
         assertEquals(
             HttpStatusCode.ServiceUnavailable,
-            postConversation(API_TOKEN, REQUEST_ID).status,
+            postConversation(API_TOKEN).status,
         )
-    }
-
-    @Test
-    fun `already handled request returns conflict`() = testApplication {
-        application {
-            configureTestRoutes(RecordingChat(ChatResult.AlreadyHandled))
-        }
-
-        assertEquals(HttpStatusCode.Conflict, postConversation(API_TOKEN, REQUEST_ID).status)
     }
 
     @Test
@@ -138,11 +127,11 @@ class ChatRoutesTest {
             configureTestRoutes(RecordingChat(ChatResult.Failed))
         }
 
-        assertEquals(HttpStatusCode.ServiceUnavailable, postConversation(API_TOKEN, REQUEST_ID).status)
+        assertEquals(HttpStatusCode.ServiceUnavailable, postConversation(API_TOKEN).status)
     }
 
     @Test
-    fun `invalid request id is rejected before conversation`() = testApplication {
+    fun `blank question is rejected before conversation`() = testApplication {
         val conversation = RecordingChat(ChatResult.AnswerReady("unused"))
         application {
             configureTestRoutes(conversation)
@@ -151,7 +140,7 @@ class ChatRoutesTest {
         val response = client.post(AppConfig.ROUTE_EPISODE_CONVERSATION) {
             bearerAuth(API_TOKEN)
             contentType(ContentType.Application.Json)
-            setBody("""{"requestId":"not-a-uuid","question":"질문"}""")
+            setBody("""{"question":"  "}""")
         }
 
         assertEquals(HttpStatusCode.BadRequest, response.status)
@@ -172,12 +161,11 @@ class ChatRoutesTest {
 
     private suspend fun io.ktor.server.testing.ApplicationTestBuilder.postConversation(
         token: String,
-        requestId: String,
     ) =
         client.post(AppConfig.ROUTE_EPISODE_CONVERSATION) {
             bearerAuth(token)
             contentType(ContentType.Application.Json)
-            setBody("""{"requestId":"$requestId","question":"질문"}""")
+            setBody("""{"question":"질문"}""")
         }
 
     private class RecordingChat(
@@ -205,7 +193,5 @@ class ChatRoutesTest {
     private companion object {
         const val API_TOKEN = "test-token"
         const val SECOND_API_TOKEN = "second-test-token"
-        const val REQUEST_ID = "b2cbfbff-cdb2-441d-882f-75313ac0f7ff"
-        const val SECOND_REQUEST_ID = "20e4c3f1-563e-4829-b9cf-71a0a7df8359"
     }
 }

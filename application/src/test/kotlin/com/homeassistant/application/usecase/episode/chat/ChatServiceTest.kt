@@ -1,23 +1,16 @@
 package com.homeassistant.application.usecase.episode.chat
 
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
-import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptChange
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConflict
-import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
-import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionConflict
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
-import com.homeassistant.application.port.outbound.chatgateway.StaleProcessingFailure
 import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
 import com.homeassistant.application.usecase.chatservice.ChatService
@@ -33,7 +26,7 @@ import kotlin.test.assertTrue
 
 class ChatServiceTest {
     @Test
-    fun `builds and stores an answer for HTTP request retries`() {
+    fun `answers from saved episodes in a new provider chat`() {
         val events = mutableListOf<String>()
         val store = RecordingSessionStore(events = events)
         val client = RecordingChatGateway(events = events)
@@ -48,24 +41,7 @@ class ChatServiceTest {
         assertEquals(ChatResult.AnswerReady("grounded answer"), result)
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
-        assertEquals(listOf("begin", "start", "attachSession", "continue"), events)
-        assertEquals(ChatRequestStatus.ANSWER_READY, store.findByKey(REQUEST.key)?.status)
-
-    }
-
-    @Test
-    fun `returns a stored answer without invoking the model again`() {
-        val store = RecordingSessionStore().apply {
-            save(ChatReceiptChange.Claim(REQUEST.key, NOW))
-            save(ChatReceiptChange.AnswerReady(REQUEST.key, "stored answer", NOW))
-        }
-        val client = RecordingChatGateway()
-        val handler = handler(store, client) { _, _ -> error("context must not be rebuilt") }
-
-        val result = handler.answer(REQUEST)
-
-        assertEquals(ChatResult.AnswerReady("stored answer"), result)
-        assertEquals(null, client.executedPrompt)
+        assertEquals(listOf("begin", "start", "continue"), events)
     }
 
     @Test
@@ -147,21 +123,18 @@ class ChatServiceTest {
         handler.answer(
             ChatRequest(
                 secondUser,
-                "request-1",
                 "question",
             ),
         )
         handler.answer(
             ChatRequest(
                 USER_ID,
-                "request-2",
                 "follow up",
             ),
         )
         handler.answer(
             ChatRequest(
                 secondUser,
-                "request-2",
                 "follow up",
             ),
         )
@@ -214,12 +187,11 @@ class ChatServiceTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(null, client.executedThreadId)
-        assertEquals(ChatRequestStatus.FAILED, store.findByKey(REQUEST.key)?.status)
     }
 
     @Test
-    fun `ends a created thread when session attachment fails`() {
-        val store = RecordingSessionStore(failAttachSession = true)
+    fun `ends a created thread when its session cannot be stored`() {
+        val store = RecordingSessionStore(failStart = true)
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
             ChatContext("saved episode", hasMatches = true)
@@ -237,7 +209,6 @@ class ChatServiceTest {
         client: RecordingChatGateway,
         chatContext: (UserId, String) -> ChatContext,
     ) = ChatService(
-        receipts = store,
         sessions = store,
         contextSource = ContextSource(chatContext),
         chatGateway = client,
@@ -278,46 +249,16 @@ class ChatServiceTest {
     }
 
     private class RecordingSessionStore(
-        private val failAttachSession: Boolean = false,
+        private val failStart: Boolean = false,
         private val expireOnRenewal: Boolean = false,
         private val events: MutableList<String>? = null,
-    ) : ChatSessionRepository, ChatReceiptRepository {
-        private val receipts = mutableMapOf<ChatRequestKey, ChatReceipt>()
+    ) : ChatSessionRepository {
         private val activeSessions = mutableMapOf<UserId, ChatSession>()
         private var nextSessionId = 1
 
-        override fun findByKey(key: ChatRequestKey): ChatReceipt? = receipts[key]
-
-        override fun save(change: ChatReceiptChange): ChatReceipt {
-            val receipt = when (change) {
-                is ChatReceiptChange.Claim -> {
-                    if (change.key in receipts) throw ChatReceiptConflict(change.key)
-                    ChatReceipt(change.key, ChatRequestStatus.PROCESSING, createdAt = change.now, updatedAt = change.now)
-                }
-                is ChatReceiptChange.AttachSession -> {
-                    events?.add("attachSession")
-                    if (failAttachSession) error("attach failed")
-                    receipts.getValue(change.key).copy(sessionId = change.sessionId, updatedAt = change.now)
-                }
-                is ChatReceiptChange.AnswerReady -> receipts.getValue(change.key).copy(
-                    status = ChatRequestStatus.ANSWER_READY,
-                    answerText = change.answer,
-                    updatedAt = change.now,
-                )
-                is ChatReceiptChange.Fail -> receipts.getValue(change.key).copy(
-                    status = ChatRequestStatus.FAILED,
-                    updatedAt = change.now,
-                )
-            }
-            receipts[change.key] = receipt
-            return receipt
-        }
-
-        override fun save(failure: StaleProcessingFailure): List<ChatReceipt> = error("unused")
-
         override fun findActiveByUser(userId: UserId): ChatSession? = activeSessions[userId]
 
-        override fun save(start: ChatSessionStart): ChatSession = ChatSession(
+        override fun save(start: ChatSessionStart): ChatSession = if (failStart) error("start failed") else ChatSession(
             id = nextSessionId++,
             userId = start.userId,
             chatId = start.chatId,
@@ -350,6 +291,6 @@ class ChatServiceTest {
     private companion object {
         const val NOW = 1_000_000L
         val USER_ID = UserId("member-1")
-        val REQUEST = ChatRequest(USER_ID, "request-1", "question")
+        val REQUEST = ChatRequest(USER_ID, "question")
     }
 }

@@ -1,7 +1,7 @@
 # Episode conversation use case
 
 `HandleEpisodeConversation`은 등록된 사용자의 질문 한 건을 episode context와 provider conversation으로
-처리한다. 채널 사용자 등록은 다루지 않으며 request idempotency와 10분 idle session lease를 소유한다.
+처리한다. 채널 사용자 등록은 다루지 않으며 10분 idle session lease를 소유한다.
 
 ## 질문 처리와 session 선택
 
@@ -9,50 +9,38 @@
 sequenceDiagram
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as HandleEpisodeConversation
-    participant Receipts as ChatReceiptRepository
     participant Sessions as ChatSessionRepository
     participant Context as EpisodeConversationContextSource
     participant Prompt as EpisodeConversationPromptBuilder
     participant Gateway as ConversationGateway
 
     HTTP->>Conversation: answer(request)
-    Conversation->>Receipts: save(Claim(requestKey))
-    alt ChatReceiptConflict: 이미 처리 중이거나 처리됨
-        Conversation->>Receipts: findByKey(requestKey)
-        Receipts-->>Conversation: 기존 receipt
-        Conversation-->>HTTP: 기존 AnswerReady 또는 AlreadyHandled
-    else 새 요청 claim
-        Conversation->>Sessions: findActiveByUser(userId)
-        alt 활성 session이 10분 이상 idle
+    Conversation->>Sessions: findActiveByUser(userId)
+    alt 활성 session이 10분 이상 idle
+        Conversation->>Sessions: save(Deactivation.OfSession)
+        Conversation->>Gateway: end(conversationId)
+    else 활성 session
+        Conversation->>Sessions: save(Renewal)
+        Note over Conversation,Sessions: ChatSessionConflict면 활성 session 없음으로 처리
+    end
+    Conversation->>Context: context(userId, question)
+    alt 읽을 수 있는 Component 없음
+        Conversation-->>HTTP: AnswerReady(고정 no-match 답변)
+    else context 존재
+        Conversation->>Prompt: build(reference, question)
+        alt 활성 session 없음
+            Conversation->>Gateway: begin()
+            Gateway-->>Conversation: conversationId
+            Conversation->>Sessions: save(Start)
+        end
+        Conversation->>Gateway: continueConversation(conversationId, prompt)
+        alt turn 성공
+            Conversation->>Sessions: save(Renewal)
+            Conversation-->>HTTP: AnswerReady
+        else turn 실패
             Conversation->>Sessions: save(Deactivation.OfSession)
             Conversation->>Gateway: end(conversationId)
-        else 활성 session
-            Conversation->>Sessions: save(Renewal)
-            Note over Conversation,Sessions: ChatSessionConflict면 활성 session 없음으로 처리
-        end
-        Conversation->>Context: context(userId, question)
-        alt 읽을 수 있는 Component 없음
-            Conversation->>Receipts: save(AnswerReady(고정 no-match 답변))
-            Conversation-->>HTTP: AnswerReady
-        else context 존재
-            Conversation->>Prompt: build(reference, question)
-            alt 활성 session 없음
-                Conversation->>Gateway: begin()
-                Gateway-->>Conversation: conversationId
-                Conversation->>Sessions: save(Start)
-                Conversation->>Receipts: save(AttachSession)
-            end
-            Conversation->>Gateway: continueConversation(conversationId, prompt)
-            alt turn 성공
-                Conversation->>Sessions: save(Renewal)
-                Conversation->>Receipts: save(AnswerReady)
-                Conversation-->>HTTP: AnswerReady
-            else turn 실패
-                Conversation->>Sessions: save(Deactivation.OfSession)
-                Conversation->>Gateway: end(conversationId)
-                Conversation->>Receipts: save(Fail)
-                Conversation-->>HTTP: Failed
-            end
+            Conversation-->>HTTP: Failed
         end
     end
 ```
@@ -80,8 +68,6 @@ sequenceDiagram
 
 - 활성 session은 scope, participant, application user ID가 모두 일치할 때만 임대한다.
 - 10분 idle lease가 지난 conversation은 즉시 비활성화하고 provider 자원을 해제하며 다시 재개하지 않는다.
-- 같은 request key는 다시 conversation provider에 보내지 않는다.
-- HTTP answer를 `ANSWER_READY`로 저장하고 동일 request 재처리 시 기존 answer를 반환한다. 전송 완료 callback은 없다.
 - context는 `SearchComponents`로 찾은 Component마다 한 블록이고, 그 뒤에 `SearchEpisodes`로 찾은 가까운 Episode 중 앞 블록에
   없는 것을 한 블록으로 붙인다. Component가 없는 일회성 Episode도 이렇게 찾는다. 사용자가 읽을 수 있는 Episode만 담는다(최대 8,000자).
 - 읽을 수 있는 Component가 없으면 conversation provider를 호출하지 않고 고정된 no-match 답변을 반환한다.
@@ -89,7 +75,7 @@ sequenceDiagram
 - episode conversation use case는 session 상태에 따라 conversation 생성·재사용·종료 시점을 결정한다.
 - `ConversationGateway.begin()`은 prompt 없이 ID를 만들고, 질문 prompt는
   `continueConversation(conversationId, prompt)`에만 전달한다.
-- provider 실패 시 해당 conversation을 종료하고 active session과 request 처리를 실패 상태로 정리한다.
+- provider 실패 시 해당 conversation을 종료하고 active session을 해제한다.
 
 대화 저장소의 코드 이름은 EpisodeConversation으로 통일했다. HTTP가 이미 사용하는 물리 테이블과
-컬럼 이름은 기존 매핑을 유지해 활성 session과 request receipt를 보존한다. 이는 Slack 연결 기능이 아니다.
+컬럼 이름은 기존 매핑을 유지해 활성 session을 보존한다. 이는 Slack 연결 기능이 아니다.

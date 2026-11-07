@@ -57,14 +57,12 @@ sequenceDiagram
     actor User
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as EpisodeConversation
-    participant Receipts as ChatReceiptRepository
     participant Sessions as ChatSessionRepository
     participant Context as EpisodeConversationContextSource
     participant Gateway as ConversationGateway
 
-    User->>HTTP: question + requestId
-    HTTP->>Conversation: answer(authenticated user, request key, question)
-    Conversation->>Receipts: save(Claim)
+    User->>HTTP: question
+    HTTP->>Conversation: answer(authenticated user, question)
     Conversation->>Sessions: findActiveByUser + save(Renewal)
     Conversation->>Context: context(userId, question)
     opt 활성 session 없음 및 검색 결과 있음
@@ -75,14 +73,13 @@ sequenceDiagram
         Conversation->>Gateway: continueConversation(conversationId, prompt)
         Gateway-->>Conversation: answer
     end
-    Conversation->>Receipts: save(AnswerReady)
-    Conversation-->>HTTP: AnswerReady / AlreadyHandled / Failed
+    Conversation-->>HTTP: AnswerReady / Failed
     HTTP-->>User: HTTP response
 ```
 
 사용자 목록과 application UserId는 공통 identity 기능이다. Slack 등록·최초 질문 재개·
 명령과 DM 처리는 제거했다. HTTP 인증은 사람의 이름·비밀번호 로그인 세션 cookie와 기계의 Bearer API key를 받는다.
-세션 격리, 동일 요청 답변 재사용, 10분 idle 만료는 `EpisodeConversation`이 관리한다.
+세션 격리와 10분 idle 만료는 `EpisodeConversation`이 관리한다.
 
 ## 문서 유지 규칙
 

@@ -12,8 +12,11 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConfli
 import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionConflict
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
 import com.homeassistant.application.port.outbound.chatgateway.StaleProcessingFailure
 import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
@@ -25,6 +28,7 @@ import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ChatServiceTest {
@@ -44,7 +48,7 @@ class ChatServiceTest {
         assertEquals(ChatResult.AnswerReady("grounded answer"), result)
         assertEquals(listOf(USER_ID), seenUsers)
         assertTrue(client.executedPrompt.orEmpty().contains("saved episode"))
-        assertEquals(listOf("begin", "createAndActivate", "attachSession", "continue"), events)
+        assertEquals(listOf("begin", "start", "attachSession", "continue"), events)
         assertEquals(ChatRequestStatus.ANSWER_READY, store.findByKey(REQUEST.key)?.status)
 
     }
@@ -84,7 +88,7 @@ class ChatServiceTest {
     @Test
     fun `executes on the user active session within its idle lease`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(USER_ID, ChatId("existing-thread"), NOW - 1)
+            save(ChatSessionStart(USER_ID, ChatId("existing-thread"), NOW - 1))
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
@@ -98,13 +102,25 @@ class ChatServiceTest {
     }
 
     @Test
+    fun `starts a new thread when the active session expires before it is renewed`() {
+        val store = RecordingSessionStore(expireOnRenewal = true).apply {
+            save(ChatSessionStart(USER_ID, ChatId("existing-thread"), NOW - 1))
+        }
+        val client = RecordingChatGateway()
+        val handler = handler(store, client) { _, _ ->
+            ChatContext("saved episode", hasMatches = true)
+        }
+
+        assertIs<ChatResult.AnswerReady>(handler.answer(REQUEST))
+
+        assertEquals(listOf("new-thread-1"), client.createdThreadIds)
+        assertEquals("new-thread-1", client.executedThreadId)
+    }
+
+    @Test
     fun `expires an idle thread before starting a replacement`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(
-                USER_ID,
-                ChatId("expired-thread"),
-                NOW - ChatService.SESSION_IDLE_TIMEOUT_MILLIS,
-            )
+            save(ChatSessionStart(USER_ID, ChatId("expired-thread"), NOW - ChatService.SESSION_IDLE_TIMEOUT_MILLIS))
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
@@ -167,15 +183,13 @@ class ChatServiceTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
-        assertIs<ChatSessionLease.None>(
-            store.lease(USER_ID, NOW, ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
-        )
+        assertNull(store.findActiveByUser(USER_ID))
     }
 
     @Test
     fun `ends an active thread when its turn fails`() {
         val store = RecordingSessionStore().apply {
-            createAndActivate(USER_ID, ChatId("existing-thread"), NOW - 1)
+            save(ChatSessionStart(USER_ID, ChatId("existing-thread"), NOW - 1))
         }
         val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
         val handler = handler(store, client) { _, _ ->
@@ -186,9 +200,7 @@ class ChatServiceTest {
 
         assertEquals(emptyList(), client.createdThreadIds)
         assertEquals(listOf("existing-thread"), client.endedThreadIds)
-        assertIs<ChatSessionLease.None>(
-            store.lease(USER_ID, NOW, ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
-        )
+        assertNull(store.findActiveByUser(USER_ID))
     }
 
     @Test
@@ -217,9 +229,7 @@ class ChatServiceTest {
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertEquals(null, client.executedThreadId)
-        assertIs<ChatSessionLease.None>(
-            store.lease(USER_ID, NOW, ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
-        )
+        assertNull(store.findActiveByUser(USER_ID))
     }
 
     private fun handler(
@@ -269,8 +279,9 @@ class ChatServiceTest {
 
     private class RecordingSessionStore(
         private val failAttachSession: Boolean = false,
+        private val expireOnRenewal: Boolean = false,
         private val events: MutableList<String>? = null,
-    ) : ChatSessionStore, ChatReceiptRepository {
+    ) : ChatSessionRepository, ChatReceiptRepository {
         private val receipts = mutableMapOf<ChatRequestKey, ChatReceipt>()
         private val activeSessions = mutableMapOf<UserId, ChatSession>()
         private var nextSessionId = 1
@@ -304,48 +315,35 @@ class ChatServiceTest {
 
         override fun save(failure: StaleProcessingFailure): List<ChatReceipt> = error("unused")
 
-        override fun createAndActivate(
-            userId: UserId,
-            chatId: ChatId,
-            now: Long,
-        ): ChatSession = ChatSession(
+        override fun findActiveByUser(userId: UserId): ChatSession? = activeSessions[userId]
+
+        override fun save(start: ChatSessionStart): ChatSession = ChatSession(
             id = nextSessionId++,
-            userId = userId,
-            chatId = chatId,
-            createdAt = now,
-            lastActiveAt = now,
+            userId = start.userId,
+            chatId = start.chatId,
+            createdAt = start.now,
+            lastActiveAt = start.now,
         ).also {
-            events?.add("createAndActivate")
-            activeSessions[userId] = it
+            events?.add("start")
+            activeSessions[start.userId] = it
         }
 
-        override fun lease(
-            userId: UserId,
-            now: Long,
-            idleTimeoutMillis: Long,
-        ): ChatSessionLease {
-            val session = activeSessions[userId] ?: return ChatSessionLease.None
-            if (now - session.lastActiveAt >= idleTimeoutMillis) {
-                activeSessions.remove(userId)
-                return ChatSessionLease.Expired(session)
+        override fun save(renewal: ChatSessionRenewal): ChatSession {
+            if (expireOnRenewal) activeSessions.remove(renewal.userId)
+            val active = activeSessions[renewal.userId]?.takeIf { it.id == renewal.sessionId }
+                ?: throw ChatSessionConflict(renewal.sessionId)
+            return active.copy(lastActiveAt = renewal.now).also { activeSessions[renewal.userId] = it }
+        }
+
+        override fun save(deactivation: ChatSessionDeactivation): List<ChatSession> {
+            val deactivated = when (deactivation) {
+                is ChatSessionDeactivation.OfSession ->
+                    listOfNotNull(activeSessions[deactivation.userId]?.takeIf { it.id == deactivation.sessionId })
+                is ChatSessionDeactivation.IdleSince ->
+                    activeSessions.values.filter { it.lastActiveAt <= deactivation.beforeInclusive }
             }
-            val renewed = session.copy(lastActiveAt = now)
-            activeSessions[userId] = renewed
-            return ChatSessionLease.Active(renewed)
-        }
-
-        override fun clearActive(userId: UserId) {
-            activeSessions.remove(userId)
-        }
-
-        override fun touch(userId: UserId, sessionId: Int, now: Long) {
-            activeSessions[userId] = activeSessions.getValue(userId).copy(lastActiveAt = now)
-        }
-
-        override fun expireIdle(beforeInclusive: Long): List<ChatSession> {
-            val expired = activeSessions.values.filter { it.lastActiveAt <= beforeInclusive }
-            expired.forEach { activeSessions.remove(it.userId) }
-            return expired
+            deactivated.forEach { activeSessions.remove(it.userId) }
+            return deactivated
         }
     }
 

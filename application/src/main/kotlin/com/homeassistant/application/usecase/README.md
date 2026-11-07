@@ -58,14 +58,14 @@ sequenceDiagram
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as EpisodeConversation
     participant Receipts as ChatReceiptRepository
-    participant Sessions as ChatSessionStore
+    participant Sessions as ChatSessionRepository
     participant Context as EpisodeConversationContextSource
     participant Gateway as ConversationGateway
 
     User->>HTTP: question + requestId
     HTTP->>Conversation: answer(authenticated user, request key, question)
     Conversation->>Receipts: save(Claim)
-    Conversation->>Sessions: lease(idle=10분)
+    Conversation->>Sessions: findActiveByUser + save(Renewal)
     Conversation->>Context: context(userId, question)
     opt 활성 session 없음 및 검색 결과 있음
         Conversation->>Gateway: begin()

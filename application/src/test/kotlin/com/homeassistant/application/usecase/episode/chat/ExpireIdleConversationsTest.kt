@@ -4,8 +4,10 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
 import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
 import com.homeassistant.domain.identity.UserId
@@ -14,6 +16,7 @@ import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class ExpireIdleConversationsTest {
     @Test
@@ -46,27 +49,19 @@ class ExpireIdleConversationsTest {
         }
     }
 
-    private class ExpiringStore(sessions: List<ChatSession>) : ChatSessionStore {
+    private class ExpiringStore(sessions: List<ChatSession>) : ChatSessionRepository {
         val remaining = sessions.toMutableList()
 
-        override fun expireIdle(beforeInclusive: Long): List<ChatSession> {
-            val expired = remaining.filter { it.lastActiveAt <= beforeInclusive }
+        override fun save(deactivation: ChatSessionDeactivation): List<ChatSession> {
+            val idleSince = assertIs<ChatSessionDeactivation.IdleSince>(deactivation)
+            val expired = remaining.filter { it.lastActiveAt <= idleSince.beforeInclusive }
             remaining.removeAll(expired)
             return expired
         }
 
-        override fun createAndActivate(
-            userId: UserId,
-            chatId: ChatId,
-            now: Long,
-        ): ChatSession = error("unused")
-        override fun lease(
-            userId: UserId,
-            now: Long,
-            idleTimeoutMillis: Long,
-        ): ChatSessionLease = error("unused")
-        override fun clearActive(userId: UserId) = error("unused")
-        override fun touch(userId: UserId, sessionId: Int, now: Long) = error("unused")
+        override fun findActiveByUser(userId: UserId): ChatSession? = error("unused")
+        override fun save(start: ChatSessionStart): ChatSession = error("unused")
+        override fun save(renewal: ChatSessionRenewal): ChatSession = error("unused")
     }
 
     private companion object {

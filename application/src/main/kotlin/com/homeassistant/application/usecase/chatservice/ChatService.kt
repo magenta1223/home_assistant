@@ -12,9 +12,13 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConfli
 import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionConflict
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
 import com.homeassistant.application.usecase.contextprovider.ContextSource
+import com.homeassistant.domain.identity.UserId
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
@@ -26,7 +30,7 @@ import java.time.Duration
  */
 class ChatService(
     private val receipts: ChatReceiptRepository,
-    private val sessions: ChatSessionStore,
+    private val sessions: ChatSessionRepository,
     private val contextSource: ContextSource,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
@@ -43,14 +47,7 @@ class ChatService(
             },
         )
 
-        val active = when (val lease = sessions.lease(request.userId, now(), SESSION_IDLE_TIMEOUT_MILLIS)) {
-            is ChatSessionLease.Active -> lease.session
-            is ChatSessionLease.Expired -> {
-                chatGateway.end(lease.session.chatId)
-                null
-            }
-            ChatSessionLease.None -> null
-        }
+        val active = resumeActiveSession(request.userId)
         val contextStartedAt = System.nanoTime()
         val context = try {
             contextSource.context(request.userId, request.question)
@@ -84,13 +81,12 @@ class ChatService(
 
         return when (result) {
             ChatGatewayResult.Failure -> {
-                chatGateway.end(session.chatId)
+                release(session)
                 receipts.save(ChatReceiptChange.Fail(request.key, now()))
-                sessions.clearActive(request.userId)
                 ChatResult.Failed
             }
             is ChatGatewayResult.Success -> {
-                sessions.touch(request.userId, session.id, now())
+                renew(session)
                 answerReady(request.key, result.answer)
             }
         }
@@ -116,23 +112,64 @@ class ChatService(
         return ChatResult.AnswerReady(answer)
     }
 
-    private fun createSession(request: ChatRequest): ChatSession? {
-        var chatId: ChatId? = null
-        return try {
-            chatId = chatGateway.begin().getOrThrow()
-            sessions.createAndActivate(request.userId, chatId, now()).also { session ->
-                receipts.save(ChatReceiptChange.AttachSession(request.key, session.id, now()))
-            }
-        } catch (error: Exception) {
-            log.warn("Episode conversation session start failed category={}", error.javaClass.simpleName)
-            chatId?.let {
-                chatGateway.end(it)
-                sessions.clearActive(request.userId)
-            }
-            receipts.save(ChatReceiptChange.Fail(request.key, now()))
-            null
+    /** The user's active session renewed now, or null when there is none; an idle one is released instead. */
+    private fun resumeActiveSession(userId: UserId): ChatSession? {
+        val active = sessions.findActiveByUser(userId) ?: return null
+        if (active.isIdleAt(now())) {
+            release(active)
+            return null
         }
+        return renew(active)
     }
+
+    /** [session] renewed now, or null when it stopped being active meanwhile. */
+    private fun renew(session: ChatSession): ChatSession? =
+        runCatching { sessions.save(ChatSessionRenewal(session.userId, session.id, now())) }.fold(
+            onSuccess = { it },
+            onFailure = { error ->
+                if (error !is ChatSessionConflict) throw error
+                null
+            },
+        )
+
+    /** Deactivates [session] and ends its provider chat, unless the idle expiry already did both. */
+    private fun release(session: ChatSession) {
+        sessions.save(ChatSessionDeactivation.OfSession(session.userId, session.id))
+            .forEach { chatGateway.end(it.chatId) }
+    }
+
+    /** A new provider chat made the user's active session and attached to the request, or null when that failed. */
+    private fun createSession(request: ChatRequest): ChatSession? =
+        chatGateway.begin().fold(
+            onSuccess = { chatId -> activate(request, chatId) },
+            onFailure = { error -> failSessionStart(request.key, error) },
+        )
+
+    private fun activate(request: ChatRequest, chatId: ChatId): ChatSession? =
+        runCatching { sessions.save(ChatSessionStart(request.userId, chatId, now())) }.fold(
+            onSuccess = { session -> attach(request.key, session) },
+            onFailure = { error ->
+                chatGateway.end(chatId)
+                failSessionStart(request.key, error)
+            },
+        )
+
+    private fun attach(key: ChatRequestKey, session: ChatSession): ChatSession? =
+        runCatching { receipts.save(ChatReceiptChange.AttachSession(key, session.id, now())) }.fold(
+            onSuccess = { session },
+            onFailure = { error ->
+                release(session)
+                failSessionStart(key, error)
+            },
+        )
+
+    private fun failSessionStart(key: ChatRequestKey, error: Throwable): ChatSession? {
+        log.warn("Episode conversation session start failed category={}", error.javaClass.simpleName)
+        receipts.save(ChatReceiptChange.Fail(key, now()))
+        return null
+    }
+
+    private fun ChatSession.isIdleAt(now: Long): Boolean = now - lastActiveAt >= SESSION_IDLE_TIMEOUT_MILLIS
 
     private fun now(): Long = clock.millis()
 

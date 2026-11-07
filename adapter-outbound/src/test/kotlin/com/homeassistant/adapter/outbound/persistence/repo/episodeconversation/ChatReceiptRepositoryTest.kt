@@ -8,6 +8,7 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptChange
 import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptConflict
 import com.homeassistant.application.port.outbound.chatgateway.ChatReceiptRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
 import com.homeassistant.application.port.outbound.chatgateway.StaleProcessingFailure
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
@@ -55,7 +56,7 @@ class ChatReceiptRepositoryTest {
         val path = Files.createTempFile("chat-receipts", ".db")
         try {
             val stores = RepositoryFactory.create(path.toString())
-            val session = stores.chatSessions.createAndActivate(USER_ID, ChatId("thread-1"), 102)
+            val session = stores.chatSessions.save(ChatSessionStart(USER_ID, ChatId("thread-1"), 102))
             block(stores.chatReceipts, session.id)
         } finally {
             Files.deleteIfExists(path)

@@ -1,13 +1,14 @@
 package com.homeassistant.application.usecase.chatservice
 
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import org.slf4j.LoggerFactory
 import java.time.Clock
 
 /** Expires idle user sessions and releases their provider conversations. */
 class ExpireIdleChats(
-    private val sessions: ChatSessionStore,
+    private val sessions: ChatSessionRepository,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) {
@@ -15,8 +16,8 @@ class ExpireIdleChats(
 
     /** Expires sessions idle for [ChatService.SESSION_IDLE_TIMEOUT_MILLIS] and returns how many expired. */
     fun execute(): Int {
-        val expired = sessions.expireIdle(
-            beforeInclusive = clock.millis() - ChatService.SESSION_IDLE_TIMEOUT_MILLIS,
+        val expired = sessions.save(
+            ChatSessionDeactivation.IdleSince(clock.millis() - ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
         )
         expired.forEach { session ->
             runCatching { chatGateway.end(session.chatId) }

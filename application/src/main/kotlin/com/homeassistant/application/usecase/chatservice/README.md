@@ -10,7 +10,7 @@ sequenceDiagram
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as HandleEpisodeConversation
     participant Receipts as ChatReceiptRepository
-    participant Sessions as ChatSessionStore
+    participant Sessions as ChatSessionRepository
     participant Context as EpisodeConversationContextSource
     participant Prompt as EpisodeConversationPromptBuilder
     participant Gateway as ConversationGateway
@@ -22,10 +22,13 @@ sequenceDiagram
         Receipts-->>Conversation: 기존 receipt
         Conversation-->>HTTP: 기존 AnswerReady 또는 AlreadyHandled
     else 새 요청 claim
-        Conversation->>Sessions: lease(participant, idle=10분)
-        alt idle lease 만료
-            Sessions-->>Conversation: Expired(conversationId)
+        Conversation->>Sessions: findActiveByUser(userId)
+        alt 활성 session이 10분 이상 idle
+            Conversation->>Sessions: save(Deactivation.OfSession)
             Conversation->>Gateway: end(conversationId)
+        else 활성 session
+            Conversation->>Sessions: save(Renewal)
+            Note over Conversation,Sessions: ChatSessionConflict면 활성 session 없음으로 처리
         end
         Conversation->>Context: context(userId, question)
         alt 읽을 수 있는 Component 없음
@@ -36,17 +39,17 @@ sequenceDiagram
             alt 활성 session 없음
                 Conversation->>Gateway: begin()
                 Gateway-->>Conversation: conversationId
-                Conversation->>Sessions: createAndActivate
+                Conversation->>Sessions: save(Start)
                 Conversation->>Receipts: save(AttachSession)
             end
             Conversation->>Gateway: continueConversation(conversationId, prompt)
             alt turn 성공
-                Conversation->>Sessions: touch
+                Conversation->>Sessions: save(Renewal)
                 Conversation->>Receipts: save(AnswerReady)
                 Conversation-->>HTTP: AnswerReady
             else turn 실패
+                Conversation->>Sessions: save(Deactivation.OfSession)
                 Conversation->>Gateway: end(conversationId)
-                Conversation->>Sessions: clearActive
                 Conversation->>Receipts: save(Fail)
                 Conversation-->>HTTP: Failed
             end
@@ -60,12 +63,12 @@ sequenceDiagram
 sequenceDiagram
     participant Worker as EpisodeConversationExpiryWorker
     participant Expiry as ExpireIdleEpisodeConversations
-    participant Sessions as ChatSessionStore
+    participant Sessions as ChatSessionRepository
     participant Gateway as ConversationGateway
 
     loop 짧은 주기
         Worker->>Expiry: execute()
-        Expiry->>Sessions: expireIdle(now - 10분)
+        Expiry->>Sessions: save(Deactivation.IdleSince(now - 10분))
         Sessions-->>Expiry: 만료되어 비활성화된 sessions
         loop 각 session
             Expiry->>Gateway: end(conversationId)

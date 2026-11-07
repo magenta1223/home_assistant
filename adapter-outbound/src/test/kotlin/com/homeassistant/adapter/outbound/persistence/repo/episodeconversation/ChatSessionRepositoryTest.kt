@@ -1,59 +1,71 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionConflict
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
+import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
+import kotlin.test.assertFailsWith
+import kotlin.test.assertNull
 
 class ChatSessionRepositoryTest {
     @Test
-    fun `leases the active conversation of its user`() {
-        val databasePath = Files.createTempFile("episode-conversation", ".db")
-        try {
-            val store = RepositoryFactory.create(databasePath.toString()).chatSessions
+    fun `a started session is its user's active session until another replaces it`() = withSessions { sessions ->
+        val first = sessions.save(ChatSessionStart(USER_ID, ChatId("thread-1"), 100))
+        assertEquals(first, sessions.findActiveByUser(USER_ID))
+        assertNull(sessions.findActiveByUser(UserId("different-user")))
 
-            store.createAndActivate(USER_ID, ChatId("thread-1"), 102)
+        val second = sessions.save(ChatSessionStart(USER_ID, ChatId("thread-2"), 200))
 
-            val lease = assertIs<ChatSessionLease.Active>(
-                store.lease(USER_ID, 105, 600_000),
-            )
-            assertEquals(ChatId("thread-1"), lease.session.chatId)
-        } finally {
-            Files.deleteIfExists(databasePath)
+        assertEquals(second, sessions.findActiveByUser(USER_ID))
+        assertFailsWith<ChatSessionConflict> { sessions.save(ChatSessionRenewal(USER_ID, first.id, 300)) }
+    }
+
+    @Test
+    fun `renewing the active session moves its last activity`() = withSessions { sessions ->
+        val session = sessions.save(ChatSessionStart(USER_ID, ChatId("thread-1"), 100))
+
+        val renewed = sessions.save(ChatSessionRenewal(USER_ID, session.id, 150))
+
+        assertEquals(session.copy(lastActiveAt = 150), renewed)
+        assertEquals(renewed, sessions.findActiveByUser(USER_ID))
+        assertFailsWith<ChatSessionConflict> {
+            sessions.save(ChatSessionRenewal(UserId("different-user"), session.id, 160))
         }
     }
 
     @Test
-    fun `expires active sessions at the ten minute boundary`() {
-        val databasePath = Files.createTempFile("episode-conversation-expiry", ".db")
-        try {
-            val store = RepositoryFactory.create(databasePath.toString()).chatSessions
-            store.createAndActivate(USER_ID, ChatId("expired-thread"), 100)
+    fun `deactivates only the named session while it is active`() = withSessions { sessions ->
+        val session = sessions.save(ChatSessionStart(USER_ID, ChatId("thread-1"), 100))
 
-            val expired = store.expireIdle(100)
-
-            assertEquals(listOf(ChatId("expired-thread")), expired.map { it.chatId })
-            assertIs<ChatSessionLease.None>(store.lease(USER_ID, 101, 600_000))
-        } finally {
-            Files.deleteIfExists(databasePath)
-        }
+        assertEquals(emptyList(), sessions.save(ChatSessionDeactivation.OfSession(UserId("different-user"), session.id)))
+        assertEquals(listOf(session), sessions.save(ChatSessionDeactivation.OfSession(USER_ID, session.id)))
+        assertEquals(emptyList(), sessions.save(ChatSessionDeactivation.OfSession(USER_ID, session.id)))
+        assertNull(sessions.findActiveByUser(USER_ID))
     }
 
     @Test
-    fun `does not lease a thread to a different application user`() {
-        val databasePath = Files.createTempFile("episode-conversation-owner", ".db")
-        try {
-            val store = RepositoryFactory.create(databasePath.toString()).chatSessions
-            store.createAndActivate(USER_ID, ChatId("private-thread"), 100)
-            val impostor = UserId("different-user")
+    fun `deactivates sessions idle at the boundary`() = withSessions { sessions ->
+        val idle = sessions.save(ChatSessionStart(USER_ID, ChatId("idle-thread"), 100))
+        val recent = sessions.save(ChatSessionStart(UserId("member-2"), ChatId("recent-thread"), 101))
 
-            assertIs<ChatSessionLease.None>(store.lease(impostor, 101, 600_000))
+        assertEquals(listOf(idle), sessions.save(ChatSessionDeactivation.IdleSince(100)))
+        assertNull(sessions.findActiveByUser(USER_ID))
+        assertEquals(recent, sessions.findActiveByUser(UserId("member-2")))
+    }
+
+    private fun withSessions(block: (ChatSessionRepository) -> Unit) {
+        val path = Files.createTempFile("chat-sessions", ".db")
+        try {
+            block(RepositoryFactory.create(path.toString()).chatSessions)
         } finally {
-            Files.deleteIfExists(databasePath)
+            Files.deleteIfExists(path)
         }
     }
 

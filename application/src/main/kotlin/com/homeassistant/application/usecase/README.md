@@ -11,6 +11,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `identity` | 사용자를 이름·비밀번호로 등록·로그인시키고, 목록을 제공하고 인가한다. | [identity](identity/README.md) |
 | `group` | 저장된 Component를 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](memoryextraction/group/README.md) |
 | `component` | Episode에서 장기 지식을 Component로 추출한 뒤 Group 정리까지 이어가고, 대화용 Component 검색을 읽을 수 있는 출처 Episode로 거른다. | [component](memoryextraction/component/README.md) |
+| `embedding` | Episode·Component 벡터를 저장된 것이 있으면 재사용하고 없으면 만들어 저장한다. 추출·Group·검색이 함께 쓴다. | - |
 | `episode/search` | 대화용으로 질문에 가까운, 사용자가 읽을 수 있는 Episode를 찾는다. | - |
 | `episode/analysis` | source record를 분석해 canonical episode로 저장하고 후처리를 요청한다. | [analysis](memoryextraction/episode/README.md) |
 | `episode/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](chatservice/README.md) |

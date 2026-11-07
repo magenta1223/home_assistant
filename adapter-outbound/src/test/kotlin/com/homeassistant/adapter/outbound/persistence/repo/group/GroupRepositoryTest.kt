@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.domain.embedding.EmbeddingVector
@@ -21,7 +22,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupC
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess

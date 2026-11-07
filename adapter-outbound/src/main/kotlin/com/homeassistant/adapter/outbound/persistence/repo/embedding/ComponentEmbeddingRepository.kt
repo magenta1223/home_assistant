@@ -1,5 +1,6 @@
-package com.homeassistant.adapter.outbound.persistence.repo.group
+package com.homeassistant.adapter.outbound.persistence.repo.embedding
 
+import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.application.port.outbound.embedding.Embedding

@@ -1,4 +1,4 @@
-package com.homeassistant.adapter.outbound.persistence.repo.component
+package com.homeassistant.adapter.outbound.persistence.repo.embedding
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable

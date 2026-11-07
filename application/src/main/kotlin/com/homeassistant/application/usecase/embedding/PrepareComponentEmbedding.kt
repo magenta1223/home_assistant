@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.memoryextraction.group
+package com.homeassistant.application.usecase.embedding
 
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator

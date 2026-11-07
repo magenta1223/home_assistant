@@ -1,5 +1,6 @@
 package com.homeassistant.application.usecase.memoryextraction.group
 
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome

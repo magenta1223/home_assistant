@@ -2,7 +2,7 @@ package com.homeassistant.application.usecase.contextprovider.episode
 
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.identity.UserAccessDeniedException

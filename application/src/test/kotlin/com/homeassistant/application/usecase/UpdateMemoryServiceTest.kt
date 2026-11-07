@@ -24,10 +24,10 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupS
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.embedding.EmbeddingVector

@@ -7,7 +7,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Ep
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.episode.EpisodeVisibility

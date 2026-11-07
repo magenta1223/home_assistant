@@ -6,11 +6,11 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
 import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.group.GroupMergePolicy
 import com.homeassistant.domain.group.GroupOrganizationPlanner
 import com.homeassistant.domain.group.GroupPlacementPolicy

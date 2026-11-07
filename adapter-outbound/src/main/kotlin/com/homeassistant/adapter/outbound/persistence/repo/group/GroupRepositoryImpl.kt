@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAccessCondition

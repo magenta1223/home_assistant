@@ -12,8 +12,8 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.Compon
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess

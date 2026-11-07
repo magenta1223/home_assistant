@@ -1,11 +1,12 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
@@ -13,9 +14,9 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Pe
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.group.*
 import com.homeassistant.domain.identity.UserId

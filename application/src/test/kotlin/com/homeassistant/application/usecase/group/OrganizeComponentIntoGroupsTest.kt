@@ -16,7 +16,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupT
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.component.Component
 import com.homeassistant.domain.episode.EpisodeAccess
 import com.homeassistant.domain.group.*

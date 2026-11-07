@@ -7,11 +7,11 @@ import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.C
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
-import com.homeassistant.adapter.outbound.persistence.repo.component.EpisodeEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.group.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {

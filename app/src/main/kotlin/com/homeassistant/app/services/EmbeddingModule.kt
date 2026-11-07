@@ -3,8 +3,8 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.infrastructure.runtime.Runtime

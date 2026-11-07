@@ -5,17 +5,17 @@ import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemoryH
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class EpisodeComponentAssignmentWorkerTest {
+class ComponentAssignmentWorkerTest {
     @Test
     fun `a round updates the hierarchy with the batch size`() {
         val batches = mutableListOf<Int>()
-        EpisodeComponentAssignmentWorker(UpdateMemoryHierarchy { batches += it; MemoryHierarchyUpdate.Skipped }, batchSize = 7)
-            .use { it.runRound() }
+        ComponentAssignmentWorker(UpdateMemoryHierarchy { batches += it; MemoryHierarchyUpdate.Skipped }, batchSize = 7)
+            .runRound()
         assertEquals(listOf(7), batches)
     }
 
     @Test
     fun `a failing round is contained`() {
-        EpisodeComponentAssignmentWorker(UpdateMemoryHierarchy { error("store unavailable") }).use { it.runRound() }
+        ComponentAssignmentWorker(UpdateMemoryHierarchy { error("store unavailable") }).runRound()
     }
 }

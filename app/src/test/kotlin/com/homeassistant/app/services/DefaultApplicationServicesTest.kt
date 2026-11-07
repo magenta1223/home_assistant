@@ -20,9 +20,8 @@ class DefaultApplicationServicesTest {
         val codex = AutoCloseable { events += "codex.close" }
         val services = DefaultApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
-            runtimes = listOf(embedding),
+            runtimes = listOf(embedding, assignment),
             conversationExpiryWorker = expiry,
-            componentAssignmentWorker = assignment,
             conversationGateway = codex,
         )
 
@@ -37,8 +36,8 @@ class DefaultApplicationServicesTest {
                 "assignment.start",
                 "expiry.start",
                 "expiry.close",
-                "assignment.close",
                 "codex.close",
+                "assignment.stop",
                 "embedding.stop",
             ),
             events,
@@ -83,13 +82,13 @@ class DefaultApplicationServicesTest {
 
     private class RecordingComponentAssignmentWorker(
         private val events: MutableList<String>,
-    ) : ComponentAssignmentWorker {
-        override fun start() {
+    ) : AbstractRuntime() {
+        override fun onStart() {
             events += "assignment.start"
         }
 
-        override fun close() {
-            events += "assignment.close"
+        override fun onStop() {
+            events += "assignment.stop"
         }
     }
 

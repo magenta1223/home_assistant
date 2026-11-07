@@ -15,7 +15,6 @@ internal class DefaultApplicationServices(
     override val authentication: UserAuthentication = UserAuthentication.NONE,
     private val runtimes: List<Runtime>,
     private val conversationExpiryWorker: ConversationExpiryWorker = ConversationExpiryWorker.NONE,
-    private val componentAssignmentWorker: ComponentAssignmentWorker = ComponentAssignmentWorker.NONE,
     private val conversationGateway: AutoCloseable? = null,
 ) : ApplicationServices {
     override val isReady: Boolean
@@ -23,7 +22,6 @@ internal class DefaultApplicationServices(
 
     override fun start() {
         runtimes.forEach(Runtime::start)
-        componentAssignmentWorker.start()
         conversationExpiryWorker.start()
     }
 
@@ -31,7 +29,6 @@ internal class DefaultApplicationServices(
     override fun close() {
         val releases = listOf(
             conversationExpiryWorker::close,
-            componentAssignmentWorker::close,
             { conversationGateway?.close() },
         ) + runtimes.asReversed().map { it::stop }
         val failures = releases.mapNotNull { runCatching(it).exceptionOrNull() }

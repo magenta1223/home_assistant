@@ -132,9 +132,8 @@ object ApplicationServicesFactory {
                 repositories.userSessions,
                 Pbkdf2PasswordHasher(),
             ),
-            runtimes = listOf(ollamaEmbedding),
+            runtimes = listOf(ollamaEmbedding, ComponentAssignmentWorker(updateHierarchy)),
             conversationExpiryWorker = conversationExpiryWorker,
-            componentAssignmentWorker = EpisodeComponentAssignmentWorker(updateHierarchy),
             conversationGateway = conversationGateway,
         )
     }

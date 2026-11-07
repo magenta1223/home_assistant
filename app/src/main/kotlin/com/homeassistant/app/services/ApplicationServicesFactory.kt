@@ -1,144 +1,44 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
-import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
-import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorFactory
-import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
+import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
-import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.adapter.outbound.reference.SourceReferenceInterpreterFactory
-import com.homeassistant.adapter.outbound.componentextraction.ComponentKnowledgeExtractorFactory
-import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
-import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
-import com.homeassistant.application.usecase.contextprovider.ContextAssembler
-import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
-import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
-import com.homeassistant.application.usecase.identity.UserAuthenticationService
-import com.homeassistant.application.usecase.identity.UserRegistryService
-import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
-import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryHierarchyService
-import com.homeassistant.domain.group.*
+import com.homeassistant.domain.group.GroupPolicySettings
 import com.homeassistant.llm.AgentBackend
 import com.homeassistant.llm.AgentClientFactory
-import org.slf4j.LoggerFactory
-import java.time.Duration
 
-
+/** Composition root: builds each feature module once and hands their use cases and runtimes to [ApplicationServices]. */
 object ApplicationServicesFactory {
-    private val log = LoggerFactory.getLogger(ApplicationServicesFactory::class.java)
-
     fun create(
         dbPath: String,
         groupSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
         val agentBackend = agentBackend()
-        val completionClient = AgentClientFactory.completion(agentBackend)
         val repositories = RepositoryFactory.create(dbPath)
-        val users = UserRegistryService(repositories.users)
-        val embeddingModel = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL]
-            ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
-        val ollamaEmbedding = ManagedOllamaEmbeddingFactory.create(model = embeddingModel)
-        val episodeEmbeddings = PrepareEpisodeEmbedding(
-            ollamaEmbedding,
-            repositories.episodeEmbeddings,
+        val identity = IdentityModule(repositories)
+        val embeddings = EmbeddingModule(repositories)
+        val memoryExtraction = MemoryExtractionModule(
+            repositories = repositories,
+            episodeEmbeddings = embeddings.episodeEmbeddings,
+            componentEmbeddings = embeddings.componentEmbeddings,
+            completionClient = AgentClientFactory.completion(agentBackend),
+            accessPolicy = identity.users,
+            groupSettings = groupSettings,
         )
-        val componentEmbeddings = PrepareComponentEmbedding(
-            repositories.components,
-            ollamaEmbedding,
-            repositories.componentEmbeddings,
-        )
-        val organizeComponent = OrganizeComponentIntoGroups(
-            repositories.groups,
-            componentEmbeddings,
-            GroupOrganizationPlanner(GroupPlacementPolicy(groupSettings), GroupSplitPolicy(groupSettings)),
-        )
-        val assignEpisode = AssignEpisodeToComponents(
-            repositories.components,
-            episodeEmbeddings,
-            componentEmbeddings,
-            ComponentKnowledgeExtractorFactory.create(completionClient),
-        )
-        val mergeSmallGroups = MergeSmallGroups(repositories.groups, GroupMergePolicy(groupSettings))
-        val updateHierarchy = UpdateMemoryHierarchyService(
-            repositories.componentAssignmentOutbox,
-            repositories.pendingComponents,
-            assignEpisode,
-            organizeComponent,
-            mergeSmallGroups,
-        )
-        log.info("Managed Ollama embedding model={} baseUrl={}", embeddingModel, AppConfig.DEFAULT_OLLAMA_BASE_URL)
-
-        val episodeAnalysisService = EpisodeAnalysisService(
-            episodeExtractor = EpisodeExtractorFactory.create(completionClient),
-            sourceRecords = repositories.sourceRecords,
-            episodes = repositories.episodes,
-            accessPolicy = users,
-            referenceInterpreter = SourceReferenceInterpreterFactory.create(completionClient),
-        )
-        val componentSearch = ComponentSearcher(
-            components = repositories.components,
-            groups = repositories.groups,
-            queries = ollamaEmbedding,
-            episodes = repositories.episodes,
-            componentEmbeddings = componentEmbeddings,
-            accessPolicy = users,
-        )
-        val episodeSearch = EpisodeSearcher(repositories.episodes, ollamaEmbedding, episodeEmbeddings, users)
-        val agentTimeoutSeconds = Env[AppConfig.ENV_VAR_AGENT_TIMEOUT_SECONDS]
-            ?.toLongOrNull()
-            ?: AppConfig.DEFAULT_AGENT_TIMEOUT_SECONDS
-        val chatClient = AgentClientFactory.conversation(
+        val chat = ChatModule(
             backend = agentBackend,
-            timeout = Duration.ofSeconds(agentTimeoutSeconds),
+            repositories = repositories,
+            queries = embeddings.queries,
+            episodeEmbeddings = embeddings.episodeEmbeddings,
+            componentEmbeddings = embeddings.componentEmbeddings,
+            accessPolicy = identity.users,
         )
-        val conversationGateway = chatClient?.let(::AgentChatGateway)
-        log.info(
-            "Agent backend={} conversation={}",
-            agentBackend,
-            if (conversationGateway == null) "unavailable" else "enabled",
-        )
-        val episodeConversation = conversationGateway?.let {
-            val now = System.currentTimeMillis()
-            repositories.episodeConversationSessions.failStaleProcessing(
-                before = now - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
-                now = now,
-            )
-            ChatServiceImpl(
-                sessions = repositories.episodeConversationSessions,
-                contextProvider = ContextAssembler(listOf(MemoryContextProvider(componentSearch, episodeSearch))),
-                chatGateway = it,
-            )
-        }
-        val chatClientExpiryWorker = conversationGateway?.let {
-            ChatClientExpiryWorker(
-                ExpireIdleChats(
-                    sessions = repositories.episodeConversationSessions,
-                    chatGateway = it,
-                ),
-            )
-        }
         return DefaultApplicationServices(
-            episodeAnalysis = episodeAnalysisService,
-            chatService = episodeConversation,
-            users = users,
-            authentication = UserAuthenticationService(
-                repositories.userCredentials,
-                repositories.userSessions,
-                Pbkdf2PasswordHasher(),
-            ),
-            runtimes = listOfNotNull(
-                ollamaEmbedding,
-                chatClient,
-                ComponentAssignmentWorker(updateHierarchy),
-                chatClientExpiryWorker,
-            ),
+            episodeAnalysis = memoryExtraction.episodeAnalysis,
+            chatService = chat.chatService,
+            users = identity.users,
+            authentication = identity.authentication,
+            runtimes = embeddings.runtimes + memoryExtraction.runtimes + chat.runtimes,
         )
     }
 

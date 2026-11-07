@@ -1,7 +1,7 @@
 package com.homeassistant.llm.codex.conversation
 
 import com.homeassistant.llm.codex.transport.CodexAppServerTransport
-import com.homeassistant.llm.codex.transport.DefaultCodexAppServerTransport
+import com.homeassistant.llm.codex.transport.JsonRpcCodexAppServerTransport
 import com.homeassistant.llm.codex.transport.process.StdioProcessTransport
 import com.homeassistant.llm.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.llm.codex.transport.protocol.AppServerThreadItem
@@ -34,9 +34,9 @@ import java.util.concurrent.atomic.AtomicReference
  * fails the runtime: an app server that is not up yet, or that exited, is started again on the next operation or
  * after a short delay.
  */
-internal class DefaultCodexAppServer(
-    private val config: CodexConversationConfig,
-    private val transport: CodexAppServerTransport = DefaultCodexAppServerTransport(
+internal class CodexChatClient(
+    private val config: CodexChatConfig,
+    private val transport: CodexAppServerTransport = JsonRpcCodexAppServerTransport(
         StdioProcessTransport(appServerCommand(config), config.workDir),
     ),
     private val availabilityProbe: () -> Boolean = { probeCodexVersion(config) },
@@ -113,7 +113,7 @@ internal class DefaultCodexAppServer(
     override fun openChat(): Result<String> = executeOperation("create") { deadline ->
         val response = await(transport.startThread(threadStartMessage()), deadline.remaining())
         val threadId = response.thread.id.takeIf(CODEX_THREAD_ID_PATTERN::matches)
-            ?: throw CodexConversationException("INVALID_THREAD_ID")
+            ?: throw CodexChatException("INVALID_THREAD_ID")
         loadedThreads += threadId
         log.info(
             "Latency stage=codex-thread-ready operation=create model={} elapsedMs={}",
@@ -125,7 +125,7 @@ internal class DefaultCodexAppServer(
 
     override fun send(chatId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
         if (!CODEX_THREAD_ID_PATTERN.matches(chatId)) {
-            throw CodexConversationException("INVALID_THREAD_ID")
+            throw CodexChatException("INVALID_THREAD_ID")
         }
         if (chatId !in loadedThreads) {
             await(transport.resumeThread(threadResumeMessage(chatId)), deadline.remaining())
@@ -154,17 +154,17 @@ internal class DefaultCodexAppServer(
         operation: String,
         block: (Deadline) -> T,
     ): Result<T> {
-        if (!startServer()) return Result.failure(CodexConversationException("APP_SERVER_UNAVAILABLE"))
+        if (!startServer()) return Result.failure(CodexChatException("APP_SERVER_UNAVAILABLE"))
         val startedAt = System.nanoTime()
         val result = try {
-            if (!isServing()) throw CodexConversationException("APP_SERVER_CLOSED")
+            if (!isServing()) throw CodexChatException("APP_SERVER_CLOSED")
             block(Deadline(config.timeout))
-        } catch (error: CodexConversationException) {
+        } catch (error: CodexChatException) {
             return Result.failure(error)
         } catch (_: TimeoutException) {
-            return Result.failure(CodexConversationException("TIMEOUT"))
+            return Result.failure(CodexChatException("TIMEOUT"))
         } catch (_: Exception) {
-            return Result.failure(CodexConversationException("APP_SERVER_FAILURE"))
+            return Result.failure(CodexChatException("APP_SERVER_FAILURE"))
         }
         log.info(
             "Latency stage=codex-turn operation={} result=completed model={} elapsedMs={}",
@@ -176,20 +176,20 @@ internal class DefaultCodexAppServer(
     }
 
     private fun runTurn(threadId: String, prompt: String, deadline: Deadline): String {
-        if (prompt.isBlank()) throw CodexConversationException("EMPTY_PROMPT")
+        if (prompt.isBlank()) throw CodexChatException("EMPTY_PROMPT")
         val state = TurnState()
         if (activeTurns.putIfAbsent(threadId, state) != null) {
-            throw CodexConversationException("THREAD_BUSY")
+            throw CodexChatException("THREAD_BUSY")
         }
         try {
             val response = await(transport.startTurn(turnStartMessage(threadId, prompt)), deadline.remaining())
             state.turnId.set(response.turn.id)
             val completion = await(state.completed, deadline.remaining())
             if (completion.status != "completed") {
-                throw CodexConversationException("TURN_${completion.status.uppercase()}")
+                throw CodexChatException("TURN_${completion.status.uppercase()}")
             }
             return parseStructuredAnswer(completion.answer)
-                ?: throw CodexConversationException("INVALID_STRUCTURED_ANSWER")
+                ?: throw CodexChatException("INVALID_STRUCTURED_ANSWER")
         } catch (error: TimeoutException) {
             interrupt(threadId, state.turnId.get())
             throw error
@@ -260,7 +260,7 @@ internal class DefaultCodexAppServer(
     }
 
     private fun failActiveTurns(category: String) {
-        val failure = CodexConversationException(category)
+        val failure = CodexChatException(category)
         activeTurns.values.forEach { it.completed.completeExceptionally(failure) }
     }
 
@@ -349,7 +349,7 @@ private fun <T> await(future: CompletableFuture<T>, timeout: Duration): T = try 
     throw error.cause ?: error
 }
 
-private fun appServerCommand(config: CodexConversationConfig): List<String> = listOf(
+private fun appServerCommand(config: CodexChatConfig): List<String> = listOf(
     config.executable,
     "app-server",
     "--stdio",
@@ -365,7 +365,7 @@ private fun appServerCommand(config: CodexConversationConfig): List<String> = li
     "model_reasoning_effort=\"${config.reasoningEffort}\"",
 )
 
-internal fun probeCodexVersion(config: CodexConversationConfig): Boolean {
+internal fun probeCodexVersion(config: CodexChatConfig): Boolean {
     val process = runCatching {
         ProcessBuilder(config.executable, "--version")
             .directory(config.workDir.toFile())

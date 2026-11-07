@@ -26,7 +26,7 @@ object RepositoryFactory {
             groups = groups,
             componentAssignmentOutbox = ComponentAssignmentOutboxRepository(db),
             episodeEmbeddings = EpisodeEmbeddingRepository(db),
-            episodeConversationSessions = ChatSessionRepository(db),
+            chatSessions = ChatSessionRepository(db),
             users = UserRepository(db),
             userCredentials = UserCredentialRepository(db),
             userSessions = UserSessionRepository(db),

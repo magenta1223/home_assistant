@@ -6,7 +6,6 @@ import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
-import com.homeassistant.adapter.outbound.persistence.db.tables.*
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
@@ -21,7 +20,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupT
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.ResultingGroup
-import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memoryextraction.group.PrepareComponentEmbedding
@@ -216,7 +215,7 @@ class GroupRepositoryTest {
             val id = components.save(EpisodeComponents(episode.id, listOf(statement))).single().id
             id to store.save(
                 Embedding(
-                    PendingComponent(id, descriptionFingerprint(statement)).embeddingKey(
+                    PendingComponent(id, contentFingerprint(statement)).embeddingKey(
                         space
                     ), vector
                 )

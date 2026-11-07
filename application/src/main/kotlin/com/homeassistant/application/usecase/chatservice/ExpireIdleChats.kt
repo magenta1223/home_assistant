@@ -13,10 +13,10 @@ class ExpireIdleChats(
 ) {
     private val log = LoggerFactory.getLogger(javaClass)
 
-    /** Expires sessions idle for [ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS] and returns how many expired. */
+    /** Expires sessions idle for [ChatService.SESSION_IDLE_TIMEOUT_MILLIS] and returns how many expired. */
     fun execute(): Int {
         val expired = sessions.expireIdle(
-            beforeInclusive = clock.millis() - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
+            beforeInclusive = clock.millis() - ChatService.SESSION_IDLE_TIMEOUT_MILLIS,
         )
         expired.forEach { session ->
             runCatching { chatGateway.end(session.chatId) }

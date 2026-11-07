@@ -8,7 +8,7 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatReceipt
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
-import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
+import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
 import com.homeassistant.domain.identity.UserId
 import java.time.Clock
@@ -79,7 +79,7 @@ class ExpireIdleConversationsTest {
 
     private companion object {
         const val NOW = 1_000_000L
-        const val TIMEOUT = ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS
+        const val TIMEOUT = ChatService.SESSION_IDLE_TIMEOUT_MILLIS
 
         fun session(id: Int, threadId: String, lastActiveAt: Long) = ChatSession(
             id = id,

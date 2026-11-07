@@ -1,6 +1,6 @@
 package com.homeassistant.llm.codex.completion
 
-import com.homeassistant.llm.codex.transport.DefaultCodexAppServerTransport
+import com.homeassistant.llm.codex.transport.JsonRpcCodexAppServerTransport
 import com.homeassistant.llm.codex.transport.process.ProcessTransport
 import com.homeassistant.llm.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.llm.codex.transport.protocol.AppServerThreadItem
@@ -30,7 +30,7 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class CodexCliClientTest {
+class CodexCompletionClientTest {
     @Test
     fun `completion uses existing transport with sol high schema and an ephemeral thread`() = runBlocking {
         val process = RecordingProcess()
@@ -100,13 +100,13 @@ class CodexCliClientTest {
         assertClosedAndCleaned(process)
     }
 
-    private fun client(process: RecordingProcess, timeoutMillis: Long = 600_000) = CodexCliClient(
+    private fun client(process: RecordingProcess, timeoutMillis: Long = 600_000) = CodexCompletionClient(
         executable = "codex-test",
         timeoutMillis = timeoutMillis,
         transportFactory = { command, directory ->
             process.command = command
             process.directory = directory
-            DefaultCodexAppServerTransport(process)
+            JsonRpcCodexAppServerTransport(process)
         },
     )
 

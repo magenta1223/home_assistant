@@ -1,7 +1,7 @@
 package com.homeassistant.llm.codex.completion
 
 import com.homeassistant.llm.codex.transport.CodexAppServerTransport
-import com.homeassistant.llm.codex.transport.DefaultCodexAppServerTransport
+import com.homeassistant.llm.codex.transport.JsonRpcCodexAppServerTransport
 import com.homeassistant.llm.codex.transport.process.StdioProcessTransport
 import com.homeassistant.llm.codex.transport.protocol.AppServerProtocol
 import com.homeassistant.llm.codex.transport.protocol.ClientInfo
@@ -19,11 +19,11 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.writeBytes
 
-internal class CodexCliClient(
-    private val executable: String = CodexExecutableFactory.get(),
+internal class CodexCompletionClient(
+    private val executable: String = CodexExecutableFactory.executable(),
     private val timeoutMillis: Long = DEFAULT_TIMEOUT_MILLIS,
     private val transportFactory: (List<String>, Path) -> CodexAppServerTransport =
-        { command, workDir -> DefaultCodexAppServerTransport(StdioProcessTransport(command, workDir)) },
+        { command, workDir -> JsonRpcCodexAppServerTransport(StdioProcessTransport(command, workDir)) },
 ) : CompletionClient {
     override suspend fun complete(
         system: String,

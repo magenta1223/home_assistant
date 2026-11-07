@@ -19,7 +19,7 @@ import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
-internal class DefaultCodexAppServerTransport(
+internal class JsonRpcCodexAppServerTransport(
     private val process: ProcessTransport,
 ) : CodexAppServerTransport {
     private val log = LoggerFactory.getLogger(javaClass)

@@ -4,8 +4,8 @@ import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlac
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementResult
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentResult
-import com.homeassistant.application.port.inbound.memoryextraction.MemoryHierarchyUpdate
-import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemoryHierarchy
+import com.homeassistant.application.port.inbound.memoryextraction.MemoryUpdateResult
+import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemory
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRebuildRequired
@@ -22,7 +22,7 @@ import java.util.concurrent.CancellationException
  * [OrganizeComponentIntoGroups], and then runs [MergeSmallGroups]. One failed Episode or Component never stops the others;
  * a [GroupRebuildRequired] stops placement and skips merging, since merge scores from outdated Group vectors would be wrong.
  */
-class UpdateMemoryHierarchyService(
+class UpdateMemoryService(
     private val outbox: ComponentAssignmentOutbox,
     private val pendingComponents: PendingComponentSource,
     private val assignEpisode: AssignEpisodeToComponents,
@@ -32,20 +32,20 @@ class UpdateMemoryHierarchyService(
     private val retryDelayMillis: Long = DEFAULT_RETRY_DELAY_MILLIS,
     private val processingLeaseMillis: Long = DEFAULT_PROCESSING_LEASE_MILLIS,
     private val maxAttempts: Int = DEFAULT_MAX_ATTEMPTS,
-) : UpdateMemoryHierarchy {
+) : UpdateMemory {
     init {
         require(retryDelayMillis >= 0) { "retryDelayMillis must not be negative" }
         require(processingLeaseMillis > 0) { "processingLeaseMillis must be positive" }
         require(maxAttempts > 0) { "maxAttempts must be positive" }
     }
 
-    override fun execute(batchSize: Int): MemoryHierarchyUpdate {
+    override fun execute(batchSize: Int): MemoryUpdateResult {
         require(batchSize > 0) { "batchSize must be positive" }
-        if (!assignEpisode.isReady()) return MemoryHierarchyUpdate.Skipped
+        if (!assignEpisode.isReady()) return MemoryUpdateResult.Skipped
         val episodes = assignWaitingEpisodes(batchSize)
         return when (val placement = placeUnplacedComponents(batchSize)) {
-            is Placement.Completed -> MemoryHierarchyUpdate.Completed(episodes, placement.components, mergeSmallGroups.execute())
-            is Placement.Stopped -> MemoryHierarchyUpdate.RebuildRequired(episodes, placement.components, placement.reason)
+            is Placement.Completed -> MemoryUpdateResult.Completed(episodes, placement.components, mergeSmallGroups.execute())
+            is Placement.Stopped -> MemoryUpdateResult.RebuildRequired(episodes, placement.components, placement.reason)
         }
     }
 

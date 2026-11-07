@@ -10,7 +10,7 @@ import java.util.concurrent.TimeUnit
  * Runs [ExpireIdleChats] every [EXPIRY_CHECK_SECONDS].
  * TODO: To inbound-adapter
  */
-internal class ChatClientExpiryWorker(
+internal class IdleChatExpiryWorker(
     private val expireIdle: ExpireIdleChats,
 ) : AbstractRuntime() {
     private val log = LoggerFactory.getLogger(javaClass)

@@ -9,12 +9,12 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class CodexConversationConfigTest {
+class CodexChatConfigTest {
     @Test
     fun `local configuration needs no service credentials`() {
         val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
 
-        val config = CodexConversationConfig.local(
+        val config = CodexChatConfig.local(
             timeout = Duration.ofSeconds(600),
             executable = "local-codex",
             temporaryDirectory = temporaryDirectory,
@@ -32,7 +32,7 @@ class CodexConversationConfigTest {
     fun `local configuration honors a positive timeout override`() {
         val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
 
-        val config = CodexConversationConfig.local(
+        val config = CodexChatConfig.local(
             timeout = Duration.ofSeconds(42),
             executable = "local-codex",
             temporaryDirectory = temporaryDirectory,
@@ -45,7 +45,7 @@ class CodexConversationConfigTest {
     fun `local configuration rejects a non-positive timeout`() {
         val temporaryDirectory = Files.createTempDirectory("codex-conversation-config-")
 
-        val config = CodexConversationConfig.local(
+        val config = CodexChatConfig.local(
             timeout = Duration.ZERO,
             executable = "local-codex",
             temporaryDirectory = temporaryDirectory,

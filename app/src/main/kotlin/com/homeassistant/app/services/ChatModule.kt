@@ -2,9 +2,9 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
-import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
+import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
 import com.homeassistant.application.usecase.contextprovider.ContextAssembler
 import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
@@ -34,7 +34,7 @@ internal class ChatModule(
     private val chatGateway = chatClient?.let(::AgentChatGateway)
 
     /** Memory-backed conversations, or null when the backend offers no chat client. */
-    val chatService: ChatService? = chatGateway?.let(::memoryBackedChat)
+    val chat: Chat? = chatGateway?.let(::memoryBackedChat)
 
     /** The chat client and the worker that expires idle chats. */
     val runtimes: List<Runtime> = listOfNotNull(chatClient, chatGateway?.let(::expiryWorker))
@@ -48,15 +48,15 @@ internal class ChatModule(
     }
 
     /** Fails chats a previous run left processing, then serves chats with memory context. */
-    private fun memoryBackedChat(gateway: AgentChatGateway): ChatService {
+    private fun memoryBackedChat(gateway: AgentChatGateway): Chat {
         val now = System.currentTimeMillis()
-        repositories.episodeConversationSessions.failStaleProcessing(
-            before = now - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
+        repositories.chatSessions.failStaleProcessing(
+            before = now - ChatService.SESSION_IDLE_TIMEOUT_MILLIS,
             now = now,
         )
-        return ChatServiceImpl(
-            sessions = repositories.episodeConversationSessions,
-            contextProvider = ContextAssembler(listOf(MemoryContextProvider(componentSearcher(), episodeSearcher()))),
+        return ChatService(
+            sessions = repositories.chatSessions,
+            contextSource = ContextAssembler(listOf(MemoryContextProvider(componentSearcher(), episodeSearcher()))),
             chatGateway = gateway,
         )
     }
@@ -72,8 +72,8 @@ internal class ChatModule(
 
     private fun episodeSearcher() = EpisodeSearcher(repositories.episodes, queries, episodeEmbeddings, accessPolicy)
 
-    private fun expiryWorker(gateway: AgentChatGateway) = ChatClientExpiryWorker(
-        ExpireIdleChats(sessions = repositories.episodeConversationSessions, chatGateway = gateway),
+    private fun expiryWorker(gateway: AgentChatGateway) = IdleChatExpiryWorker(
+        ExpireIdleChats(sessions = repositories.chatSessions, chatGateway = gateway),
     )
 
     private fun agentTimeout(): Duration = Duration.ofSeconds(

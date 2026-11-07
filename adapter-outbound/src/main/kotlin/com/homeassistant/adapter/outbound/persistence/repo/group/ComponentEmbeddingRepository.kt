@@ -6,7 +6,7 @@ import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -35,7 +35,7 @@ internal class ComponentEmbeddingRepository(private val db: Database) : Componen
 
     companion object {
         /** The vector version of a Component row: its statement never changes, so the fingerprint identifies the vector. */
-        fun version(component: ResultRow): String = descriptionFingerprint(component[ComponentTable.statement])
+        fun version(component: ResultRow): String = contentFingerprint(component[ComponentTable.statement])
 
         fun decode(row: ResultRow): Embedding<ComponentEmbeddingKey> = Embedding(
             ComponentEmbeddingKey(

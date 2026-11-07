@@ -3,7 +3,7 @@ package com.homeassistant.app.services
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.infrastructure.runtime.RuntimeState
 
@@ -12,7 +12,7 @@ class ApplicationServices internal constructor(
     /** The episode-analysis use case. */
     val episodeAnalysis: EpisodeAnalysis,
     /** Episode-backed conversations, or null when the selected agent backend CLI is unavailable. */
-    val chatService: ChatService? = null,
+    val chat: Chat? = null,
     /** Registered application users that may be selected as knowledge viewers. */
     val users: UserRegistry = UserRegistry.NONE,
     /** Registers people and keeps them logged in with sessions. */

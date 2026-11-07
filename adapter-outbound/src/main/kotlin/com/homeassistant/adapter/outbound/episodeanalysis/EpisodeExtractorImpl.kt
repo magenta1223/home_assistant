@@ -13,7 +13,7 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 /** Runs model episode analysis for normalized source documents. */
-class EpisodeExtractor(
+class EpisodeExtractorImpl(
     private val client: CompletionClient,
     private val chunkSize: Int = CHUNK_SIZE,
     private val chunkOverlap: Int = minOf(CHUNK_OVERLAP, chunkSize - 1),

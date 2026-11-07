@@ -3,31 +3,31 @@ package com.homeassistant.application.port.inbound.memoryextraction
 import com.homeassistant.domain.group.GroupSplit
 
 /** Grows the Episode → Component → Group hierarchy from the Episodes saved since the last update. */
-fun interface UpdateMemoryHierarchy {
+fun interface UpdateMemory {
     /**
      * Assigns up to [batchSize] waiting Episodes to Components, places up to [batchSize] unplaced Components in Groups,
      * and then merges small Groups. Nothing runs when the assignment services are unavailable, so no attempt is used up.
      */
-    fun execute(batchSize: Int): MemoryHierarchyUpdate
+    fun execute(batchSize: Int): MemoryUpdateResult
 }
 
-sealed interface MemoryHierarchyUpdate {
+sealed interface MemoryUpdateResult {
     /** The assignment services were unavailable; nothing was read or written. */
-    data object Skipped : MemoryHierarchyUpdate
+    data object Skipped : MemoryUpdateResult
 
     /** Every step ran. */
     data class Completed(
         val episodes: List<EpisodeAssignmentResult>,
         val components: List<ComponentPlacementResult>,
         val merges: List<GroupMergeOutcome>,
-    ) : MemoryHierarchyUpdate
+    ) : MemoryUpdateResult
 
     /** Placement stopped because stored Group vectors must be rebuilt first, so no Group was merged. */
     data class RebuildRequired(
         val episodes: List<EpisodeAssignmentResult>,
         val components: List<ComponentPlacementResult>,
         val reason: String,
-    ) : MemoryHierarchyUpdate
+    ) : MemoryUpdateResult
 }
 
 data class EpisodeAssignmentResult(val episodeId: Int, val outcome: EpisodeAssignmentOutcome)

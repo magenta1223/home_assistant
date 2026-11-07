@@ -4,7 +4,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
 
-internal data class CodexConversationConfig(
+internal data class CodexChatConfig(
     val executable: String,
     val workDir: Path,
     val timeout: Duration,
@@ -21,14 +21,14 @@ internal data class CodexConversationConfig(
             temporaryDirectory: Path = Path.of(System.getProperty("java.io.tmpdir")),
             model: String = DEFAULT_MODEL,
             reasoningEffort: String = DEFAULT_REASONING_EFFORT,
-        ): CodexConversationConfig? {
+        ): CodexChatConfig? {
             if (timeout.isZero || timeout.isNegative) return null
             val normalizedWorkDir = temporaryDirectory.toAbsolutePath()
                 .normalize()
                 .resolve("homeassistant-codex-conversation")
             if (runCatching { Files.createDirectories(normalizedWorkDir) }.isFailure) return null
 
-            return CodexConversationConfig(
+            return CodexChatConfig(
                 executable = executable,
                 workDir = normalizedWorkDir,
                 timeout = timeout,

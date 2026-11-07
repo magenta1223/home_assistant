@@ -2,7 +2,7 @@ package com.homeassistant.application.port.outbound.memoryextraction.component
 
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.domain.episode.EpisodeAccess
 
 /**
@@ -24,7 +24,7 @@ data class EpisodeEmbeddingKey(val episodeId: Int, val contentHash: String, val 
     companion object {
         /** The key an episode's vector is cached under in [space]. */
         fun of(episodeId: Int, content: String, space: EmbeddingSpace) =
-            EpisodeEmbeddingKey(episodeId, descriptionFingerprint(content), space)
+            EpisodeEmbeddingKey(episodeId, contentFingerprint(content), space)
     }
 }
 

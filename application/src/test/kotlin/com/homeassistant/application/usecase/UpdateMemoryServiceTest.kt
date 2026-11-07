@@ -7,7 +7,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentResult
-import com.homeassistant.application.port.inbound.memoryextraction.MemoryHierarchyUpdate
+import com.homeassistant.application.port.inbound.memoryextraction.MemoryUpdateResult
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
@@ -24,7 +24,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.group.GroupS
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponent
 import com.homeassistant.application.port.outbound.memoryextraction.group.PendingComponentSource
 import com.homeassistant.application.port.outbound.memoryextraction.group.StoredGroup
-import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryHierarchyService
+import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
@@ -47,11 +47,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class UpdateMemoryHierarchyServiceTest {
+class UpdateMemoryServiceTest {
     @Test
     fun `nothing is read or written without the assignment services`() {
         val fixture = Fixture(embeddingReady = false)
-        assertEquals(MemoryHierarchyUpdate.Skipped, fixture.service.execute(20))
+        assertEquals(MemoryUpdateResult.Skipped, fixture.service.execute(20))
         assertEquals(emptyList(), fixture.outboxCalls)
     }
 
@@ -66,7 +66,7 @@ class UpdateMemoryHierarchyServiceTest {
     fun `a failed episode is recorded as failed and the next episode is still assigned`() {
         val fixture = Fixture(claimable = 2, failingEpisodes = setOf(1))
         fixture.statements = mapOf(2 to listOf("fact"))
-        val update = assertIs<MemoryHierarchyUpdate.Completed>(fixture.service.execute(20))
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(20))
         assertEquals(
             listOf(
                 EpisodeAssignmentResult(1, EpisodeAssignmentOutcome.Failed("model unavailable")),
@@ -80,7 +80,7 @@ class UpdateMemoryHierarchyServiceTest {
     @Test
     fun `every unplaced component is placed and a failure fails that component only`() {
         val fixture = Fixture(claimable = 0, unplaced = 3, failingComponents = setOf(2))
-        val update = assertIs<MemoryHierarchyUpdate.Completed>(fixture.service.execute(20))
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(20))
         assertEquals(listOf(1, 2, 3), update.components.map { it.componentId })
         assertIs<ComponentPlacementOutcome.Failed>(update.components[1].outcome)
         assertEquals(listOf(setOf(1), setOf(3)), fixture.groupWrites.map { it.incomingComponentIds })
@@ -93,7 +93,7 @@ class UpdateMemoryHierarchyServiceTest {
             listOf(StoredGroup(Group(4, setOf(9)), 1, VECTOR)),
             mapOf(9 to Embedding(PendingComponent(9, "9").embeddingKey(EmbeddingSpace("old", "v1")), VECTOR)),
         )
-        val update = assertIs<MemoryHierarchyUpdate.RebuildRequired>(fixture.service.execute(20))
+        val update = assertIs<MemoryUpdateResult.RebuildRequired>(fixture.service.execute(20))
         assertTrue(update.components.isEmpty())
         assertTrue(fixture.groupWrites.isEmpty())
     }
@@ -178,7 +178,7 @@ class UpdateMemoryHierarchyServiceTest {
         }
         private val settings = GroupPolicySettings()
 
-        val service = UpdateMemoryHierarchyService(
+        val service = UpdateMemoryService(
             outbox = outbox,
             pendingComponents = object : PendingComponentSource {
                 override fun pending(limit: Int) = (1..unplaced).map { PendingComponent(it, "$it") }

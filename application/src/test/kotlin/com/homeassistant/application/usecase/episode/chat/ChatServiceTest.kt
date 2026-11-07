@@ -11,9 +11,9 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatRequestStatus
 import com.homeassistant.application.port.outbound.chatgateway.ChatSession
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionLease
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStore
-import com.homeassistant.application.usecase.contextprovider.Context
+import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
-import com.homeassistant.application.usecase.chatservice.ChatServiceImpl
+import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.domain.identity.UserId
 import java.time.Clock
 import java.time.Instant
@@ -23,7 +23,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
-class ChatServiceImplTest {
+class ChatServiceTest {
     @Test
     fun `builds and stores an answer for HTTP request retries`() {
         val events = mutableListOf<String>()
@@ -32,7 +32,7 @@ class ChatServiceImplTest {
         val seenUsers = mutableListOf<UserId>()
         val handler = handler(store, client) { userId, _ ->
             seenUsers += userId
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         val result = handler.answer(REQUEST)
@@ -65,13 +65,13 @@ class ChatServiceImplTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            Context("", hasMatches = false)
+            ChatContext("", hasMatches = false)
         }
 
         val result = handler.answer(REQUEST)
 
         assertEquals(
-            ChatResult.AnswerReady(ChatServiceImpl.NO_MATCH_ANSWER),
+            ChatResult.AnswerReady(ChatService.NO_MATCH_ANSWER),
             result,
         )
         assertEquals(null, client.executedPrompt)
@@ -84,7 +84,7 @@ class ChatServiceImplTest {
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         assertIs<ChatResult.AnswerReady>(handler.answer(REQUEST))
@@ -99,12 +99,12 @@ class ChatServiceImplTest {
             createAndActivate(
                 USER_ID,
                 ChatId("expired-thread"),
-                NOW - ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS,
+                NOW - ChatService.SESSION_IDLE_TIMEOUT_MILLIS,
             )
         }
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         assertIs<ChatResult.AnswerReady>(handler.answer(REQUEST))
@@ -119,7 +119,7 @@ class ChatServiceImplTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
         val secondUser = UserId("member-2")
 
@@ -157,14 +157,14 @@ class ChatServiceImplTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertIs<ChatSessionLease.None>(
-            store.lease(USER_ID, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(USER_ID, NOW, ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -175,7 +175,7 @@ class ChatServiceImplTest {
         }
         val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
@@ -183,7 +183,7 @@ class ChatServiceImplTest {
         assertEquals(emptyList(), client.createdThreadIds)
         assertEquals(listOf("existing-thread"), client.endedThreadIds)
         assertIs<ChatSessionLease.None>(
-            store.lease(USER_ID, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(USER_ID, NOW, ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
@@ -192,7 +192,7 @@ class ChatServiceImplTest {
         val store = RecordingSessionStore()
         val client = RecordingChatGateway(createFailure = IllegalStateException("create failed"))
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
@@ -206,7 +206,7 @@ class ChatServiceImplTest {
         val store = RecordingSessionStore(failAttachSession = true)
         val client = RecordingChatGateway()
         val handler = handler(store, client) { _, _ ->
-            Context("saved episode", hasMatches = true)
+            ChatContext("saved episode", hasMatches = true)
         }
 
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
@@ -214,17 +214,17 @@ class ChatServiceImplTest {
         assertEquals(listOf("new-thread-1"), client.endedThreadIds)
         assertEquals(null, client.executedThreadId)
         assertIs<ChatSessionLease.None>(
-            store.lease(USER_ID, NOW, ChatServiceImpl.SESSION_IDLE_TIMEOUT_MILLIS),
+            store.lease(USER_ID, NOW, ChatService.SESSION_IDLE_TIMEOUT_MILLIS),
         )
     }
 
     private fun handler(
         store: RecordingSessionStore,
         client: RecordingChatGateway,
-        context: (UserId, String) -> Context,
-    ) = ChatServiceImpl(
+        chatContext: (UserId, String) -> ChatContext,
+    ) = ChatService(
         sessions = store,
-        contextProvider = ContextSource(context),
+        contextSource = ContextSource(chatContext),
         chatGateway = client,
         clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     )

@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbedding
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupStorageCodec
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeEmbeddingStore
@@ -26,7 +26,7 @@ internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmb
             it[vector] = GroupStorageCodec.vector(embedding.vector)
         }
         val episode = EpisodeTable.selectAll().where { EpisodeTable.id eq embedding.key.episodeId }.singleOrNull()
-        require(episode != null && descriptionFingerprint(episode[EpisodeTable.content]) == embedding.key.contentHash) {
+        require(episode != null && contentFingerprint(episode[EpisodeTable.content]) == embedding.key.contentHash) {
             "episode missing or content changed"
         }
         requireNotNull(findStored(embedding.key))

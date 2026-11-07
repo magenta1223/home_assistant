@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
 import com.homeassistant.configuration.AppConfig
@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.util.UUID
 
-internal fun Route.episodeConversationRoutes(
-    episodeChatService: ChatService?,
+internal fun Route.chatRoutes(
+    episodeChat: Chat?,
 ) {
     post(AppConfig.ROUTE_EPISODE_CONVERSATION) {
         val principal = call.principal<HttpUserPrincipal>()
@@ -24,12 +24,12 @@ internal fun Route.episodeConversationRoutes(
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "authentication required"))
             return@post
         }
-        if (episodeChatService == null) {
+        if (episodeChat == null) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "episode conversation unavailable"))
             return@post
         }
         val request = try {
-            call.receive<HttpEpisodeConversationRequest>()
+            call.receive<HttpChatRequest>()
         } catch (_: Exception) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "invalid request"))
             return@post
@@ -43,7 +43,7 @@ internal fun Route.episodeConversationRoutes(
 
         val userId = principal.userId
         val result = withContext(Dispatchers.IO) {
-            episodeChatService.answer(
+            episodeChat.answer(
                 ChatRequest(
                     userId = userId,
                     requestId = requestId,
@@ -54,7 +54,7 @@ internal fun Route.episodeConversationRoutes(
         when (result) {
             is ChatResult.AnswerReady -> call.respond(
                 HttpStatusCode.OK,
-                HttpEpisodeConversationResponse(answer = result.answer),
+                HttpChatResponse(answer = result.answer),
             )
             ChatResult.AlreadyHandled -> call.respond(
                 HttpStatusCode.Conflict,
@@ -72,13 +72,13 @@ private fun isUuid(value: String): Boolean =
     runCatching { UUID.fromString(value).toString() == value.lowercase() }.getOrDefault(false)
 
 @Serializable
-internal data class HttpEpisodeConversationRequest(
+internal data class HttpChatRequest(
     val requestId: String,
     val question: String,
 )
 
 @Serializable
-internal data class HttpEpisodeConversationResponse(
+internal data class HttpChatResponse(
     val answer: String,
 )
 

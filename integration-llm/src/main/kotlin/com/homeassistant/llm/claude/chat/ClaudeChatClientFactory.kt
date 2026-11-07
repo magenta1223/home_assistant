@@ -6,7 +6,7 @@ import com.homeassistant.llm.ChatClient
 import java.nio.file.Path
 import java.time.Duration
 
-internal object ClaudeConversationClientFactory {
+internal object ClaudeChatClientFactory {
     /** Returns null when the timeout is invalid or the Claude Code CLI cannot be started. */
     fun create(
         timeout: Duration,

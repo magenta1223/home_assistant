@@ -7,10 +7,10 @@ import com.homeassistant.domain.identity.UserId
  * up to [MAX_CONTEXT_CHARS], and a title is never left without an entry under it.
  */
 class ContextAssembler(private val providers: List<ContextProvider>) : ContextSource {
-    override fun context(userId: UserId, question: String): Context {
+    override fun context(userId: UserId, question: String): ChatContext {
         val lines = providers.flatMap { it.sections(userId, question) }.flatMap(::referenceLines)
         val reference = withinBudget(lines).joinToString("\n")
-        return Context(reference = reference, hasMatches = reference.isNotEmpty())
+        return ChatContext(reference = reference, hasMatches = reference.isNotEmpty())
     }
 
     private fun referenceLines(section: ContextSection): List<String> =

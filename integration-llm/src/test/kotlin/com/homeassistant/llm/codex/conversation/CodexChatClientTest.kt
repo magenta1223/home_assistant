@@ -19,7 +19,7 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class DefaultCodexAppServerTest {
+class CodexChatClientTest {
     @Test
     fun `creates distinct threads without starting turns`() {
         val transport = FakeCodexAppServerTransport()
@@ -132,16 +132,16 @@ class DefaultCodexAppServerTest {
         assertNull(parseStructuredAnswer("""{"answer":"valid","extra":true}"""))
     }
 
-    private fun server(transport: FakeCodexAppServerTransport): DefaultCodexAppServer =
-        DefaultCodexAppServer(
-            config = CodexConversationConfig(
+    private fun server(transport: FakeCodexAppServerTransport): CodexChatClient =
+        CodexChatClient(
+            config = CodexChatConfig(
                 executable = "unused",
                 workDir = Files.createTempDirectory("codex-app-server-test-"),
                 timeout = Duration.ofSeconds(5),
             ),
             transport = transport,
             availabilityProbe = { true },
-        ).also(DefaultCodexAppServer::start)
+        ).also(CodexChatClient::start)
 
     private class FakeCodexAppServerTransport(
         private val answerPayload: String = "{\"answer\":\"structured answer\"}",

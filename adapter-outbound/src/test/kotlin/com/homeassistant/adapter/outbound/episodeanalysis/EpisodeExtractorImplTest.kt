@@ -19,7 +19,7 @@ import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
 
-class EpisodeExtractorTest {
+class EpisodeExtractorImplTest {
     @Test
     fun `extraction contract requires a title, content and evidence`() {
         val root = Json.parseToJsonElement(EpisodeAnalysisOutputContract.schema).jsonObject
@@ -37,7 +37,7 @@ class EpisodeExtractorTest {
         val content = "연구자는 9월 측정값이 센서 오류일 가능성이 있으며 재측정 전에는 확정할 수 없다고 말했다."
         val client = RecordingClient(mutableListOf(response(text = content)))
 
-        val episode = EpisodeExtractor(client).analyze(document(recordCount = 1)).single()
+        val episode = EpisodeExtractorImpl(client).analyze(document(recordCount = 1)).single()
 
         assertEquals("title", episode.title)
         assertEquals(content, episode.content)
@@ -48,7 +48,7 @@ class EpisodeExtractorTest {
     fun `large documents use bounded chunks with overlap`() = runBlocking {
         val client = FunctionalClient { _, _, _ -> """{"episodes":[]}""" }
 
-        EpisodeExtractor(
+        EpisodeExtractorImpl(
             client = client,
             chunkSize = 400,
             chunkOverlap = 20,
@@ -72,7 +72,7 @@ class EpisodeExtractorTest {
     fun `chunking does not create a final overlap-only request`() = runBlocking {
         val client = FunctionalClient { _, _, _ -> """{"episodes":[]}""" }
 
-        EpisodeExtractor(
+        EpisodeExtractorImpl(
             client = client,
             chunkSize = 400,
             chunkOverlap = 20,
@@ -96,7 +96,7 @@ class EpisodeExtractorTest {
             }
         }
 
-        EpisodeExtractor(
+        EpisodeExtractorImpl(
             client = client,
             chunkSize = 1,
             chunkOverlap = 0,

@@ -22,7 +22,7 @@ data class RepositoryStores(
     val groups: GroupRepository,
     val componentAssignmentOutbox: ComponentAssignmentOutbox,
     val episodeEmbeddings: EpisodeEmbeddingStore,
-    val episodeConversationSessions: ChatSessionStore,
+    val chatSessions: ChatSessionStore,
     val users: UserStore,
     val userCredentials: UserCredentialStore,
     val userSessions: UserSessionStore,

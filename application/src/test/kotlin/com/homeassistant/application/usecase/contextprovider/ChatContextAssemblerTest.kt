@@ -6,7 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class ContextAssemblerTest {
+class ChatContextAssemblerTest {
     @Test
     fun `sections of every provider are joined in provider order`() {
         val context = ContextAssembler(listOf(

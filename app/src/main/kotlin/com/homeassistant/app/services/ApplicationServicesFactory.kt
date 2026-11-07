@@ -35,7 +35,7 @@ object ApplicationServicesFactory {
         )
         return ApplicationServices(
             episodeAnalysis = memoryExtraction.episodeAnalysis,
-            chatService = chat.chatService,
+            chat = chat.chat,
             users = identity.users,
             authentication = identity.authentication,
             runtimes = embeddings.runtimes + memoryExtraction.runtimes + chat.runtimes,

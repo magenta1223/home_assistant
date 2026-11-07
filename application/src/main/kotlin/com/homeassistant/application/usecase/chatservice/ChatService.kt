@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.chatservice
 
-import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatRequestKey
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
@@ -21,12 +21,12 @@ import java.time.Duration
  * while the user was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
  * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
  */
-class ChatServiceImpl(
+class ChatService(
     private val sessions: ChatSessionStore,
-    private val contextProvider: ContextSource,
+    private val contextSource: ContextSource,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
-) : ChatService {
+) : Chat {
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun answer(request: ChatRequest): ChatResult {
@@ -43,7 +43,7 @@ class ChatServiceImpl(
         }
         val contextStartedAt = System.nanoTime()
         val context = try {
-            contextProvider.context(request.userId, request.question)
+            contextSource.context(request.userId, request.question)
         } catch (error: Exception) {
             log.warn(
                 "Episode context retrieval failed category={} elapsedMs={}",

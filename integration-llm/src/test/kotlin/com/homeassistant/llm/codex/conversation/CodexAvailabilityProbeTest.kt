@@ -11,7 +11,7 @@ class CodexAvailabilityProbeTest {
     fun `availability probe allows a six second cold start`() {
         val temporaryDirectory = Files.createTempDirectory("slow-codex-version-")
         val executable = createSlowCodexExecutable(temporaryDirectory)
-        val config = CodexConversationConfig.local(
+        val config = CodexChatConfig.local(
             executable = executable,
             temporaryDirectory = temporaryDirectory,
             timeout = Duration.ofMinutes(10),

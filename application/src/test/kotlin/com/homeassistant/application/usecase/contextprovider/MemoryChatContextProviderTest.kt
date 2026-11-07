@@ -13,7 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-class MemoryContextProviderTest {
+class MemoryChatContextProviderTest {
     @Test
     fun `component statements come before the episodes with their saved time`() {
         val sections = provider(

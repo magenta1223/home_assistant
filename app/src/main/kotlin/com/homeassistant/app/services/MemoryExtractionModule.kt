@@ -1,10 +1,10 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.componentextraction.ComponentExtractorImpl
-import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractor
+import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorImpl
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
-import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryHierarchyService
+import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memoryextraction.component.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
@@ -31,14 +31,14 @@ internal class MemoryExtractionModule(
 ) {
     /** Turns source records into Episodes. */
     val episodeAnalysis = EpisodeAnalysisService(
-        episodeExtractor = EpisodeExtractor(completionClient),
+        episodeExtractor = EpisodeExtractorImpl(completionClient),
         sourceRecords = repositories.sourceRecords,
         episodes = repositories.episodes,
         accessPolicy = accessPolicy,
         referenceInterpreter = ModelSourceReferenceInterpreter(completionClient),
     )
 
-    private val updateHierarchy = UpdateMemoryHierarchyService(
+    private val updateHierarchy = UpdateMemoryService(
         repositories.componentAssignmentOutbox,
         repositories.pendingComponents,
         AssignEpisodeToComponents(
@@ -56,5 +56,5 @@ internal class MemoryExtractionModule(
     )
 
     /** The worker that updates the memory hierarchy in rounds. */
-    val runtimes: List<Runtime> = listOf(ComponentAssignmentWorker(updateHierarchy))
+    val runtimes: List<Runtime> = listOf(UpdateMemoryWorker(updateHierarchy))
 }

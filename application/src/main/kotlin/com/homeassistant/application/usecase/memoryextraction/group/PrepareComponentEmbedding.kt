@@ -3,7 +3,7 @@ package com.homeassistant.application.usecase.memoryextraction.group
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.port.outbound.embedding.descriptionFingerprint
+import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memoryextraction.group.ComponentEmbeddingStore
@@ -33,4 +33,4 @@ class PrepareComponentEmbedding(
 }
 
 /** A statement never changes, so its fingerprint is the only vector version a Component has. */
-fun Component.pending(): PendingComponent = PendingComponent(id, descriptionFingerprint(statement))
+fun Component.pending(): PendingComponent = PendingComponent(id, contentFingerprint(statement))

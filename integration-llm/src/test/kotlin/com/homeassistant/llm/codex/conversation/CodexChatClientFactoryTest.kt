@@ -14,13 +14,13 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class CodexAppServerFactoryTest {
+class CodexChatClientFactoryTest {
     @Test
     fun `returns an installed app server without starting it`() {
         val transport = InitializingTransport()
 
-        val server = CodexAppServerFactory.installed(
-            DefaultCodexAppServer(config(), transport, availabilityProbe = { true }),
+        val server = CodexChatClientFactory.installed(
+            CodexChatClient(config(), transport, availabilityProbe = { true }),
         )
 
         assertNotNull(server)
@@ -30,7 +30,7 @@ class CodexAppServerFactoryTest {
     @Test
     fun `initializes the app server once when it starts and closes it when it stops`() {
         val transport = InitializingTransport()
-        val server = DefaultCodexAppServer(config(), transport, availabilityProbe = { true })
+        val server = CodexChatClient(config(), transport, availabilityProbe = { true })
 
         server.start()
 
@@ -45,15 +45,15 @@ class CodexAppServerFactoryTest {
     fun `returns nothing when the Codex CLI is not installed`() {
         val transport = InitializingTransport()
 
-        val server = CodexAppServerFactory.installed(
-            DefaultCodexAppServer(config(), transport, availabilityProbe = { false }),
+        val server = CodexChatClientFactory.installed(
+            CodexChatClient(config(), transport, availabilityProbe = { false }),
         )
 
         assertNull(server)
         assertEquals(0, transport.startCount)
     }
 
-    private fun config(): CodexConversationConfig = CodexConversationConfig(
+    private fun config(): CodexChatConfig = CodexChatConfig(
         executable = "unused",
         workDir = Files.createTempDirectory("codex-app-server-factory-test-"),
         timeout = Duration.ofSeconds(5),

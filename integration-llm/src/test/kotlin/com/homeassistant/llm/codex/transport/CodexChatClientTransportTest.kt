@@ -21,7 +21,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 /** Verifies the typed Codex protocol over a real stdio process transport. */
-class DefaultCodexAppServerTransportTest {
+class CodexChatClientTransportTest {
     @Test
     fun `executes typed app server operations and delivers typed thread events`() {
         transport("normal").use { transport ->
@@ -127,7 +127,7 @@ class DefaultCodexAppServerTransportTest {
 
     @Test
     fun `close is terminal and missing executable fails safely`() {
-        DefaultCodexAppServerTransport(
+        JsonRpcCodexAppServerTransport(
             StdioProcessTransport(
                 listOf("nonexistent-codex-app-server-test-executable"),
                 Path.of("."),
@@ -144,7 +144,7 @@ class DefaultCodexAppServerTransportTest {
 
     private fun transport(mode: String): CodexAppServerTransport {
         val executable = if (System.getProperty("os.name").startsWith("Windows")) "java.exe" else "java"
-        return DefaultCodexAppServerTransport(
+        return JsonRpcCodexAppServerTransport(
             StdioProcessTransport(
                 listOf(
                     Path.of(System.getProperty("java.home"), "bin", executable).toString(),

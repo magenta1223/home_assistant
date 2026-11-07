@@ -19,7 +19,6 @@ import com.homeassistant.domain.episode.EpisodeVisibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDocumentDraft
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import java.nio.file.Files
 import org.jetbrains.exposed.sql.Database
@@ -67,7 +66,7 @@ class EpisodeAnalysisRetryTest {
                     .execute(request)
             }
 
-            assertTrue(sourceRecords.findBySource(request.source.source).isEmpty())
+            assertEquals(1, resubmit(sourceRecords, request).importedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -101,10 +100,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(1, result.importedRecordCount)
             assertEquals(2, result.alreadyAnalyzedRecordCount)
             assertEquals(listOf("new"), extractor.documents.single().records.map { it.deduplicationKey })
-            assertEquals(
-                SourceRecordAnalysisStatus.ANALYZED,
-                sourceRecords.findBySource(renamed).single().analysisStatus,
-            )
+            assertEquals(1, sourceRecords.saveAll(renamed, listOf(draft("new"))).alreadyAnalyzedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -125,10 +121,7 @@ class EpisodeAnalysisRetryTest {
 
             val unavailable = assertFailsWith<EpisodeAnalysisUnavailableException> { service.execute(request) }
             assertSame(failure, unavailable.cause)
-            assertEquals(
-                SourceRecordAnalysisStatus.PENDING,
-                sourceRecords.findBySource(request.source.source).single().analysisStatus,
-            )
+            assertEquals(1, resubmit(sourceRecords, request).retriedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -153,10 +146,7 @@ class EpisodeAnalysisRetryTest {
             val request = request("a", EpisodeAccess.restricted(listOf(USER_ID)))
 
             assertFailsWith<EpisodeAnalysisUnavailableException> { service.execute(request) }
-            assertEquals(
-                SourceRecordAnalysisStatus.PENDING,
-                sourceRecords.findBySource(request.source.source).single().analysisStatus,
-            )
+            assertEquals(1, resubmit(sourceRecords, request).retriedRecordCount)
 
             val retried = service.execute(request)
             assertEquals(0, retried.importedRecordCount)
@@ -164,10 +154,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(0, retried.alreadyAnalyzedRecordCount)
             assertEquals(1, retried.episodeCount)
             assertEquals(EpisodeVisibility.RESTRICTED, retried.visibility)
-            assertEquals(
-                SourceRecordAnalysisStatus.ANALYZED,
-                sourceRecords.findBySource(request.source.source).single().analysisStatus,
-            )
+            assertEquals(1, resubmit(sourceRecords, request).alreadyAnalyzedRecordCount)
 
             val duplicate = assertFailsWith<DuplicateSourceRecordsException> { service.execute(request) }
             assertEquals(1, duplicate.recordCount)
@@ -213,7 +200,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(2, result.episodeCount)
             assertEquals(EpisodeVisibility.PUBLIC, result.visibility)
             assertEquals(listOf("pending", "new"), extractor.documents.single().records.map { it.deduplicationKey })
-            assertTrue(sourceRecords.findBySource(source).all { it.analysisStatus == SourceRecordAnalysisStatus.ANALYZED })
+            assertEquals(3, sourceRecords.saveAll(source, listOf(draft("analyzed"), draft("pending"), draft("new"))).alreadyAnalyzedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -242,6 +229,10 @@ class EpisodeAnalysisRetryTest {
     )
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
+
+    /** Submits [request]'s records again; the counts tell whether they are stored, pending or analyzed. */
+    private fun resubmit(sourceRecords: SourceRecordRepositoryImpl, request: EpisodeAnalysisRequest) =
+        sourceRecords.saveAll(request.source.source, request.source.records, request.access)
 
     private fun markAnalyzed(db: Database, recordIds: Collection<Int>) {
         EpisodeRepositoryImpl(db).save(EpisodeBatch(USER_ID, emptyList(), recordIds))

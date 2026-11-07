@@ -93,7 +93,6 @@ class OllamaDistributionInstallerTest {
         version = "test-version",
         assetUri = archive.toUri(),
         assetSha256 = checksum,
-        assetSizeBytes = Files.size(archive),
         entryPoint = Path.of("ollama.exe"),
     )
 

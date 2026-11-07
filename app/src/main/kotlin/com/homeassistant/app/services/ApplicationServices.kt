@@ -19,8 +19,6 @@ interface ApplicationServices : AutoCloseable {
     /** Registers people and keeps them logged in with sessions. */
     val authentication: UserAuthentication
 
-    /** Describes a Component per viewer on demand; nothing is generated ahead of a request. */
-
     /** Reports whether required managed runtimes are available. */
     val isReady: Boolean
 

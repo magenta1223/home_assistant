@@ -120,16 +120,6 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         )
     }
 
-    override fun findBySource(source: SourceDescriptor): List<SourceRecord> = transaction(db) {
-        SourceRecordTable.selectAll()
-            .where {
-                (SourceRecordTable.sourceType eq source.type) and
-                    (SourceRecordTable.sourceName eq source.name)
-            }
-            .orderBy(SourceRecordTable.id)
-            .map { it.toSourceRecord() }
-    }
-
     private fun SourceRecordDraft.toSourceRecord(id: Int, access: EpisodeAccess): SourceRecord =
         SourceRecord(
             id = id,

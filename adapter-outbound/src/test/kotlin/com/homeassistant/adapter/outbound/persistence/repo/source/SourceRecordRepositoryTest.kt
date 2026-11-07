@@ -29,15 +29,14 @@ class SourceRecordRepositoryTest {
             val reference = SourceReferenceDraft("guide.pdf", "application/pdf", "original-pdf".toByteArray())
             val source = SourceDescriptor("text", "guide")
 
-            repository.saveAll(
+            val records = repository.saveAll(
                 source,
                 listOf(
                     SourceRecordDraft("reference:${reference.sha256}:page-1", "page one", reference = reference),
                     SourceRecordDraft("reference:${reference.sha256}:page-2", "page two", reference = reference),
                 ),
-            )
+            ).recordsToAnalyze
 
-            val records = repository.findBySource(source)
             assertEquals(2, records.size)
             assertEquals(1, records.mapNotNull { it.reference?.id }.distinct().size)
             assertTrue(records.all { it.reference?.fileName == "guide.pdf" })
@@ -185,8 +184,10 @@ class SourceRecordRepositoryTest {
 
             assertTrue(saved.recordsToAnalyze.isEmpty())
             assertEquals(1, saved.alreadyAnalyzedRecordCount)
-            assertEquals(SourceRecordAnalysisStatus.ANALYZED, repository.findBySource(source).single().analysisStatus)
-            assertEquals(access, repository.findBySource(source).single().access)
+            val conflict = assertFailsWith<SourceAccessConflictException> {
+                repository.saveAll(source, listOf(SourceRecordDraft("legacy-key", "legacy content")), EpisodeAccess.PUBLIC)
+            }
+            assertEquals(access, conflict.existingAccess)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -235,11 +236,18 @@ class SourceRecordRepositoryTest {
 
             assertTrue(saved.recordsToAnalyze.isEmpty())
             assertEquals(1, saved.alreadyAnalyzedRecordCount)
-            val upgraded = repository.findBySource(source).single()
-            assertEquals(1, upgraded.id)
-            assertEquals("canonical-key", upgraded.deduplicationKey)
-            assertEquals("canonical content", upgraded.content)
-            assertEquals(SourceRecordAnalysisStatus.ANALYZED, upgraded.analysisStatus)
+            val resubmitted = repository.saveAll(source, listOf(SourceRecordDraft("canonical-key", "canonical content")))
+            assertEquals(0, resubmitted.importedRecordCount)
+            assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
+            DriverManager.getConnection("jdbc:sqlite:$databasePath").use { connection ->
+                connection.createStatement().use { statement ->
+                    statement.executeQuery("SELECT id, content FROM source_records").use { result ->
+                        assertTrue(result.next())
+                        assertEquals(1, result.getInt(1))
+                        assertEquals("canonical content", result.getString(2))
+                    }
+                }
+            }
         } finally {
             Files.deleteIfExists(databasePath)
         }

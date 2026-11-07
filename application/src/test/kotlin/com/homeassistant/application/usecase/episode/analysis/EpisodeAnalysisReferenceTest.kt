@@ -89,8 +89,6 @@ class EpisodeAnalysisReferenceTest {
             }
             return SourceRecordSaveResult(saved, saved.size, 0, 0)
         }
-
-        override fun findBySource(source: SourceDescriptor): List<SourceRecord> = emptyList()
     }
 
     private class RecordingExtractor : EpisodeExtractor {

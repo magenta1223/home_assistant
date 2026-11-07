@@ -27,7 +27,6 @@ class ChatServiceImpl(
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) : ChatService {
-    private val promptBuilder = ChatPromptBuilder
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun answer(request: ChatRequest): ChatResult {
@@ -62,7 +61,7 @@ class ChatServiceImpl(
         )
         if (!context.hasMatches) return answerReady(request.key, NO_MATCH_ANSWER)
 
-        val prompt = promptBuilder.build(context.reference, request.question)
+        val prompt = ChatPromptBuilder.build(context.reference, request.question)
         val session = active ?: createSession(request) ?: return ChatResult.Failed
         val turnStartedAt = System.nanoTime()
         val result = chatGateway.chat(session.chatId, prompt)

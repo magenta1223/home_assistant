@@ -57,7 +57,6 @@ class GroupRepositoryTest {
         val ids = committed.map { components.save(EpisodeComponents(it.id, listOf("knowledge of ${it.content}"))).single().id }.toSet()
         val beforeComponents = components.findByIds(ids)
         val beforeEpisodes = episodes.findVisibleTo(user)
-        val beforeSources = sources.findBySource(source)
         val first = organizePending(db, 2, limit = 3)
         assertEquals(3, first.size)
         assertTrue(first.all { it is ComponentOrganizationOutcome.Organized })
@@ -73,7 +72,8 @@ class GroupRepositoryTest {
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(beforeComponents, components.findByIds(ids))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
-        assertEquals(beforeSources, sources.findBySource(source))
+        val resubmitted = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), EpisodeAccess.restricted(listOf(user)))
+        assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
     }
 
     @Test fun `stale revision and already assigned incoming reject`() = withDatabase { db, _ ->

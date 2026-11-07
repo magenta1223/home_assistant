@@ -4,6 +4,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeAccess
@@ -15,6 +16,7 @@ import java.time.Clock
 import java.time.Instant
 import java.time.ZoneOffset
 import java.nio.file.Files
+import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.update
 import org.jetbrains.exposed.sql.transactions.transaction
 import kotlin.test.Test
@@ -43,15 +45,21 @@ class EpisodeRepositoryTest {
 
             val migratedDatabase = DatabaseFactory.init(databasePath.toString())
             val migratedEpisodes = EpisodeRepositoryImpl(migratedDatabase)
-            val migratedSource = SourceRecordRepositoryImpl(migratedDatabase)
 
             assertEquals(EpisodeVisibility.RESTRICTED, migratedEpisodes.findVisibleTo(creator).single().visibility)
             assertEquals(setOf(creator.value), migratedEpisodes.findVisibleTo(creator).single().allowedUserIds)
             assertEquals(0, migratedEpisodes.findVisibleTo(UserId("member-2")).size)
-            assertEquals(
-                EpisodeAccess.restricted(listOf(creator)),
-                migratedSource.findBySource(SourceDescriptor("test", "legacy")).single().access,
-            )
+            transaction(migratedDatabase) {
+                assertEquals(
+                    EpisodeVisibility.RESTRICTED.name,
+                    SourceRecordTable.selectAll().where { SourceRecordTable.id eq evidence.id }.single()[SourceRecordTable.visibility],
+                )
+                assertEquals(
+                    listOf(creator.value),
+                    SourceRecordViewerTable.selectAll().where { SourceRecordViewerTable.sourceRecordId eq evidence.id }
+                        .map { it[SourceRecordViewerTable.userId] },
+                )
+            }
         } finally {
             Files.deleteIfExists(databasePath)
         }

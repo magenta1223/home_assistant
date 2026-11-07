@@ -124,26 +124,24 @@ internal class DefaultCodexAppServer(
     }
 
     override fun send(chatId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
-        val threadIdValue = chatId
-        if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) {
+        if (!CODEX_THREAD_ID_PATTERN.matches(chatId)) {
             throw CodexConversationException("INVALID_THREAD_ID")
         }
-        if (threadIdValue !in loadedThreads) {
-            await(transport.resumeThread(threadResumeMessage(threadIdValue)), deadline.remaining())
-            loadedThreads += threadIdValue
+        if (chatId !in loadedThreads) {
+            await(transport.resumeThread(threadResumeMessage(chatId)), deadline.remaining())
+            loadedThreads += chatId
         }
-        runTurn(threadIdValue, prompt, deadline)
+        runTurn(chatId, prompt, deadline)
     }
 
     override fun closeChat(chatId: String) {
-        val threadIdValue = chatId
-        if (!CODEX_THREAD_ID_PATTERN.matches(threadIdValue)) return
-        loadedThreads.remove(threadIdValue)
+        if (!CODEX_THREAD_ID_PATTERN.matches(chatId)) return
+        loadedThreads.remove(chatId)
         if (!ready.get()) return
         runCatching {
             await(
                 transport.unsubscribeThread(
-                    AppServerProtocol.ThreadUnsubscribe(threadIdValue),
+                    AppServerProtocol.ThreadUnsubscribe(chatId),
                 ),
                 RELEASE_TIMEOUT,
             )
@@ -324,12 +322,10 @@ internal class DefaultCodexAppServer(
 
 internal fun parseStructuredAnswer(raw: String?): String? {
     val result = raw?.let {
-        runCatching { STRUCTURED_ANSWER_JSON.decodeFromString(StructuredAnswer.serializer(), it) }.getOrNull()
+        runCatching { Json.decodeFromString(StructuredAnswer.serializer(), it) }.getOrNull()
     } ?: return null
     return result.answer.trim().takeIf(String::isNotEmpty)
 }
-
-private val STRUCTURED_ANSWER_JSON = Json.Default
 
 @OptIn(ExperimentalSerializationApi::class)
 private object StructuredAnswerContract {

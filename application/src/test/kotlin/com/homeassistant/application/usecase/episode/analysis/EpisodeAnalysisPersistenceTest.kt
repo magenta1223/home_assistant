@@ -25,7 +25,6 @@ class EpisodeAnalysisPersistenceTest {
                     listOf(SourceRecord(1, "key", "source", SourceRecordAnalysisStatus.PENDING, access)),
                     1, 0, 0,
                 )
-            override fun findBySource(source: SourceDescriptor) = emptyList<SourceRecord>()
         }
         val service = EpisodeAnalysisService(
             episodeExtractor = object : EpisodeExtractor {

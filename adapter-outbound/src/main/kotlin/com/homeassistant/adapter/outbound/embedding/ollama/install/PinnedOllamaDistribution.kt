@@ -12,7 +12,6 @@ internal object PinnedOllamaDistribution {
             "https://github.com/ollama/ollama/releases/download/v0.30.8/ollama-windows-amd64.zip",
         ),
         assetSha256 = "c2d26d97e698027329c252629d7113bbc05d874b49960cbb03e93a39ae9fd95c",
-        assetSizeBytes = ASSET_SIZE_BYTES,
         minimumFreeSpaceBytes = ASSET_SIZE_BYTES + INSTALLED_SIZE_BYTES,
         entryPoint = Path.of("ollama.exe"),
     )

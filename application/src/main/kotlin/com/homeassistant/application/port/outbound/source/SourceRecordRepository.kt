@@ -17,9 +17,6 @@ interface SourceRecordRepository {
         access: EpisodeAccess = EpisodeAccess.PUBLIC,
     ): SourceRecordSaveResult
 
-    /** Returns source records belonging to the specified source. */
-    fun findBySource(source: SourceDescriptor): List<SourceRecord>
-
 }
 
 data class SourceRecordSaveResult(

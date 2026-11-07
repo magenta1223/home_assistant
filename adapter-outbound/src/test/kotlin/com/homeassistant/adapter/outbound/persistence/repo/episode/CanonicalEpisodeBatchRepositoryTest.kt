@@ -7,7 +7,6 @@ import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRe
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.selectAll
@@ -48,9 +47,7 @@ class CanonicalEpisodeBatchRepositoryTest {
 
         assertTrue(repository.findVisibleTo(USER).isEmpty())
         assertEquals(0L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
-        assertTrue(sourceRecords.findBySource(SOURCE).all {
-            it.analysisStatus == SourceRecordAnalysisStatus.PENDING
-        })
+        assertEquals(2, sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).retriedRecordCount)
     }
 
     @Test
@@ -79,9 +76,7 @@ class CanonicalEpisodeBatchRepositoryTest {
             assertEquals(3, repository.findVisibleTo(USER).size)
             assertEquals(2, variants.size)
             assertEquals(3L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
-            assertTrue(sourceRecords.findBySource(SOURCE).all {
-                it.analysisStatus == SourceRecordAnalysisStatus.ANALYZED
-            })
+            assertEquals(2, sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).alreadyAnalyzedRecordCount)
         }
 
     private fun item(key: String, proposal: EpisodeProposal) = proposal

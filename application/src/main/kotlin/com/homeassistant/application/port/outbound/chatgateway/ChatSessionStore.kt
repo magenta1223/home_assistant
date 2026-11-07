@@ -6,8 +6,6 @@ import com.homeassistant.domain.identity.UserId
 enum class ChatRequestStatus {
     PROCESSING,
     ANSWER_READY,
-    /** Read compatibility for previously completed requests; HTTP writes ANSWER_READY. */
-    COMPLETED,
     FAILED,
 }
 

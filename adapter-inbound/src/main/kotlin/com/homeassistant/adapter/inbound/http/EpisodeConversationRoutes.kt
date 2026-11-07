@@ -36,8 +36,7 @@ internal fun Route.episodeConversationRoutes(
             call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "authentication required"))
             return@post
         }
-        val conversation = episodeChatService
-        if (conversation == null) {
+        if (episodeChatService == null) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to "episode conversation unavailable"))
             return@post
         }
@@ -56,7 +55,7 @@ internal fun Route.episodeConversationRoutes(
 
         val userId = principal.userId
         val result = withContext(Dispatchers.IO) {
-            conversation.answer(
+            episodeChatService.answer(
                 ChatRequest(
                     userId = userId,
                     requestId = requestId,

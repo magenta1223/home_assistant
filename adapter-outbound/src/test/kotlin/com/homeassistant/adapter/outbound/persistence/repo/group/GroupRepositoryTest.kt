@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
 import com.homeassistant.domain.embedding.EmbeddingVector
@@ -182,7 +182,7 @@ class GroupRepositoryTest {
         val embeddings = seed(db, 2)
         val repository = GroupRepositoryImpl(db)
         repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings))
-        val restarted = ComponentEmbeddingRepository(DatabaseFactory.init(path))
+        val restarted = ComponentEmbeddingRepositoryImpl(DatabaseFactory.init(path))
         assertEquals(embeddings.getValue(1), restarted.find(embeddings.getValue(1).key))
         // The first vector for a cache key wins even if another embedding request returns different coordinates.
         assertEquals(embeddings.getValue(1), restarted.save(embeddings.getValue(1).copy(vector = EmbeddingVector.normalized(listOf(0.0, 1.0)))))
@@ -209,7 +209,7 @@ class GroupRepositoryTest {
         val episodes = EpisodeRepositoryImpl(db).save(EpisodeBatch(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
         val components = ComponentRepositoryImpl(db)
-        val store = ComponentEmbeddingRepository(db)
+        val store = ComponentEmbeddingRepositoryImpl(db)
         return episodes.associate { episode ->
             val statement = "knowledge of ${episode.content}"
             val id = components.save(EpisodeComponents(episode.id, listOf(statement))).single().id
@@ -242,7 +242,7 @@ class GroupRepositoryTest {
         val settings = GroupPolicySettings(maxComponents = maxComponents)
         val organizer = OrganizeComponentIntoGroups(
             repository,
-            PrepareComponentEmbedding(generator, ComponentEmbeddingRepository(db)),
+            PrepareComponentEmbedding(generator, ComponentEmbeddingRepositoryImpl(db)),
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
         return ComponentRepositoryImpl(db).findUngrouped(limit).map(organizer::organize)

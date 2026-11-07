@@ -5,10 +5,10 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Ep
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
@@ -86,7 +86,7 @@ class AssignEpisodeToComponentsTest {
             override fun embedQuery(text: String) = east
         }
         private val episodeCache = mutableMapOf<EpisodeEmbeddingKey, Embedding<EpisodeEmbeddingKey>>()
-        private val episodeEmbeddings = PrepareEpisodeEmbedding(texts, object : EpisodeEmbeddingStore {
+        private val episodeEmbeddings = PrepareEpisodeEmbedding(texts, object : EpisodeEmbeddingRepository {
             override fun find(key: EpisodeEmbeddingKey) = episodeCache[key]
             override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = episodeCache.getOrPut(embedding.key) { embedding }
         })
@@ -103,7 +103,7 @@ class AssignEpisodeToComponentsTest {
         }
         private val componentCache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
         private val componentEmbeddings = PrepareComponentEmbedding(texts, object :
-            ComponentEmbeddingStore {
+            ComponentEmbeddingRepository {
             override fun find(key: ComponentEmbeddingKey) = componentCache[key]
             override fun save(embedding: Embedding<ComponentEmbeddingKey>) = componentCache.getOrPut(embedding.key) { embedding }
         })

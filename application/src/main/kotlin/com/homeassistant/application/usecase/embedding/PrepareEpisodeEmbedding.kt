@@ -4,12 +4,12 @@ import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
 
 /** Provides an episode's vector for Component placement, generating and storing it only when its content is not stored yet. */
 class PrepareEpisodeEmbedding(
     private val generator: EmbeddingGenerator,
-    private val store: EpisodeEmbeddingStore,
+    private val store: EpisodeEmbeddingRepository,
 ) {
     /** The model and input format every prepared vector belongs to. */
     val space: EmbeddingSpace get() = generator.space

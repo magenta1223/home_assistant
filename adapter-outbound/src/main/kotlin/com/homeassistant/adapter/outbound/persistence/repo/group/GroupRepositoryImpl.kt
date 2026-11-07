@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.EmbeddingVectorCodec
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
@@ -27,7 +27,7 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
         val memberships = GroupMembershipTable.selectAll().toList()
         val keys = memberships.map { it[GroupMembershipTable.embeddingKey] }
         val embeddings = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList keys }
-            .map { ComponentEmbeddingRepository.decode(it) }.associateBy { it.key.componentId }
+            .map { ComponentEmbeddingRepositoryImpl.decode(it) }.associateBy { it.key.componentId }
         val groups = storedGroups(memberships)
         check(memberships.size == embeddings.size) { "group embedding missing" }
         GroupSnapshot(groups, embeddings)
@@ -82,15 +82,15 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
 
     private fun verifyEmbeddings(change: GroupChange) {
         val stored = ComponentEmbeddingTable.selectAll().where {
-            ComponentEmbeddingTable.key inList change.embeddings.values.map { ComponentEmbeddingRepository.key(it.key) }
-        }.map { ComponentEmbeddingRepository.decode(it) }.associateBy { it.key.componentId }
+            ComponentEmbeddingTable.key inList change.embeddings.values.map { ComponentEmbeddingRepositoryImpl.key(it.key) }
+        }.map { ComponentEmbeddingRepositoryImpl.decode(it) }.associateBy { it.key.componentId }
         require(stored == change.embeddings) { "expected immutable vectors are missing or changed" }
         val versions = ComponentTable.selectAll().where { ComponentTable.id inList stored.keys }
-            .associate { it[ComponentTable.id] to ComponentEmbeddingRepository.version(it) }
+            .associate { it[ComponentTable.id] to ComponentEmbeddingRepositoryImpl.version(it) }
         if (stored.values.any { versions[it.key.componentId] != it.key.version }) throw concurrentChange()
         val activeKeys = GroupMembershipTable.selectAll().map { it[GroupMembershipTable.embeddingKey] }
         val active = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList activeKeys }
-            .map { ComponentEmbeddingRepository.decode(it) }
+            .map { ComponentEmbeddingRepositoryImpl.decode(it) }
         val combined = active + stored.values
         if (combined.map { it.key.space }.distinct().size != 1 || combined.map { it.vector.dimension }.distinct().size != 1) {
             throw GroupRebuildRequired("cannot mix group embedding models, formats or dimensions")
@@ -121,7 +121,7 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
                 GroupMembershipTable.insert {
                     it[componentId] = component
                     it[groupId] = id
-                    it[embeddingKey] = ComponentEmbeddingRepository.key(change.embeddings.getValue(component).key)
+                    it[embeddingKey] = ComponentEmbeddingRepositoryImpl.key(change.embeddings.getValue(component).key)
                 }
             }
             id

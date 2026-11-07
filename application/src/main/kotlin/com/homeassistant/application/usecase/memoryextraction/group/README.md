@@ -18,7 +18,7 @@ sequenceDiagram
     participant One as OrganizeComponentIntoGroups
     participant Snapshots as GroupRepository
     participant Embedding as PrepareComponentEmbedding
-    participant Cache as ComponentEmbeddingStore
+    participant Cache as ComponentEmbeddingRepository
     participant Generator as EmbeddingGenerator
     participant Policy as GroupOrganizationPlanner
     participant Writer as GroupRepository

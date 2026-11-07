@@ -13,10 +13,10 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.application.port.outbound.memoryextraction.component.PendingEpisode
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
@@ -194,13 +194,13 @@ class UpdateMemoryServiceTest {
         private fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", EpisodeAccess.PUBLIC, listOf("message $id"))
     }
 
-    private class EpisodeCache : EpisodeEmbeddingStore {
+    private class EpisodeCache : EpisodeEmbeddingRepository {
         private val cache = mutableMapOf<EpisodeEmbeddingKey, Embedding<EpisodeEmbeddingKey>>()
         override fun find(key: EpisodeEmbeddingKey) = cache[key]
         override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }
     }
 
-    private class ComponentCache : ComponentEmbeddingStore {
+    private class ComponentCache : ComponentEmbeddingRepository {
         private val cache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()
         override fun find(key: ComponentEmbeddingKey) = cache[key]
         override fun save(embedding: Embedding<ComponentEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }

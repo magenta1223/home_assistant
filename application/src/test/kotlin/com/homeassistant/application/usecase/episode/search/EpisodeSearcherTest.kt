@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
@@ -69,7 +69,7 @@ class EpisodeSearcherTest {
                 override fun save(batch: EpisodeBatch) = error("search never saves episodes")
             },
             embeddings,
-            PrepareEpisodeEmbedding(embeddings, object : EpisodeEmbeddingStore {
+            PrepareEpisodeEmbedding(embeddings, object : EpisodeEmbeddingRepository {
                 override fun find(key: EpisodeEmbeddingKey) = stored[key]
                 override fun save(embedding: Embedding<EpisodeEmbeddingKey>) = stored.getOrPut(embedding.key) { embedding }
             }),

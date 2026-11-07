@@ -6,13 +6,13 @@ import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class EpisodeEmbeddingRepository(private val db: Database) : EpisodeEmbeddingStore {
+internal class EpisodeEmbeddingRepositoryImpl(private val db: Database) : EpisodeEmbeddingRepository {
     override fun find(key: EpisodeEmbeddingKey): Embedding<EpisodeEmbeddingKey>? = transaction(db) { findStored(key) }
 
     override fun save(embedding: Embedding<EpisodeEmbeddingKey>): Embedding<EpisodeEmbeddingKey> = transaction(db) {

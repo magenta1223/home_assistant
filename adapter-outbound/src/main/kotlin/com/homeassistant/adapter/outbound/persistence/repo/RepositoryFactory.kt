@@ -7,11 +7,11 @@ import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.C
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserCredentialRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepository
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepository
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
@@ -20,10 +20,10 @@ object RepositoryFactory {
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
             components = ComponentRepositoryImpl(db),
-            componentEmbeddings = ComponentEmbeddingRepository(db),
+            componentEmbeddings = ComponentEmbeddingRepositoryImpl(db),
             groups = GroupRepositoryImpl(db),
             componentAssignmentOutbox = ComponentAssignmentOutboxRepository(db),
-            episodeEmbeddings = EpisodeEmbeddingRepository(db),
+            episodeEmbeddings = EpisodeEmbeddingRepositoryImpl(db),
             chatSessions = ChatSessionRepository(db),
             users = UserRepository(db),
             userCredentials = UserCredentialRepository(db),

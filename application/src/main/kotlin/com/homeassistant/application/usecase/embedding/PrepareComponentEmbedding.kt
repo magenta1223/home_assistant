@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.domain.component.Component
 
 /**
@@ -13,7 +13,7 @@ import com.homeassistant.domain.component.Component
  */
 class PrepareComponentEmbedding(
     private val generator: EmbeddingGenerator,
-    private val store: ComponentEmbeddingStore,
+    private val store: ComponentEmbeddingRepository,
 ) {
     /** The model and input format every prepared vector belongs to. */
     val space: EmbeddingSpace get() = generator.space

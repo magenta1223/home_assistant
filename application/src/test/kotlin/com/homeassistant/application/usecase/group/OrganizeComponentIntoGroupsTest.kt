@@ -7,7 +7,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
@@ -110,7 +110,7 @@ class OrganizeComponentIntoGroupsTest {
             override fun embedDocument(text: String): EmbeddingVector { generated++; return generate.invoke(text) }
             override fun embedQuery(text: String) = vector
         }
-        private val store = object : ComponentEmbeddingStore {
+        private val store = object : ComponentEmbeddingRepository {
             override fun find(key: ComponentEmbeddingKey) = cache[key]
             override fun save(embedding: Embedding<ComponentEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }
         }

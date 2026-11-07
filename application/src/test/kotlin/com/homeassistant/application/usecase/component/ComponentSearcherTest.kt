@@ -4,7 +4,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupChange
@@ -133,7 +133,7 @@ class ComponentSearcherTest {
         }
         private val componentEmbeddings = PrepareComponentEmbedding(
             embeddings,
-            object : ComponentEmbeddingStore {
+            object : ComponentEmbeddingRepository {
                 override fun find(key: ComponentEmbeddingKey) = cache[key]
                 override fun save(embedding: Embedding<ComponentEmbeddingKey>) = cache.getOrPut(embedding.key) { embedding }
             },

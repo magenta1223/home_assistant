@@ -8,18 +8,18 @@ import com.homeassistant.application.port.outbound.identity.UserSessionStore
 import com.homeassistant.application.port.outbound.identity.UserStore
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentRepository
-import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingStore
-import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingStore
+import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
+import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,
     val episodes: EpisodeRepository,
     val components: ComponentRepository,
-    val componentEmbeddings: ComponentEmbeddingStore,
+    val componentEmbeddings: ComponentEmbeddingRepository,
     val groups: GroupRepository,
     val componentAssignmentOutbox: ComponentAssignmentOutbox,
-    val episodeEmbeddings: EpisodeEmbeddingStore,
+    val episodeEmbeddings: EpisodeEmbeddingRepository,
     val chatSessions: ChatSessionStore,
     val users: UserStore,
     val userCredentials: UserCredentialStore,

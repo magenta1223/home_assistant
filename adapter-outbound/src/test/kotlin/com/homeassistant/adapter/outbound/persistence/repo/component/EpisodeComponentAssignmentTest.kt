@@ -1,12 +1,12 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepositoryImpl
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepository
+import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentExtractor
@@ -126,8 +126,8 @@ class EpisodeComponentAssignmentTest {
             override fun embedDocument(text: String) = vectors.getValue(text)
             override fun embedQuery(text: String) = vectors.getValue(text)
         }
-        val episodeEmbeddings = PrepareEpisodeEmbedding(texts, EpisodeEmbeddingRepository(db))
-        val componentEmbeddings = PrepareComponentEmbedding(texts, ComponentEmbeddingRepository(db))
+        val episodeEmbeddings = PrepareEpisodeEmbedding(texts, EpisodeEmbeddingRepositoryImpl(db))
+        val componentEmbeddings = PrepareComponentEmbedding(texts, ComponentEmbeddingRepositoryImpl(db))
         val settings = GroupPolicySettings()
         val assign = AssignEpisodeToComponents(store, episodeEmbeddings, componentEmbeddings, extractor)
         val outbox = ComponentAssignmentOutboxRepository(db)

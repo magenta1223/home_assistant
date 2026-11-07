@@ -33,7 +33,7 @@ object ApplicationServicesFactory {
             componentEmbeddings = embeddings.componentEmbeddings,
             accessPolicy = identity.users,
         )
-        return DefaultApplicationServices(
+        return ApplicationServices(
             episodeAnalysis = memoryExtraction.episodeAnalysis,
             chatService = chat.chatService,
             users = identity.users,

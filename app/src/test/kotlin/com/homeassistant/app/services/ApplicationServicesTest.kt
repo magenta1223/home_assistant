@@ -10,11 +10,11 @@ import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
-class DefaultApplicationServicesTest {
+class ApplicationServicesTest {
     @Test
     fun `starts runtimes in order and stops them in reverse order`() {
         val events = mutableListOf<String>()
-        val services = DefaultApplicationServices(
+        val services = ApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
             runtimes = listOf(
                 RecordingRuntime("embedding", events),
@@ -49,7 +49,7 @@ class DefaultApplicationServicesTest {
     fun `stops remaining runtimes when one fails to stop`() {
         val events = mutableListOf<String>()
         val embedding = RecordingRuntime("embedding", events)
-        val services = DefaultApplicationServices(
+        val services = ApplicationServices(
             episodeAnalysis = unusedEpisodeAnalysis(),
             runtimes = listOf(
                 embedding,

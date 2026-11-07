@@ -4,24 +4,36 @@ import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.chatservice.ChatService
+import com.homeassistant.infrastructure.runtime.Runtime
+import com.homeassistant.infrastructure.runtime.RuntimeState
 
-/** Provides the application's top-level use cases and managed runtimes. */
-interface ApplicationServices : AutoCloseable {
-    /** Provides the episode-analysis use case. */
-    val episodeAnalysis: EpisodeAnalysis
-
-    /** Provides episode-backed conversations when the selected agent backend CLI is available. */
-    val chatService: ChatService?
-
+/** Serves the application's top-level use cases while [runtimes] run: they start in order and stop in reverse order. */
+class ApplicationServices internal constructor(
+    /** The episode-analysis use case. */
+    val episodeAnalysis: EpisodeAnalysis,
+    /** Episode-backed conversations, or null when the selected agent backend CLI is unavailable. */
+    val chatService: ChatService? = null,
     /** Registered application users that may be selected as knowledge viewers. */
-    val users: UserRegistry
-
+    val users: UserRegistry = UserRegistry.NONE,
     /** Registers people and keeps them logged in with sessions. */
-    val authentication: UserAuthentication
-
-    /** Reports whether required managed runtimes are available. */
+    val authentication: UserAuthentication = UserAuthentication.NONE,
+    private val runtimes: List<Runtime>,
+) : AutoCloseable {
+    /** Whether every managed runtime is running. */
     val isReady: Boolean
+        get() = runtimes.all { it.state == RuntimeState.RUNNING }
 
-    /** Starts managed application runtimes. */
-    fun start()
+    /** Starts the managed runtimes in order. */
+    fun start() {
+        runtimes.forEach(Runtime::start)
+    }
+
+    /** Stops every runtime even when one fails, then throws the first failure with the others suppressed. */
+    override fun close() {
+        val failures = runtimes.asReversed().mapNotNull { runCatching(it::stop).exceptionOrNull() }
+        failures.firstOrNull()?.let { first ->
+            failures.drop(1).forEach(first::addSuppressed)
+            throw first
+        }
+    }
 }

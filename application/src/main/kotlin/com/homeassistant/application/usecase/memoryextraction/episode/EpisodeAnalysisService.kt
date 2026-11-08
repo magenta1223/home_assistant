@@ -3,6 +3,7 @@ package com.homeassistant.application.usecase.memoryextraction.episode
 import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
@@ -20,7 +21,7 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReference
 import java.time.Clock
 
-/** Stores submitted source records and their reference and queues their analysis. */
+/** Stores submitted source records and their reference, queues their analysis and reports it back to the submitter. */
 class EpisodeAnalysisService(
     private val sourceRecords: SourceRecordRepository,
     private val jobs: EpisodeAnalysisJobQueue,
@@ -45,6 +46,11 @@ class EpisodeAnalysisService(
             visibility = request.access.visibility,
             allowedUserIds = request.access.allowedUserIds,
         )
+    }
+
+    override fun findJob(userId: String, jobId: Int): EpisodeAnalysisJobReport? {
+        val requester = UserId(userId)
+        return rethrowAsUnavailable { jobs.findRequestedBy(jobId, requester) }?.toReport()
     }
 
     /** Saves [source]'s records, reporting an access conflict apart from an unavailable store. */
@@ -89,6 +95,8 @@ class EpisodeAnalysisService(
         }
         if (invalid.isNotEmpty()) throw InvalidAllowedUsersException(invalid)
     }
+
+    private fun EpisodeAnalysisJob.toReport() = EpisodeAnalysisJobReport(id, status, episodeCount, lastError)
 
     /** The result of [operation], rethrowing its failure as [EpisodeAnalysisUnavailableException]. */
     private fun <T> rethrowAsUnavailable(operation: () -> T): T =

@@ -4,8 +4,8 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft

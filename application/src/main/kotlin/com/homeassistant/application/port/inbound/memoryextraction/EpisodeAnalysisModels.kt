@@ -2,6 +2,7 @@ package com.homeassistant.application.port.inbound.memoryextraction
 
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
+import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.source.SourceDocumentDraft
 
 data class EpisodeAnalysisRequest(
@@ -18,6 +19,16 @@ data class EpisodeAnalysisSubmissionResult(
     val alreadyAnalyzedRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
+)
+
+/** How the submitted analysis [jobId] is going. */
+data class EpisodeAnalysisJobReport(
+    val jobId: Int,
+    val status: EpisodeAnalysisJobStatus,
+    /** How many episodes the analysis saved; null until it completes. */
+    val episodeCount: Int?,
+    /** Why the latest attempt failed; null when no attempt failed or the analysis completed. */
+    val lastError: String?,
 )
 
 class DuplicateSourceRecordsException internal constructor(

@@ -69,6 +69,7 @@ class ApplicationServicesTest {
 
     private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
         override fun submit(request: EpisodeAnalysisRequest) = error("unused")
+        override fun findJob(userId: String, jobId: Int) = error("unused")
     }
 
     private class RecordingRuntime(

@@ -20,6 +20,7 @@ import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAna
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.episode.Episode
+import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
@@ -34,6 +35,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class EpisodeAnalysisRetryTest {
@@ -84,6 +86,9 @@ class EpisodeAnalysisRetryTest {
         val round = worker(db, extractor, RecordingEpisodeRepository(IllegalStateException("persistence failed"))).analyzeNextJob()
 
         assertEquals(SourceAnalysisRoundResult.Failed(submitted.jobId, "persistence failed"), round)
+        val report = submission(db).findJob(USER_ID.value, submitted.jobId)
+        assertEquals(EpisodeAnalysisJobStatus.FAILED, report?.status)
+        assertEquals("persistence failed", report?.lastError)
         assertEquals(1, resubmit(db, request).retriedRecordCount)
     }
 
@@ -132,6 +137,19 @@ class EpisodeAnalysisRetryTest {
         assertEquals(Visibility.PUBLIC, submitted.visibility)
         assertEquals(SourceAnalysisRoundResult.Completed(submitted.jobId, 2), round)
         assertEquals(listOf("pending", "new"), extractor.documents.single().records.map { it.deduplicationKey })
+    }
+
+    @Test
+    fun `only the submitter can see how the job went`() = withDatabase { db ->
+        val submitted = submission(db).submit(request("a"))
+        worker(db, RecordingExtractor { document -> listOf(proposal(document)) }).analyzeNextJob()
+
+        val report = submission(db).findJob(USER_ID.value, submitted.jobId)
+
+        assertEquals(EpisodeAnalysisJobStatus.COMPLETED, report?.status)
+        assertEquals(1, report?.episodeCount)
+        assertNull(report?.lastError)
+        assertNull(submission(db).findJob(OTHER_USER_ID.value, submitted.jobId))
     }
 
     @Test
@@ -189,7 +207,7 @@ class EpisodeAnalysisRetryTest {
     private fun submission(db: Database) = EpisodeAnalysisService(
         sourceRecords = SourceRecordRepositoryImpl(db),
         jobs = EpisodeAnalysisJobQueueRepository(db),
-        accessPolicy = { it == USER_ID },
+        accessPolicy = { it == USER_ID || it == OTHER_USER_ID },
     )
 
     private fun worker(
@@ -285,5 +303,6 @@ class EpisodeAnalysisRetryTest {
 
     private companion object {
         val USER_ID = UserId("member-1")
+        val OTHER_USER_ID = UserId("member-2")
     }
 }

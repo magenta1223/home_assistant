@@ -19,5 +19,6 @@ object AppConfig {
     const val ROUTE_HEALTH              = "/health"
     const val ROUTE_KNOWLEDGE_USERS = "/api/knowledge/users"
     const val ROUTE_KNOWLEDGE_IMPORT_ANALYZE = "/api/knowledge/import/analyze"
+    const val ROUTE_KNOWLEDGE_IMPORT_JOB = "/api/knowledge/import/jobs/{jobId}"
     const val ROUTE_EPISODE_CONVERSATION = "/api/episode/conversation"
 }

@@ -1,6 +1,7 @@
 package com.homeassistant.application.port.outbound.memoryextraction.episode
 
 import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 
@@ -15,9 +16,6 @@ data class EpisodeAnalysisSubmission(
     val referenceId: Int?,
     val access: AccessControl,
 )
-
-/** Where an [EpisodeAnalysisJob] is in its lifecycle. A [FAILED] job is retried until its attempt limit is reached. */
-enum class EpisodeAnalysisJobStatus { PENDING, PROCESSING, COMPLETED, FAILED }
 
 /** A stored [submission] and how far its analysis has come. */
 data class EpisodeAnalysisJob(

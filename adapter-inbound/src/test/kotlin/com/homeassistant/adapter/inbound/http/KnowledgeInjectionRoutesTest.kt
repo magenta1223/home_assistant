@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
 import com.homeassistant.application.port.inbound.identity.UserRegistry
@@ -9,6 +10,7 @@ import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.access.Visibility
+import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
 import io.ktor.client.request.post
@@ -205,6 +207,42 @@ class KnowledgeInjectionRoutesTest {
     }
 
     @Test
+    fun `the submitter reads how the analysis job went`() = testApplication {
+        application {
+            install(ContentNegotiation) { json(JsonSerializer.json) }
+            configureRoutes(
+                episodeAnalysis = RecordingEpisodeAnalysis(),
+                httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
+                users = operatorRegistry(),
+            )
+        }
+
+        val response = client.get(jobRoute("7")) { bearerAuth(API_TOKEN) }
+
+        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(
+            Json.parseToJsonElement("""{"jobId":7,"status":"COMPLETED","episodeCount":2}"""),
+            Json.parseToJsonElement(response.bodyAsText()),
+        )
+    }
+
+    @Test
+    fun `an analysis job the user did not submit is not found`() = testApplication {
+        application {
+            install(ContentNegotiation) { json(JsonSerializer.json) }
+            configureRoutes(
+                episodeAnalysis = RecordingEpisodeAnalysis(),
+                httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
+                users = operatorRegistry(),
+            )
+        }
+
+        assertEquals(HttpStatusCode.NotFound, client.get(jobRoute("8")) { bearerAuth(API_TOKEN) }.status)
+        assertEquals(HttpStatusCode.BadRequest, client.get(jobRoute("latest")) { bearerAuth(API_TOKEN) }.status)
+        assertEquals(HttpStatusCode.Unauthorized, client.get(jobRoute("7")).status)
+    }
+
+    @Test
     fun `configured HTTP user must be a registered application user`() {
         assertFailsWith<IllegalArgumentException> {
             testApplication {
@@ -235,6 +273,10 @@ class KnowledgeInjectionRoutesTest {
                 allowedUserIds = request.access.allowedUserIds,
             )
         }
+
+        override fun findJob(userId: String, jobId: Int): EpisodeAnalysisJobReport? =
+            EpisodeAnalysisJobReport(jobId, EpisodeAnalysisJobStatus.COMPLETED, episodeCount = 2, lastError = null)
+                .takeIf { userId == "operator" && jobId == 7 }
     }
 
     private class FixedUserRegistry(
@@ -242,6 +284,8 @@ class KnowledgeInjectionRoutesTest {
     ) : UserRegistry {
         override fun list(): List<RegisteredUser> = users.toList()
     }
+
+    private fun jobRoute(jobId: String) = AppConfig.ROUTE_KNOWLEDGE_IMPORT_JOB.replace("{jobId}", jobId)
 
     private fun operatorRegistry(): UserRegistry =
         FixedUserRegistry(RegisteredUser(UserId("operator"), "운영자"))

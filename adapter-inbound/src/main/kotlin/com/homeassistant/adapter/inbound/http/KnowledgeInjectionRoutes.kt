@@ -6,6 +6,7 @@ import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessC
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
 import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
@@ -15,6 +16,7 @@ import com.homeassistant.application.port.inbound.identity.UserAccessDeniedExcep
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
+import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -123,6 +125,28 @@ internal fun Route.knowledgeInjectionRoutes(
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "user access denied"))
         }
     }
+
+    get(AppConfig.ROUTE_KNOWLEDGE_IMPORT_JOB) {
+        val principal = call.principal<HttpUserPrincipal>()
+        if (principal == null) {
+            call.respond(HttpStatusCode.Unauthorized, mapOf("error" to "authentication required"))
+            return@get
+        }
+        val jobId = call.parameters["jobId"]?.toIntOrNull()
+        if (jobId == null) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "jobId must be an integer"))
+            return@get
+        }
+
+        try {
+            when (val report = episodeAnalysis.findJob(principal.userId.value, jobId)) {
+                null -> call.respond(HttpStatusCode.NotFound, mapOf("error" to "analysis job not found"))
+                else -> call.respond(HttpStatusCode.OK, report.toResponse())
+            }
+        } catch (error: EpisodeAnalysisUnavailableException) {
+            call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
+        }
+    }
 }
 
 @Serializable
@@ -191,6 +215,21 @@ private data class KnowledgeImportResponse(
     val alreadyAnalyzedRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
+)
+
+@Serializable
+private data class KnowledgeImportJobResponse(
+    val jobId: Int,
+    val status: EpisodeAnalysisJobStatus,
+    val episodeCount: Int?,
+    val lastError: String?,
+)
+
+private fun EpisodeAnalysisJobReport.toResponse() = KnowledgeImportJobResponse(
+    jobId = jobId,
+    status = status,
+    episodeCount = episodeCount,
+    lastError = lastError,
 )
 
 private fun EpisodeAnalysisSubmissionResult.toResponse() = KnowledgeImportResponse(

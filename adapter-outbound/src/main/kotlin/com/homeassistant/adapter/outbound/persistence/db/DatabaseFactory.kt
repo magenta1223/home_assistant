@@ -22,6 +22,8 @@ internal object DatabaseFactory {
                 SourceRecordTable,
                 SourceRecordViewerTable,
                 ComponentAssignmentOutboxTable,
+                EpisodeAnalysisJobTable,
+                EpisodeAnalysisJobRecordTable,
                 ChatSessionTable,
                 ActiveChatSessionTable,
                 UserTable,

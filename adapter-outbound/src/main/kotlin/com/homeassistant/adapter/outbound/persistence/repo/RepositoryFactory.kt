@@ -3,6 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepositoryImpl
@@ -18,6 +19,7 @@ object RepositoryFactory {
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
+            episodeAnalysisJobQueue = EpisodeAnalysisJobQueueRepository(db),
             components = ComponentRepositoryImpl(db),
             componentEmbeddings = ComponentEmbeddingRepositoryImpl(db),
             groups = GroupRepositoryImpl(db),

@@ -34,7 +34,7 @@ class EpisodeAnalysisUnavailableException internal constructor(
 
 class InvalidAllowedUsersException internal constructor(
     val userIds: Set<String>,
-) : RuntimeException("episode audience contains unknown or unauthorized users")
+) : RuntimeException("allowed users contain unknown or unauthorized users")
 
 class InvalidSourceReferenceException internal constructor(
     message: String,

@@ -13,6 +13,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
 import com.homeassistant.domain.access.AccessControl
@@ -22,6 +23,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.source.SourceReferenceDraft
 import kotlinx.coroutines.CancellationException
 import org.slf4j.LoggerFactory
 
@@ -36,7 +38,7 @@ class EpisodeAnalysisService(
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         requireAuthorizedAudience(request.access.allowedUserIds)
-        val parsedSource = interpretReference(request)
+        val parsedSource = withReferenceRecords(request.source)
         val sourceRecordSave = saveSourceRecords(parsedSource, request.access)
         val recordsToAnalyze = sourceRecordSave.recordsToAnalyze
 
@@ -89,34 +91,41 @@ class EpisodeAnalysisService(
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
     }
 
-    // TODO: ORCHESTRATION - reference가 있을 때만 해석해 합치는 분기를 ?.let/?: 대신 명시적으로 나눈다
-    private suspend fun interpretReference(request: EpisodeAnalysisRequest) = request.source.reference?.let { reference ->
+    /** [source] with its reference turned into records, or [source] itself when it has no reference. */
+    private suspend fun withReferenceRecords(source: SourceDocumentDraft): SourceDocumentDraft =
+        when (val reference = source.reference) {
+            null -> source
+            else -> source.copy(records = source.records + referenceRecords(reference), reference = null)
+        }
+
+    /** One record per interpreted segment of [reference], in file order. */
+    private suspend fun referenceRecords(reference: SourceReferenceDraft): List<SourceRecordDraft> =
+        interpretSegments(reference).map { it.toRecordOf(reference) }
+
+    /** The segments of [reference]; rejects an unavailable interpreter, a rejected file and an empty result. */
+    private suspend fun interpretSegments(reference: SourceReferenceDraft): List<SourceReferenceInterpretation> {
         val interpreter = referenceInterpreter
             ?: throw EpisodeAnalysisUnavailableException(IllegalStateException("reference interpreter is unavailable"))
-        val interpretations = when (val result = rethrowAsUnavailable { interpreter.interpret(reference) }) {
+        val segments = when (val result = rethrowAsUnavailable { interpreter.interpret(reference) }) {
             is SourceReferenceInterpretationResult.Interpreted -> result.segments
             is SourceReferenceInterpretationResult.Rejected -> throw InvalidSourceReferenceException(result.reason)
         }
-        if (interpretations.isEmpty()) {
-            throw InvalidSourceReferenceException(
-                "reference did not contain interpretable content",
-            )
+        if (segments.isEmpty()) {
+            throw InvalidSourceReferenceException("reference did not contain interpretable content")
         }
-        val referenceRecords = interpretations.map { interpretation ->
-            SourceRecordDraft(
-                deduplicationKey = "reference:${reference.sha256}:${interpretation.segmentKey}",
-                content = buildString {
-                    appendLine("[reference: ${reference.fileName}, ${interpretation.segmentKey}]")
-                    append(interpretation.content.trim())
-                },
-                reference = reference,
-            )
-        }
-        request.source.copy(
-            records = request.source.records + referenceRecords,
-            reference = null,
+        return segments
+    }
+
+    /** This segment as a record of [reference], keyed by the file hash and segment so a re-upload is deduplicated. */
+    private fun SourceReferenceInterpretation.toRecordOf(reference: SourceReferenceDraft): SourceRecordDraft =
+        SourceRecordDraft(
+            deduplicationKey = "reference:${reference.sha256}:$segmentKey",
+            content = buildString {
+                appendLine("[reference: ${reference.fileName}, $segmentKey]")
+                append(content.trim())
+            },
+            reference = reference,
         )
-    } ?: request.source
 
     private fun requireAuthorizedAudience(userIds: Set<String>) {
         val invalid = userIds.filterTo(linkedSetOf()) { raw ->

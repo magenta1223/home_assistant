@@ -89,6 +89,7 @@ class EpisodeAnalysisService(
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
     }
 
+    // TODO: ORCHESTRATION - reference가 있을 때만 해석해 합치는 분기를 ?.let/?: 대신 명시적으로 나눈다
     private suspend fun interpretReference(request: EpisodeAnalysisRequest) = request.source.reference?.let { reference ->
         val interpreter = referenceInterpreter
             ?: throw EpisodeAnalysisUnavailableException(IllegalStateException("reference interpreter is unavailable"))

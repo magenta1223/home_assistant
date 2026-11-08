@@ -11,10 +11,10 @@
   `GroupMergeOutcome`
 - Result는 세 가지 모양이 섞여 있다.
   - ID와 Outcome의 짝: `EpisodeAssignmentResult`, `ComponentOrganizationResult`
-  - 호출 하나의 묶음: `EpisodeOrganizationResult`, `EpisodeAnalysisResult`, `SearchEpisodesResult`, `SourceRecordSaveResult`,
+  - 호출 하나의 묶음: `EpisodeOrganizationResult`, `EpisodeAnalysisSubmissionResult`, `SearchEpisodesResult`, `SourceRecordSaveResult`,
     `EpisodeIndexingRunResult`
   - Outcome과 같은 의미의 sealed 변형: `GroupOrganizationResult`, `ComponentDescriptionResult`,
-    `ConversationTurnResult`, `EpisodeConversationResult`, `KakaoChatSyncResult`
+    `ConversationTurnResult`, `EpisodeConversationResult`, `KakaoChatSyncResult`, `SourceAnalysisRoundResult`
 
 ## 목표
 

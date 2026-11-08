@@ -13,7 +13,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `component` | Episode에서 장기 지식을 Component로 추출한 뒤 Group 정리까지 이어가고, 대화용 Component 검색을 읽을 수 있는 출처 Episode로 거른다. | [component](memoryextraction/component/README.md) |
 | `embedding` | Episode·Component 벡터를 저장된 것이 있으면 재사용하고 없으면 만들어 저장한다. 추출·Group·검색이 함께 쓴다. | - |
 | `episode/search` | 대화용으로 질문에 가까운, 사용자가 읽을 수 있는 Episode를 찾는다. | - |
-| `episode/analysis` | source record를 분석해 canonical episode로 저장하고 후처리를 요청한다. | [analysis](memoryextraction/episode/README.md) |
+| `episode/analysis` | source record를 저장하고 분석 job을 접수한 뒤, worker round에서 job을 하나씩 분석해 canonical episode로 저장한다. | [analysis](memoryextraction/episode/README.md) |
 | `episode/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](chatservice/README.md) |
 | `episode/write` | proposal을 원자적으로 저장하고 Component 할당 outbox를 같은 transaction으로 남긴다. | [write](episode/write/README.md) |
 
@@ -24,31 +24,34 @@ sequenceDiagram
     actor Caller
     participant Analysis as EpisodeAnalysisService
     participant Access as UserAccessPolicy
-    participant Reference as SourceReferenceInterpreter
     participant Sources as SourceRecordRepository
+    participant Jobs as EpisodeAnalysisJobQueue
+    participant Round as AnalyzeSubmittedSourcesService
+    participant Reference as SourceReferenceInterpreter
     participant Extractor as EpisodeExtractor
-    participant Writer as EpisodeProposalsPersister
-    participant DB as CanonicalEpisodeBatchWriter
+    participant DB as EpisodeRepository
 
-    Caller->>Analysis: execute(request)
+    Caller->>Analysis: submit(request)
     Analysis->>Access: 작성자와 audience 인가 확인
+    Analysis->>Sources: source record와 reference 원본 저장
+    Analysis->>Jobs: 분석 job 등록
+    Analysis-->>Caller: EpisodeAnalysisSubmissionResult(jobId)
+    Round->>Jobs: 준비된 job 하나 claim
     opt PDF 또는 이미지 reference
-        Analysis->>Reference: 페이지/이미지별 근거 해석
-        Reference-->>Analysis: 원본에 연결할 source record content
+        Round->>Reference: 페이지/이미지별 근거 해석
+        Round->>Sources: 원본에 연결한 해석 record 저장
     end
-    Analysis->>Sources: source record 저장 및 분석 대상 결정
-    Analysis->>Extractor: 분석 대상에서 proposal 추출
-    Analysis->>Writer: proposal 저장 요청
-    Writer->>DB: episode + evidence + outbox 원자적 commit
-    DB-->>Writer: canonical episodes
-    Writer-->>Analysis: saved episodes
-    Analysis-->>Caller: EpisodeAnalysisResult
+    Round->>Sources: 아직 분석되지 않은 record 조회
+    Round->>Extractor: 분석 대상에서 proposal 추출
+    Round->>DB: episode + evidence + outbox 원자적 commit
+    Round->>Jobs: 완료(episode 수) 또는 실패(오류) 기록
 ```
 
-Canonical database commit까지가 요청 성공의 기준이다. Component 배정은 commit에 함께 남긴 outbox를
+접수 요청은 source record 저장과 job 등록까지가 성공의 기준이다. 분석은 worker가 job을 하나씩 처리하며,
+Canonical database commit이 끝난 뒤 job을 완료로 기록한다. Component 배정은 commit에 함께 남긴 outbox를
 worker가 이후에 처리하며, 실패해도 저장된 canonical episode를 되돌리지 않는다.
 
-HTTP 지식 입력은 인증된 application userId로 `EpisodeAnalysis`를 직접 호출한다.
+HTTP 지식 입력은 인증된 application userId로 `EpisodeAnalysis`를 직접 호출하고, 같은 사용자가 job 상태를 조회한다.
 
 ## HTTP episode 응답 흐름
 

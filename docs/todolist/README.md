@@ -55,7 +55,6 @@
 | [core-technology-boundary-hardening.md](p2/core-technology-boundary-hardening.md) | library 모듈의 concrete logging binding 정리와 경계 architecture test 추가 (serialization 결합은 2026-11-08 제거) |
 | [entropy-based-group-saturation.md](p2/entropy-based-group-saturation.md) | Component·Group 배정 이후, 크기 상한 대신 entropy로 Group 분할 검토 시점을 판단 |
 | [external-service-failure-handling.md](p2/external-service-failure-handling.md) | 외부 서비스 장애를 실패 분류·circuit breaker·재시도 상한·backoff로 다루는 표준 절차를 outbox worker에 적용 |
-| [episode-analysis-outbox-pipeline.md](p2/episode-analysis-outbox-pipeline.md) | 첨부 해석·Episode 추출을 commit 이후 outbox 단계로 옮기고 UI를 접수·상태 조회로 전환 |
 | [episode-query-performance.md](p2/episode-query-performance.md) | 사용자가 계측부터 직접 공부하며 개선할 Episode query 성능 학습 과제 |
 | [onnx-embedding-runtime-migration.md](p2/onnx-embedding-runtime-migration.md) | HOLD: 실제 운영 장애·지연·비용이 확인될 때 JVM 내부 ONNX 전환을 재평가 |
 | [postgres-pgvector-migration.md](p2/postgres-pgvector-migration.md) | HOLD: Component가 10만 개를 넘으면 SQLite 전수 비교를 Postgres + pgvector HNSW로 전환 |

@@ -76,7 +76,7 @@ TO-BE: Analysis → commit(episode + 색인 outbox + 할당 outbox) → 응답
 
 ## 제외 범위
 
-- Episode 추출·첨부 해석의 비동기화([별도 후보](../p2/episode-analysis-outbox-pipeline.md))
+- Episode 추출·첨부 해석의 비동기화([별도 작업](../done/episode-analysis-outbox-pipeline.md))
 - backend CLI 로그인 상태 확인
 - 저장 직후 worker를 즉시 깨우는 신호(주기 polling으로 대신)
 - Component·Group 병합, 검색 연결

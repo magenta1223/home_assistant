@@ -61,6 +61,8 @@
 | [result-outcome-naming.md](p2/result-outcome-naming.md) | `XxResult`·`XxOutcome` 이름 규칙을 정하고 섞여 있는 타입 이름을 맞춤 |
 | [episode-repository-internals.md](p2/episode-repository-internals.md) | EpisodeRepository의 행 변환 공유, `save` 단계 분리, `analyzedSourceRecordIds` 의미, 기존 Episode outbox 재등록 정리 |
 | [component-policy-settings.md](p2/component-policy-settings.md) | Component policy 임계값을 Group처럼 settings 객체로 묶어 factory에서 주입 |
+| [update-memory-worker-throughput.md](p2/update-memory-worker-throughput.md) | 단일 스레드 Component 배정과 Component마다의 전체 Group snapshot 조회를 병렬 처리·후보 Group 조회로 개선 |
+| [search-embedding-batch-read.md](p2/search-embedding-batch-read.md) | 대화 검색이 항목마다 embedding을 조회하는 N+1을 일괄 조회로 개선 |
 | [xmemory-stage2-entropy.md](p2/xmemory-stage2-entropy.md) | HOLD: proxy 모델로 reader entropy를 재서 줄어들 때만 Episode를 context에 더하는 xMemory Stage II |
 
 ## 제품 기능 계획

@@ -15,9 +15,8 @@ import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -70,7 +69,7 @@ class ComponentRepositoryTest {
         val episode = createEpisode(db, "a")
 
         assertTrue(ComponentRepositoryImpl(db).save(EpisodeComponents(episode, emptyList())).isEmpty())
-        assertEquals(1L, transaction(db) { ComponentExtractionTable.selectAll().count() })
+        assertEquals(1L, db.write { ComponentExtractionTable.selectAll().count() })
     }
 
     @Test
@@ -82,10 +81,10 @@ class ComponentRepositoryTest {
         assertFails { repository.save(EpisodeComponents(episode, listOf("again"))) }
         assertFailsWith<IllegalArgumentException> { repository.save(EpisodeComponents(999, listOf("orphan"))) }
         assertEquals(listOf("fact"), repository.findCovering(AccessControl.PUBLIC).map { it.statement })
-        assertEquals(1L, transaction(db) { ComponentTable.selectAll().count() })
+        assertEquals(1L, db.write { ComponentTable.selectAll().count() })
     }
 
-    private fun createEpisode(db: Database, name: String, access: AccessControl = AccessControl.PUBLIC): Int {
+    private fun createEpisode(db: SqliteDatabases, name: String, access: AccessControl = AccessControl.PUBLIC): Int {
         val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(
             SourceDescriptor("test", name), listOf(SourceRecordDraft(name, "source-$name")), access,
         )).recordsToAnalyze.single()
@@ -96,7 +95,7 @@ class ComponentRepositoryTest {
         )).single().id
     }
 
-    private fun withDatabase(block: (Database, String) -> Unit) {
+    private fun withDatabase(block: (SqliteDatabases, String) -> Unit) {
         val path = Files.createTempFile("component-store", ".db")
         try {
             block(DatabaseFactory.init(path.toString()), path.toString())

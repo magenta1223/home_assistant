@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceReferenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
@@ -16,19 +17,18 @@ import com.homeassistant.domain.source.SourceReferenceDraft
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.statements.api.ExposedBlob
-import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class SourceRecordRepositoryImpl(private val db: Database) : SourceRecordRepository {
+internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : SourceRecordRepository {
 
     override fun save(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
         access: AccessControl,
-    ): SourceRecordSaveResult = transaction(db) {
+    ): SourceRecordSaveResult = db.write {
         val drafts = records.distinctBy { it.deduplicationKey }
         val stored = drafts.associate { it.deduplicationKey to findStored(source, it.deduplicationKey) }
         stored.values.filterNotNull().firstOrNull { it.access != access }
-            ?.let { return@transaction SourceRecordSaveResult.AccessConflict(it.access) }
+            ?.let { return@write SourceRecordSaveResult.AccessConflict(it.access) }
 
         val recordsToAnalyze = mutableListOf<SourceRecord>()
         var importedRecordCount = 0
@@ -56,12 +56,12 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         )
     }
 
-    override fun saveReference(reference: SourceReferenceDraft): SourceReference = transaction(db) {
+    override fun saveReference(reference: SourceReferenceDraft): SourceReference = db.write {
         val referenceId = storeReference(reference)
         SourceReferenceTable.selectAll().where { SourceReferenceTable.id eq referenceId }.single().toSourceReference()
     }
 
-    override fun findReferenceContent(referenceId: Int): SourceReferenceDraft? = transaction(db) {
+    override fun findReferenceContent(referenceId: Int): SourceReferenceDraft? = db.read {
         SourceReferenceTable.selectAll()
             .where { SourceReferenceTable.id eq referenceId }
             .singleOrNull()
@@ -70,7 +70,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             }
     }
 
-    override fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord> = transaction(db) {
+    override fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord> = db.read {
         SourceRecordTable.selectAll()
             .where {
                 (SourceRecordTable.id inList recordIds) and

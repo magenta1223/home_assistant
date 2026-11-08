@@ -29,7 +29,7 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
 import kotlinx.coroutines.runBlocking
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -204,14 +204,14 @@ class EpisodeAnalysisRetryTest {
         assertEquals(1, resubmit(db, request).retriedRecordCount)
     }
 
-    private fun submission(db: Database) = EpisodeAnalysisService(
+    private fun submission(db: SqliteDatabases) = EpisodeAnalysisService(
         sourceRecords = SourceRecordRepositoryImpl(db),
         jobs = EpisodeAnalysisJobQueueRepository(db),
         accessPolicy = { it == USER_ID || it == OTHER_USER_ID },
     )
 
     private fun worker(
-        db: Database,
+        db: SqliteDatabases,
         extractor: EpisodeExtractor,
         writer: RecordingEpisodeRepository = RecordingEpisodeRepository(),
         interpreter: SourceReferenceInterpreter = SourceReferenceInterpreter { error("no reference expected") },
@@ -247,10 +247,10 @@ class EpisodeAnalysisRetryTest {
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
     /** Submits [request]'s records again; the counts tell whether they are stored, pending or analyzed. */
-    private fun resubmit(db: Database, request: EpisodeAnalysisRequest) =
+    private fun resubmit(db: SqliteDatabases, request: EpisodeAnalysisRequest) =
         assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(request.source.source, request.source.records, request.access))
 
-    private fun markAnalyzed(db: Database, recordIds: Collection<Int>) {
+    private fun markAnalyzed(db: SqliteDatabases, recordIds: Collection<Int>) {
         EpisodeRepositoryImpl(db).save(EpisodeBatch(USER_ID, emptyList(), recordIds))
     }
 
@@ -260,7 +260,7 @@ class EpisodeAnalysisRetryTest {
         evidenceIds = document.records.map { it.id },
     )
 
-    private fun withDatabase(block: suspend (Database) -> Unit) = runBlocking {
+    private fun withDatabase(block: suspend (SqliteDatabases) -> Unit) = runBlocking {
         val path = Files.createTempFile("episode-analysis-retry", ".db")
         try { block(DatabaseFactory.init(path.toString())) }
         finally { Files.deleteIfExists(path) }

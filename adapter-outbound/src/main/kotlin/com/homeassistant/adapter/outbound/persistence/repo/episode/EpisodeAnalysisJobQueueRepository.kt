@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeAnalysisJobRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeAnalysisJobTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeAnalysisJobViewerTable
@@ -17,10 +18,9 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : EpisodeAnalysisJobQueue {
-    override fun enqueue(submission: EpisodeAnalysisSubmission, now: Long): EpisodeAnalysisJob = transaction(db) {
+internal class EpisodeAnalysisJobQueueRepository(private val db: SqliteDatabases) : EpisodeAnalysisJobQueue {
+    override fun enqueue(submission: EpisodeAnalysisSubmission, now: Long): EpisodeAnalysisJob = db.write {
         val jobId = EpisodeAnalysisJobTable.insert {
             it[requestedByUserId] = submission.requestedBy.value
             it[sourceType] = submission.source.type
@@ -49,14 +49,14 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
         retryBefore: Long,
         staleProcessingBefore: Long,
         maxAttempts: Int,
-    ): EpisodeAnalysisJob? = transaction(db) {
+    ): EpisodeAnalysisJob? = db.write {
         require(maxAttempts > 0)
         val ready = readyCondition(retryBefore, staleProcessingBefore, maxAttempts)
         val row = EpisodeAnalysisJobTable.selectAll()
             .where { ready }
             .orderBy(EpisodeAnalysisJobTable.id)
             .limit(1)
-            .singleOrNull() ?: return@transaction null
+            .singleOrNull() ?: return@write null
         val jobId = row[EpisodeAnalysisJobTable.id]
         val claimed = EpisodeAnalysisJobTable.update({ (EpisodeAnalysisJobTable.id eq jobId) and ready }) {
             it[status] = PROCESSING.name
@@ -72,7 +72,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
     override fun markFailed(jobId: Int, expectedAttempt: Int, error: String, now: Long): Boolean =
         transition(jobId, expectedAttempt, FAILED, null, error.take(MAX_ERROR_LENGTH), now)
 
-    override fun findRequestedBy(jobId: Int, userId: UserId): EpisodeAnalysisJob? = transaction(db) {
+    override fun findRequestedBy(jobId: Int, userId: UserId): EpisodeAnalysisJob? = db.read {
         findJob((EpisodeAnalysisJobTable.id eq jobId) and (EpisodeAnalysisJobTable.requestedByUserId eq userId.value))
     }
 
@@ -83,7 +83,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
         episodeCount: Int?,
         error: String?,
         now: Long,
-    ): Boolean = transaction(db) {
+    ): Boolean = db.write {
         EpisodeAnalysisJobTable.update({
             (EpisodeAnalysisJobTable.id eq jobId) and
                 (EpisodeAnalysisJobTable.status eq PROCESSING.name) and

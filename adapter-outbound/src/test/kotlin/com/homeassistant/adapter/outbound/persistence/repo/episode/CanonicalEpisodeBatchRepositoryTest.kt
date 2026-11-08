@@ -10,9 +10,8 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -24,7 +23,7 @@ class CanonicalEpisodeBatchRepositoryTest {
     fun `second episode failure rolls back episodes evidence outbox and source status`() = withDatabase("batch-rollback") { db ->
         val sourceRecords = SourceRecordRepositoryImpl(db)
         val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).recordsToAnalyze
-        transaction(db) {
+        db.write {
             exec(
                 """
                 CREATE TRIGGER fail_second_episode
@@ -48,7 +47,7 @@ class CanonicalEpisodeBatchRepositoryTest {
         }
 
         assertTrue(repository.findVisibleTo(USER).isEmpty())
-        assertEquals(0L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
+        assertEquals(0L, db.write { ComponentAssignmentOutboxTable.selectAll().count() })
         assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).retriedRecordCount)
     }
 
@@ -77,7 +76,7 @@ class CanonicalEpisodeBatchRepositoryTest {
             assertEquals(first.single().id, retried.single().id)
             assertEquals(3, repository.findVisibleTo(USER).size)
             assertEquals(2, variants.size)
-            assertEquals(3L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
+            assertEquals(3L, db.write { ComponentAssignmentOutboxTable.selectAll().count() })
             assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).alreadyAnalyzedRecordCount)
         }
 
@@ -91,7 +90,7 @@ class CanonicalEpisodeBatchRepositoryTest {
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
-    private inline fun withDatabase(prefix: String, block: (Database) -> Unit) {
+    private inline fun withDatabase(prefix: String, block: (SqliteDatabases) -> Unit) {
         val path = Files.createTempFile(prefix, ".db")
         try {
             block(DatabaseFactory.init(path.toString()))

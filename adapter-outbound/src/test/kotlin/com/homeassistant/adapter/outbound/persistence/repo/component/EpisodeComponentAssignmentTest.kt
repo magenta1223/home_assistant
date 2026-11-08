@@ -25,9 +25,8 @@ import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import kotlin.test.*
 
@@ -105,7 +104,7 @@ class EpisodeComponentAssignmentTest {
         }
     }
 
-    private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
+    private fun seedEpisodes(db: SqliteDatabases, key: String, vararg contents: String): List<Int> {
         val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
             access)).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
@@ -115,7 +114,7 @@ class EpisodeComponentAssignmentTest {
 
     /** Assigns every claimable episode, completing its outbox row, then places the new Components in Groups. */
     private fun assignmentRound(
-        db: Database,
+        db: SqliteDatabases,
         vectors: Map<String, EmbeddingVector>,
         extractor: ComponentExtractor,
     ): List<List<Int>> {
@@ -145,7 +144,7 @@ class EpisodeComponentAssignmentTest {
 
     private data class OutboxRow(val status: String, val attempts: Int, val lastError: String?)
 
-    private fun outboxRow(db: Database, episodeId: Int): OutboxRow? = transaction(db) {
+    private fun outboxRow(db: SqliteDatabases, episodeId: Int): OutboxRow? = db.write {
         ComponentAssignmentOutboxTable.selectAll().where { ComponentAssignmentOutboxTable.episodeId eq episodeId }.singleOrNull()?.let {
             OutboxRow(it[ComponentAssignmentOutboxTable.status], it[ComponentAssignmentOutboxTable.attempts], it[ComponentAssignmentOutboxTable.lastError])
         }
@@ -155,7 +154,7 @@ class EpisodeComponentAssignmentTest {
         const val NOW = 1_000_000L
     }
 
-    private fun withDatabase(block: (Database, String) -> Unit) {
+    private fun withDatabase(block: (SqliteDatabases, String) -> Unit) {
         val path = Files.createTempFile("episode-component-assignment", ".db")
         try { block(DatabaseFactory.init(path.toString()), path.toString()) }
         finally { Files.deleteIfExists(path) }

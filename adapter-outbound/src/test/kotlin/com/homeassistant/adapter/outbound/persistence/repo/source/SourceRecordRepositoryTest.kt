@@ -12,7 +12,6 @@ import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceReferenceDraft
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import java.sql.DriverManager
 import kotlin.test.Test
@@ -66,7 +65,7 @@ class SourceRecordRepositoryTest {
                 listOf(SourceRecordDraft("key", "content", recordedAt = 1_234L)),
             ))
 
-            assertEquals(1_234L, transaction(db) { SourceRecordTable.selectAll().single()[SourceRecordTable.recordedAt] })
+            assertEquals(1_234L, db.write { SourceRecordTable.selectAll().single()[SourceRecordTable.recordedAt] })
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -192,7 +191,7 @@ class SourceRecordRepositoryTest {
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
-    private fun markAnalyzed(db: org.jetbrains.exposed.sql.Database, recordIds: Collection<Int>) {
+    private fun markAnalyzed(db: com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases, recordIds: Collection<Int>) {
         EpisodeRepositoryImpl(db).save(EpisodeBatch(UserId("test-member"), emptyList(), recordIds))
     }
 }

@@ -10,20 +10,23 @@ import org.sqlite.SQLiteConfig.TransactionMode
 
 internal object DatabaseFactory {
     /**
-     * Opens the SQLite database at [dbPath] for concurrent HTTP requests and workers and creates missing tables.
+     * Opens the SQLite database at [dbPath] for concurrent HTTP requests and workers, creates missing tables, and
+     * returns its read and write connections.
      *
      * - WAL journal: readers keep reading while one writer commits, and the writer does not wait for readers.
      * - Synchronous NORMAL: the setting WAL is designed for; a commit survives an application crash and only the
      *   last commits can be lost on power failure.
-     * - IMMEDIATE transactions: every transaction takes the write lock when it begins, so a transaction that reads
-     *   and then writes never has to upgrade its lock, which fails at once in a deadlock no busy timeout can wait out.
+     * - IMMEDIATE write transactions: every write transaction takes the write lock when it begins, so a transaction
+     *   that reads and then writes never has to upgrade its lock, which fails at once in a deadlock no busy timeout
+     *   can wait out.
+     * - Read-only, deferred read transactions: they take no write lock, so they never queue behind a writer.
      * - Busy timeout: a transaction waits up to [BUSY_TIMEOUT_MILLIS] for the current writer instead of failing.
      */
-    fun init(dbPath: String): Database {
+    fun init(dbPath: String): SqliteDatabases {
         val url = "jdbc:sqlite:$dbPath"
-        val config = concurrentAccessConfig()
-        val db = Database.connect(getNewConnection = { config.createConnection(url) })
-        transaction(db) {
+        val writerConfig = writerConfig()
+        val writer = Database.connect(getNewConnection = { writerConfig.createConnection(url) })
+        transaction(writer) {
             SchemaUtils.createMissingTablesAndColumns(
                 EpisodeTable,
                 EpisodeEvidenceTable,
@@ -48,13 +51,24 @@ internal object DatabaseFactory {
                 UserSessionTable,
             )
         }
-        return db
+        val readerConfig = readerConfig()
+        val reader = Database.connect(
+            getNewConnection = { readerConfig.createConnection(url) },
+            databaseConfig = DatabaseConfig { defaultReadOnly = true },
+        )
+        return SqliteDatabases(reader, writer)
     }
 
-    private fun concurrentAccessConfig() = SQLiteConfig().apply {
+    private fun writerConfig() = SQLiteConfig().apply {
         setJournalMode(JournalMode.WAL)
         setSynchronous(SynchronousMode.NORMAL)
         transactionMode = TransactionMode.IMMEDIATE
+        setBusyTimeout(BUSY_TIMEOUT_MILLIS)
+    }
+
+    private fun readerConfig() = SQLiteConfig().apply {
+        setReadOnly(true)
+        transactionMode = TransactionMode.DEFERRED
         setBusyTimeout(BUSY_TIMEOUT_MILLIS)
     }
 

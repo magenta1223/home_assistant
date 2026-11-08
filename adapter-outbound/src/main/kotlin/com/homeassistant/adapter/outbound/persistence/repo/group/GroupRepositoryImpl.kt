@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.EmbeddingVectorCodec
 import com.homeassistant.domain.embedding.EmbeddingGeometry
@@ -18,12 +19,11 @@ import com.homeassistant.domain.group.*
 import org.jetbrains.exposed.exceptions.ExposedSQLException
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
-import org.jetbrains.exposed.sql.transactions.transaction
 import org.sqlite.SQLiteErrorCode
 import org.sqlite.SQLiteException
 
-internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
-    override fun findSnapshot(): GroupSnapshot = transaction(db) {
+internal class GroupRepositoryImpl(private val db: SqliteDatabases) : GroupRepository {
+    override fun findSnapshot(): GroupSnapshot = db.read {
         val memberships = GroupMembershipTable.selectAll().toList()
         val keys = memberships.map { it[GroupMembershipTable.embeddingKey] }
         val embeddings = ComponentEmbeddingTable.selectAll().where { ComponentEmbeddingTable.key inList keys }
@@ -33,7 +33,7 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
         GroupSnapshot(groups, embeddings)
     }
 
-    override fun findVisibleTo(userId: UserId): List<StoredGroup> = transaction(db) {
+    override fun findVisibleTo(userId: UserId): List<StoredGroup> = db.read {
         storedGroups(GroupMembershipTable.selectAll().where {
             GroupMembershipTable.componentId inSubQuery ComponentTable.select(ComponentTable.id)
                 .where(ComponentRepositoryImpl.sourcedFrom(EpisodeAccessCondition.visibleTo(userId)))
@@ -55,7 +55,7 @@ internal class GroupRepositoryImpl(private val db: Database) : GroupRepository {
     }
 
     override fun save(change: GroupChange): List<Group> = try {
-        transaction(db) {
+        db.write {
             verifyRevisionAndPartition(change)
             verifyEmbeddings(change)
             replaceGroups(change).zip(change.resultingGroups) { id, result -> Group(id, result.componentIds) }

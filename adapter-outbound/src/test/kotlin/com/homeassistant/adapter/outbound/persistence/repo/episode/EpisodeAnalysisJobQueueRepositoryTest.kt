@@ -10,7 +10,7 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import java.nio.file.Files
 import kotlin.test.*
 
@@ -90,21 +90,21 @@ class EpisodeAnalysisJobQueueRepositoryTest {
         assertNull(jobs.claimNext(now = 10_000, retryBefore = 10_000, staleProcessingBefore = 10_000, maxAttempts = 5))
     }
 
-    private fun submission(db: Database, vararg contents: String): EpisodeAnalysisSubmission =
+    private fun submission(db: SqliteDatabases, vararg contents: String): EpisodeAnalysisSubmission =
         EpisodeAnalysisSubmission(owner, source, saveRecords(db, contents.map { SourceRecordDraft(it, it) }).map { it.id }, referenceId = null, access)
 
-    private fun submissionWithReference(db: Database): EpisodeAnalysisSubmission {
+    private fun submissionWithReference(db: SqliteDatabases): EpisodeAnalysisSubmission {
         val reference = SourceReferenceDraft("guide.pdf", "application/pdf", "pdf".toByteArray())
         val records = saveRecords(db, listOf(SourceRecordDraft("a", "a"), SourceRecordDraft("b", "b", reference)))
         return EpisodeAnalysisSubmission(owner, source, records.map { it.id }, records.last().reference?.id, access)
     }
 
-    private fun saveRecords(db: Database, drafts: List<SourceRecordDraft>) =
+    private fun saveRecords(db: SqliteDatabases, drafts: List<SourceRecordDraft>) =
         assertIs<SourceRecordSaveResult.Saved>(
             SourceRecordRepositoryImpl(db).save(source, drafts, access),
         ).recordsToAnalyze
 
-    private fun withDatabase(block: (Database) -> Unit) {
+    private fun withDatabase(block: (SqliteDatabases) -> Unit) {
         val path = Files.createTempFile("episode-analysis-jobs", ".db")
         try { block(DatabaseFactory.init(path.toString())) }
         finally { Files.deleteIfExists(path) }

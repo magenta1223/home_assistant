@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentExtractionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
@@ -14,18 +15,17 @@ import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
-import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepository {
-    override fun findCovering(access: AccessControl): List<Component> = transaction(db) {
+internal class ComponentRepositoryImpl(private val db: SqliteDatabases) : ComponentRepository {
+    override fun findCovering(access: AccessControl): List<Component> = db.read {
         fromEpisodes(EpisodeAccessCondition.covering(access))
     }
 
-    override fun findVisibleTo(userId: UserId): List<Component> = transaction(db) {
+    override fun findVisibleTo(userId: UserId): List<Component> = db.read {
         fromEpisodes(EpisodeAccessCondition.visibleTo(userId))
     }
 
-    override fun findUngroupedAfter(afterId: Int, limit: Int): List<Component> = transaction(db) {
+    override fun findUngroupedAfter(afterId: Int, limit: Int): List<Component> = db.read {
         require(limit > 0)
         components(ComponentTable.selectAll().where {
             (ComponentTable.id greater afterId) and
@@ -34,7 +34,7 @@ internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepo
     }
 
     /** A second extraction of the same episode violates the extraction key and rolls back the whole write. */
-    override fun save(extraction: EpisodeComponents): List<Component> = transaction(db) {
+    override fun save(extraction: EpisodeComponents): List<Component> = db.write {
         val episodeId = extraction.episodeId
         require(extraction.statements.none(String::isBlank)) { "a component statement must not be blank" }
         require(EpisodeTable.select(EpisodeTable.id).where { EpisodeTable.id eq episodeId }.any()) { "episode reference does not exist" }

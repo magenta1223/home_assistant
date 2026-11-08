@@ -13,11 +13,10 @@ import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.deleteWhere
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import kotlin.test.*
 
@@ -69,7 +68,7 @@ class ComponentAssignmentOutboxRepositoryTest {
 
     @Test fun `episodes saved before the outbox existed are queued once`() = withDatabase { db ->
         val (episode) = seedEpisodes(db, "first", "a")
-        transaction(db) { ComponentAssignmentOutboxTable.deleteWhere { ComponentAssignmentOutboxTable.episodeId eq episode } }
+        db.write { ComponentAssignmentOutboxTable.deleteWhere { ComponentAssignmentOutboxTable.episodeId eq episode } }
         val outbox = ComponentAssignmentOutboxRepository(db)
         assertEquals(1, outbox.enqueueUnassigned(now = 0))
         assertEquals(0, outbox.enqueueUnassigned(now = 0))
@@ -78,13 +77,13 @@ class ComponentAssignmentOutboxRepositoryTest {
 
     private data class OutboxRow(val status: String, val attempts: Int, val lastError: String?)
 
-    private fun outboxRow(db: Database, episodeId: Int): OutboxRow? = transaction(db) {
+    private fun outboxRow(db: SqliteDatabases, episodeId: Int): OutboxRow? = db.write {
         ComponentAssignmentOutboxTable.selectAll().where { ComponentAssignmentOutboxTable.episodeId eq episodeId }.singleOrNull()?.let {
             OutboxRow(it[ComponentAssignmentOutboxTable.status], it[ComponentAssignmentOutboxTable.attempts], it[ComponentAssignmentOutboxTable.lastError])
         }
     }
 
-    private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
+    private fun seedEpisodes(db: SqliteDatabases, key: String, vararg contents: String): List<Int> {
         val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
             AccessControl.restricted(listOf(user)))).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
@@ -92,7 +91,7 @@ class ComponentAssignmentOutboxRepositoryTest {
         }, listOf(record.id))).map { it.id }
     }
 
-    private fun withDatabase(block: (Database) -> Unit) {
+    private fun withDatabase(block: (SqliteDatabases) -> Unit) {
         val path = Files.createTempFile("component-assignment-outbox", ".db")
         try { block(DatabaseFactory.init(path.toString())) }
         finally { Files.deleteIfExists(path) }

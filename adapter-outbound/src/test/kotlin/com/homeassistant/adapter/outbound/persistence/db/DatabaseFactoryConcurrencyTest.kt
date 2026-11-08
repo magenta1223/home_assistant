@@ -8,7 +8,7 @@ import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
-import org.jetbrains.exposed.sql.Database
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -63,7 +63,7 @@ class DatabaseFactoryConcurrencyTest {
         }
     }
 
-    private fun withDatabase(block: (Database) -> Unit) {
+    private fun withDatabase(block: (SqliteDatabases) -> Unit) {
         val path = Files.createTempFile("concurrent-writes", ".db")
         try { block(DatabaseFactory.init(path.toString())) }
         finally { listOf("", "-wal", "-shm").forEach { Files.deleteIfExists(path.resolveSibling(path.fileName.toString() + it)) } }

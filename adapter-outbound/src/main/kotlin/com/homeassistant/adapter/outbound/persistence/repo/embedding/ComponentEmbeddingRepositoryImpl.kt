@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.embedding
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentTable
 import com.homeassistant.application.port.outbound.embedding.Embedding
@@ -10,12 +11,11 @@ import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class ComponentEmbeddingRepositoryImpl(private val db: Database) : ComponentEmbeddingRepository {
-    override fun find(key: ComponentEmbeddingKey): Embedding<ComponentEmbeddingKey>? = transaction(db) { findStored(key) }
+internal class ComponentEmbeddingRepositoryImpl(private val db: SqliteDatabases) : ComponentEmbeddingRepository {
+    override fun find(key: ComponentEmbeddingKey): Embedding<ComponentEmbeddingKey>? = db.read { findStored(key) }
 
-    override fun save(embedding: Embedding<ComponentEmbeddingKey>): Embedding<ComponentEmbeddingKey> = transaction(db) {
+    override fun save(embedding: Embedding<ComponentEmbeddingKey>): Embedding<ComponentEmbeddingKey> = db.write {
         ComponentEmbeddingTable.insertIgnore {
             it[key] = key(embedding.key)
             it[componentId] = embedding.key.componentId

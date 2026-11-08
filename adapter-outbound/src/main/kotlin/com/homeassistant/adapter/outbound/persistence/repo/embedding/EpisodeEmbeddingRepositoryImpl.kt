@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.embedding
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
@@ -10,12 +11,11 @@ import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRep
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class EpisodeEmbeddingRepositoryImpl(private val db: Database) : EpisodeEmbeddingRepository {
-    override fun find(key: EpisodeEmbeddingKey): Embedding<EpisodeEmbeddingKey>? = transaction(db) { findStored(key) }
+internal class EpisodeEmbeddingRepositoryImpl(private val db: SqliteDatabases) : EpisodeEmbeddingRepository {
+    override fun find(key: EpisodeEmbeddingKey): Embedding<EpisodeEmbeddingKey>? = db.read { findStored(key) }
 
-    override fun save(embedding: Embedding<EpisodeEmbeddingKey>): Embedding<EpisodeEmbeddingKey> = transaction(db) {
+    override fun save(embedding: Embedding<EpisodeEmbeddingKey>): Embedding<EpisodeEmbeddingKey> = db.write {
         EpisodeEmbeddingTable.insertIgnore {
             it[key] = key(embedding.key)
             it[episodeId] = embedding.key.episodeId

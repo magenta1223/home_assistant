@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.domain.embedding.EmbeddingGeometry
@@ -31,7 +32,6 @@ import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.file.Files
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
@@ -133,11 +133,11 @@ class GroupRepositoryTest {
         val repository = GroupRepositoryImpl(db)
         val id = repository.save(change(incoming = setOf(1), parts = listOf(setOf(1)), embeddings = embeddings)).single().id
         val before = repository.findSnapshot()
-        transaction(db) { exec("CREATE TRIGGER fail_group BEFORE INSERT ON component_group_memberships BEGIN SELECT RAISE(ABORT, 'forced'); END") }
+        db.write { exec("CREATE TRIGGER fail_group BEFORE INSERT ON component_group_memberships BEGIN SELECT RAISE(ABORT, 'forced'); END") }
         val attach = change(mapOf(id to 1), setOf(2), listOf(setOf(1, 2)), embeddings, id)
         assertFails { repository.save(attach) }
         assertEquals(before, repository.findSnapshot())
-        transaction(db) { exec("DROP TRIGGER fail_group") }
+        db.write { exec("DROP TRIGGER fail_group") }
         repository.save(attach)
     }
 
@@ -199,7 +199,7 @@ class GroupRepositoryTest {
     }
 
     private fun seed(
-        db: Database,
+        db: SqliteDatabases,
         count: Int,
         access: AccessControl = AccessControl.restricted(listOf(UserId("owner"))),
         key: String = "seed",
@@ -232,7 +232,7 @@ class GroupRepositoryTest {
     }, embeddings.filterKeys { it in parts.flatten() })
 
     /** Places up to [limit] unplaced Components one by one, as the assignment worker does. */
-    private fun organizePending(db: Database, maxComponents: Int, limit: Int): List<ComponentOrganizationOutcome> {
+    private fun organizePending(db: SqliteDatabases, maxComponents: Int, limit: Int): List<ComponentOrganizationOutcome> {
         val repository = GroupRepositoryImpl(db)
         val generator = object : EmbeddingGenerator {
             override val space = this@GroupRepositoryTest.space
@@ -249,7 +249,7 @@ class GroupRepositoryTest {
         return ComponentRepositoryImpl(db).findUngroupedAfter(0, limit).map(organizer::organize)
     }
 
-    private fun withDatabase(block: (Database, String) -> Unit) {
+    private fun withDatabase(block: (SqliteDatabases, String) -> Unit) {
         val path = Files.createTempFile("group-store", ".db")
         try { block(DatabaseFactory.init(path.toString()), path.toString()) }
         finally { Files.deleteIfExists(path) }

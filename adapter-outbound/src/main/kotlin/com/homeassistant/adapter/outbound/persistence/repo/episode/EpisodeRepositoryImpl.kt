@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeViewerTable
@@ -15,25 +16,24 @@ import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
 import java.time.Clock
 
 internal class EpisodeRepositoryImpl(
-    private val db: Database,
+    private val db: SqliteDatabases,
     private val clock: Clock = Clock.systemUTC(),
 ) : EpisodeRepository {
 
-    override fun findVisibleTo(userId: UserId): List<Episode> = transaction(db) {
+    override fun findVisibleTo(userId: UserId): List<Episode> = db.read {
         EpisodeTable.selectAll()
             .where(EpisodeAccessCondition.visibleTo(userId))
             .orderBy(EpisodeTable.id)
             .map { it.toEpisode() }
     }
 
-    override fun save(batch: EpisodeBatch): List<Episode> = transaction(db) {
+    override fun save(batch: EpisodeBatch): List<Episode> = db.write {
         val (createdBy, proposals, analyzedSourceRecordIds) = batch
         val recordIds = analyzedSourceRecordIds.distinct()
         val existingRecordIds = if (recordIds.isEmpty()) emptySet() else {

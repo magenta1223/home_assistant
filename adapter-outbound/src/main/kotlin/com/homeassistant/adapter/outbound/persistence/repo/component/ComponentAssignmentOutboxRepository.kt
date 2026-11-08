@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable.COMPLETED
@@ -14,16 +15,15 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Pe
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memoryextraction.component.ComponentAssignmentTask
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 
-internal class ComponentAssignmentOutboxRepository(private val db: Database) : ComponentAssignmentOutbox {
+internal class ComponentAssignmentOutboxRepository(private val db: SqliteDatabases) : ComponentAssignmentOutbox {
     override fun claimReady(
         limit: Int,
         now: Long,
         retryBefore: Long,
         staleProcessingBefore: Long,
         maxAttempts: Int,
-    ): List<ComponentAssignmentTask> = transaction(db) {
+    ): List<ComponentAssignmentTask> = db.write {
         require(limit > 0 && maxAttempts > 0)
         val ready = readyCondition(retryBefore, staleProcessingBefore, maxAttempts)
         val rows = (ComponentAssignmentOutboxTable innerJoin EpisodeTable).selectAll()
@@ -59,7 +59,7 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
     override fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long): Boolean =
         transition(outboxId, expectedAttempt, FAILED, error.take(MAX_ERROR_LENGTH), now)
 
-    override fun enqueueUnassigned(now: Long): Int = transaction(db) {
+    override fun enqueueUnassigned(now: Long): Int = db.write {
         val episodeIds = EpisodeTable.select(EpisodeTable.id).where {
             notExists(ComponentExtractionTable.selectAll().where { ComponentExtractionTable.episodeId eq EpisodeTable.id }) and
                 notExists(ComponentAssignmentOutboxTable.selectAll().where { ComponentAssignmentOutboxTable.episodeId eq EpisodeTable.id })
@@ -69,7 +69,7 @@ internal class ComponentAssignmentOutboxRepository(private val db: Database) : C
     }
 
     private fun transition(outboxId: Int, expectedAttempt: Int, next: String, error: String?, now: Long): Boolean =
-        transaction(db) {
+        db.write {
             ComponentAssignmentOutboxTable.update({
                 (ComponentAssignmentOutboxTable.id eq outboxId) and
                     (ComponentAssignmentOutboxTable.status eq PROCESSING) and

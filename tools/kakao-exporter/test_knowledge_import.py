@@ -11,7 +11,7 @@ SOURCE = KakaoSource(name="hongseungmin", is_public=False, allowed_user_ids=("me
 class StubImportApi(BaseHTTPRequestHandler):
     """Answers every import with the status and body the test set, and keeps the last request."""
 
-    status = 200
+    status = 202
     body = {}
     received = None
 
@@ -46,7 +46,7 @@ class SendExportTest(unittest.TestCase):
         StubImportApi.body = body
 
     def test_posts_the_whole_export_as_a_kakao_source_with_its_audience(self):
-        self.answer(200, {"episodes": []})
+        self.answer(202, {"jobId": 1})
 
         send_export(self.base_url, "secret", SOURCE, "exported text")
 
@@ -64,10 +64,16 @@ class SendExportTest(unittest.TestCase):
             body,
         )
 
-    def test_ok_means_new_messages_were_analyzed(self):
+    def test_accepted_means_new_messages_were_queued_for_analysis(self):
+        self.answer(202, {"jobId": 1, "importedRecordCount": 2})
+
+        self.assertEqual(ImportOutcome.ACCEPTED, send_export(self.base_url, "secret", SOURCE, "text"))
+
+    def test_any_other_success_status_fails(self):
         self.answer(200, {"episodes": []})
 
-        self.assertEqual(ImportOutcome.ANALYZED, send_export(self.base_url, "secret", SOURCE, "text"))
+        with self.assertRaisesRegex(ImportFailed, "HTTP 200"):
+            send_export(self.base_url, "secret", SOURCE, "text")
 
     def test_duplicate_conflict_means_nothing_was_new(self):
         self.answer(409, {"error": "all source records have already been analyzed", "alreadyAnalyzedRecordCount": 3})

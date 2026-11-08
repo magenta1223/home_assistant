@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 IMPORT_PATH = "/api/knowledge/import/analyze"
-# The app analyzes the whole request before it answers, so a large first export takes minutes.
+# The app stores the new messages before it answers and analyzes them later; a large first export still takes a while to store.
 TIMEOUT_SECONDS = 30 * 60
 ERROR_EXCERPT_CHARS = 500
 
@@ -22,7 +22,7 @@ class KakaoSource:
 
 
 class ImportOutcome(Enum):
-    ANALYZED = "analyzed"
+    ACCEPTED = "accepted"
     ALREADY_ANALYZED = "already analyzed"
 
 
@@ -32,8 +32,8 @@ class ImportFailed(Exception):
 
 def send_export(base_url, token, source, text):
     """
-    Posts the whole export. The app stores and analyzes only the messages it does not have yet, and answers
-    409 with alreadyAnalyzedRecordCount when it has all of them.
+    Posts the whole export. The app stores only the messages it does not have yet and answers 202 once their
+    analysis is queued, or 409 with alreadyAnalyzedRecordCount when it has analyzed all of them.
     """
     request = urllib.request.Request(
         base_url.rstrip("/") + IMPORT_PATH,
@@ -43,9 +43,9 @@ def send_export(base_url, token, source, text):
     )
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
-            if response.status != 200:
+            if response.status != 202:
                 raise ImportFailed(f"HTTP {response.status}: {excerpt(response.read())}")
-            return ImportOutcome.ANALYZED
+            return ImportOutcome.ACCEPTED
     except urllib.error.HTTPError as error:
         body = error.read()
         if error.code == 409 and is_already_analyzed(body):

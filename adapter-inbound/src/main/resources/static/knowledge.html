@@ -100,6 +100,8 @@
   const signup = document.getElementById('signup');
   const users = document.getElementById('users');
   const status = document.getElementById('status');
+  const JOB_POLL_MILLIS = 3000;
+  let pollTimer = null;
   let reference = null;
 
   document.getElementById('file').addEventListener('change', async function (event) {
@@ -215,8 +217,9 @@
       status.textContent = '카카오톡 내보내기는 텍스트(.txt)만 사용할 수 있습니다.';
       return;
     }
+    stopPolling();
     submit.disabled = true;
-    status.textContent = '분석 중입니다…';
+    status.textContent = '전송 중입니다…';
     try {
       const response = await fetch('/api/knowledge/import/analyze', {
         method: 'POST',
@@ -237,13 +240,48 @@
         if (response.status === 401) showLogin();
         throw new Error(body.error || '저장하지 못했습니다.');
       }
-      status.textContent = '완료: 소스 레코드 ' + body.importedRecordCount + '개, 에피소드 ' + body.episodeCount + '개를 저장했습니다.';
+      const accepted = '접수됨: 새 소스 레코드 ' + body.importedRecordCount + '개, 다시 분석할 레코드 ' + body.retriedRecordCount + '개';
+      status.textContent = accepted + '\n분석을 기다리는 중입니다…';
+      pollJob(body.jobId, accepted);
     } catch (error) {
       status.textContent = '실패: ' + error.message;
     } finally {
       submit.disabled = false;
     }
   });
+
+  // Checks the submitted analysis every JOB_POLL_MILLIS until it completes or fails, or the page is left.
+  function pollJob(jobId, accepted) {
+    pollTimer = setTimeout(async function () {
+      try {
+        const response = await fetch('/api/knowledge/import/jobs/' + jobId);
+        const body = await response.json().catch(function () { return {}; });
+        if (!response.ok) {
+          if (response.status === 401) showLogin();
+          throw new Error(body.error || '분석 상태를 확인하지 못했습니다.');
+        }
+        if (body.status === 'COMPLETED') {
+          status.textContent = accepted + '\n완료: 에피소드 ' + body.episodeCount + '개를 저장했습니다.';
+          return;
+        }
+        if (body.status === 'FAILED') {
+          status.textContent = accepted + '\n분석 실패(서버가 잠시 뒤 다시 시도할 수 있습니다): ' + body.lastError;
+          return;
+        }
+        status.textContent = accepted + '\n' + (body.status === 'PROCESSING' ? '분석 중입니다…' : '분석을 기다리는 중입니다…');
+        pollJob(jobId, accepted);
+      } catch (error) {
+        status.textContent = accepted + '\n실패: ' + error.message;
+      }
+    }, JOB_POLL_MILLIS);
+  }
+
+  function stopPolling() {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+
+  window.addEventListener('pagehide', stopPolling);
 
   async function authenticate(submit) {
     login.disabled = true;

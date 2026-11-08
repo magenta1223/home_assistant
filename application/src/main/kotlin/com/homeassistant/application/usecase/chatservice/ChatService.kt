@@ -12,6 +12,7 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeacti
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
+import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
 import com.homeassistant.domain.identity.UserId
 import org.slf4j.LoggerFactory
@@ -32,42 +33,47 @@ class ChatService(
     private val log = LoggerFactory.getLogger(javaClass)
 
     override fun answer(request: ChatRequest): ChatResult {
-        // TODO: ORCHESTRATION
-        val active = resumeActiveSession(request.userId)
-        val contextStartedAt = System.nanoTime()
+        val activeSession = resumeActiveSession(request.userId)
+        val chatContext = retrieveContext(request) ?: return ChatResult.Failed
+        if (!chatContext.hasMatches) return ChatResult.AnswerReady(NO_MATCH_ANSWER)
+        val session = activeSession ?: createSession(request) ?: return ChatResult.Failed
+        return converse(session, ChatPromptBuilder.build(chatContext.reference, request.question))
+    }
+
+    /** The episodes matching [request]'s question, or null when the retrieval failed. */
+    private fun retrieveContext(request: ChatRequest): ChatContext? {
+        val startedAt = System.nanoTime()
         val context = try {
             contextSource.context(request.userId, request.question)
         } catch (error: Exception) {
             log.warn(
                 "Episode context retrieval failed category={} elapsedMs={}",
                 error.javaClass.simpleName,
-                elapsedMillis(contextStartedAt),
+                elapsedMillis(startedAt),
             )
-            return ChatResult.Failed
+            return null
         }
         log.info(
-            "Latency stage=episode-conversation-context elapsedMs={} hasMatches={} sessionMode={}",
-            elapsedMillis(contextStartedAt),
+            "Latency stage=episode-conversation-context elapsedMs={} hasMatches={}",
+            elapsedMillis(startedAt),
             context.hasMatches,
-            if (active == null) "start" else "resume",
         )
-        if (!context.hasMatches) return ChatResult.AnswerReady(NO_MATCH_ANSWER)
+        return context
+    }
 
-        val prompt = ChatPromptBuilder.build(context.reference, request.question)
-        val session = active ?: createSession(request) ?: return ChatResult.Failed
-        val turnStartedAt = System.nanoTime()
+    /** The provider's answer to [prompt] in [session]; the session is renewed on success and released on failure. */
+    private fun converse(session: ChatSession, prompt: String): ChatResult {
+        val startedAt = System.nanoTime()
         val result = chatGateway.chat(session.chatId, prompt)
         log.info(
-            "Latency stage=episode-conversation-turn elapsedMs={} sessionMode={} result={}",
-            elapsedMillis(turnStartedAt),
-            if (active == null) "start" else "resume",
+            "Latency stage=episode-conversation-turn elapsedMs={} result={}",
+            elapsedMillis(startedAt),
             if (result is ChatGatewayResult.Success) "success" else "failure",
         )
-
         return when (result) {
             ChatGatewayResult.Failure -> {
                 release(session)
-                    ChatResult.Failed
+                ChatResult.Failed
             }
             is ChatGatewayResult.Success -> {
                 renew(session)
@@ -83,7 +89,7 @@ class ChatService(
             release(active)
             return null
         }
-        return renew(active)
+        return renew(active)?.also { log.info("Episode conversation sessionMode=resume") }
     }
 
     /** [session] renewed now, or null when it stopped being active meanwhile. */
@@ -111,7 +117,7 @@ class ChatService(
 
     private fun activate(userId: UserId, chatId: ChatId): ChatSession? =
         runCatching { sessions.save(ChatSessionStart(userId, chatId, now())) }.fold(
-            onSuccess = { it },
+            onSuccess = { session -> session.also { log.info("Episode conversation sessionMode=start") } },
             onFailure = { error ->
                 chatGateway.end(chatId)
                 failSessionStart(error)

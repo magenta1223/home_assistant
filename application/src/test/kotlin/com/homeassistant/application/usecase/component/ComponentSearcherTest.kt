@@ -17,7 +17,7 @@ import com.homeassistant.application.usecase.contextprovider.component.Component
 import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.group.Group
 import com.homeassistant.domain.embedding.EmbeddingVector
-import com.homeassistant.domain.identity.UserAccessDeniedException
+import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.episode.Episode

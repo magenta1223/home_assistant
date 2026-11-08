@@ -1,25 +1,24 @@
 package com.homeassistant.application.usecase.memoryextraction.episode
 
-import com.homeassistant.application.port.inbound.memoryextraction.ConflictingSourceAudienceException
+import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidEpisodeAudienceException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidKnowledgeReferenceException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidSourceReferenceException
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
 import com.homeassistant.domain.access.AccessControl
-import com.homeassistant.domain.identity.UserAccessDeniedException
+import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.domain.source.InvalidSourceReferenceException
-import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -72,15 +71,19 @@ class EpisodeAnalysisService(
         )
     }
 
-    /** Saves [source]'s records, reporting an audience conflict apart from an unavailable store. */
-    private fun saveSourceRecords(source: SourceDocumentDraft, access: AccessControl): SourceRecordSaveResult =
-        try {
+    /** Saves [source]'s records, reporting an access conflict apart from an unavailable store. */
+    private fun saveSourceRecords(source: SourceDocumentDraft, access: AccessControl): SourceRecordSaveResult.Saved {
+        val result = try {
             sourceRecords.saveAll(source.source, source.records, access)
-        } catch (conflict: SourceAccessConflictException) {
-            throw ConflictingSourceAudienceException(source.source.name, conflict.existingAccess)
         } catch (error: Exception) {
             throw EpisodeAnalysisUnavailableException(error)
         }
+        return when (result) {
+            is SourceRecordSaveResult.Saved -> result
+            is SourceRecordSaveResult.AccessConflict ->
+                throw SourceAccessConflictException(source.source.name, result.existingAccess)
+        }
+    }
 
     private fun requireAuthorized(userId: UserId) {
         if (!accessPolicy.isAuthorized(userId)) throw UserAccessDeniedException()
@@ -89,20 +92,12 @@ class EpisodeAnalysisService(
     private suspend fun interpretReference(request: EpisodeAnalysisRequest) = request.source.reference?.let { reference ->
         val interpreter = referenceInterpreter
             ?: throw EpisodeAnalysisUnavailableException(IllegalStateException("reference interpreter is unavailable"))
-        val interpretations = try {
-            interpreter.interpret(reference)
-        } catch (error: CancellationException) {
-            throw error
-        } catch (error: InvalidSourceReferenceException) {
-            throw InvalidKnowledgeReferenceException(
-                error.message ?: "invalid reference",
-                error,
-            )
-        } catch (error: Exception) {
-            throw EpisodeAnalysisUnavailableException(error)
+        val interpretations = when (val result = rethrowAsUnavailable { interpreter.interpret(reference) }) {
+            is SourceReferenceInterpretationResult.Interpreted -> result.segments
+            is SourceReferenceInterpretationResult.Rejected -> throw InvalidSourceReferenceException(result.reason)
         }
         if (interpretations.isEmpty()) {
-            throw InvalidKnowledgeReferenceException(
+            throw InvalidSourceReferenceException(
                 "reference did not contain interpretable content",
             )
         }
@@ -126,7 +121,7 @@ class EpisodeAnalysisService(
         val invalid = userIds.filterTo(linkedSetOf()) { raw ->
             runCatching { UserId(raw) }.getOrNull()?.let(accessPolicy::isAuthorized) != true
         }
-        if (invalid.isNotEmpty()) throw InvalidEpisodeAudienceException(invalid)
+        if (invalid.isNotEmpty()) throw InvalidAllowedUsersException(invalid)
     }
 
     /** The result of [operation], rethrowing its failure as [EpisodeAnalysisUnavailableException]. */

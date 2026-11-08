@@ -12,7 +12,7 @@ import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.domain.episode.Episode
 import com.homeassistant.domain.embedding.EmbeddingVector
-import com.homeassistant.domain.identity.UserAccessDeniedException
+import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.*

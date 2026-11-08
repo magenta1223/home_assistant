@@ -3,7 +3,9 @@ package com.homeassistant.adapter.outbound.reference
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
 import com.homeassistant.infrastructure.serialization.JsonSerializer
-import com.homeassistant.domain.source.InvalidSourceReferenceException
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult.Interpreted
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult.Rejected
 import com.homeassistant.domain.source.SourceReferenceDraft
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.llm.CompletionImage
@@ -19,48 +21,49 @@ import javax.imageio.ImageIO
 class ModelSourceReferenceInterpreter(
     private val client: CompletionClient,
 ) : SourceReferenceInterpreter {
-    override suspend fun interpret(reference: SourceReferenceDraft): List<SourceReferenceInterpretation> {
+    override suspend fun interpret(reference: SourceReferenceDraft): SourceReferenceInterpretationResult {
         val mediaType = reference.mediaType.substringBefore(';').trim().lowercase()
         return when {
             mediaType == PDF_MEDIA_TYPE || reference.fileName.endsWith(".pdf", ignoreCase = true) ->
                 interpretPdf(reference)
             mediaType.startsWith("image/") -> interpretImage(reference)
-            else -> throw InvalidSourceReferenceException("only PDF and image references are supported")
+            else -> Rejected("only PDF and image references are supported")
         }
     }
 
-    private suspend fun interpretImage(reference: SourceReferenceDraft): List<SourceReferenceInterpretation> {
+    private suspend fun interpretImage(reference: SourceReferenceDraft): SourceReferenceInterpretationResult {
         val bytes = reference.bytes()
-        val extension = supportedImageExtension(reference, bytes)
-        return requestInterpretations(
-            segments = listOf(ReferenceSegment("image", extension, bytes, extractedText = null)),
-            sourceName = reference.fileName,
+        val extension = imageExtension(reference) ?: return Rejected("only PNG, JPEG, and WebP images are supported")
+        if (!hasSignature(bytes, extension)) return Rejected("image content does not match its file type")
+        return Interpreted(
+            requestInterpretations(
+                segments = listOf(ReferenceSegment("image", extension, bytes, extractedText = null)),
+                sourceName = reference.fileName,
+            ),
         )
     }
 
-    private suspend fun interpretPdf(reference: SourceReferenceDraft): List<SourceReferenceInterpretation> {
+    private suspend fun interpretPdf(reference: SourceReferenceDraft): SourceReferenceInterpretationResult {
         val document = try {
             Loader.loadPDF(reference.bytes())
-        } catch (error: Exception) {
-            throw InvalidSourceReferenceException("PDF reference could not be opened", error)
+        } catch (_: Exception) {
+            return Rejected("PDF reference could not be opened")
         }
         document.use { pdf ->
-            if (pdf.numberOfPages == 0) {
-                throw InvalidSourceReferenceException("PDF reference does not contain any pages")
-            }
+            if (pdf.numberOfPages == 0) return Rejected("PDF reference does not contain any pages")
             val interpretations = mutableListOf<SourceReferenceInterpretation>()
             var firstPage = 1
             while (firstPage <= pdf.numberOfPages) {
                 val lastPage = minOf(firstPage + PDF_PAGES_PER_REQUEST - 1, pdf.numberOfPages)
                 val segments = try {
                     (firstPage..lastPage).map { pageNumber -> renderPage(pdf, pageNumber) }
-                } catch (error: Exception) {
-                    throw InvalidSourceReferenceException("PDF page could not be rendered", error)
+                } catch (_: Exception) {
+                    return Rejected("PDF page could not be rendered")
                 }
                 interpretations += requestInterpretations(segments, reference.fileName)
                 firstPage = lastPage + 1
             }
-            return interpretations
+            return Interpreted(interpretations)
         }
     }
 
@@ -116,36 +119,31 @@ class ModelSourceReferenceInterpreter(
         }
     }
 
-    private fun supportedImageExtension(reference: SourceReferenceDraft, bytes: ByteArray): String {
-        val mediaType = reference.mediaType.substringBefore(';').trim().lowercase()
-        val extension = when (mediaType) {
+    /** The file extension of a supported image type, from its media type or else its file name; null when unsupported. */
+    private fun imageExtension(reference: SourceReferenceDraft): String? =
+        when (reference.mediaType.substringBefore(';').trim().lowercase()) {
             "image/png" -> "png"
             "image/jpeg" -> "jpg"
             "image/webp" -> "webp"
-            else -> reference.fileName.substringAfterLast('.', "").lowercase().let { suffix ->
-                when (suffix) {
-                    "png" -> "png"
-                    "jpg", "jpeg" -> "jpg"
-                    "webp" -> "webp"
-                    else -> throw InvalidSourceReferenceException("only PNG, JPEG, and WebP images are supported")
-                }
+            else -> when (reference.fileName.substringAfterLast('.', "").lowercase()) {
+                "png" -> "png"
+                "jpg", "jpeg" -> "jpg"
+                "webp" -> "webp"
+                else -> null
             }
         }
-        val validSignature = when (extension) {
-            "png" -> bytes.size >= 8 && bytes.copyOfRange(0, 8).contentEquals(PNG_SIGNATURE)
-            "jpg" -> bytes.size >= 3 && bytes[0] == 0xff.toByte() && bytes[1] == 0xd8.toByte() && bytes[2] == 0xff.toByte()
-            "webp" -> bytes.size >= 12 && bytes.copyOfRange(0, 4).decodeToString() == "RIFF" &&
-                bytes.copyOfRange(8, 12).decodeToString() == "WEBP"
-            else -> false
-        }
-        if (!validSignature) throw InvalidSourceReferenceException("image content does not match its file type")
-        return extension
+
+    /** Whether [bytes] start with the file signature of [extension]. */
+    private fun hasSignature(bytes: ByteArray, extension: String): Boolean = when (extension) {
+        "png" -> bytes.size >= 8 && bytes.copyOfRange(0, 8).contentEquals(PNG_SIGNATURE)
+        "jpg" -> bytes.size >= 3 && bytes[0] == 0xff.toByte() && bytes[1] == 0xd8.toByte() && bytes[2] == 0xff.toByte()
+        "webp" -> bytes.size >= 12 && bytes.copyOfRange(0, 4).decodeToString() == "RIFF" &&
+            bytes.copyOfRange(8, 12).decodeToString() == "WEBP"
+        else -> false
     }
 
     private fun encodePng(image: java.awt.image.BufferedImage): ByteArray = ByteArrayOutputStream().use { output ->
-        if (!ImageIO.write(image, "png", output)) {
-            throw InvalidSourceReferenceException("image reference could not be encoded")
-        }
+        check(ImageIO.write(image, "png", output)) { "image reference could not be encoded" }
         output.toByteArray()
     }
 

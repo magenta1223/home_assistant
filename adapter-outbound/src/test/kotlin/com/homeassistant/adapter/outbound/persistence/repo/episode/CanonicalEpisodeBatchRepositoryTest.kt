@@ -1,5 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import kotlin.test.assertIs
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.ComponentAssignmentOutboxTable
@@ -21,7 +23,7 @@ class CanonicalEpisodeBatchRepositoryTest {
     @Test
     fun `second episode failure rolls back episodes evidence outbox and source status`() = withDatabase("batch-rollback") { db ->
         val sourceRecords = SourceRecordRepositoryImpl(db)
-        val records = sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).recordsToAnalyze
+        val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two")))).recordsToAnalyze
         transaction(db) {
             exec(
                 """
@@ -47,14 +49,14 @@ class CanonicalEpisodeBatchRepositoryTest {
 
         assertTrue(repository.findVisibleTo(USER).isEmpty())
         assertEquals(0L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
-        assertEquals(2, sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).retriedRecordCount)
+        assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two")))).retriedRecordCount)
     }
 
     @Test
     fun `retry reuses exact episodes while different content or evidence is preserved`() =
         withDatabase("batch-idempotency") { db ->
             val sourceRecords = SourceRecordRepositoryImpl(db)
-            val records = sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).recordsToAnalyze
+            val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two")))).recordsToAnalyze
             val repository = EpisodeRepositoryImpl(db)
             val firstRequest = listOf(item("stable-key", proposal("same", records[0].id)))
 
@@ -76,7 +78,7 @@ class CanonicalEpisodeBatchRepositoryTest {
             assertEquals(3, repository.findVisibleTo(USER).size)
             assertEquals(2, variants.size)
             assertEquals(3L, transaction(db) { ComponentAssignmentOutboxTable.selectAll().count() })
-            assertEquals(2, sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two"))).alreadyAnalyzedRecordCount)
+            assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(SOURCE, listOf(draft("one"), draft("two")))).alreadyAnalyzedRecordCount)
         }
 
     private fun item(key: String, proposal: EpisodeProposal) = proposal

@@ -36,9 +36,6 @@ data class SourceReference(
     val sha256: String,
 )
 
-class InvalidSourceReferenceException(message: String, cause: Throwable? = null) :
-    RuntimeException(message, cause)
-
 private fun sha256(value: ByteArray): String =
     MessageDigest.getInstance("SHA-256")
         .digest(value)

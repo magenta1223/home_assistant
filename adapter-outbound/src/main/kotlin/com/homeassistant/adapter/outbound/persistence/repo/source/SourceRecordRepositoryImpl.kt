@@ -11,7 +11,6 @@ import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.domain.source.SourceAccessConflictException
 import com.homeassistant.domain.source.SourceReference
 import com.homeassistant.domain.source.SourceReferenceDraft
 import org.jetbrains.exposed.sql.*
@@ -26,60 +25,67 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         records: List<SourceRecordDraft>,
         access: AccessControl,
     ): SourceRecordSaveResult = transaction(db) {
+        val drafts = records.distinctBy { it.deduplicationKey }
+        val stored = drafts.associate { it.deduplicationKey to findStored(source, it.deduplicationKey) }
+        stored.values.filterNotNull().firstOrNull { it.access != access }
+            ?.let { return@transaction SourceRecordSaveResult.AccessConflict(it.access) }
+
         val recordsToAnalyze = mutableListOf<SourceRecord>()
         var importedRecordCount = 0
         var retriedRecordCount = 0
         var alreadyAnalyzedRecordCount = 0
-        val seenDeduplicationKeys = mutableSetOf<String>()
-
-        records.forEach { record ->
-            if (!seenDeduplicationKeys.add(record.deduplicationKey)) {
-                return@forEach
-            }
-            val existing = SourceRecordTable.selectAll()
-                .where {
-                    (SourceRecordTable.sourceType eq source.type) and
-                        (SourceRecordTable.deduplicationKey eq record.deduplicationKey)
+        drafts.forEach { draft ->
+            val existing = stored.getValue(draft.deduplicationKey)
+            when {
+                existing == null -> {
+                    recordsToAnalyze += insert(source, draft, access)
+                    importedRecordCount++
                 }
-                .singleOrNull()
-            if (existing != null) {
-                val existingRecord = existing.toSourceRecord()
-                if (existingRecord.access != access) throw SourceAccessConflictException(source.name, existingRecord.access)
-                if (existingRecord.analysisStatus == SourceRecordAnalysisStatus.PENDING) {
-                    recordsToAnalyze += existingRecord
+                existing.analysisStatus == SourceRecordAnalysisStatus.PENDING -> {
+                    recordsToAnalyze += existing
                     retriedRecordCount++
-                } else {
-                    alreadyAnalyzedRecordCount++
                 }
-                return@forEach
+                else -> alreadyAnalyzedRecordCount++
             }
-
-            val referenceId = record.reference?.let(::saveReference)
-            val id = SourceRecordTable.insert {
-                it[sourceType] = source.type
-                it[sourceName] = source.name
-                it[content] = record.content
-                it[deduplicationKey] = record.deduplicationKey
-                it[recordedAt] = record.recordedAt
-                it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
-                it[visibility] = access.visibility.name
-                it[SourceRecordTable.referenceId] = referenceId
-            }[SourceRecordTable.id]
-            access.allowedUserIds.forEach { allowedUserId ->
-                SourceRecordViewerTable.insert {
-                    it[sourceRecordId] = id
-                    it[userId] = allowedUserId
-                }
-            }
-            recordsToAnalyze += record.toSourceRecord(id, access)
-            importedRecordCount++
         }
-        SourceRecordSaveResult(
+        SourceRecordSaveResult.Saved(
             recordsToAnalyze = recordsToAnalyze,
             importedRecordCount = importedRecordCount,
             retriedRecordCount = retriedRecordCount,
             alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
         )
+    }
+
+    /** The record of [source]'s type stored under [deduplicationKey], or null when there is none. */
+    private fun findStored(source: SourceDescriptor, deduplicationKey: String): SourceRecord? =
+        SourceRecordTable.selectAll()
+            .where {
+                (SourceRecordTable.sourceType eq source.type) and
+                    (SourceRecordTable.deduplicationKey eq deduplicationKey)
+            }
+            .singleOrNull()
+            ?.toSourceRecord()
+
+    /** Stores [draft] as a pending record of [source] readable as [access]. */
+    private fun insert(source: SourceDescriptor, draft: SourceRecordDraft, access: AccessControl): SourceRecord {
+        val referenceId = draft.reference?.let(::saveReference)
+        val id = SourceRecordTable.insert {
+            it[sourceType] = source.type
+            it[sourceName] = source.name
+            it[content] = draft.content
+            it[deduplicationKey] = draft.deduplicationKey
+            it[recordedAt] = draft.recordedAt
+            it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
+            it[visibility] = access.visibility.name
+            it[SourceRecordTable.referenceId] = referenceId
+        }[SourceRecordTable.id]
+        access.allowedUserIds.forEach { allowedUserId ->
+            SourceRecordViewerTable.insert {
+                it[sourceRecordId] = id
+                it[userId] = allowedUserId
+            }
+        }
+        return draft.toSourceRecord(id, access)
     }
 
     private fun SourceRecordDraft.toSourceRecord(id: Int, access: AccessControl): SourceRecord =

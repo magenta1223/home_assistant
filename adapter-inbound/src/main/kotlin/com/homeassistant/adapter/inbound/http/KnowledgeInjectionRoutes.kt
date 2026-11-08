@@ -2,17 +2,17 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.inbound.text.PlainTextSourceParser
-import com.homeassistant.application.port.inbound.memoryextraction.ConflictingSourceAudienceException
+import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidEpisodeAudienceException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidKnowledgeReferenceException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidSourceReferenceException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.domain.identity.UserAccessDeniedException
+import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeProposal
@@ -112,14 +112,14 @@ internal fun Route.knowledgeInjectionRoutes(
                     "alreadyAnalyzedRecordCount" to error.recordCount,
                 ),
             )
-        } catch (error: ConflictingSourceAudienceException) {
+        } catch (error: SourceAccessConflictException) {
             call.respond(HttpStatusCode.Conflict, mapOf("error" to error.message))
-        } catch (error: InvalidEpisodeAudienceException) {
+        } catch (error: InvalidAllowedUsersException) {
             call.respond(
                 HttpStatusCode.BadRequest,
                 mapOf("error" to error.message, "userIds" to error.userIds.sorted()),
             )
-        } catch (error: InvalidKnowledgeReferenceException) {
+        } catch (error: InvalidSourceReferenceException) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to error.message))
         } catch (error: EpisodeAnalysisUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))

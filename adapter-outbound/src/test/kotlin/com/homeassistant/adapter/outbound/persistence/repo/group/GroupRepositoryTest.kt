@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.group
 
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingKey
@@ -47,7 +48,7 @@ class GroupRepositoryTest {
         val episodes = EpisodeRepositoryImpl(db)
         val source = SourceDescriptor("test", "private")
         val user = UserId("owner")
-        val record = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user)))
+        val record = assertIs<SourceRecordSaveResult.Saved>(sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user))))
             .recordsToAnalyze.single()
         val committed = episodes.save(EpisodeBatch(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
@@ -70,7 +71,7 @@ class GroupRepositoryTest {
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(beforeComponents, components.findVisibleTo(user))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
-        val resubmitted = sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user)))
+        val resubmitted = assertIs<SourceRecordSaveResult.Saved>(sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user))))
         assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
     }
 
@@ -204,8 +205,8 @@ class GroupRepositoryTest {
         key: String = "seed",
     ): Map<Int, Embedding<ComponentEmbeddingKey>> {
         val user = UserId("owner")
-        val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, key)),
-            access).recordsToAnalyze.single()
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, key)),
+            access)).recordsToAnalyze.single()
         val episodes = EpisodeRepositoryImpl(db).save(EpisodeBatch(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
         val components = ComponentRepositoryImpl(db)

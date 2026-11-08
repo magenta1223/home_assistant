@@ -1,5 +1,6 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepositoryImpl
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
@@ -105,8 +106,8 @@ class EpisodeComponentAssignmentTest {
     }
 
     private fun seedEpisodes(db: Database, key: String, vararg contents: String): List<Int> {
-        val record = SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
-            access).recordsToAnalyze.single()
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
+            access)).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
             EpisodeProposal("title", content, listOf(record.id))
         }, listOf(record.id))).map { it.id }

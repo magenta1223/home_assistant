@@ -1,5 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episode
 
+import kotlin.test.assertIs
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
@@ -95,11 +97,11 @@ class EpisodeRepositoryUseCaseIntegrationTest {
         content: String,
         access: AccessControl,
     ): Episode {
-        val evidence = sourceRecords.saveAll(
+        val evidence = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(
             SourceDescriptor(type = "test", name = content),
             listOf(SourceRecordDraft(content, content)),
             access,
-        ).recordsToAnalyze.single()
+        )).recordsToAnalyze.single()
         val proposal = EpisodeProposal(
                 title = "title",
                 content = content,

@@ -12,8 +12,8 @@ import javax.imageio.ImageIO
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import kotlin.test.assertFailsWith
-import com.homeassistant.domain.source.InvalidSourceReferenceException
+import kotlin.test.assertIs
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
 
 class ModelSourceReferenceInterpreterTest {
     @Test
@@ -21,9 +21,9 @@ class ModelSourceReferenceInterpreterTest {
         val client = RecordingImageClient()
         val interpreter = ModelSourceReferenceInterpreter(client)
 
-        val result = interpreter.interpret(
-            SourceReferenceDraft("door.png", "image/png", pngImage()),
-        )
+        val result = assertIs<SourceReferenceInterpretationResult.Interpreted>(
+            interpreter.interpret(SourceReferenceDraft("door.png", "image/png", pngImage())),
+        ).segments
 
         assertEquals(listOf("image"), result.map { it.segmentKey })
         assertEquals("해석-image", result.single().content)
@@ -36,23 +36,21 @@ class ModelSourceReferenceInterpreterTest {
         val client = RecordingImageClient()
         val interpreter = ModelSourceReferenceInterpreter(client)
 
-        val result = interpreter.interpret(
-            SourceReferenceDraft("manual.pdf", "application/pdf", blankPdf(pageCount = 5)),
-        )
+        val result = assertIs<SourceReferenceInterpretationResult.Interpreted>(
+            interpreter.interpret(SourceReferenceDraft("manual.pdf", "application/pdf", blankPdf(pageCount = 5))),
+        ).segments
 
         assertEquals((1..5).map { "page-$it" }, result.map { it.segmentKey })
         assertEquals(listOf(4, 1), client.imageCounts)
     }
 
     @Test
-    fun `declared image type must match original bytes`() {
+    fun `declared image type must match original bytes`() = runBlocking {
         val interpreter = ModelSourceReferenceInterpreter(RecordingImageClient())
 
-        assertFailsWith<InvalidSourceReferenceException> {
-            runBlocking {
-                interpreter.interpret(SourceReferenceDraft("fake.png", "image/png", "not-an-image".toByteArray()))
-            }
-        }
+        val result = interpreter.interpret(SourceReferenceDraft("fake.png", "image/png", "not-an-image".toByteArray()))
+
+        assertEquals(SourceReferenceInterpretationResult.Rejected("image content does not match its file type"), result)
     }
 
     private class RecordingImageClient : CompletionClient {

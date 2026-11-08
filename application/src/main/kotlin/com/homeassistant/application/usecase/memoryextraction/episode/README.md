@@ -36,8 +36,8 @@ sequenceDiagram
     end
     Analysis->>Sources: saveAll(source, records, access)
     alt 동일 record가 다른 열람 범위로 저장됨
-        Sources-->>Analysis: SourceAccessConflictException(existingAccess)
-        Analysis-->>Caller: ConflictingSourceAudienceException(existingAccess)
+        Sources-->>Analysis: SourceAccessConflict(existingAccess)
+        Analysis-->>Caller: SourceAccessConflictException(existingAccess)
     else 저장 성공
         Sources-->>Analysis: recordsToAnalyze
         alt 새 분석 대상이 없음
@@ -64,9 +64,9 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
 
 ## 실패 계약
 
-- 등록되지 않은 작성자 또는 audience는 domain access exception/application audience exception으로 거절한다.
+- 등록되지 않은 작성자는 `UserAccessDeniedException`, 등록되지 않은 열람 허용 사용자는 `InvalidAllowedUsersException`으로 거절한다.
 - 동일 source record가 다른 access scope로 이미 저장돼 있으면 기존 scope를 포함한
-  `ConflictingSourceAudienceException`으로 변환하여 호출자가 정확한 재등록 방법을 안내할 수 있게 한다.
+  `SourceAccessConflictException`으로 변환하여 호출자가 정확한 재등록 방법을 안내할 수 있게 한다.
 - source 저장, extraction, canonical commit 실패는 `EpisodeAnalysisUnavailableException`으로 변환한다.
-- 손상되었거나 지원하지 않는 reference는 `InvalidKnowledgeReferenceException`으로 변환한다.
+- 손상되었거나 지원하지 않는 reference는 `InvalidSourceReferenceException`으로 변환한다.
 - Episode 저장 후 Component 배정을 직접 호출하지 않는다. commit에 함께 남긴 Component 할당 outbox를 worker가 처리한다.

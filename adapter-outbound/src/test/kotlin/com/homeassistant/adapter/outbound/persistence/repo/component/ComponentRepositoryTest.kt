@@ -1,5 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.component
 
+import kotlin.test.assertIs
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.application.port.outbound.memoryextraction.component.EpisodeComponents
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
@@ -73,9 +75,9 @@ class ComponentRepositoryTest {
     }
 
     private fun createEpisode(db: Database, name: String, access: AccessControl = AccessControl.PUBLIC): Int {
-        val record = SourceRecordRepositoryImpl(db).saveAll(
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).saveAll(
             SourceDescriptor("test", name), listOf(SourceRecordDraft(name, "source-$name")), access,
-        ).recordsToAnalyze.single()
+        )).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(
             UserId("creator"),
             listOf(EpisodeProposal("title", "fact-$name", listOf(record.id))),

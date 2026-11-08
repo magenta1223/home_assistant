@@ -1,12 +1,14 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
+import kotlin.test.assertIs
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
-import com.homeassistant.application.port.inbound.memoryextraction.ConflictingSourceAudienceException
+import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidEpisodeAudienceException
+import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
@@ -36,9 +38,9 @@ class EpisodeAnalysisRetryTest {
             val db = DatabaseFactory.init(databasePath.toString())
             val sourceRecords = SourceRecordRepositoryImpl(db)
             val request = request("same", AccessControl.restricted(listOf(USER_ID)))
-            sourceRecords.saveAll(request.source.source, request.source.records, AccessControl.PUBLIC)
+            assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(request.source.source, request.source.records, AccessControl.PUBLIC))
 
-            val failure = assertFailsWith<ConflictingSourceAudienceException> {
+            val failure = assertFailsWith<SourceAccessConflictException> {
                 service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeRepository())
                     .execute(request)
             }
@@ -60,7 +62,7 @@ class EpisodeAnalysisRetryTest {
                 AccessControl.restricted(listOf(UserId("unknown-member"))),
             )
 
-            assertFailsWith<InvalidEpisodeAudienceException> {
+            assertFailsWith<InvalidAllowedUsersException> {
                 service(sourceRecords, db, RecordingExtractor { emptyList() }, RecordingEpisodeRepository())
                     .execute(request)
             }
@@ -78,7 +80,7 @@ class EpisodeAnalysisRetryTest {
             val db = DatabaseFactory.init(databasePath.toString())
             val sourceRecords = SourceRecordRepositoryImpl(db)
             val original = SourceDescriptor("kakao", "original.txt")
-            val initial = sourceRecords.saveAll(original, listOf(draft("old-1"), draft("old-2")))
+            val initial = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(original, listOf(draft("old-1"), draft("old-2"))))
             markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
             val extractor = RecordingExtractor { document ->
                 listOf(proposal(document))
@@ -99,7 +101,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(1, result.importedRecordCount)
             assertEquals(2, result.alreadyAnalyzedRecordCount)
             assertEquals(listOf("new"), extractor.documents.single().records.map { it.deduplicationKey })
-            assertEquals(1, sourceRecords.saveAll(renamed, listOf(draft("new"))).alreadyAnalyzedRecordCount)
+            assertEquals(1, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(renamed, listOf(draft("new")))).alreadyAnalyzedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -171,7 +173,7 @@ class EpisodeAnalysisRetryTest {
             val db = DatabaseFactory.init(databasePath.toString())
             val sourceRecords = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("test", "source")
-            val initial = sourceRecords.saveAll(source, listOf(draft("pending"), draft("analyzed")))
+            val initial = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(source, listOf(draft("pending"), draft("analyzed"))))
             markAnalyzed(db,
                 listOf(initial.recordsToAnalyze.single { it.deduplicationKey == "analyzed" }.id),
             )
@@ -199,7 +201,7 @@ class EpisodeAnalysisRetryTest {
             assertEquals(2, result.episodeCount)
             assertEquals(Visibility.PUBLIC, result.visibility)
             assertEquals(listOf("pending", "new"), extractor.documents.single().records.map { it.deduplicationKey })
-            assertEquals(3, sourceRecords.saveAll(source, listOf(draft("analyzed"), draft("pending"), draft("new"))).alreadyAnalyzedRecordCount)
+            assertEquals(3, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(source, listOf(draft("analyzed"), draft("pending"), draft("new")))).alreadyAnalyzedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -231,7 +233,7 @@ class EpisodeAnalysisRetryTest {
 
     /** Submits [request]'s records again; the counts tell whether they are stored, pending or analyzed. */
     private fun resubmit(sourceRecords: SourceRecordRepositoryImpl, request: EpisodeAnalysisRequest) =
-        sourceRecords.saveAll(request.source.source, request.source.records, request.access)
+        assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(request.source.source, request.source.records, request.access))
 
     private fun markAnalyzed(db: Database, recordIds: Collection<Int>) {
         EpisodeRepositoryImpl(db).save(EpisodeBatch(USER_ID, emptyList(), recordIds))

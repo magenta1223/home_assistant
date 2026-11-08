@@ -10,7 +10,10 @@ import com.homeassistant.domain.source.SourceRecordDraft
  * */
 interface SourceRecordRepository {
 
-    /** Stores new drafts and returns both new and previously pending records for analysis. */
+    /**
+     * Stores the new drafts of [source] with [access] and returns them with the earlier records still pending analysis.
+     * Nothing is written when a record of [source] was stored before with a different access.
+     */
     fun saveAll(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
@@ -19,9 +22,16 @@ interface SourceRecordRepository {
 
 }
 
-data class SourceRecordSaveResult(
-    val recordsToAnalyze: List<SourceRecord>,
-    val importedRecordCount: Int,
-    val retriedRecordCount: Int,
-    val alreadyAnalyzedRecordCount: Int,
-)
+/** How a [SourceRecordRepository.saveAll] ended. */
+sealed interface SourceRecordSaveResult {
+    /** The new drafts were stored; [recordsToAnalyze] holds them and the earlier pending records, in draft order. */
+    data class Saved(
+        val recordsToAnalyze: List<SourceRecord>,
+        val importedRecordCount: Int,
+        val retriedRecordCount: Int,
+        val alreadyAnalyzedRecordCount: Int,
+    ) : SourceRecordSaveResult
+
+    /** A record was stored before with [existingAccess], which differs from the submitted access; nothing was written. */
+    data class AccessConflict(val existingAccess: AccessControl) : SourceRecordSaveResult
+}

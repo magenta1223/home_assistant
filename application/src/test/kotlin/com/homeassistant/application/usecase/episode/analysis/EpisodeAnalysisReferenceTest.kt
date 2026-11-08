@@ -1,5 +1,6 @@
 package com.homeassistant.application.usecase.episode.analysis
 
+import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
 import com.homeassistant.domain.episode.Episode
@@ -40,9 +41,11 @@ class EpisodeAnalysisReferenceTest {
             },
             accessPolicy = { true },
             referenceInterpreter = {
-                listOf(
-                    SourceReferenceInterpretation("page-1", "첫 페이지 해석"),
-                    SourceReferenceInterpretation("page-2", "둘째 페이지 해석"),
+                SourceReferenceInterpretationResult.Interpreted(
+                    listOf(
+                        SourceReferenceInterpretation("page-1", "첫 페이지 해석"),
+                        SourceReferenceInterpretation("page-2", "둘째 페이지 해석"),
+                    ),
                 )
             },
         )
@@ -87,7 +90,7 @@ class EpisodeAnalysisReferenceTest {
                     },
                 )
             }
-            return SourceRecordSaveResult(saved, saved.size, 0, 0)
+            return SourceRecordSaveResult.Saved(saved, saved.size, 0, 0)
         }
     }
 

@@ -32,16 +32,16 @@ class EpisodeAnalysisUnavailableException internal constructor(
     cause: Throwable,
 ) : RuntimeException("episode analysis is unavailable", cause)
 
-class InvalidEpisodeAudienceException internal constructor(
+class InvalidAllowedUsersException internal constructor(
     val userIds: Set<String>,
 ) : RuntimeException("episode audience contains unknown or unauthorized users")
 
-class InvalidKnowledgeReferenceException internal constructor(
+class InvalidSourceReferenceException internal constructor(
     message: String,
     cause: Throwable? = null,
 ) : RuntimeException(message, cause)
 
-class ConflictingSourceAudienceException internal constructor(
+class SourceAccessConflictException internal constructor(
     val sourceName: String,
     val existingAccess: AccessControl,
 ) : RuntimeException("source already exists with a different audience: $sourceName")

@@ -40,3 +40,4 @@ Component 할당 worker는 라운드 전에 `isReady()`(Ollama 준비 + CLI 실�
 - Circuit breaker: Ollama와 CLI 각각에 두고, Open이면 worker 라운드를 건너뛴다. 그러면 `isReady()` 사전 확인을 대체하거나 Half-open 시험으로 흡수할 수 있다. Resilience4j 도입과 직접 구현(상태 3개)의 비용을 비교한다.
 - 적용 범위: Component 할당, indexing outbox, Episode 분석 outbox에 공통 적용할 수 있는 경계(adapter 또는 application port)를 정한다.
 - FAILED 행 조회와 재처리 경로(DLQ 운영)를 둘지 정한다.
+- 재시도 간격(2026-11-08): worker가 1분마다 돌고 회차마다 대기분을 전부 처리하며, 실패한 Episode는 다음 회차에 다시 시도한다(`retryDelay` 60초, 최대 5회). 그래서 LLM이 약 5분 넘게 멈추면 그동안 실패한 Episode가 영구 FAILED가 된다. 시도 횟수만 늘릴지(N회 = 약 N분 버팀, 입력 문제인 Episode도 N번 호출), outbox의 `attempts`·`updatedAt`으로 지수 backoff를 계산할지 정한다.

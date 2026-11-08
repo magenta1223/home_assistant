@@ -68,3 +68,9 @@ Core 변경이 필요하고, architecture test도 이를 회귀로 감지하지 
 `application`, `adapter-inbound`, `adapter-outbound`, `integration-llm`가 `logback-classic`을 직접
 의존한다. logging binding 정리는 작은 독립 변경으로 먼저 수행할 수 있다. serialization DTO 분리는
 호환성 회귀 범위가 크므로 transport 교체 필요가 생기기 전까지 P2를 유지한다.
+
+## 현재 상태 (2026-11-08)
+
+serialization 항목은 끝났다. Domain·Application main 코드에 `kotlinx.serialization` 사용이 남지 않았고,
+두 모듈의 serialization Gradle plugin과 API 의존을 제거했다(86c64ab). 남은 것은 `logback-classic`
+정리와 architecture test 추가다.

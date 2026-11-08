@@ -29,7 +29,7 @@ class SourceRecordRepositoryTest {
             val reference = SourceReferenceDraft("guide.pdf", "application/pdf", "original-pdf".toByteArray())
             val source = SourceDescriptor("text", "guide")
 
-            val records = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(
+            val records = assertIs<SourceRecordSaveResult.Saved>(repository.save(
                 source,
                 listOf(
                     SourceRecordDraft("reference:${reference.sha256}:page-1", "page one", reference = reference),
@@ -59,7 +59,7 @@ class SourceRecordRepositoryTest {
         val databasePath = Files.createTempFile("source-record-time", ".db")
         try {
             val db = DatabaseFactory.init(databasePath.toString())
-            assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).saveAll(
+            assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(
                 SourceDescriptor("kakao", "room"),
                 listOf(SourceRecordDraft("key", "content", recordedAt = 1_234L)),
             ))
@@ -77,18 +77,18 @@ class SourceRecordRepositoryTest {
             val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("text", "knowledge")
             val existingAccess = AccessControl.restricted(listOf(UserId("member-1")))
-            assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(
+            assertIs<SourceRecordSaveResult.Saved>(repository.save(
                 source,
                 listOf(draft("same")),
                 existingAccess,
             ))
 
             val otherAccess = AccessControl.restricted(listOf(UserId("member-2")))
-            val result = repository.saveAll(source, listOf(draft("new"), draft("same")), otherAccess)
+            val result = repository.save(source, listOf(draft("new"), draft("same")), otherAccess)
             assertEquals(SourceRecordSaveResult.AccessConflict(existingAccess), result)
 
             // The conflict wrote nothing, so the new draft is still new.
-            val retried = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(source, listOf(draft("new")), otherAccess))
+            val retried = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("new")), otherAccess))
             assertEquals(1, retried.importedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
@@ -103,10 +103,10 @@ class SourceRecordRepositoryTest {
             val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("kakao", "conversation")
             val existingDrafts = (1..25).map { draft("old-$it") }
-            val initial = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(source, existingDrafts))
+            val initial = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, existingDrafts))
             markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
 
-            val incremental = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(
+            val incremental = assertIs<SourceRecordSaveResult.Saved>(repository.save(
                 source.copy(name = "renamed-conversation"),
                 existingDrafts + draft("new") + draft("old-1"),
             ))
@@ -124,10 +124,10 @@ class SourceRecordRepositoryTest {
             val db = DatabaseFactory.init(databasePath.toString())
             val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("test", "source")
-            val first = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(source, listOf(draft("a"), draft("b"))))
+            val first = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"))))
             markAnalyzed(db, listOf(first.recordsToAnalyze.single { it.deduplicationKey == "b" }.id))
 
-            val second = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(source, listOf(draft("a"), draft("b"), draft("c"))))
+            val second = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c"))))
 
             assertEquals(1, second.importedRecordCount)
             assertEquals(1, second.retriedRecordCount)
@@ -136,7 +136,7 @@ class SourceRecordRepositoryTest {
             assertTrue(second.recordsToAnalyze.all { it.analysisStatus == SourceRecordAnalysisStatus.PENDING })
 
             markAnalyzed(db, second.recordsToAnalyze.map { it.id })
-            val completed = assertIs<SourceRecordSaveResult.Saved>(repository.saveAll(source, listOf(draft("a"), draft("b"), draft("c"))))
+            val completed = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c"))))
             assertTrue(completed.recordsToAnalyze.isEmpty())
             assertEquals(3, completed.alreadyAnalyzedRecordCount)
         } finally {

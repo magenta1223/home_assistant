@@ -75,7 +75,7 @@ class ComponentRepositoryTest {
     }
 
     private fun createEpisode(db: Database, name: String, access: AccessControl = AccessControl.PUBLIC): Int {
-        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).saveAll(
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(
             SourceDescriptor("test", name), listOf(SourceRecordDraft(name, "source-$name")), access,
         )).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(

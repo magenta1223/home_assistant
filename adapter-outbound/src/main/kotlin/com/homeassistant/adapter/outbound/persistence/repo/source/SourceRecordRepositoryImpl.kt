@@ -20,7 +20,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 
 internal class SourceRecordRepositoryImpl(private val db: Database) : SourceRecordRepository {
 
-    override fun saveAll(
+    override fun save(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
         access: AccessControl,

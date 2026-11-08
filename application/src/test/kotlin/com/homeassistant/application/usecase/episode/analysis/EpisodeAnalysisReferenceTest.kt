@@ -72,7 +72,7 @@ class EpisodeAnalysisReferenceTest {
     private class RecordingSourceRepository : SourceRecordRepository {
         lateinit var drafts: List<SourceRecordDraft>
 
-        override fun saveAll(
+        override fun save(
             source: SourceDescriptor,
             records: List<SourceRecordDraft>,
             access: AccessControl,

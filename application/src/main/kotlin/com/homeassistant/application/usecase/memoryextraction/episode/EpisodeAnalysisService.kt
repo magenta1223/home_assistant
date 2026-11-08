@@ -74,7 +74,7 @@ class EpisodeAnalysisService(
     /** Saves [source]'s records, reporting an access conflict apart from an unavailable store. */
     private fun saveSourceRecords(source: SourceDocumentDraft, access: AccessControl): SourceRecordSaveResult.Saved {
         val result = try {
-            sourceRecords.saveAll(source.source, source.records, access)
+            sourceRecords.save(source.source, source.records, access)
         } catch (error: Exception) {
             throw EpisodeAnalysisUnavailableException(error)
         }

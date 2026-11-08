@@ -21,7 +21,7 @@ class EpisodeAnalysisPersistenceTest {
         val events = mutableListOf<String>()
         val source = SourceDescriptor("test", "component")
         val records = object : SourceRecordRepository {
-            override fun saveAll(source: SourceDescriptor, records: List<SourceRecordDraft>, access: AccessControl) =
+            override fun save(source: SourceDescriptor, records: List<SourceRecordDraft>, access: AccessControl) =
                 SourceRecordSaveResult.Saved(
                     listOf(SourceRecord(1, "key", "source", SourceRecordAnalysisStatus.PENDING, access)),
                     1, 0, 0,

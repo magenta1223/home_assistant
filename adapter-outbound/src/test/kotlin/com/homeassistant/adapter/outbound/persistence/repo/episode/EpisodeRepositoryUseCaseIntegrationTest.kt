@@ -97,7 +97,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
         content: String,
         access: AccessControl,
     ): Episode {
-        val evidence = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.saveAll(
+        val evidence = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
             SourceDescriptor(type = "test", name = content),
             listOf(SourceRecordDraft(content, content)),
             access,

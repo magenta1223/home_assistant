@@ -5,16 +5,14 @@ import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 
-/** Stores and retrieves source records while hiding the persistence mechanism.
- * TODO: 다른 객체 저장소와 유사하게 read, write분리
- * */
+/** Stores and retrieves source records while hiding the persistence mechanism. */
 interface SourceRecordRepository {
 
     /**
      * Stores the new drafts of [source] with [access] and returns them with the earlier records still pending analysis.
      * Nothing is written when a record of [source] was stored before with a different access.
      */
-    fun saveAll(
+    fun save(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
         access: AccessControl = AccessControl.PUBLIC,
@@ -22,7 +20,7 @@ interface SourceRecordRepository {
 
 }
 
-/** How a [SourceRecordRepository.saveAll] ended. */
+/** How a [SourceRecordRepository.save] ended. */
 sealed interface SourceRecordSaveResult {
     /** The new drafts were stored; [recordsToAnalyze] holds them and the earlier pending records, in draft order. */
     data class Saved(

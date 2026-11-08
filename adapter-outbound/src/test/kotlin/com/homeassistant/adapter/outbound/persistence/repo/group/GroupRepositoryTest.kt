@@ -48,7 +48,7 @@ class GroupRepositoryTest {
         val episodes = EpisodeRepositoryImpl(db)
         val source = SourceDescriptor("test", "private")
         val user = UserId("owner")
-        val record = assertIs<SourceRecordSaveResult.Saved>(sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user))))
+        val record = assertIs<SourceRecordSaveResult.Saved>(sources.save(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user))))
             .recordsToAnalyze.single()
         val committed = episodes.save(EpisodeBatch(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
@@ -71,7 +71,7 @@ class GroupRepositoryTest {
         assertTrue(snapshot.groups.all { it.group.componentIds.size <= 2 })
         assertEquals(beforeComponents, components.findVisibleTo(user))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
-        val resubmitted = assertIs<SourceRecordSaveResult.Saved>(sources.saveAll(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user))))
+        val resubmitted = assertIs<SourceRecordSaveResult.Saved>(sources.save(source, listOf(SourceRecordDraft("test", "original")), AccessControl.restricted(listOf(user))))
         assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
     }
 
@@ -205,7 +205,7 @@ class GroupRepositoryTest {
         key: String = "seed",
     ): Map<Int, Embedding<ComponentEmbeddingKey>> {
         val user = UserId("owner")
-        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).saveAll(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, key)),
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, key)),
             access)).recordsToAnalyze.single()
         val episodes = EpisodeRepositoryImpl(db).save(EpisodeBatch(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))

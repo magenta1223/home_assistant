@@ -13,7 +13,7 @@ class RetiredEpisodeTreeRoutesTest {
     fun `tree routes are retired but shared auth and remaining pages stay available`() = testApplication {
         application {
             configureRoutes(object : EpisodeAnalysis {
-                override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
+                override fun submit(request: EpisodeAnalysisRequest) = error("unused")
             })
         }
         assertEquals(HttpStatusCode.NotFound, client.get("/episodes").status)

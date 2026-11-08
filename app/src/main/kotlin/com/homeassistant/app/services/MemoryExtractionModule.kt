@@ -2,9 +2,7 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.scheduler.UpdateMemoryWorker
 import com.homeassistant.adapter.outbound.componentextraction.ComponentExtractorImpl
-import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorImpl
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
 import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
 import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
@@ -30,13 +28,11 @@ internal class MemoryExtractionModule(
     accessPolicy: UserAccessPolicy,
     groupSettings: GroupPolicySettings,
 ) {
-    /** Turns source records into Episodes. */
+    /** Accepts source records for Episode analysis. */
     val episodeAnalysis = EpisodeAnalysisService(
-        episodeExtractor = EpisodeExtractorImpl(completionClient),
         sourceRecords = repositories.sourceRecords,
-        episodes = repositories.episodes,
+        jobs = repositories.episodeAnalysisJobQueue,
         accessPolicy = accessPolicy,
-        referenceInterpreter = ModelSourceReferenceInterpreter(completionClient),
     )
 
     private val updateHierarchy = UpdateMemoryService(

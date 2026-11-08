@@ -2,6 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeAnalysisJobRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeAnalysisJobTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.EpisodeAnalysisJobViewerTable
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJob
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobQueue
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobStatus
@@ -10,6 +11,8 @@ import com.homeassistant.application.port.outbound.memoryextraction.episode.Epis
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobStatus.PENDING
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobStatus.PROCESSING
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
+import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import org.jetbrains.exposed.sql.*
@@ -23,6 +26,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
             it[sourceType] = submission.source.type
             it[sourceName] = submission.source.name
             it[referenceId] = submission.referenceId
+            it[visibility] = submission.access.visibility.name
             it[status] = PENDING.name
             it[attempts] = 0
             it[episodeCount] = null
@@ -32,6 +36,10 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
         EpisodeAnalysisJobRecordTable.batchInsert(submission.sourceRecordIds.distinct()) { sourceRecordId ->
             this[EpisodeAnalysisJobRecordTable.jobId] = jobId
             this[EpisodeAnalysisJobRecordTable.sourceRecordId] = sourceRecordId
+        }
+        EpisodeAnalysisJobViewerTable.batchInsert(submission.access.allowedUserIds) { allowedUserId ->
+            this[EpisodeAnalysisJobViewerTable.jobId] = jobId
+            this[EpisodeAnalysisJobViewerTable.userId] = allowedUserId
         }
         findJob(EpisodeAnalysisJobTable.id eq jobId)!!
     }
@@ -103,6 +111,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
                     source = SourceDescriptor(row[EpisodeAnalysisJobTable.sourceType], row[EpisodeAnalysisJobTable.sourceName]),
                     sourceRecordIds = sourceRecordIds,
                     referenceId = row[EpisodeAnalysisJobTable.referenceId],
+                    access = row.toAccess(),
                 ),
                 status = EpisodeAnalysisJobStatus.valueOf(row[EpisodeAnalysisJobTable.status]),
                 attempt = row[EpisodeAnalysisJobTable.attempts],
@@ -110,6 +119,15 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: Database) : Epi
                 lastError = row[EpisodeAnalysisJobTable.lastError],
             )
         }
+
+    /** The audience the job's records are stored for, read inside the caller's transaction. */
+    private fun ResultRow.toAccess(): AccessControl {
+        val visibility = Visibility.valueOf(this[EpisodeAnalysisJobTable.visibility])
+        val viewers = EpisodeAnalysisJobViewerTable.select(EpisodeAnalysisJobViewerTable.userId)
+            .where { EpisodeAnalysisJobViewerTable.jobId eq this@toAccess[EpisodeAnalysisJobTable.id] }
+            .mapTo(linkedSetOf()) { it[EpisodeAnalysisJobViewerTable.userId] }
+        return AccessControl(visibility, viewers)
+    }
 
     private fun readyCondition(retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): Op<Boolean> =
         SqlExpressionBuilder.run {

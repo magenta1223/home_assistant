@@ -4,6 +4,8 @@ import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.domain.source.SourceReference
+import com.homeassistant.domain.source.SourceReferenceDraft
 
 /** Stores and retrieves source records while hiding the persistence mechanism. */
 interface SourceRecordRepository {
@@ -18,6 +20,14 @@ interface SourceRecordRepository {
         access: AccessControl = AccessControl.PUBLIC,
     ): SourceRecordSaveResult
 
+    /** Stores the file of [reference] once per content hash and returns its stored metadata. */
+    fun saveReference(reference: SourceReferenceDraft): SourceReference
+
+    /** The stored file of reference [referenceId], or null when there is none. */
+    fun findReferenceContent(referenceId: Int): SourceReferenceDraft?
+
+    /** The records among [recordIds] still pending analysis, oldest first. */
+    fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord>
 }
 
 /** How a [SourceRecordRepository.save] ended. */

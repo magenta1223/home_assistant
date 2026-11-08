@@ -160,7 +160,7 @@ class HttpLoginRoutesTest {
         login.headers[HttpHeaders.SetCookie].orEmpty().substringBefore(';')
 
     private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
-        override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
+        override fun submit(request: EpisodeAnalysisRequest) = error("unused")
     }
 
     private object PlainHasher : PasswordHasher {

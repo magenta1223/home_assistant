@@ -56,6 +56,30 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
         )
     }
 
+    override fun saveReference(reference: SourceReferenceDraft): SourceReference = transaction(db) {
+        val referenceId = storeReference(reference)
+        SourceReferenceTable.selectAll().where { SourceReferenceTable.id eq referenceId }.single().toSourceReference()
+    }
+
+    override fun findReferenceContent(referenceId: Int): SourceReferenceDraft? = transaction(db) {
+        SourceReferenceTable.selectAll()
+            .where { SourceReferenceTable.id eq referenceId }
+            .singleOrNull()
+            ?.let {
+                SourceReferenceDraft(it[SourceReferenceTable.fileName], it[SourceReferenceTable.mediaType], it[SourceReferenceTable.content].bytes)
+            }
+    }
+
+    override fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord> = transaction(db) {
+        SourceRecordTable.selectAll()
+            .where {
+                (SourceRecordTable.id inList recordIds) and
+                    (SourceRecordTable.analysisStatus eq SourceRecordAnalysisStatus.PENDING.name)
+            }
+            .orderBy(SourceRecordTable.id)
+            .map { it.toSourceRecord() }
+    }
+
     /** The record of [source]'s type stored under [deduplicationKey], or null when there is none. */
     private fun findStored(source: SourceDescriptor, deduplicationKey: String): SourceRecord? =
         SourceRecordTable.selectAll()
@@ -68,7 +92,7 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
 
     /** Stores [draft] as a pending record of [source] readable as [access]. */
     private fun insert(source: SourceDescriptor, draft: SourceRecordDraft, access: AccessControl): SourceRecord {
-        val referenceId = draft.reference?.let(::saveReference)
+        val referenceId = draft.reference?.let(::storeReference)
         val id = SourceRecordTable.insert {
             it[sourceType] = source.type
             it[sourceName] = source.name
@@ -118,7 +142,8 @@ internal class SourceRecordRepositoryImpl(private val db: Database) : SourceReco
             },
         )
 
-    private fun saveReference(reference: SourceReferenceDraft): Int {
+    /** The id of the stored file of [reference], storing it first when no file with its hash is stored. */
+    private fun storeReference(reference: SourceReferenceDraft): Int {
         val existing = SourceReferenceTable.selectAll()
             .where { SourceReferenceTable.sha256 eq reference.sha256 }
             .singleOrNull()

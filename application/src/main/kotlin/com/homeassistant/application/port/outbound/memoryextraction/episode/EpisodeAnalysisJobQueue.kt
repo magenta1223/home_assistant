@@ -1,14 +1,19 @@
 package com.homeassistant.application.port.outbound.memoryextraction.episode
 
+import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 
-/** A source analysis [requestedBy] asked for: the stored [sourceRecordIds] of [source] and the stored reference to interpret. */
+/**
+ * A source analysis [requestedBy] asked for: the stored [sourceRecordIds] of [source] and the stored reference to
+ * interpret, whose records are readable as [access].
+ */
 data class EpisodeAnalysisSubmission(
     val requestedBy: UserId,
     val source: SourceDescriptor,
     val sourceRecordIds: List<Int>,
     val referenceId: Int?,
+    val access: AccessControl,
 )
 
 /** Where an [EpisodeAnalysisJob] is in its lifecycle. A [FAILED] job is retried until its attempt limit is reached. */

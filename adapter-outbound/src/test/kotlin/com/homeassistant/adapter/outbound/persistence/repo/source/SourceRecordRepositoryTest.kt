@@ -18,6 +18,8 @@ import java.sql.DriverManager
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertContentEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class SourceRecordRepositoryTest {
@@ -139,6 +141,50 @@ class SourceRecordRepositoryTest {
             val completed = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c"))))
             assertTrue(completed.recordsToAnalyze.isEmpty())
             assertEquals(3, completed.alreadyAnalyzedRecordCount)
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `a reference saved alone is stored once and read back with its file`() {
+        val databasePath = Files.createTempFile("source-reference-alone", ".db")
+        try {
+            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
+            val original = "original-pdf".toByteArray()
+            val reference = SourceReferenceDraft("guide.pdf", "application/pdf", original)
+
+            val saved = repository.saveReference(reference)
+            val savedAgain = repository.saveReference(SourceReferenceDraft("renamed.pdf", "application/pdf", original))
+            val content = repository.findReferenceContent(saved.id)
+
+            assertEquals(saved, savedAgain)
+            assertEquals("guide.pdf", saved.fileName)
+            assertEquals(reference.sha256, saved.sha256)
+            assertEquals("guide.pdf", content?.fileName)
+            assertEquals("application/pdf", content?.mediaType)
+            assertContentEquals(original, content?.bytes())
+            assertNull(repository.findReferenceContent(saved.id + 1))
+        } finally {
+            Files.deleteIfExists(databasePath)
+        }
+    }
+
+    @Test
+    fun `finding pending records skips analyzed and unlisted records`() {
+        val databasePath = Files.createTempFile("source-record-pending", ".db")
+        try {
+            val db = DatabaseFactory.init(databasePath.toString())
+            val repository = SourceRecordRepositoryImpl(db)
+            val source = SourceDescriptor("test", "source")
+            val records = assertIs<SourceRecordSaveResult.Saved>(
+                repository.save(source, listOf(draft("pending"), draft("analyzed"), draft("unlisted"))),
+            ).recordsToAnalyze
+            val (pending, analyzed) = records
+            markAnalyzed(db, listOf(analyzed.id))
+
+            assertEquals(listOf(pending), repository.findPendingByIds(listOf(analyzed.id, pending.id)))
+            assertTrue(repository.findPendingByIds(emptyList()).isEmpty())
         } finally {
             Files.deleteIfExists(databasePath)
         }

@@ -2,13 +2,12 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser
-import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.access.Visibility
 import io.ktor.client.request.bearerAuth
 import io.ktor.client.request.get
@@ -91,7 +90,7 @@ class KnowledgeInjectionRoutesTest {
         assertEquals(HttpStatusCode.OK, users.status)
         assertTrue(users.bodyAsText().contains("member-2"))
         assertTrue(users.bodyAsText().contains("둘째"))
-        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(HttpStatusCode.Accepted, response.status)
         val captured = analysis.requests.single()
         assertEquals("operator", captured.userId)
         assertEquals(Visibility.RESTRICTED, captured.access.visibility)
@@ -100,7 +99,7 @@ class KnowledgeInjectionRoutesTest {
     }
 
     @Test
-    fun `import response keeps its JSON field names`() = testApplication {
+    fun `import response returns the queued job and record counts`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
@@ -123,19 +122,16 @@ class KnowledgeInjectionRoutesTest {
             )
         }
 
-        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(HttpStatusCode.Accepted, response.status)
         assertEquals(
             Json.parseToJsonElement(
                 """{
-                  "sourceType":"text",
-                  "sourceName":"직접 입력",
+                  "jobId":7,
                   "importedRecordCount":1,
                   "retriedRecordCount":0,
                   "alreadyAnalyzedRecordCount":0,
                   "visibility":"PUBLIC",
-                  "allowedUserIds":[],
-                  "episodeCount":1,
-                  "episodes":[{"text":"episode","evidenceRefs":[1]}]
+                  "allowedUserIds":[]
                 }""",
             ),
             Json.parseToJsonElement(response.bodyAsText()),
@@ -202,7 +198,7 @@ class KnowledgeInjectionRoutesTest {
             )
         }
 
-        assertEquals(HttpStatusCode.OK, response.status)
+        assertEquals(HttpStatusCode.Accepted, response.status)
         val reference = analysis.requests.single().source.reference
         assertEquals("manual.pdf", reference?.fileName)
         assertContentEquals(original, reference?.bytes())
@@ -228,23 +224,15 @@ class KnowledgeInjectionRoutesTest {
     private class RecordingEpisodeAnalysis : EpisodeAnalysis {
         val requests = mutableListOf<EpisodeAnalysisRequest>()
 
-        override suspend fun execute(request: EpisodeAnalysisRequest): EpisodeAnalysisResult {
+        override fun submit(request: EpisodeAnalysisRequest): EpisodeAnalysisSubmissionResult {
             requests += request
-            val proposal = EpisodeProposal(
-                title = "title",
-                content = "episode",
-                evidenceIds = listOf(1),
-            )
-            return EpisodeAnalysisResult(
-                sourceType = request.source.source.type,
-                sourceName = request.source.source.name,
+            return EpisodeAnalysisSubmissionResult(
+                jobId = 7,
                 importedRecordCount = request.source.records.size,
                 retriedRecordCount = 0,
                 alreadyAnalyzedRecordCount = 0,
                 visibility = request.access.visibility,
                 allowedUserIds = request.access.allowedUserIds,
-                episodeCount = 1,
-                episodes = listOf(proposal),
             )
         }
     }

@@ -68,7 +68,7 @@ class ApplicationServicesTest {
     }
 
     private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
-        override suspend fun execute(request: EpisodeAnalysisRequest) = error("unused")
+        override fun submit(request: EpisodeAnalysisRequest) = error("unused")
     }
 
     private class RecordingRuntime(

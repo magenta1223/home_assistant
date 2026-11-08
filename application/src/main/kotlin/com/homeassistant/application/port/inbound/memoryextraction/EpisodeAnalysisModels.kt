@@ -1,6 +1,5 @@
 package com.homeassistant.application.port.inbound.memoryextraction
 
-import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceDocumentDraft
@@ -11,16 +10,14 @@ data class EpisodeAnalysisRequest(
     val access: AccessControl = AccessControl.PUBLIC,
 )
 
-data class EpisodeAnalysisResult(
-    val sourceType: String,
-    val sourceName: String,
+/** The queued analysis [jobId] and what happened to the submitted records. */
+data class EpisodeAnalysisSubmissionResult(
+    val jobId: Int,
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
-    val episodeCount: Int,
-    val episodes: List<EpisodeProposal>,
 )
 
 class DuplicateSourceRecordsException internal constructor(
@@ -36,13 +33,7 @@ class InvalidAllowedUsersException internal constructor(
     val userIds: Set<String>,
 ) : RuntimeException("allowed users contain unknown or unauthorized users")
 
-class InvalidSourceReferenceException internal constructor(
-    message: String,
-    cause: Throwable? = null,
-) : RuntimeException(message, cause)
-
 class SourceAccessConflictException internal constructor(
     val sourceName: String,
     val existingAccess: AccessControl,
 ) : RuntimeException("source already exists with a different audience: $sourceName")
-

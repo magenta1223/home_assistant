@@ -2,9 +2,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.episode
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
+import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
@@ -17,8 +17,9 @@ import kotlin.test.*
 class EpisodeAnalysisJobQueueRepositoryTest {
     private val owner = UserId("owner")
     private val source = SourceDescriptor("test", "chat")
+    private val access = AccessControl.restricted(listOf(owner, UserId("member")))
 
-    @Test fun `an enqueued job is pending and found by its requester`() = withDatabase { db ->
+    @Test fun `an enqueued job keeps its records, reference and audience and is found by its requester`() = withDatabase { db ->
         val jobs = EpisodeAnalysisJobQueueRepository(db)
         val submission = submissionWithReference(db)
         val enqueued = jobs.enqueue(submission, now = 0)
@@ -90,17 +91,17 @@ class EpisodeAnalysisJobQueueRepositoryTest {
     }
 
     private fun submission(db: Database, vararg contents: String): EpisodeAnalysisSubmission =
-        EpisodeAnalysisSubmission(owner, source, saveRecords(db, contents.map { SourceRecordDraft(it, it) }).map { it.id }, referenceId = null)
+        EpisodeAnalysisSubmission(owner, source, saveRecords(db, contents.map { SourceRecordDraft(it, it) }).map { it.id }, referenceId = null, access)
 
     private fun submissionWithReference(db: Database): EpisodeAnalysisSubmission {
         val reference = SourceReferenceDraft("guide.pdf", "application/pdf", "pdf".toByteArray())
         val records = saveRecords(db, listOf(SourceRecordDraft("a", "a"), SourceRecordDraft("b", "b", reference)))
-        return EpisodeAnalysisSubmission(owner, source, records.map { it.id }, records.last().reference?.id)
+        return EpisodeAnalysisSubmission(owner, source, records.map { it.id }, records.last().reference?.id, access)
     }
 
     private fun saveRecords(db: Database, drafts: List<SourceRecordDraft>) =
         assertIs<SourceRecordSaveResult.Saved>(
-            SourceRecordRepositoryImpl(db).save(source, drafts, AccessControl.restricted(listOf(owner))),
+            SourceRecordRepositoryImpl(db).save(source, drafts, access),
         ).recordsToAnalyze
 
     private fun withDatabase(block: (Database) -> Unit) {

@@ -5,17 +5,15 @@ import com.homeassistant.adapter.inbound.text.PlainTextSourceParser
 import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
 import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidSourceReferenceException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisResult
+import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.access.AccessControl
-import com.homeassistant.domain.episode.EpisodeProposal
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
@@ -95,8 +93,8 @@ internal fun Route.knowledgeInjectionRoutes(
 
         try {
             call.respond(
-                HttpStatusCode.OK,
-                episodeAnalysis.execute(
+                HttpStatusCode.Accepted,
+                episodeAnalysis.submit(
                     EpisodeAnalysisRequest(
                         userId = principal.userId.value,
                         source = source,
@@ -119,8 +117,6 @@ internal fun Route.knowledgeInjectionRoutes(
                 HttpStatusCode.BadRequest,
                 mapOf("error" to error.message, "userIds" to error.userIds.sorted()),
             )
-        } catch (error: InvalidSourceReferenceException) {
-            call.respond(HttpStatusCode.BadRequest, mapOf("error" to error.message))
         } catch (error: EpisodeAnalysisUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: UserAccessDeniedException) {
@@ -189,36 +185,19 @@ private data class KnowledgeUserResponse(
 
 @Serializable
 private data class KnowledgeImportResponse(
-    val sourceType: String,
-    val sourceName: String,
+    val jobId: Int,
     val importedRecordCount: Int,
     val retriedRecordCount: Int,
     val alreadyAnalyzedRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
-    val episodeCount: Int,
-    val episodes: List<KnowledgeEpisodeResponse>,
 )
 
-@Serializable
-private data class KnowledgeEpisodeResponse(
-    val text: String,
-    val evidenceRefs: List<Int>,
-)
-
-private fun EpisodeAnalysisResult.toResponse() = KnowledgeImportResponse(
-    sourceType = sourceType,
-    sourceName = sourceName,
+private fun EpisodeAnalysisSubmissionResult.toResponse() = KnowledgeImportResponse(
+    jobId = jobId,
     importedRecordCount = importedRecordCount,
     retriedRecordCount = retriedRecordCount,
     alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
     visibility = visibility,
     allowedUserIds = allowedUserIds,
-    episodeCount = episodeCount,
-    episodes = episodes.map { it.toResponse() },
-)
-
-private fun EpisodeProposal.toResponse() = KnowledgeEpisodeResponse(
-    text = content,
-    evidenceRefs = evidenceIds,
 )

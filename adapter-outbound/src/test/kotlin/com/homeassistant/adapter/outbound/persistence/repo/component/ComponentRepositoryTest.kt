@@ -55,6 +55,17 @@ class ComponentRepositoryTest {
     }
 
     @Test
+    fun `unplaced Components are paged in id order after the last id read`() = withDatabase { db, _ ->
+        val repository = ComponentRepositoryImpl(db)
+        val stored = repository.save(EpisodeComponents(createEpisode(db, "a"), listOf("first", "second", "third")))
+
+        val firstPage = repository.findUngroupedAfter(0, 2)
+        assertEquals(stored.take(2), firstPage)
+        assertEquals(stored.drop(2), repository.findUngroupedAfter(firstPage.last().id, 2))
+        assertTrue(repository.findUngroupedAfter(stored.last().id, 2).isEmpty())
+    }
+
+    @Test
     fun `an episode without long-term knowledge is still marked extracted`() = withDatabase { db, _ ->
         val episode = createEpisode(db, "a")
 

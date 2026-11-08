@@ -93,7 +93,7 @@ class AssignEpisodeToComponentsTest {
         private val componentRepository = object : ComponentRepository {
             override fun findCovering(access: AccessControl) = components.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
-            override fun findUngrouped(limit: Int) = error("assignment never places Components")
+            override fun findUngroupedAfter(afterId: Int, limit: Int) = error("assignment never places Components")
             override fun save(extraction: EpisodeComponents): List<Component> {
                 check(extracted.add(extraction.episodeId))
                 return extraction.statements.map {

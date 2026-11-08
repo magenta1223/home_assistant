@@ -54,7 +54,7 @@ class UpdateMemoryWorker(
 
     private companion object {
         const val DEFAULT_BATCH_SIZE = 20
-        const val DEFAULT_INTERVAL_SECONDS = 30L
+        const val DEFAULT_INTERVAL_SECONDS = 60L
         val log = LoggerFactory.getLogger(UpdateMemoryWorker::class.java)
     }
 }

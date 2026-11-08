@@ -18,8 +18,11 @@ interface ComponentRepository {
     /** The Components [userId] can read, oldest first. */
     fun findVisibleTo(userId: UserId): List<Component>
 
-    /** Up to [limit] Components not yet placed in any Group, oldest first. */
-    fun findUngrouped(limit: Int): List<Component>
+    /**
+     * Up to [limit] Components with an id above [afterId] not yet placed in any Group, in id order.
+     * Passing the last id read pages through every unplaced Component once; 0 starts from the first.
+     */
+    fun findUngroupedAfter(afterId: Int, limit: Int): List<Component>
 
     /**
      * Marks the episode of [extraction] as extracted and stores its statements as Components in one write; returns them

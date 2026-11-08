@@ -25,11 +25,12 @@ internal class ComponentRepositoryImpl(private val db: Database) : ComponentRepo
         fromEpisodes(EpisodeAccessCondition.visibleTo(userId))
     }
 
-    override fun findUngrouped(limit: Int): List<Component> = transaction(db) {
+    override fun findUngroupedAfter(afterId: Int, limit: Int): List<Component> = transaction(db) {
         require(limit > 0)
         components(ComponentTable.selectAll().where {
-            notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
-        }.limit(limit))
+            (ComponentTable.id greater afterId) and
+                notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
+        }.orderBy(ComponentTable.id).limit(limit))
     }
 
     /** A second extraction of the same episode violates the extraction key and rolls back the whole write. */

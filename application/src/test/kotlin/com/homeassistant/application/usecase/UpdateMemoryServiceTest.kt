@@ -39,6 +39,7 @@ import com.homeassistant.domain.group.GroupPolicySettings
 import com.homeassistant.domain.group.GroupSplitPolicy
 import java.time.Clock
 import java.time.Instant
+import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -72,7 +73,29 @@ class UpdateMemoryServiceTest {
             ),
             update.episodes,
         )
-        assertEquals(listOf("failed:1:1", "completed:2:1"), fixture.outboxCalls.drop(2))
+        assertEquals(listOf("failed:1:1", "completed:2:1"), fixture.outboxCalls.filterNot { it.startsWith("claim") }.drop(1))
+    }
+
+    @Test
+    fun `every waiting episode is assigned in one update, batch after batch`() {
+        val fixture = Fixture(claimable = 5)
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(2))
+        assertEquals(listOf(1, 2, 3, 4, 5), update.episodes.map { it.episodeId })
+    }
+
+    @Test
+    fun `an episode that fails is not retried in the same update even after the retry delay passes`() {
+        val fixture = Fixture(claimable = 2, failingEpisodes = setOf(1), clock = AdvancingClock(stepMillis = 61_000L))
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(1))
+        assertEquals(listOf(1, 2), update.episodes.map { it.episodeId })
+        assertEquals(1, fixture.outboxCalls.count { it.startsWith("failed:1") })
+    }
+
+    @Test
+    fun `every unplaced component is placed in one update and a failing one is read only once`() {
+        val fixture = Fixture(claimable = 0, unplaced = 5, failingComponents = setOf(1))
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(2))
+        assertEquals(listOf(1, 2, 3, 4, 5), update.components.map { it.componentId })
     }
 
     @Test
@@ -102,12 +125,15 @@ class UpdateMemoryServiceTest {
         private val failingEpisodes: Set<Int> = emptySet(),
         private val unplaced: Int = 0,
         private val failingComponents: Set<Int> = emptySet(),
+        private val clock: Clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     ) {
         val outboxCalls = mutableListOf<String>()
         val groupWrites = mutableListOf<GroupChange>()
         var statements = emptyMap<Int, List<String>>()
         var snapshot = GroupSnapshot(emptyList(), emptyMap())
         private val components = mutableListOf<Component>()
+        private val pending = (1..claimable).toMutableList()
+        private val failedAt = mutableMapOf<Int, Long>()
 
         private val outbox = object : ComponentAssignmentOutbox {
             override fun claimReady(
@@ -118,14 +144,20 @@ class UpdateMemoryServiceTest {
                 maxAttempts: Int,
             ): List<ComponentAssignmentTask> {
                 outboxCalls += "claim:$limit:$retryBefore:$staleProcessingBefore:$maxAttempts"
-                return (1..claimable).map { ComponentAssignmentTask(it, 1, episode(it)) }
+                val retryable = failedAt.filterValues { it <= retryBefore }.keys
+                val ready = (pending + retryable).sorted().take(limit)
+                pending.removeAll(ready)
+                ready.forEach(failedAt::remove)
+                return ready.map { ComponentAssignmentTask(it, 1, episode(it)) }
             }
 
             override fun markCompleted(outboxId: Int, expectedAttempt: Int, now: Long): Boolean =
                 outboxCalls.add("completed:$outboxId:$expectedAttempt")
 
-            override fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long): Boolean =
-                outboxCalls.add("failed:$outboxId:$expectedAttempt")
+            override fun markFailed(outboxId: Int, expectedAttempt: Int, error: String, now: Long): Boolean {
+                failedAt[outboxId] = now
+                return outboxCalls.add("failed:$outboxId:$expectedAttempt")
+            }
 
             override fun enqueueUnassigned(now: Long): Int {
                 outboxCalls += "enqueueUnassigned"
@@ -145,7 +177,7 @@ class UpdateMemoryServiceTest {
         private val componentRepository = object : ComponentRepository {
             override fun findCovering(access: AccessControl) = components.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = components.filter { it.isVisibleTo(userId) }
-            override fun findUngrouped(limit: Int) = error("assignment never places Components")
+            override fun findUngroupedAfter(afterId: Int, limit: Int) = error("assignment never places Components")
             override fun save(extraction: EpisodeComponents) = extraction.statements.map {
                 Component(components.size + 1, it, extraction.episodeId, AccessControl.PUBLIC).also(components::add)
             }
@@ -163,7 +195,8 @@ class UpdateMemoryServiceTest {
         private val unplacedComponents = object : ComponentRepository {
             override fun findCovering(access: AccessControl) = (1..unplaced).map(::unplacedComponent)
             override fun findVisibleTo(userId: UserId) = (1..unplaced).map(::unplacedComponent)
-            override fun findUngrouped(limit: Int) = (1..unplaced).map(::unplacedComponent)
+            override fun findUngroupedAfter(afterId: Int, limit: Int) =
+                (afterId + 1..unplaced).take(limit).map(::unplacedComponent)
             override fun save(extraction: EpisodeComponents) = error("organization never saves Components")
         }
         private val groups = object : GroupRepository {
@@ -186,12 +219,20 @@ class UpdateMemoryServiceTest {
                 GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings)),
             ),
             mergeSmallGroups = MergeSmallGroups(groups, GroupMergePolicy(settings)),
-            clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
+            clock = clock,
         )
 
         private fun unplacedComponent(id: Int) = Component(id, placementStatement(id), id, AccessControl.PUBLIC)
         private fun placementStatement(id: Int) = "placement $id"
         private fun episode(id: Int) = PendingEpisode(id, "title $id", "$id", AccessControl.PUBLIC, listOf("message $id"))
+    }
+
+    /** A clock that moves [stepMillis] forward on every read, like a long round of model calls. */
+    private class AdvancingClock(private val stepMillis: Long) : Clock() {
+        private var millis = NOW
+        override fun getZone(): ZoneOffset = ZoneOffset.UTC
+        override fun withZone(zone: ZoneId): Clock = this
+        override fun instant(): Instant = Instant.ofEpochMilli(millis).also { millis += stepMillis }
     }
 
     private class EpisodeCache : EpisodeEmbeddingRepository {

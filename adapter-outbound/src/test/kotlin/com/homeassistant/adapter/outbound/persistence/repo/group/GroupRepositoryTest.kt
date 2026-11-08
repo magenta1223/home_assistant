@@ -246,7 +246,7 @@ class GroupRepositoryTest {
             PrepareComponentEmbedding(generator, ComponentEmbeddingRepositoryImpl(db)),
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
-        return ComponentRepositoryImpl(db).findUngrouped(limit).map(organizer::organize)
+        return ComponentRepositoryImpl(db).findUngroupedAfter(0, limit).map(organizer::organize)
     }
 
     private fun withDatabase(block: (Database, String) -> Unit) {

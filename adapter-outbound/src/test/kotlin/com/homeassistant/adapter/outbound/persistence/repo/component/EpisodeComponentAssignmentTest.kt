@@ -139,7 +139,7 @@ class EpisodeComponentAssignmentTest {
             groups, componentEmbeddings,
             GroupOrganizationPlanner(GroupPlacementPolicy(settings), GroupSplitPolicy(settings))
         )
-        store.findUngrouped(10).forEach(organizer::organize)
+        store.findUngroupedAfter(0, 10).forEach(organizer::organize)
         return assigned
     }
 

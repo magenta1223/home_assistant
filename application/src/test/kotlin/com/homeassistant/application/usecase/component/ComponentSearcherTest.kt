@@ -121,7 +121,7 @@ class ComponentSearcherTest {
         private val reader = object : ComponentRepository {
             override fun findCovering(access: AccessControl) = byId.values.filter { it.access.covers(access) }
             override fun findVisibleTo(userId: UserId) = byId.values.filter { it.isVisibleTo(userId) }
-            override fun findUngrouped(limit: Int) = error("search never places Components")
+            override fun findUngroupedAfter(afterId: Int, limit: Int) = error("search never places Components")
             override fun save(extraction: EpisodeComponents) = error("search never saves Components")
         }
         private val cache = mutableMapOf<ComponentEmbeddingKey, Embedding<ComponentEmbeddingKey>>()

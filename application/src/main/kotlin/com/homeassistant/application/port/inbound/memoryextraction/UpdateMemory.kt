@@ -5,8 +5,9 @@ import com.homeassistant.domain.group.GroupSplit
 /** Grows the Episode → Component → Group hierarchy from the Episodes saved since the last update. */
 fun interface UpdateMemory {
     /**
-     * Assigns up to [batchSize] waiting Episodes to Components, places up to [batchSize] unplaced Components in Groups,
-     * and then merges small Groups. Nothing runs when the assignment services are unavailable, so no attempt is used up.
+     * Assigns every waiting Episode to Components, places every unplaced Component in Groups, and then merges small
+     * Groups, reading [batchSize] at a time. Each Episode and Component is tried at most once per call; one that fails
+     * waits for the next call. Nothing runs when the assignment services are unavailable, so no attempt is used up.
      */
     fun execute(batchSize: Int): MemoryUpdateResult
 }

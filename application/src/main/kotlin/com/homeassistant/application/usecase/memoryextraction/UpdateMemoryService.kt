@@ -42,31 +42,55 @@ class UpdateMemoryService(
     override fun execute(batchSize: Int): MemoryUpdateResult {
         require(batchSize > 0) { "batchSize must be positive" }
         if (!assignEpisode.isReady()) return MemoryUpdateResult.Skipped
-        val episodes = assignWaitingEpisodes(batchSize)
+        val episodes = assignWaitingEpisodes(batchSize, roundStartedAt = clock.millis())
         return when (val placement = placeUnplacedComponents(batchSize)) {
             is Placement.Completed -> MemoryUpdateResult.Completed(episodes, placement.components, mergeSmallGroups.execute())
             is Placement.Stopped -> MemoryUpdateResult.RebuildRequired(episodes, placement.components, placement.reason)
         }
     }
 
-    /** Places up to [batchSize] unplaced Components, stopping at the first [GroupRebuildRequired]. */
+    /** Places every unplaced Component, stopping at the first [GroupRebuildRequired]. */
     private fun placeUnplacedComponents(batchSize: Int): Placement {
         val placed = mutableListOf<ComponentPlacementResult>()
         return try {
-            components.findUngrouped(batchSize).mapTo(placed) { ComponentPlacementResult(it.id, place(it)) }
+            unplacedComponents(batchSize).mapTo(placed) { ComponentPlacementResult(it.id, place(it)) }
             Placement.Completed(placed)
         } catch (rebuild: GroupRebuildRequired) {
             Placement.Stopped(placed, rebuild.message.orEmpty())
         }
     }
 
-    /** Queues Episodes saved before the outbox existed, then assigns up to [batchSize] claimed Episodes. */
-    private fun assignWaitingEpisodes(batchSize: Int): List<EpisodeAssignmentResult> {
-        val now = clock.millis()
-        outbox.enqueueUnassigned(now)
-        val tasks = outbox.claimReady(batchSize, now, now - retryDelayMillis, now - processingLeaseMillis, maxAttempts)
-        return tasks.map { EpisodeAssignmentResult(it.episode.id, assign(it)) }
+    /**
+     * Every unplaced Component in id order, read [batchSize] at a time after the last one read, so a Component that
+     * fails placement is not read again in this round.
+     */
+    private fun unplacedComponents(batchSize: Int): Sequence<Component> =
+        generateSequence(components.findUngroupedAfter(FIRST_COMPONENT_CURSOR, batchSize)) { previous ->
+            components.findUngroupedAfter(previous.last().id, batchSize)
+        }.takeWhile { it.isNotEmpty() }.flatten()
+
+    /**
+     * Queues Episodes saved before the outbox existed, then assigns claimed Episodes [batchSize] at a time until none
+     * is ready. Readiness is judged at [roundStartedAt], so an Episode that fails in this round waits for the next one.
+     */
+    private fun assignWaitingEpisodes(batchSize: Int, roundStartedAt: Long): List<EpisodeAssignmentResult> {
+        outbox.enqueueUnassigned(roundStartedAt)
+        return generateSequence { claimReady(batchSize, roundStartedAt) }
+            .takeWhile { it.isNotEmpty() }
+            .flatten()
+            .map { EpisodeAssignmentResult(it.episode.id, assign(it)) }
+            .toList()
     }
+
+    /** Up to [batchSize] Episodes that were ready when the round started at [roundStartedAt]. */
+    private fun claimReady(batchSize: Int, roundStartedAt: Long): List<ComponentAssignmentTask> =
+        outbox.claimReady(
+            limit = batchSize,
+            now = clock.millis(),
+            retryBefore = roundStartedAt - retryDelayMillis,
+            staleProcessingBefore = roundStartedAt - processingLeaseMillis,
+            maxAttempts = maxAttempts,
+        )
 
     /** Assigns [task]'s Episode and records the outcome in the outbox. */
     private fun assign(task: ComponentAssignmentTask): EpisodeAssignmentOutcome {
@@ -105,6 +129,7 @@ class UpdateMemoryService(
     }
 
     companion object {
+        private const val FIRST_COMPONENT_CURSOR = 0
         const val DEFAULT_RETRY_DELAY_MILLIS = 60_000L
         const val DEFAULT_PROCESSING_LEASE_MILLIS = 10 * 60_000L
         const val DEFAULT_MAX_ATTEMPTS = 5

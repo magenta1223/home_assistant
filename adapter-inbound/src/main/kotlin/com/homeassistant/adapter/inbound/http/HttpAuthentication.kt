@@ -12,6 +12,8 @@ import io.ktor.server.auth.bearer
 import io.ktor.server.application.Application
 import io.ktor.server.application.install
 import io.ktor.server.auth.Principal
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.security.MessageDigest
 
@@ -85,7 +87,7 @@ fun Application.configureHttpAuthentication(
                     ?.let { HttpAuthHeader.Single(AuthScheme.Bearer, it) }
             }
             authenticate { credential ->
-                authentication.resolveSession(credential.token)
+                withContext(Dispatchers.IO) { authentication.resolveSession(credential.token) }
                     ?.let(::HttpUserPrincipal)
             }
         }

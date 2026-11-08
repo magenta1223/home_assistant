@@ -12,6 +12,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 
 /** The routes a person needs before having a session. */
@@ -19,7 +21,7 @@ internal fun Route.publicLoginRoutes(authentication: UserAuthentication) {
     post(HTTP_SIGNUP_ROUTE) {
         val request = call.receive<HttpCredentialsRequest>()
         try {
-            val user = authentication.signUp(request.name, request.password())
+            val user = withContext(Dispatchers.IO) { authentication.signUp(request.name, request.password()) }
             call.respond(HttpStatusCode.Created, HttpUserResponse(user.userId.value, user.displayName))
         } catch (error: IllegalArgumentException) {
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to (error.message ?: "invalid name or password")))
@@ -30,7 +32,7 @@ internal fun Route.publicLoginRoutes(authentication: UserAuthentication) {
     post(HTTP_LOGIN_ROUTE) {
         val request = call.receive<HttpCredentialsRequest>()
         try {
-            call.issueSessionCookie(authentication.login(request.name, request.password()))
+            call.issueSessionCookie(withContext(Dispatchers.IO) { authentication.login(request.name, request.password()) })
             call.respond(HttpStatusCode.NoContent)
         } catch (_: IllegalArgumentException) {
             call.respondInvalidCredentials()
@@ -39,7 +41,9 @@ internal fun Route.publicLoginRoutes(authentication: UserAuthentication) {
         }
     }
     post(HTTP_LOGOUT_ROUTE) {
-        call.request.cookies[HTTP_SESSION_COOKIE]?.let(authentication::logout)
+        call.request.cookies[HTTP_SESSION_COOKIE]?.let { sessionId ->
+            withContext(Dispatchers.IO) { authentication.logout(sessionId) }
+        }
         call.expireSessionCookie()
         call.respond(HttpStatusCode.NoContent)
     }

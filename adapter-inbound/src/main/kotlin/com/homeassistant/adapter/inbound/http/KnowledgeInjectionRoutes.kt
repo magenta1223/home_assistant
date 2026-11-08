@@ -27,6 +27,8 @@ import io.ktor.server.response.respond
 import io.ktor.server.routing.Route
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import java.util.Base64
 
@@ -35,11 +37,8 @@ internal fun Route.knowledgeInjectionRoutes(
     users: UserRegistry,
 ) {
     get(AppConfig.ROUTE_KNOWLEDGE_USERS) {
-        call.respond(
-            KnowledgeUsersResponse(
-                users.list().map { KnowledgeUserResponse(it.userId.value, it.displayName) },
-            ),
-        )
+        val registered = withContext(Dispatchers.IO) { users.list() }
+        call.respond(KnowledgeUsersResponse(registered.map { KnowledgeUserResponse(it.userId.value, it.displayName) }))
     }
 
     post(AppConfig.ROUTE_KNOWLEDGE_IMPORT_ANALYZE) {
@@ -94,16 +93,16 @@ internal fun Route.knowledgeInjectionRoutes(
         }
 
         try {
-            call.respond(
-                HttpStatusCode.Accepted,
+            val submitted = withContext(Dispatchers.IO) {
                 episodeAnalysis.submit(
                     EpisodeAnalysisRequest(
                         userId = principal.userId.value,
                         source = source,
                         access = access,
                     ),
-                ).toResponse(),
-            )
+                )
+            }
+            call.respond(HttpStatusCode.Accepted, submitted.toResponse())
         } catch (error: DuplicateSourceRecordsException) {
             call.respond(
                 HttpStatusCode.Conflict,
@@ -139,7 +138,7 @@ internal fun Route.knowledgeInjectionRoutes(
         }
 
         try {
-            when (val report = episodeAnalysis.findJob(principal.userId.value, jobId)) {
+            when (val report = withContext(Dispatchers.IO) { episodeAnalysis.findJob(principal.userId.value, jobId) }) {
                 null -> call.respond(HttpStatusCode.NotFound, mapOf("error" to "analysis job not found"))
                 else -> call.respond(HttpStatusCode.OK, report.toResponse())
             }

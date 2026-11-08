@@ -1,6 +1,6 @@
-package com.homeassistant.app.services
+package com.homeassistant.adapter.inbound.scheduler
 
-import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
+import com.homeassistant.application.port.inbound.chatservice.ExpireIdleChats
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
@@ -8,9 +8,8 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Runs [ExpireIdleChats] every [EXPIRY_CHECK_SECONDS].
- * TODO: To inbound-adapter
  */
-internal class IdleChatExpiryWorker(
+class IdleChatExpiryWorker(
     private val expireIdle: ExpireIdleChats,
 ) : AbstractRuntime() {
     private val log = LoggerFactory.getLogger(javaClass)

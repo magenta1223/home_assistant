@@ -1,4 +1,4 @@
-package com.homeassistant.app.services
+package com.homeassistant.adapter.inbound.scheduler
 
 import com.homeassistant.application.port.inbound.memoryextraction.MemoryUpdateResult
 import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemory

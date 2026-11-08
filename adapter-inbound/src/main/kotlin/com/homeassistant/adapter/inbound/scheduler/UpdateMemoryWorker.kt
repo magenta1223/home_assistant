@@ -1,4 +1,4 @@
-package com.homeassistant.app.services
+package com.homeassistant.adapter.inbound.scheduler
 
 import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
@@ -13,9 +13,8 @@ import java.util.concurrent.TimeUnit
 
 /**
  * Runs [UpdateMemory] every [intervalSeconds] and logs what each round changed.
- * TODO: To inbound-adapter
  */
-internal class UpdateMemoryWorker(
+class UpdateMemoryWorker(
     private val updateHierarchy: UpdateMemory,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     private val intervalSeconds: Long = DEFAULT_INTERVAL_SECONDS,

@@ -9,7 +9,7 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewa
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
 import com.homeassistant.application.usecase.chatservice.ChatService
-import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
+import com.homeassistant.application.usecase.chatservice.ExpireIdleChatsService
 import com.homeassistant.domain.identity.UserId
 import java.time.Clock
 import java.time.Instant
@@ -29,7 +29,7 @@ class ExpireIdleConversationsTest {
             ),
         )
         val client = EndingClient()
-        val useCase = ExpireIdleChats(
+        val useCase = ExpireIdleChatsService(
             sessions = store,
             chatGateway = client,
             clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),

@@ -1,5 +1,6 @@
 package com.homeassistant.app.services
 
+import com.homeassistant.adapter.inbound.scheduler.UpdateMemoryWorker
 import com.homeassistant.adapter.outbound.componentextraction.ComponentExtractorImpl
 import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorImpl
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores

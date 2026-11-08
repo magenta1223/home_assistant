@@ -1,11 +1,12 @@
 package com.homeassistant.app.services
 
+import com.homeassistant.adapter.inbound.scheduler.IdleChatExpiryWorker
 import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.usecase.chatservice.ChatService
-import com.homeassistant.application.usecase.chatservice.ExpireIdleChats
+import com.homeassistant.application.usecase.chatservice.ExpireIdleChatsService
 import com.homeassistant.application.usecase.contextprovider.ContextAssembler
 import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
@@ -67,7 +68,7 @@ internal class ChatModule(
     private fun episodeSearcher() = EpisodeSearcher(repositories.episodes, queries, episodeEmbeddings, accessPolicy)
 
     private fun expiryWorker(gateway: AgentChatGateway) = IdleChatExpiryWorker(
-        ExpireIdleChats(sessions = repositories.chatSessions, chatGateway = gateway),
+        ExpireIdleChatsService(sessions = repositories.chatSessions, chatGateway = gateway),
     )
 
     private fun agentTimeout(): Duration = Duration.ofSeconds(

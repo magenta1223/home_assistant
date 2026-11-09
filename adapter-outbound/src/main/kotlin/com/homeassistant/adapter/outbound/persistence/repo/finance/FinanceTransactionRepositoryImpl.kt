@@ -16,36 +16,40 @@ import java.time.ZoneId
 
 internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases) : FinanceTransactionRepository {
 
-    override fun save(transactions: List<FinanceTransaction>) {
-        db.write {
-            FinanceTransactionTable.batchUpsert(
-                transactions,
-                FinanceTransactionTable.userId,
-                FinanceTransactionTable.transactionKey,
-                onUpdate = {
-                    it[FinanceTransactionTable.type] = insertValue(FinanceTransactionTable.type)
-                    it[FinanceTransactionTable.majorCategory] = insertValue(FinanceTransactionTable.majorCategory)
-                    it[FinanceTransactionTable.minorCategory] = insertValue(FinanceTransactionTable.minorCategory)
-                    it[FinanceTransactionTable.memo] = insertValue(FinanceTransactionTable.memo)
-                },
-                shouldReturnGeneratedValues = false,
-            ) { transaction ->
-                this[FinanceTransactionTable.userId] = transaction.ownerId.value
-                this[FinanceTransactionTable.transactionKey] = transaction.transactionKey
-                this[FinanceTransactionTable.occurredAt] = transaction.occurredAt.toEpochMillis()
-                this[FinanceTransactionTable.type] = transaction.type
-                this[FinanceTransactionTable.majorCategory] = transaction.majorCategory
-                this[FinanceTransactionTable.minorCategory] = transaction.minorCategory
-                this[FinanceTransactionTable.description] = transaction.description
-                this[FinanceTransactionTable.amount] = transaction.amount
-                this[FinanceTransactionTable.currency] = transaction.currency
-                this[FinanceTransactionTable.paymentMethod] = transaction.paymentMethod
-                this[FinanceTransactionTable.memo] = transaction.memo
-            }
+    override fun save(transactions: List<FinanceTransaction>): List<FinanceTransaction> = db.write {
+        val saved = transactions.associateBy { it.ownerId to it.transactionKey }.values.toList()
+        FinanceTransactionTable.batchUpsert(
+            saved,
+            FinanceTransactionTable.userId,
+            FinanceTransactionTable.transactionKey,
+            onUpdate = {
+                it[FinanceTransactionTable.type] = insertValue(FinanceTransactionTable.type)
+                it[FinanceTransactionTable.majorCategory] = insertValue(FinanceTransactionTable.majorCategory)
+                it[FinanceTransactionTable.minorCategory] = insertValue(FinanceTransactionTable.minorCategory)
+                it[FinanceTransactionTable.memo] = insertValue(FinanceTransactionTable.memo)
+            },
+            shouldReturnGeneratedValues = false,
+        ) { transaction ->
+            this[FinanceTransactionTable.userId] = transaction.ownerId.value
+            this[FinanceTransactionTable.transactionKey] = transaction.transactionKey
+            this[FinanceTransactionTable.occurredAt] = transaction.occurredAt.toEpochMillis()
+            this[FinanceTransactionTable.type] = transaction.type
+            this[FinanceTransactionTable.majorCategory] = transaction.majorCategory
+            this[FinanceTransactionTable.minorCategory] = transaction.minorCategory
+            this[FinanceTransactionTable.description] = transaction.description
+            this[FinanceTransactionTable.amount] = transaction.amount
+            this[FinanceTransactionTable.currency] = transaction.currency
+            this[FinanceTransactionTable.paymentMethod] = transaction.paymentMethod
+            this[FinanceTransactionTable.memo] = transaction.memo
         }
+        saved
     }
 
-    override fun find(ownerId: UserId, from: LocalDateTime, to: LocalDateTime): List<FinanceTransaction> = db.read {
+    override fun findByOwnerOccurredBetween(
+        ownerId: UserId,
+        from: LocalDateTime,
+        to: LocalDateTime,
+    ): List<FinanceTransaction> = db.read {
         FinanceTransactionTable.selectAll()
             .where {
                 (FinanceTransactionTable.userId eq ownerId.value) and

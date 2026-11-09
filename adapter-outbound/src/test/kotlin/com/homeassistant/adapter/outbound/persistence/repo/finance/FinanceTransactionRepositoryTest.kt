@@ -11,10 +11,10 @@ import kotlin.test.assertEquals
 
 class FinanceTransactionRepositoryTest {
     @Test
-    fun `saved transactions are found in time order`() = withRepository { transactions ->
-        transactions.save(listOf(DINNER, LUNCH))
+    fun `saved transactions are returned and found in time order`() = withRepository { transactions ->
+        assertEquals(listOf(DINNER, LUNCH), transactions.save(listOf(DINNER, LUNCH)))
 
-        assertEquals(listOf(LUNCH, DINNER), transactions.find(OWNER, NOVEMBER_START, DECEMBER_START))
+        assertEquals(listOf(LUNCH, DINNER), transactions.findInNovember(OWNER))
     }
 
     @Test
@@ -23,10 +23,18 @@ class FinanceTransactionRepositoryTest {
             transactions.save(listOf(LUNCH, DINNER))
             val recategorized = LUNCH.copy(type = "이체", majorCategory = "생활", minorCategory = "기타", memo = "회식")
 
-            transactions.save(listOf(recategorized))
+            assertEquals(listOf(recategorized), transactions.save(listOf(recategorized)))
 
-            assertEquals(listOf(recategorized, DINNER), transactions.find(OWNER, NOVEMBER_START, DECEMBER_START))
+            assertEquals(listOf(recategorized, DINNER), transactions.findInNovember(OWNER))
         }
+
+    @Test
+    fun `a key repeated in one save is saved once, as its last transaction`() = withRepository { transactions ->
+        val recategorized = LUNCH.copy(minorCategory = "분식")
+
+        assertEquals(listOf(recategorized), transactions.save(listOf(LUNCH, recategorized)))
+        assertEquals(listOf(recategorized), transactions.findInNovember(OWNER))
+    }
 
     @Test
     fun `transactions missing from a later save stay stored`() = withRepository { transactions ->
@@ -34,7 +42,7 @@ class FinanceTransactionRepositoryTest {
 
         transactions.save(listOf(DINNER))
 
-        assertEquals(listOf(LUNCH, DINNER), transactions.find(OWNER, NOVEMBER_START, DECEMBER_START))
+        assertEquals(listOf(LUNCH, DINNER), transactions.findInNovember(OWNER))
     }
 
     @Test
@@ -42,8 +50,8 @@ class FinanceTransactionRepositoryTest {
         val othersLunch = LUNCH.copy(ownerId = UserId("member-2"))
         transactions.save(listOf(LUNCH, othersLunch))
 
-        assertEquals(listOf(LUNCH), transactions.find(OWNER, NOVEMBER_START, DECEMBER_START))
-        assertEquals(listOf(othersLunch), transactions.find(UserId("member-2"), NOVEMBER_START, DECEMBER_START))
+        assertEquals(listOf(LUNCH), transactions.findInNovember(OWNER))
+        assertEquals(listOf(othersLunch), transactions.findInNovember(UserId("member-2")))
     }
 
     @Test
@@ -53,8 +61,11 @@ class FinanceTransactionRepositoryTest {
         val before = LUNCH.copy(occurredAt = NOVEMBER_START.minusSeconds(1), description = "10월 편의점")
         transactions.save(listOf(before, atStart, LUNCH, atEnd))
 
-        assertEquals(listOf(atStart, LUNCH), transactions.find(OWNER, NOVEMBER_START, DECEMBER_START))
+        assertEquals(listOf(atStart, LUNCH), transactions.findInNovember(OWNER))
     }
+
+    private fun FinanceTransactionRepository.findInNovember(ownerId: UserId): List<FinanceTransaction> =
+        findByOwnerOccurredBetween(ownerId, NOVEMBER_START, DECEMBER_START)
 
     private fun withRepository(test: (FinanceTransactionRepository) -> Unit) {
         val path = Files.createTempFile("finance-transactions", ".db")

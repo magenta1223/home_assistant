@@ -3,58 +3,82 @@ import unittest
 from email.message import EmailMessage
 from pathlib import Path
 
-from banksalad_mail_fetcher import save_exports
+from banksalad_mail_fetcher import BanksaladMember, UnknownMember, import_new_exports
 
 # export.zip was made with 7-Zip's ZipCrypto, the same encryption Banksalad uses; it holds
 # 2025-11-09~2026-11-09.xlsx with the content b"sheet".
 EXPORT_ZIP = (Path(__file__).parent / "export.zip").read_bytes()
-PASSWORD = "fixture-password"
+DONGHOON = BanksaladMember("김동훈", "fixture-password", "token-donghoon")
+MEMBERS = {DONGHOON.name: DONGHOON}
 
 
-def export_mail(attachment_name="김동훈님_2025-11-09~2026-11-09.zip", data=EXPORT_ZIP,
-                sent="Mon, 09 Nov 2026 01:58:40 +0000"):
+def export_mail(attachment_name="김동훈님_2025-11-09~2026-11-09.zip", sent="Mon, 09 Nov 2026 01:58:40 +0000"):
     message = EmailMessage()
     message["Date"] = sent
     message.set_content("export")
-    message.add_attachment(data, maintype="application", subtype="octet-stream", filename=attachment_name)
+    message.add_attachment(EXPORT_ZIP, maintype="application", subtype="octet-stream", filename=attachment_name)
     return message
 
 
-class SaveExportsTest(unittest.TestCase):
+class ImportNewExportsTest(unittest.TestCase):
     def setUp(self):
         self.workdir = tempfile.TemporaryDirectory()
-        self.export_dir = Path(self.workdir.name)
+        self.sent_dir = Path(self.workdir.name)
+        self.sent = []
 
     def tearDown(self):
         self.workdir.cleanup()
 
-    def test_saves_the_unzipped_xlsx_named_by_received_time_and_xlsx_name(self):
-        saved = save_exports(export_mail(), self.export_dir, PASSWORD)
+    def send(self, token, xlsx):
+        self.sent.append((token, xlsx))
+        return 111
 
-        self.assertEqual(["20261109-015840_2025-11-09~2026-11-09.xlsx"], [path.name for path in saved])
-        self.assertEqual(b"sheet", saved[0].read_bytes())
-        self.assertEqual([saved[0]], list(self.export_dir.iterdir()))
+    def failing_send(self, token, xlsx):
+        raise ConnectionError("app is down")
 
-    def test_skips_an_export_already_saved(self):
-        mail = export_mail()
-        save_exports(mail, self.export_dir, PASSWORD)
+    def test_sends_the_unzipped_xlsx_with_the_token_of_the_member_named_in_the_attachment(self):
+        imported = import_new_exports(export_mail(), MEMBERS, self.sent_dir, self.send)
 
-        self.assertEqual([], save_exports(mail, self.export_dir, PASSWORD))
+        self.assertEqual([("token-donghoon", b"sheet")], self.sent)
+        self.assertEqual(
+            [("20261109-015840_김동훈님_2025-11-09~2026-11-09.xlsx", 111)],
+            [(record.name, count) for record, count in imported],
+        )
 
-    def test_keeps_two_exports_of_the_same_period_from_different_mails(self):
-        save_exports(export_mail(), self.export_dir, PASSWORD)
-        save_exports(export_mail(sent="Tue, 10 Nov 2026 08:00:00 +0000"), self.export_dir, PASSWORD)
+    def test_does_not_send_an_export_again_once_the_app_accepted_it(self):
+        import_new_exports(export_mail(), MEMBERS, self.sent_dir, self.send)
 
-        self.assertEqual(2, len(list(self.export_dir.iterdir())))
+        self.assertEqual([], import_new_exports(export_mail(), MEMBERS, self.sent_dir, self.send))
+        self.assertEqual(1, len(self.sent))
 
-    def test_ignores_attachments_that_are_not_zip(self):
-        self.assertEqual([], save_exports(export_mail("notice.pdf", b"pdf"), self.export_dir, PASSWORD))
+    def test_sends_a_later_export_of_the_same_period(self):
+        import_new_exports(export_mail(), MEMBERS, self.sent_dir, self.send)
+        import_new_exports(export_mail(sent="Tue, 10 Nov 2026 08:00:00 +0000"), MEMBERS, self.sent_dir, self.send)
 
-    def test_rejects_a_wrong_password_without_leaving_a_file(self):
+        self.assertEqual(2, len(self.sent))
+
+    def test_retries_an_export_the_app_did_not_accept(self):
+        with self.assertRaises(ConnectionError):
+            import_new_exports(export_mail(), MEMBERS, self.sent_dir, self.failing_send)
+
+        self.assertEqual(1, len(import_new_exports(export_mail(), MEMBERS, self.sent_dir, self.send)))
+
+    def test_rejects_an_export_of_someone_not_in_the_member_list(self):
+        with self.assertRaises(UnknownMember):
+            import_new_exports(export_mail("홍길동님_2025-11-09~2026-11-09.zip"), MEMBERS, self.sent_dir, self.send)
+
+        self.assertEqual([], self.sent)
+
+    def test_rejects_a_wrong_export_password_without_sending(self):
+        members = {"김동훈": BanksaladMember("김동훈", "wrong", "token-donghoon")}
+
         with self.assertRaises(RuntimeError):
-            save_exports(export_mail(), self.export_dir, "wrong")
+            import_new_exports(export_mail(), members, self.sent_dir, self.send)
 
-        self.assertEqual([], list(self.export_dir.iterdir()))
+        self.assertEqual([], self.sent)
+
+    def test_ignores_attachments_that_are_not_exports(self):
+        self.assertEqual([], import_new_exports(export_mail("notice.pdf"), MEMBERS, self.sent_dir, self.send))
 
 
 if __name__ == "__main__":

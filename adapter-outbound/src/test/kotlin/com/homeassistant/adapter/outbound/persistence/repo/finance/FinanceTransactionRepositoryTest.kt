@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.finance
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
+import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
@@ -64,8 +65,33 @@ class FinanceTransactionRepositoryTest {
         assertEquals(listOf(atStart, LUNCH), transactions.findInNovember(OWNER))
     }
 
-    private fun FinanceTransactionRepository.findInNovember(ownerId: UserId): List<FinanceTransaction> =
-        findByOwnerOccurredBetween(ownerId, NOVEMBER_START, DECEMBER_START)
+    @Test
+    fun `a category matches either the major or the minor category`() = withRepository { transactions ->
+        val chicken = DINNER.copy(minorCategory = "치킨")
+        val taxi = LUNCH.copy(occurredAt = LUNCH.occurredAt.plusHours(1), majorCategory = "교통", minorCategory = "택시")
+        transactions.save(listOf(LUNCH, chicken, taxi))
+
+        assertEquals(listOf(LUNCH, chicken), transactions.findInNovember(OWNER, category = "식비"))
+        assertEquals(listOf(taxi), transactions.findInNovember(OWNER, category = "택시"))
+    }
+
+    @Test
+    fun `a description filter matches the text anywhere and takes wildcards literally`() =
+        withRepository { transactions ->
+            val discount = DINNER.copy(occurredAt = DINNER.occurredAt.plusHours(1), description = "치킨 50% 할인")
+            transactions.save(listOf(LUNCH, DINNER, discount))
+
+            assertEquals(listOf(DINNER, discount), transactions.findInNovember(OWNER, descriptionContains = "치킨"))
+            assertEquals(listOf(discount), transactions.findInNovember(OWNER, descriptionContains = "50%"))
+            assertEquals(emptyList(), transactions.findInNovember(OWNER, descriptionContains = "_"))
+        }
+
+    private fun FinanceTransactionRepository.findInNovember(
+        ownerId: UserId,
+        category: String? = null,
+        descriptionContains: String? = null,
+    ): List<FinanceTransaction> =
+        findMatching(FinanceTransactionCriteria(ownerId, NOVEMBER_START, DECEMBER_START, category, descriptionContains))
 
     private fun withRepository(test: (FinanceTransactionRepository) -> Unit) {
         val path = Files.createTempFile("finance-transactions", ".db")

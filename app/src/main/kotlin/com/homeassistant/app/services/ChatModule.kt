@@ -4,6 +4,7 @@ import com.homeassistant.adapter.inbound.scheduler.IdleChatExpiryWorker
 import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.inbound.chatservice.Chat
+import com.homeassistant.application.port.inbound.contexttool.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.usecase.chatservice.ChatContextDelivery
@@ -13,6 +14,7 @@ import com.homeassistant.application.usecase.contextprovider.ContextAssembler
 import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
 import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
 import com.homeassistant.application.usecase.contexttool.ContextGrants
+import com.homeassistant.application.usecase.contexttool.FindTransactionsService
 import com.homeassistant.application.usecase.contexttool.SearchMemoryService
 import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
@@ -44,9 +46,15 @@ internal class ChatModule(
     /** Memory-backed conversations, or null when the backend offers no chat client. */
     val chat: Chat? = chatGateway?.let(::memoryBackedChat)
 
-    /** The memory search tool agents call during a turn, or null when chats receive their context up front. */
+    /** The memory search agents call during a turn, or null when chats receive their context up front. */
     val searchMemory: SearchMemory? =
-        SearchMemoryService(contextGrants, memory).takeIf { delivery is ChatContextDelivery.OnRequest }
+        (delivery as? ChatContextDelivery.OnRequest)?.let { SearchMemoryService(it.grants, memory) }
+
+    /** The transaction search agents call during a turn, or null when chats receive their context up front. */
+    val findTransactions: FindTransactions? =
+        (delivery as? ChatContextDelivery.OnRequest)?.let {
+            FindTransactionsService(it.grants, repositories.financeTransactions)
+        }
 
     /** The chat client and the worker that expires idle chats. */
     val runtimes: List<Runtime> = listOfNotNull(chatClient, chatGateway?.let(::expiryWorker))

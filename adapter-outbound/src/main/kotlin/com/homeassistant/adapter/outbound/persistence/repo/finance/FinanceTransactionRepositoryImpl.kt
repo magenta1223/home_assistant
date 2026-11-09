@@ -2,12 +2,19 @@ package com.homeassistant.adapter.outbound.persistence.repo.finance
 
 import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.FinanceTransactionTable
+import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
+import org.jetbrains.exposed.sql.LikePattern
+import org.jetbrains.exposed.sql.Op
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
+import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.selectAll
 import java.time.Instant
@@ -45,20 +52,28 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
         saved
     }
 
-    override fun findByOwnerOccurredBetween(
-        ownerId: UserId,
-        from: LocalDateTime,
-        to: LocalDateTime,
-    ): List<FinanceTransaction> = db.read {
+    override fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction> = db.read {
         FinanceTransactionTable.selectAll()
-            .where {
-                (FinanceTransactionTable.userId eq ownerId.value) and
-                    (FinanceTransactionTable.occurredAt greaterEq from.toEpochMillis()) and
-                    (FinanceTransactionTable.occurredAt less to.toEpochMillis())
-            }
+            .where { matching(criteria) }
             .orderBy(FinanceTransactionTable.occurredAt)
             .map { it.toFinanceTransaction() }
     }
+
+    /** The SQL condition of [criteria]; a criterion that is not given adds no condition. */
+    private fun matching(criteria: FinanceTransactionCriteria): Op<Boolean> =
+        listOfNotNull(
+            FinanceTransactionTable.userId eq criteria.ownerId.value,
+            FinanceTransactionTable.occurredAt greaterEq criteria.from.toEpochMillis(),
+            FinanceTransactionTable.occurredAt less criteria.to.toEpochMillis(),
+            criteria.category?.let {
+                (FinanceTransactionTable.majorCategory eq it) or (FinanceTransactionTable.minorCategory eq it)
+            },
+            criteria.descriptionContains?.let { FinanceTransactionTable.description like containing(it) },
+        ).reduce(Op<Boolean>::and)
+
+    /** Matches text that contains [part] anywhere, with the wildcards in [part] taken literally. */
+    private fun containing(part: String): LikePattern =
+        LikePattern("%", ESCAPE) + LikePattern.ofLiteral(part, ESCAPE) + "%"
 
     private fun ResultRow.toFinanceTransaction(): FinanceTransaction = FinanceTransaction(
         ownerId = UserId(this[FinanceTransactionTable.userId]),
@@ -80,5 +95,8 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
     private companion object {
         /** The zone of [FinanceTransaction.occurredAt]. */
         val LEDGER_ZONE: ZoneId = ZoneId.of("Asia/Seoul")
+
+        /** Escapes the wildcards of a description filter so that they match literally. */
+        const val ESCAPE = '\\'
     }
 }

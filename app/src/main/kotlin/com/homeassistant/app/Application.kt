@@ -60,6 +60,7 @@ fun Application.module() {
             chat = services.chat,
             importFinanceTransactions = services.importFinanceTransactions,
             searchMemory = services.searchMemory,
+            findTransactions = services.findTransactions,
             readiness = { services.isReady },
         )
     } catch (failure: Exception) {

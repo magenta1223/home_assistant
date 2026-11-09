@@ -41,6 +41,7 @@ object ApplicationServicesFactory {
             authentication = identity.authentication,
             importFinanceTransactions = finance.importTransactions,
             searchMemory = chat.searchMemory,
+            findTransactions = chat.findTransactions,
             runtimes = embeddings.runtimes + memoryExtraction.runtimes + chat.runtimes,
         )
     }

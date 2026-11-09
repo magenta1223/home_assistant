@@ -1,6 +1,8 @@
 package com.homeassistant.adapter.inbound.mcp
 
+import com.homeassistant.application.port.inbound.contexttool.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
+import com.homeassistant.application.port.inbound.contexttool.TransactionSearch
 import com.homeassistant.application.usecase.contexttool.ContextGrants
 import com.homeassistant.application.usecase.contexttool.SearchMemoryService
 import com.homeassistant.configuration.AppConfig
@@ -26,18 +28,56 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import java.time.Duration
+import java.time.LocalDate
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
 class ContextToolServerTest {
     @Test
-    fun `search_memory is listed as a tool`() = testApplication {
+    fun `search_memory and find_transactions are listed as tools`() = testApplication {
         application { serve(RecordingSearch()) }
 
         val tools = rpc("tools/list", "{}", token = "turn-token").result()["tools"]!!.jsonArray
 
-        assertEquals(listOf("search_memory"), tools.map { it.jsonObject["name"]!!.jsonPrimitive.content })
+        assertEquals(
+            listOf("search_memory", "find_transactions"),
+            tools.map { it.jsonObject["name"]!!.jsonPrimitive.content },
+        )
+    }
+
+    @Test
+    fun `find_transactions searches the given days with the bearer context token`() = testApplication {
+        val transactions = RecordingTransactions()
+        application { serve(RecordingSearch(), transactions) }
+
+        val result = rpc(
+            "tools/call",
+            """{"name":"find_transactions","arguments":{"from":"2026-11-01","to":"2026-11-30","category":"식비"}}""",
+            token = "turn-token",
+        ).result()
+
+        assertEquals(
+            listOf("turn-token" to TransactionSearch(LocalDate.of(2026, 11, 1), LocalDate.of(2026, 11, 30), "식비")),
+            transactions.calls,
+        )
+        assertEquals("2 found", result.text())
+    }
+
+    @Test
+    fun `find_transactions with a malformed date gets a tool error`() = testApplication {
+        val transactions = RecordingTransactions()
+        application { serve(RecordingSearch(), transactions) }
+
+        val result = rpc(
+            "tools/call",
+            """{"name":"find_transactions","arguments":{"from":"11월 1일","to":"2026-11-30"}}""",
+            token = "turn-token",
+        ).result()
+
+        assertEquals(true, result["isError"]!!.jsonPrimitive.boolean)
+        assertEquals("from must be a date as YYYY-MM-DD", result.text())
+        assertTrue(transactions.calls.isEmpty())
     }
 
     @Test
@@ -71,10 +111,13 @@ class ContextToolServerTest {
         assertEquals("context access expired", result.text())
     }
 
-    /** Serves [searchMemory] the way the application module does, with its JSON content negotiation. */
-    private fun Application.serve(searchMemory: SearchMemory) {
+    /** Serves the context tools the way the application module does, with its JSON content negotiation. */
+    private fun Application.serve(
+        searchMemory: SearchMemory,
+        findTransactions: FindTransactions = RecordingTransactions(),
+    ) {
         install(ContentNegotiation) { json(JsonSerializer.json) }
-        contextToolServer(searchMemory)
+        contextToolServer(searchMemory, findTransactions)
     }
 
     private suspend fun ApplicationTestBuilder.rpc(method: String, params: String, token: String): HttpResponse =
@@ -98,6 +141,16 @@ class ContextToolServerTest {
         override fun search(contextToken: String, query: String): String {
             calls += contextToken to query
             return "reference for $query"
+        }
+    }
+
+    /** Answers every search with how many transactions it found. */
+    private class RecordingTransactions : FindTransactions {
+        val calls = mutableListOf<Pair<String, TransactionSearch>>()
+
+        override fun find(contextToken: String, search: TransactionSearch): String {
+            calls += contextToken to search
+            return "2 found"
         }
     }
 }

@@ -28,8 +28,9 @@ object ChatPromptBuilder {
         buildString {
             appendLine("Answer the user's question concisely in Korean.")
             appendLine(
-                "Look up what you need with the search_memory tool before answering; search again with other " +
-                    "words when the first results do not cover the question. Use only facts the tools returned. " +
+                "Look up what you need with the tools before answering: search_memory for stored household " +
+                    "memory, find_transactions for spending, income and other money movements. Search again with " +
+                    "other words when the first results do not cover the question. Use only facts the tools returned. " +
                     "If they are insufficient, say that the stored episodes do not contain the answer.",
             )
             appendTimeGuidance(contextName = "the tool results")

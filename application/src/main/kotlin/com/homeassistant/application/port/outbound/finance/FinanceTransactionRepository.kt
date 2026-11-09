@@ -15,6 +15,19 @@ interface FinanceTransactionRepository {
      */
     fun save(transactions: List<FinanceTransaction>): List<FinanceTransaction>
 
-    /** The transactions of [ownerId] that occurred at or after [from] and before [to], oldest first. */
-    fun findByOwnerOccurredBetween(ownerId: UserId, from: LocalDateTime, to: LocalDateTime): List<FinanceTransaction>
+    /** The transactions matching [criteria], oldest first. */
+    fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction>
 }
+
+/**
+ * Which transactions of [ownerId] to find: those that occurred at or after [from] and before [to], only those whose
+ * major or minor category is [category] when it is given, and only those whose description contains
+ * [descriptionContains] when it is given.
+ */
+data class FinanceTransactionCriteria(
+    val ownerId: UserId,
+    val from: LocalDateTime,
+    val to: LocalDateTime,
+    val category: String? = null,
+    val descriptionContains: String? = null,
+)

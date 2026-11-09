@@ -1,5 +1,6 @@
 package com.homeassistant.application.usecase.finance
 
+import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
@@ -15,7 +16,7 @@ class ImportFinanceTransactionsServiceTest {
         val savedCount = ImportFinanceTransactionsService(ledger).import(listOf(LUNCH, LUNCH))
 
         assertEquals(1, savedCount)
-        assertEquals(listOf(LUNCH), ledger.findByOwnerOccurredBetween(OWNER, NOVEMBER_START, DECEMBER_START))
+        assertEquals(listOf(LUNCH), ledger.findMatching(FinanceTransactionCriteria(OWNER, NOVEMBER_START, DECEMBER_START)))
     }
 
     @Test
@@ -40,13 +41,9 @@ class ImportFinanceTransactionsServiceTest {
             return saved.values.toList()
         }
 
-        override fun findByOwnerOccurredBetween(
-            ownerId: UserId,
-            from: LocalDateTime,
-            to: LocalDateTime,
-        ): List<FinanceTransaction> =
+        override fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction> =
             stored.values
-                .filter { it.ownerId == ownerId && it.occurredAt >= from && it.occurredAt < to }
+                .filter { it.ownerId == criteria.ownerId && it.occurredAt >= criteria.from && it.occurredAt < criteria.to }
                 .sortedBy { it.occurredAt }
     }
 

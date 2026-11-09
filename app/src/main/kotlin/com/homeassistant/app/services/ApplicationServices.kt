@@ -4,6 +4,7 @@ import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
 import com.homeassistant.application.port.inbound.chatservice.Chat
+import com.homeassistant.application.port.inbound.contexttool.ContextAccess
 import com.homeassistant.application.port.inbound.contexttool.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
@@ -22,6 +23,8 @@ class ApplicationServices internal constructor(
     val authentication: UserAuthentication = UserAuthentication.NONE,
     /** Imports household finance ledgers. */
     val importFinanceTransactions: ImportFinanceTransactions? = null,
+    /** Whose context an agent's context token reads, or null when chats receive their context up front. */
+    val contextAccess: ContextAccess? = null,
     /** Searches stored memory for an agent during a chat turn, or null when chats receive their context up front. */
     val searchMemory: SearchMemory? = null,
     /** Finds transactions for an agent during a chat turn, or null when chats receive their context up front. */

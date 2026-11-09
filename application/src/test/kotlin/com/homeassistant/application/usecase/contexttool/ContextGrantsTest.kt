@@ -1,6 +1,5 @@
 package com.homeassistant.application.usecase.contexttool
 
-import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
 import com.homeassistant.domain.identity.UserId
 import java.time.Clock
 import java.time.Duration
@@ -9,8 +8,8 @@ import java.time.ZoneId
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertNotEquals
+import kotlin.test.assertNull
 
 class ContextGrantsTest {
     @Test
@@ -25,7 +24,7 @@ class ContextGrantsTest {
 
         grants.revoke(member)
 
-        assertFailsWith<ContextAccessExpiredException> { grants.ownerOf(member) }
+        assertNull(grants.ownerOf(member))
         assertEquals(OTHER, grants.ownerOf(other))
     }
 
@@ -39,12 +38,12 @@ class ContextGrantsTest {
         assertEquals(MEMBER, grants.ownerOf(token))
 
         clock.millis = NOW + LIFETIME.toMillis()
-        assertFailsWith<ContextAccessExpiredException> { grants.ownerOf(token) }
+        assertNull(grants.ownerOf(token))
     }
 
     @Test
     fun `a token that was never issued stands for no one`() {
-        assertFailsWith<ContextAccessExpiredException> { ContextGrants(LIFETIME).ownerOf("unknown") }
+        assertNull(ContextGrants(LIFETIME).ownerOf("unknown"))
     }
 
     /** A clock the test moves forward. */

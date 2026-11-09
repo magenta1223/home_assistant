@@ -4,6 +4,7 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalys
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.chatservice.Chat
+import com.homeassistant.application.port.inbound.contexttool.ContextAccess
 import com.homeassistant.application.port.inbound.contexttool.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.adapter.inbound.mcp.contextToolServer
@@ -21,6 +22,7 @@ fun Application.configureRoutes(
     authentication: UserAuthentication = UserAuthentication.NONE,
     chat: Chat? = null,
     importFinanceTransactions: ImportFinanceTransactions? = null,
+    contextAccess: ContextAccess? = null,
     searchMemory: SearchMemory? = null,
     findTransactions: FindTransactions? = null,
     readiness: () -> Boolean = { true },
@@ -40,7 +42,9 @@ fun Application.configureRoutes(
         }
     }
     // Context tools authenticate with the per-turn context token instead of a user login.
-    if (searchMemory != null && findTransactions != null) contextToolServer(searchMemory, findTransactions)
+    if (contextAccess != null && searchMemory != null && findTransactions != null) {
+        contextToolServer(contextAccess, searchMemory, findTransactions)
+    }
 }
 
 private fun validateHttpUsers(

@@ -1,12 +1,18 @@
 package com.homeassistant.adapter.inbound.mcp
 
-import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
+import com.homeassistant.application.port.inbound.contexttool.ContextAccess
 import com.homeassistant.application.port.inbound.contexttool.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.application.port.inbound.contexttool.TransactionSearch
 import com.homeassistant.configuration.AppConfig
+import com.homeassistant.domain.identity.UserId
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.Application
+import io.ktor.server.application.ApplicationCallPipeline
+import io.ktor.server.request.path
+import io.ktor.server.response.respond
+import io.ktor.util.AttributeKey
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
 import io.modelcontextprotocol.kotlin.sdk.server.mcpStatelessStreamableHttp
@@ -30,17 +36,40 @@ import java.time.format.DateTimeParseException
 /**
  * Serves the context tools an agent calls while it answers, over MCP Streamable HTTP at
  * [AppConfig.ROUTE_CONTEXT_TOOLS]. Each request is answered statelessly as the user its bearer context token was
- * issued for; the agent cannot name a user, and a request without a valid token gets a tool error.
+ * issued for, so the agent cannot name a user; a request without a valid token is rejected with 401 before any MCP
+ * message is read.
  */
-fun Application.contextToolServer(searchMemory: SearchMemory, findTransactions: FindTransactions) {
+fun Application.contextToolServer(
+    contextAccess: ContextAccess,
+    searchMemory: SearchMemory,
+    findTransactions: FindTransactions,
+) {
+    authenticateContextOwner(contextAccess)
     mcpStatelessStreamableHttp(path = AppConfig.ROUTE_CONTEXT_TOOLS) {
-        val contextToken = call.request.headers[HttpHeaders.Authorization].orEmpty().removePrefix(BEARER)
-        toolsFor(contextToken, searchMemory, findTransactions)
+        toolsFor(call.attributes[CONTEXT_OWNER], searchMemory, findTransactions)
     }
 }
 
-/** The tools answering as the user of [contextToken]. */
-private fun toolsFor(contextToken: String, searchMemory: SearchMemory, findTransactions: FindTransactions): Server =
+/**
+ * Resolves the owner of each context tool request's bearer token and keeps it on the call. The MCP SDK serves its own
+ * route, so the check runs as a call interceptor instead of a Ktor authentication provider.
+ */
+private fun Application.authenticateContextOwner(contextAccess: ContextAccess) {
+    intercept(ApplicationCallPipeline.Plugins) {
+        if (context.request.path() != AppConfig.ROUTE_CONTEXT_TOOLS) return@intercept
+        val contextToken = context.request.headers[HttpHeaders.Authorization]?.removePrefix(BEARER)
+        val owner = contextToken?.let(contextAccess::ownerOf)
+        if (owner == null) {
+            context.respond(HttpStatusCode.Unauthorized)
+            finish()
+            return@intercept
+        }
+        context.attributes.put(CONTEXT_OWNER, owner)
+    }
+}
+
+/** The tools answering as [owner]. */
+private fun toolsFor(owner: UserId, searchMemory: SearchMemory, findTransactions: FindTransactions): Server =
     Server(
         Implementation(name = SERVER_NAME, version = SERVER_VERSION),
         ServerOptions(capabilities = ServerCapabilities(tools = ServerCapabilities.Tools(listChanged = false))),
@@ -56,7 +85,7 @@ private fun toolsFor(contextToken: String, searchMemory: SearchMemory, findTrans
         ) { request ->
             val query = request.stringArgument(QUERY)
                 ?: return@addTool toolError("$QUERY is required")
-            answerAsContextOwner { searchMemory.search(contextToken, query) }
+            textResult { searchMemory.search(owner, query) }
         }
         addTool(
             name = FIND_TRANSACTIONS,
@@ -77,7 +106,7 @@ private fun toolsFor(contextToken: String, searchMemory: SearchMemory, findTrans
             } catch (error: IllegalArgumentException) {
                 return@addTool toolError(error.message ?: "invalid arguments")
             }
-            answerAsContextOwner { findTransactions.find(contextToken, search) }
+            textResult { findTransactions.find(owner, search) }
         }
     }
 
@@ -103,13 +132,9 @@ private fun CallToolRequest.dateArgument(name: String): LocalDate {
     }
 }
 
-/** Runs a blocking [lookup] and returns its text, or a tool error when the context token no longer grants access. */
-private suspend fun answerAsContextOwner(lookup: () -> String): CallToolResult =
-    try {
-        CallToolResult(content = listOf(TextContent(withContext(Dispatchers.IO) { lookup() })))
-    } catch (error: ContextAccessExpiredException) {
-        toolError(error.message ?: "context access expired")
-    }
+/** Runs a blocking [lookup] off the request thread and returns its text. */
+private suspend fun textResult(lookup: () -> String): CallToolResult =
+    CallToolResult(content = listOf(TextContent(withContext(Dispatchers.IO) { lookup() })))
 
 private fun CallToolRequest.stringArgument(name: String): String? =
     arguments?.get(name)?.jsonPrimitive?.contentOrNull?.trim()?.takeIf(String::isNotEmpty)
@@ -123,6 +148,7 @@ private fun JsonObjectBuilder.string(name: String, description: String) {
 
 private fun toolError(message: String) = CallToolResult(content = listOf(TextContent(message)), isError = true)
 
+private val CONTEXT_OWNER = AttributeKey<UserId>("ContextOwner")
 private const val BEARER = "Bearer "
 private const val SERVER_NAME = "home"
 private const val SERVER_VERSION = "1"

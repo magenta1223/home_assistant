@@ -1,6 +1,6 @@
 package com.homeassistant.application.usecase.contexttool
 
-import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
+import com.homeassistant.application.port.inbound.contexttool.ContextAccess
 import com.homeassistant.domain.identity.UserId
 import java.security.SecureRandom
 import java.time.Clock
@@ -16,7 +16,7 @@ import java.util.concurrent.ConcurrentHashMap
 class ContextGrants(
     private val lifetime: Duration,
     private val clock: Clock = Clock.systemUTC(),
-) {
+) : ContextAccess {
     private val grants = ConcurrentHashMap<String, Grant>()
 
     /** A new token that reads [userId]'s context until it is revoked or [lifetime] passes. */
@@ -33,13 +33,8 @@ class ContextGrants(
         grants.remove(token)
     }
 
-    /**
-     * The user [token] was issued for.
-     *
-     * @throws ContextAccessExpiredException when [token] is unknown, revoked or expired.
-     */
-    fun ownerOf(token: String): UserId =
-        grants[token]?.takeUnless { it.isExpiredAt(clock.millis()) }?.userId ?: throw ContextAccessExpiredException()
+    override fun ownerOf(contextToken: String): UserId? =
+        grants[contextToken]?.takeUnless { it.isExpiredAt(clock.millis()) }?.userId
 
     private fun newToken(): String {
         val bytes = ByteArray(TOKEN_BYTES).also(SecureRandom()::nextBytes)

@@ -5,15 +5,15 @@ import com.homeassistant.application.port.inbound.contexttool.TransactionSearch
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
+import com.homeassistant.domain.identity.UserId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Finds a context token owner's transactions in [transactions] and reports them as text: the totals per currency over
- * every match, then the first [maxListed] matches.
+ * Finds a user's transactions in [transactions] and reports them as text: the totals per currency over every match,
+ * then the first [maxListed] matches.
  */
 class FindTransactionsService(
-    private val grants: ContextGrants,
     private val transactions: FinanceTransactionRepository,
     private val maxListed: Int = DEFAULT_MAX_LISTED,
 ) : FindTransactions {
@@ -21,13 +21,13 @@ class FindTransactionsService(
         require(maxListed > 0) { "maxListed must be positive" }
     }
 
-    override fun find(contextToken: String, search: TransactionSearch): String {
-        val matches = transactions.findMatching(criteria(search, contextToken))
+    override fun find(userId: UserId, search: TransactionSearch): String {
+        val matches = transactions.findMatching(criteria(userId, search))
         return report(search, matches)
     }
 
-    private fun criteria(search: TransactionSearch, contextToken: String) = FinanceTransactionCriteria(
-        ownerId = grants.ownerOf(contextToken),
+    private fun criteria(userId: UserId, search: TransactionSearch) = FinanceTransactionCriteria(
+        ownerId = userId,
         from = search.from.atStartOfDay(),
         to = search.to.plusDays(1).atStartOfDay(),
         category = search.category,

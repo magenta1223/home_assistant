@@ -1,15 +1,12 @@
 package com.homeassistant.application.port.inbound.contexttool
 
+import com.homeassistant.domain.identity.UserId
 import java.time.LocalDate
 
-/** Lets an agent look up household finance transactions while it answers, as the user its context token stands for. */
+/** Lets an agent look up household finance transactions while it answers a user. */
 fun interface FindTransactions {
-    /**
-     * That user's transactions matching [search], listed oldest first with their total per currency, as text.
-     *
-     * @throws ContextAccessExpiredException when [contextToken] was never issued, was revoked or has expired.
-     */
-    fun find(contextToken: String, search: TransactionSearch): String
+    /** The transactions of [userId] matching [search], listed oldest first with their total per currency, as text. */
+    fun find(userId: UserId, search: TransactionSearch): String
 }
 
 /**

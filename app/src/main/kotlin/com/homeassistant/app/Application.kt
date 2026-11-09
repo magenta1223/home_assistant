@@ -59,6 +59,7 @@ fun Application.module() {
             authentication = services.authentication,
             chat = services.chat,
             importFinanceTransactions = services.importFinanceTransactions,
+            contextAccess = services.contextAccess,
             searchMemory = services.searchMemory,
             findTransactions = services.findTransactions,
             readiness = { services.isReady },

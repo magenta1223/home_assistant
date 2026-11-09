@@ -2,7 +2,6 @@ package com.homeassistant.application.usecase.episode.chat
 
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
-import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
@@ -25,7 +24,6 @@ import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -215,7 +213,7 @@ class ChatServiceTest {
         val grants = ContextGrants(Duration.ofMinutes(10), FIXED_CLOCK)
         val ownersDuringTurn = mutableListOf<UserId>()
         val client = RecordingChatGateway(
-            onTurn = { turn -> ownersDuringTurn += grants.ownerOf(assertIs<ChatTurn.WithContextTools>(turn).contextToken) },
+            onTurn = { turn -> ownersDuringTurn += grants.ownerOf(assertIs<ChatTurn.WithContextTools>(turn).contextToken)!! },
         )
         val handler = ChatService(RecordingSessionStore(), ChatContextDelivery.OnRequest(grants), client, FIXED_CLOCK)
 
@@ -225,7 +223,7 @@ class ChatServiceTest {
         assertEquals(listOf(USER_ID), ownersDuringTurn)
         assertTrue(turn.prompt.contains("search_memory"))
         assertTrue(turn.prompt.contains("question"))
-        assertFailsWith<ContextAccessExpiredException> { grants.ownerOf(turn.contextToken) }
+        assertNull(grants.ownerOf(turn.contextToken))
     }
 
     @Test
@@ -237,7 +235,7 @@ class ChatServiceTest {
         assertEquals(ChatResult.Failed, handler.answer(REQUEST))
 
         val token = assertIs<ChatTurn.WithContextTools>(client.executedTurn).contextToken
-        assertFailsWith<ContextAccessExpiredException> { grants.ownerOf(token) }
+        assertNull(grants.ownerOf(token))
     }
 
     private fun handler(

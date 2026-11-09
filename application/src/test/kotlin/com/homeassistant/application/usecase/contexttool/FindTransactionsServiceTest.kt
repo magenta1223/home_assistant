@@ -1,26 +1,21 @@
 package com.homeassistant.application.usecase.contexttool
 
-import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
 import com.homeassistant.application.port.inbound.contexttool.TransactionSearch
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
 import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
-import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFailsWith
 
 class FindTransactionsServiceTest {
     @Test
-    fun `the token owner's transactions in the given days are reported with their totals per currency`() {
-        val grants = ContextGrants(Duration.ofMinutes(10))
+    fun `the user's transactions in the given days are reported with their totals per currency`() {
         val ledger = CriteriaRecordingLedger(listOf(LUNCH, DINNER, LUNCH.copy(amount = -12, currency = "USD")))
-        val service = FindTransactionsService(grants, ledger)
 
-        val report = service.find(grants.issue(MEMBER), TransactionSearch(NOV_1, NOV_30, category = "식비"))
+        val report = FindTransactionsService(ledger).find(MEMBER, TransactionSearch(NOV_1, NOV_30, category = "식비"))
 
         assertEquals(
             FinanceTransactionCriteria(MEMBER, NOV_1.atStartOfDay(), NOV_30.plusDays(1).atStartOfDay(), "식비", null),
@@ -40,10 +35,9 @@ class FindTransactionsServiceTest {
 
     @Test
     fun `the total covers every match while the list stops at the limit`() {
-        val grants = ContextGrants(Duration.ofMinutes(10))
-        val service = FindTransactionsService(grants, CriteriaRecordingLedger(listOf(LUNCH, DINNER)), maxListed = 1)
+        val service = FindTransactionsService(CriteriaRecordingLedger(listOf(LUNCH, DINNER)), maxListed = 1)
 
-        val report = service.find(grants.issue(MEMBER), TransactionSearch(NOV_1, NOV_30))
+        val report = service.find(MEMBER, TransactionSearch(NOV_1, NOV_30))
 
         assertEquals(
             """
@@ -58,21 +52,11 @@ class FindTransactionsServiceTest {
 
     @Test
     fun `no match is reported as such`() {
-        val grants = ContextGrants(Duration.ofMinutes(10))
-        val service = FindTransactionsService(grants, CriteriaRecordingLedger(emptyList()))
+        val service = FindTransactionsService(CriteriaRecordingLedger(emptyList()))
 
-        val report = service.find(grants.issue(MEMBER), TransactionSearch(NOV_1, NOV_30, merchant = "스타벅스"))
+        val report = service.find(MEMBER, TransactionSearch(NOV_1, NOV_30, merchant = "스타벅스"))
 
         assertEquals("Transactions from 2026-11-01 to 2026-11-30, description containing 스타벅스: 0 found.", report)
-    }
-
-    @Test
-    fun `an unknown token finds nothing`() {
-        val ledger = CriteriaRecordingLedger(listOf(LUNCH))
-        val service = FindTransactionsService(ContextGrants(Duration.ofMinutes(10)), ledger)
-
-        assertFailsWith<ContextAccessExpiredException> { service.find("unknown", TransactionSearch(NOV_1, NOV_30)) }
-        assertEquals(emptyList(), ledger.criteria)
     }
 
     /** Returns [matches] for any criteria and keeps the criteria it was asked for. */

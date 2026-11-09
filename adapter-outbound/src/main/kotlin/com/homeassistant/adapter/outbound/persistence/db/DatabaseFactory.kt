@@ -49,6 +49,7 @@ internal object DatabaseFactory {
                 UserTable,
                 UserCredentialTable,
                 UserSessionTable,
+                FinanceTransactionTable,
             )
         }
         val readerConfig = readerConfig()

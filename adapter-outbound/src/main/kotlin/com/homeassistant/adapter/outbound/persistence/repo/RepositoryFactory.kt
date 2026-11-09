@@ -12,6 +12,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAs
 import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.finance.FinanceTransactionRepositoryImpl
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
@@ -28,6 +29,7 @@ object RepositoryFactory {
             chatSessions = ChatSessionRepositoryImpl(db),
             users = UserRepositoryImpl(db),
             userSessions = UserSessionRepositoryImpl(db),
+            financeTransactions = FinanceTransactionRepositoryImpl(db),
         )
     }
 }

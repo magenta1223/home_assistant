@@ -11,6 +11,7 @@ import com.homeassistant.application.port.outbound.memoryextraction.component.Co
 import com.homeassistant.application.port.outbound.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.memoryextraction.group.GroupRepository
+import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,
@@ -24,4 +25,5 @@ data class RepositoryStores(
     val chatSessions: ChatSessionRepository,
     val users: UserRepository,
     val userSessions: UserSessionRepository,
+    val financeTransactions: FinanceTransactionRepository,
 )

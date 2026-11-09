@@ -22,4 +22,5 @@ object AppConfig {
     const val ROUTE_KNOWLEDGE_IMPORT_JOB = "/api/knowledge/import/jobs/{jobId}"
     const val ROUTE_EPISODE_CONVERSATION = "/api/episode/conversation"
     const val ROUTE_FINANCE_IMPORT = "/api/finance/import"
+    const val ROUTE_CONTEXT_TOOLS = "/mcp"
 }

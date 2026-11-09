@@ -1,0 +1,79 @@
+package com.homeassistant.adapter.inbound.mcp
+
+import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
+import com.homeassistant.application.port.inbound.contexttool.SearchMemory
+import com.homeassistant.configuration.AppConfig
+import io.ktor.http.HttpHeaders
+import io.ktor.server.application.Application
+import io.modelcontextprotocol.kotlin.sdk.server.Server
+import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
+import io.modelcontextprotocol.kotlin.sdk.server.mcpStatelessStreamableHttp
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolRequest
+import io.modelcontextprotocol.kotlin.sdk.types.CallToolResult
+import io.modelcontextprotocol.kotlin.sdk.types.Implementation
+import io.modelcontextprotocol.kotlin.sdk.types.ServerCapabilities
+import io.modelcontextprotocol.kotlin.sdk.types.TextContent
+import io.modelcontextprotocol.kotlin.sdk.types.ToolSchema
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonObject
+
+/**
+ * Serves the context tools an agent calls while it answers, over MCP Streamable HTTP at
+ * [AppConfig.ROUTE_CONTEXT_TOOLS]. Each request is answered statelessly as the user its bearer context token was
+ * issued for; the agent cannot name a user, and a request without a valid token gets a tool error.
+ */
+fun Application.contextToolServer(searchMemory: SearchMemory) {
+    mcpStatelessStreamableHttp(path = AppConfig.ROUTE_CONTEXT_TOOLS) {
+        contextTools(call.request.headers[HttpHeaders.Authorization].orEmpty().removePrefix(BEARER), searchMemory)
+    }
+}
+
+/** The tools answering as the user of [contextToken]. */
+private fun contextTools(contextToken: String, searchMemory: SearchMemory): Server =
+    Server(
+        Implementation(name = SERVER_NAME, version = SERVER_VERSION),
+        ServerOptions(capabilities = ServerCapabilities(tools = ServerCapabilities.Tools(listChanged = false))),
+    ) {
+        addTool(
+            name = SEARCH_MEMORY,
+            description = "Searches the household's stored memory (long-term facts and saved episodes) the user " +
+                "may read. Returns matching facts and episodes with the time each episode was saved.",
+            inputSchema = ToolSchema(
+                properties = buildJsonObject {
+                    putJsonObject(QUERY) {
+                        put("type", "string")
+                        put("description", "What to look for, in the user's language.")
+                    }
+                },
+                required = listOf(QUERY),
+            ),
+        ) { request ->
+            val query = request.stringArgument(QUERY)
+                ?: return@addTool toolError("$QUERY is required")
+            answerAsContextOwner { searchMemory.search(contextToken, query) }
+        }
+    }
+
+/** Runs a blocking [lookup] and returns its text, or a tool error when the context token no longer grants access. */
+private suspend fun answerAsContextOwner(lookup: () -> String): CallToolResult =
+    try {
+        CallToolResult(content = listOf(TextContent(withContext(Dispatchers.IO) { lookup() })))
+    } catch (error: ContextAccessExpiredException) {
+        toolError(error.message ?: "context access expired")
+    }
+
+private fun CallToolRequest.stringArgument(name: String): String? =
+    arguments?.get(name)?.jsonPrimitive?.contentOrNull?.trim()?.takeIf(String::isNotEmpty)
+
+private fun toolError(message: String) = CallToolResult(content = listOf(TextContent(message)), isError = true)
+
+private const val BEARER = "Bearer "
+private const val SERVER_NAME = "home"
+private const val SERVER_VERSION = "1"
+private const val SEARCH_MEMORY = "search_memory"
+private const val QUERY = "query"

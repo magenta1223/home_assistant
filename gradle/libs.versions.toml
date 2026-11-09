@@ -11,6 +11,7 @@ logback = "1.5.12"
 mockk = "1.13.13"
 dotenv = "6.4.1"
 pdfbox = "3.0.8"
+poi = "5.4.1"
 
 [libraries]
 # Ktor server
@@ -47,6 +48,7 @@ kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test" }
 dotenv-kotlin = { module = "io.github.cdimascio:dotenv-kotlin", version.ref = "dotenv" }
 
 pdfbox = { module = "org.apache.pdfbox:pdfbox", version.ref = "pdfbox" }
+poi-ooxml = { module = "org.apache.poi:poi-ooxml", version.ref = "poi" }
 
 # Testing
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }

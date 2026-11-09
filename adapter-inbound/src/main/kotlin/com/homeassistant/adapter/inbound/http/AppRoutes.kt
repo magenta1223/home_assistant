@@ -4,6 +4,7 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalys
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.chatservice.Chat
+import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
@@ -16,6 +17,7 @@ fun Application.configureRoutes(
     users: UserRegistry = UserRegistry.NONE,
     authentication: UserAuthentication = UserAuthentication.NONE,
     chat: Chat? = null,
+    importFinanceTransactions: ImportFinanceTransactions? = null,
     readiness: () -> Boolean = { true },
 ) {
     validateHttpUsers(httpApiKeys.values, users)
@@ -29,6 +31,7 @@ fun Application.configureRoutes(
             sessionStatusRoute()
             knowledgeInjectionRoutes(episodeAnalysis, users)
             chatRoutes(chat)
+            financeImportRoutes(importFinanceTransactions)
         }
     }
 }

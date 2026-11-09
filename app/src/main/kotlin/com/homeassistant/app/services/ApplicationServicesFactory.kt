@@ -33,11 +33,13 @@ object ApplicationServicesFactory {
             componentEmbeddings = embeddings.componentEmbeddings,
             accessPolicy = identity.users,
         )
+        val finance = FinanceModule(repositories)
         return ApplicationServices(
             episodeAnalysis = memoryExtraction.episodeAnalysis,
             chat = chat.chat,
             users = identity.users,
             authentication = identity.authentication,
+            importFinanceTransactions = finance.importTransactions,
             runtimes = embeddings.runtimes + memoryExtraction.runtimes + chat.runtimes,
         )
     }

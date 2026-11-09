@@ -9,9 +9,9 @@ class ImportFinanceTransactionsService(
     private val financeTransactions: FinanceTransactionRepository,
 ) : ImportFinanceTransactions {
 
-    /** Saves [transactions]; an empty import writes nothing. */
-    override fun import(transactions: List<FinanceTransaction>) {
-        if (transactions.isEmpty()) return
-        financeTransactions.save(transactions)
+    /** Saves [transactions] and returns how many were saved; an empty import writes nothing. */
+    override fun import(transactions: List<FinanceTransaction>): Int {
+        if (transactions.isEmpty()) return 0
+        return financeTransactions.save(transactions).size
     }
 }

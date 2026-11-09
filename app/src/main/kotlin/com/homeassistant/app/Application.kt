@@ -58,6 +58,7 @@ fun Application.module() {
             users = services.users,
             authentication = services.authentication,
             chat = services.chat,
+            importFinanceTransactions = services.importFinanceTransactions,
             readiness = { services.isReady },
         )
     } catch (failure: Exception) {

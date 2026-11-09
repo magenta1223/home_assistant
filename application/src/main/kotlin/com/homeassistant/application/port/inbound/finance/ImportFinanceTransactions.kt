@@ -6,7 +6,8 @@ import com.homeassistant.domain.finance.FinanceTransaction
 fun interface ImportFinanceTransactions {
     /**
      * Stores [transactions] under their owners. A transaction imported before takes the submitted type, categories
-     * and memo; earlier transactions missing from [transactions] stay stored.
+     * and memo; earlier transactions missing from [transactions] stay stored. Returns how many distinct transactions
+     * were saved.
      */
-    fun import(transactions: List<FinanceTransaction>)
+    fun import(transactions: List<FinanceTransaction>): Int
 }

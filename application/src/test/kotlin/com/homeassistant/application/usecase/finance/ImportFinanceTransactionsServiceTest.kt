@@ -9,11 +9,12 @@ import kotlin.test.assertEquals
 
 class ImportFinanceTransactionsServiceTest {
     @Test
-    fun `imported transactions are found in their owner's ledger`() {
+    fun `imported transactions are counted once per key and found in their owner's ledger`() {
         val ledger = InMemoryLedger()
 
-        ImportFinanceTransactionsService(ledger).import(listOf(LUNCH))
+        val savedCount = ImportFinanceTransactionsService(ledger).import(listOf(LUNCH, LUNCH))
 
+        assertEquals(1, savedCount)
         assertEquals(listOf(LUNCH), ledger.findByOwnerOccurredBetween(OWNER, NOVEMBER_START, DECEMBER_START))
     }
 
@@ -21,8 +22,9 @@ class ImportFinanceTransactionsServiceTest {
     fun `an empty import writes nothing`() {
         val ledger = InMemoryLedger()
 
-        ImportFinanceTransactionsService(ledger).import(emptyList())
+        val savedCount = ImportFinanceTransactionsService(ledger).import(emptyList())
 
+        assertEquals(0, savedCount)
         assertEquals(0, ledger.saveCount)
     }
 

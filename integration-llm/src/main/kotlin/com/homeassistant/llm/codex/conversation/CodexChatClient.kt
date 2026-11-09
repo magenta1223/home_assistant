@@ -10,6 +10,7 @@ import com.homeassistant.llm.codex.transport.protocol.CODEX_JSON
 import com.homeassistant.llm.codex.transport.protocol.TextUserInput
 import com.homeassistant.llm.codex.transport.protocol.ThreadConfig
 import com.homeassistant.llm.ChatClient
+import com.homeassistant.llm.McpToolServer
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import com.homeassistant.infrastructure.runtime.RuntimeState
 import kotlinx.schema.generator.json.JsonSchemaConfig
@@ -123,7 +124,13 @@ internal class CodexChatClient(
         threadId
     }
 
-    override fun send(chatId: String, prompt: String): Result<String> = executeOperation("execute") { deadline ->
+    /** Codex turns take no tool server: Codex chats keep receiving their context inside [prompt]. */
+    override fun send(
+        chatId: String,
+        prompt: String,
+        toolServer: McpToolServer?,
+    ): Result<String> = executeOperation("execute") { deadline ->
+        if (toolServer != null) throw CodexChatException("TOOLS_UNSUPPORTED")
         if (!CODEX_THREAD_ID_PATTERN.matches(chatId)) {
             throw CodexChatException("INVALID_THREAD_ID")
         }

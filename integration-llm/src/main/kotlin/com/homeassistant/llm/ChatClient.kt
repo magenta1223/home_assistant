@@ -10,8 +10,11 @@ interface ChatClient : Runtime {
     /** Opens a conversation and returns its id. */
     fun openChat(): Result<String>
 
-    /** Sends one [prompt] to [chatId] and returns the answer; a failure's message names its category. */
-    fun send(chatId: String, prompt: String): Result<String>
+    /**
+     * Sends one [prompt] to [chatId] and returns the answer; a failure's message names its category. With
+     * [toolServer] the agent may call that server's tools during the turn and no other tool.
+     */
+    fun send(chatId: String, prompt: String, toolServer: McpToolServer? = null): Result<String>
 
     /** Closes [chatId], releasing what this client holds for it. */
     fun closeChat(chatId: String)

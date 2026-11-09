@@ -2,6 +2,7 @@ package com.homeassistant.application.usecase.episode.chat
 
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
+import com.homeassistant.application.port.inbound.contexttool.ContextAccessExpiredException
 import com.homeassistant.application.port.outbound.chatgateway.ChatGateway
 import com.homeassistant.application.port.outbound.chatgateway.ChatId
 import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
@@ -11,15 +12,20 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeacti
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
+import com.homeassistant.application.port.outbound.chatgateway.ChatTurn
 import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
+import com.homeassistant.application.usecase.chatservice.ChatContextDelivery
 import com.homeassistant.application.usecase.chatservice.ChatService
+import com.homeassistant.application.usecase.contexttool.ContextGrants
 import com.homeassistant.domain.identity.UserId
 import java.time.Clock
+import java.time.Duration
 import java.time.Instant
 import java.time.ZoneOffset
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -204,13 +210,43 @@ class ChatServiceTest {
         assertNull(store.findActiveByUser(USER_ID))
     }
 
+    @Test
+    fun `with context tools the provider gets a token for the user that ends with the turn`() {
+        val grants = ContextGrants(Duration.ofMinutes(10), FIXED_CLOCK)
+        val ownersDuringTurn = mutableListOf<UserId>()
+        val client = RecordingChatGateway(
+            onTurn = { turn -> ownersDuringTurn += grants.ownerOf(assertIs<ChatTurn.WithContextTools>(turn).contextToken) },
+        )
+        val handler = ChatService(RecordingSessionStore(), ChatContextDelivery.OnRequest(grants), client, FIXED_CLOCK)
+
+        assertEquals(ChatResult.AnswerReady("grounded answer"), handler.answer(REQUEST))
+
+        val turn = assertIs<ChatTurn.WithContextTools>(client.executedTurn)
+        assertEquals(listOf(USER_ID), ownersDuringTurn)
+        assertTrue(turn.prompt.contains("search_memory"))
+        assertTrue(turn.prompt.contains("question"))
+        assertFailsWith<ContextAccessExpiredException> { grants.ownerOf(turn.contextToken) }
+    }
+
+    @Test
+    fun `with context tools a failed turn still ends the token`() {
+        val grants = ContextGrants(Duration.ofMinutes(10), FIXED_CLOCK)
+        val client = RecordingChatGateway(turnResult = ChatGatewayResult.Failure)
+        val handler = ChatService(RecordingSessionStore(), ChatContextDelivery.OnRequest(grants), client, FIXED_CLOCK)
+
+        assertEquals(ChatResult.Failed, handler.answer(REQUEST))
+
+        val token = assertIs<ChatTurn.WithContextTools>(client.executedTurn).contextToken
+        assertFailsWith<ContextAccessExpiredException> { grants.ownerOf(token) }
+    }
+
     private fun handler(
         store: RecordingSessionStore,
         client: RecordingChatGateway,
         chatContext: (UserId, String) -> ChatContext,
     ) = ChatService(
         sessions = store,
-        contextSource = ContextSource(chatContext),
+        contextDelivery = ChatContextDelivery.Prefetch(ContextSource(chatContext)),
         chatGateway = client,
         clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     )
@@ -219,8 +255,10 @@ class ChatServiceTest {
         private val turnResult: ChatGatewayResult = ChatGatewayResult.Success("grounded answer"),
         private val createFailure: Exception? = null,
         private val events: MutableList<String>? = null,
+        private val onTurn: (ChatTurn) -> Unit = {},
     ) : ChatGateway {
         var executedPrompt: String? = null
+        var executedTurn: ChatTurn? = null
         var executedThreadId: String? = null
         val createdThreadIds = mutableListOf<String>()
         val executedThreadIds = mutableListOf<String>()
@@ -235,9 +273,11 @@ class ChatServiceTest {
             )
         }
 
-        override fun chat(chatId: ChatId, prompt: String): ChatGatewayResult {
+        override fun chat(chatId: ChatId, turn: ChatTurn): ChatGatewayResult {
             events?.add("continue")
-            executedPrompt = prompt
+            executedTurn = turn
+            onTurn(turn)
+            executedPrompt = turn.prompt
             executedThreadId = chatId.value
             executedThreadIds += chatId.value
             return turnResult
@@ -290,6 +330,7 @@ class ChatServiceTest {
 
     private companion object {
         const val NOW = 1_000_000L
+        val FIXED_CLOCK: Clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC)
         val USER_ID = UserId("member-1")
         val REQUEST = ChatRequest(USER_ID, "question")
     }

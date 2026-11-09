@@ -40,6 +40,7 @@ object ApplicationServicesFactory {
             users = identity.users,
             authentication = identity.authentication,
             importFinanceTransactions = finance.importTransactions,
+            searchMemory = chat.searchMemory,
             runtimes = embeddings.runtimes + memoryExtraction.runtimes + chat.runtimes,
         )
     }

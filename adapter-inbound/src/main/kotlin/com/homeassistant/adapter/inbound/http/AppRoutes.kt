@@ -4,6 +4,8 @@ import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalys
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.chatservice.Chat
+import com.homeassistant.adapter.inbound.mcp.contextToolServer
+import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
@@ -18,6 +20,7 @@ fun Application.configureRoutes(
     authentication: UserAuthentication = UserAuthentication.NONE,
     chat: Chat? = null,
     importFinanceTransactions: ImportFinanceTransactions? = null,
+    searchMemory: SearchMemory? = null,
     readiness: () -> Boolean = { true },
 ) {
     validateHttpUsers(httpApiKeys.values, users)
@@ -34,6 +37,8 @@ fun Application.configureRoutes(
             financeImportRoutes(importFinanceTransactions)
         }
     }
+    // Context tools authenticate with the per-turn context token instead of a user login.
+    searchMemory?.let(::contextToolServer)
 }
 
 private fun validateHttpUsers(

@@ -1,5 +1,6 @@
 package com.homeassistant.llm.claude.cli
 
+import com.homeassistant.llm.McpToolServer
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -32,6 +33,27 @@ class ClaudeCommandLineTest {
         assertEquals(
             listOf(
                 "claude", "--print", "--safe-mode", "--tools", "",
+                "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
+                "--model", "claude-opus-5-5", "--effort", "high", "--system-prompt-file", "system.txt",
+            ),
+            command,
+        )
+    }
+
+    @Test
+    fun `a call with a tool server loads only that server and allows only its tools`() {
+        val command = ClaudeCommandLine.headless(
+            "claude", "claude-opus-5-5", "high", "system.txt",
+            toolServer = McpToolServer("home", "http://127.0.0.1:8080/mcp", "turn-token"),
+        )
+
+        assertEquals(
+            listOf(
+                "claude", "--print", "--restricted", "--disable-slash-commands",
+                "--mcp-config",
+                """{"mcpServers":{"home":{"type":"http","url":"http://127.0.0.1:8080/mcp",""" +
+                    """"headers":{"Authorization":"Bearer turn-token"}}}}""",
+                "--strict-mcp-config", "--allowedTools", "mcp__home", "--tools", "",
                 "--input-format", "stream-json", "--output-format", "stream-json", "--verbose",
                 "--model", "claude-opus-5-5", "--effort", "high", "--system-prompt-file", "system.txt",
             ),

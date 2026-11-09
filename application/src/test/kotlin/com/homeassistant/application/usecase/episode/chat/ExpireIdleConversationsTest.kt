@@ -8,6 +8,7 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeacti
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
+import com.homeassistant.application.port.outbound.chatgateway.ChatTurn
 import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChatsService
 import com.homeassistant.domain.identity.UserId
@@ -43,7 +44,7 @@ class ExpireIdleConversationsTest {
     private class EndingClient : ChatGateway {
         val ended = mutableListOf<String>()
         override fun begin(): Result<ChatId> = error("unused")
-        override fun chat(chatId: ChatId, prompt: String): ChatGatewayResult = error("unused")
+        override fun chat(chatId: ChatId, turn: ChatTurn): ChatGatewayResult = error("unused")
         override fun end(chatId: ChatId) {
             ended += chatId.value
         }

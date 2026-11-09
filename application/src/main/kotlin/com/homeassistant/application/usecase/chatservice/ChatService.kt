@@ -12,21 +12,23 @@ import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeacti
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
+import com.homeassistant.application.port.outbound.chatgateway.ChatTurn
 import com.homeassistant.application.usecase.contextprovider.ChatContext
 import com.homeassistant.application.usecase.contextprovider.ContextSource
+import com.homeassistant.application.usecase.contexttool.ContextGrants
 import com.homeassistant.domain.identity.UserId
 import org.slf4j.LoggerFactory
 import java.time.Clock
 import java.time.Duration
 
 /**
- * Answers a question from the user's readable episodes in a provider conversation. The conversation is resumed
- * while the user was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise; a question with no
- * matching episode gets [NO_MATCH_ANSWER] without calling the provider.
+ * Answers a question from what the user can read, in a provider conversation. The conversation is resumed while the
+ * user was active within [SESSION_IDLE_TIMEOUT_MILLIS] and started anew otherwise. [contextDelivery] decides whether
+ * the reference is retrieved before the provider is called or the provider looks it up itself during the turn.
  */
 class ChatService(
     private val sessions: ChatSessionRepository,
-    private val contextSource: ContextSource,
+    private val contextDelivery: ChatContextDelivery,
     private val chatGateway: ChatGateway,
     private val clock: Clock = Clock.systemUTC(),
 ) : Chat {
@@ -34,17 +36,49 @@ class ChatService(
 
     override fun answer(request: ChatRequest): ChatResult {
         val activeSession = resumeActiveSession(request.userId)
-        val chatContext = retrieveContext(request) ?: return ChatResult.Failed
-        if (!chatContext.hasMatches) return ChatResult.AnswerReady(NO_MATCH_ANSWER)
-        val session = activeSession ?: createSession(request) ?: return ChatResult.Failed
-        return converse(session, ChatPromptBuilder.build(chatContext.reference, request.question))
+        return when (contextDelivery) {
+            is ChatContextDelivery.Prefetch -> answerFromReference(request, activeSession, contextDelivery.source)
+            is ChatContextDelivery.OnRequest -> answerWithContextTools(request, activeSession, contextDelivery.grants)
+        }
     }
 
-    /** The episodes matching [request]'s question, or null when the retrieval failed. */
-    private fun retrieveContext(request: ChatRequest): ChatContext? {
+    /**
+     * Answers from a reference retrieved first; a question with no matching entry gets [NO_MATCH_ANSWER] without
+     * calling the provider.
+     */
+    private fun answerFromReference(
+        request: ChatRequest,
+        activeSession: ChatSession?,
+        source: ContextSource,
+    ): ChatResult {
+        val chatContext = retrieveContext(request, source) ?: return ChatResult.Failed
+        if (!chatContext.hasMatches) return ChatResult.AnswerReady(NO_MATCH_ANSWER)
+        val session = activeSession ?: createSession(request) ?: return ChatResult.Failed
+        val prompt = ChatPromptBuilder.build(chatContext.reference, request.question)
+        return converse(session, ChatTurn.WithReference(prompt))
+    }
+
+    /** Lets the provider look up the user's context during the turn with a token that is revoked when the turn ends. */
+    private fun answerWithContextTools(
+        request: ChatRequest,
+        activeSession: ChatSession?,
+        grants: ContextGrants,
+    ): ChatResult {
+        val session = activeSession ?: createSession(request) ?: return ChatResult.Failed
+        val contextToken = grants.issue(request.userId)
+        val prompt = ChatPromptBuilder.buildWithContextTools(request.question)
+        return try {
+            converse(session, ChatTurn.WithContextTools(prompt, contextToken))
+        } finally {
+            grants.revoke(contextToken)
+        }
+    }
+
+    /** The reference matching [request]'s question, or null when the retrieval failed. */
+    private fun retrieveContext(request: ChatRequest, source: ContextSource): ChatContext? {
         val startedAt = System.nanoTime()
         val context = try {
-            contextSource.context(request.userId, request.question)
+            source.context(request.userId, request.question)
         } catch (error: Exception) {
             log.warn(
                 "Episode context retrieval failed category={} elapsedMs={}",
@@ -61,10 +95,10 @@ class ChatService(
         return context
     }
 
-    /** The provider's answer to [prompt] in [session]; the session is renewed on success and released on failure. */
-    private fun converse(session: ChatSession, prompt: String): ChatResult {
+    /** The provider's answer to [turn] in [session]; the session is renewed on success and released on failure. */
+    private fun converse(session: ChatSession, turn: ChatTurn): ChatResult {
         val startedAt = System.nanoTime()
-        val result = chatGateway.chat(session.chatId, prompt)
+        val result = chatGateway.chat(session.chatId, turn)
         log.info(
             "Latency stage=episode-conversation-turn elapsedMs={} result={}",
             elapsedMillis(startedAt),

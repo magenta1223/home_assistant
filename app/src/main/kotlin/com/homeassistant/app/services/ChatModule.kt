@@ -93,23 +93,12 @@ internal class ChatModule(
     )
 
     /**
-     * Reads [AppConfig.ENV_VAR_CHAT_CONTEXT_DELIVERY]: `prefetch` sends the retrieved reference with each question,
-     * `tools` lets the agent look context up itself. Only the Claude backend can call tools, so Codex always prefetches.
-     * An unknown value stops startup instead of silently using the default.
+     * Claude looks context up itself with the context tools; Codex cannot call them, so its chats receive the
+     * retrieved reference with each question.
      */
-    private fun contextDelivery(backend: AgentBackend): ChatContextDelivery {
-        val value = (Env[AppConfig.ENV_VAR_CHAT_CONTEXT_DELIVERY] ?: AppConfig.DEFAULT_CHAT_CONTEXT_DELIVERY).trim()
-        return when {
-            value.equals(PREFETCH, ignoreCase = true) -> ChatContextDelivery.Prefetch(memory)
-            !value.equals(TOOLS, ignoreCase = true) ->
-                error("Unknown ${AppConfig.ENV_VAR_CHAT_CONTEXT_DELIVERY}: $value (expected $PREFETCH or $TOOLS)")
-            backend == AgentBackend.CODEX -> {
-                LoggerFactory.getLogger(ChatModule::class.java)
-                    .warn("Codex cannot call context tools; chats receive their context up front")
-                ChatContextDelivery.Prefetch(memory)
-            }
-            else -> ChatContextDelivery.OnRequest(contextGrants)
-        }
+    private fun contextDelivery(backend: AgentBackend): ChatContextDelivery = when (backend) {
+        AgentBackend.CLAUDE -> ChatContextDelivery.OnRequest(contextGrants)
+        AgentBackend.CODEX -> ChatContextDelivery.Prefetch(memory)
     }
 
     private fun agentTimeout(): Duration = Duration.ofSeconds(
@@ -117,8 +106,6 @@ internal class ChatModule(
     )
 
     private companion object {
-        const val PREFETCH = "prefetch"
-        const val TOOLS = "tools"
         const val CONTEXT_TOOL_URL =
             "http://${AppConfig.DEFAULT_HOST}:${AppConfig.DEFAULT_PORT}${AppConfig.ROUTE_CONTEXT_TOOLS}"
     }

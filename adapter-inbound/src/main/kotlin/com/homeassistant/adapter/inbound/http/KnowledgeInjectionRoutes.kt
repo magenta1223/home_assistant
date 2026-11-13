@@ -106,9 +106,9 @@ internal fun Route.knowledgeInjectionRoutes(
         } catch (error: DuplicateSourceRecordsException) {
             call.respond(
                 HttpStatusCode.Conflict,
-                mapOf(
-                    "error" to "all source records have already been analyzed",
-                    "alreadyAnalyzedRecordCount" to error.recordCount,
+                AlreadyAnalyzedResponse(
+                    error = "all source records have already been analyzed",
+                    alreadyAnalyzedRecordCount = error.recordCount,
                 ),
             )
         } catch (error: SourceAccessConflictException) {
@@ -214,6 +214,12 @@ private data class KnowledgeImportResponse(
     val alreadyAnalyzedRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
+)
+
+@Serializable
+private data class AlreadyAnalyzedResponse(
+    val error: String,
+    val alreadyAnalyzedRecordCount: Int,
 )
 
 @Serializable

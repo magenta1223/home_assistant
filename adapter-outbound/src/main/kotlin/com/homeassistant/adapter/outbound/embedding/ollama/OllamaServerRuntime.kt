@@ -58,9 +58,10 @@ internal fun interface OllamaProcessStarter {
 }
 
 /**
- * A managed Ollama server serving one e5 model: it runs the server process as an [AbstractRuntime] and embeds text.
+ * A managed Ollama server serving one embedding model: it runs the server process as an [AbstractRuntime] and embeds text.
  * It is available only while [RuntimeState.RUNNING]; the process exiting on its own fails the runtime.
- * e5 expects `passage: ` before stored text and `query: ` before questions.
+ * The model expects `passage: ` before stored text and `query: ` before questions. Vectors are requested at
+ * [vectorSize] dimensions, which Ollama keeps from the front of the model output and normalizes again.
  */
 class OllamaServerRuntime internal constructor(
     private val command: List<String>,
@@ -183,7 +184,7 @@ class OllamaServerRuntime internal constructor(
                 .header("Content-Type", "application/json")
                 .POST(
                     HttpRequest.BodyPublishers.ofString(
-                        JsonSerializer.json.encodeToString(OllamaEmbedRequest(model = model, input = input.trim())),
+                        JsonSerializer.json.encodeToString(OllamaEmbedRequest(model = model, input = input.trim(), dimensions = vectorSize)),
                     ),
                 )
                 .build()
@@ -307,6 +308,7 @@ internal data class OllamaEndpoint(
 private data class OllamaEmbedRequest(
     val model: String,
     val input: String,
+    val dimensions: Int,
 )
 
 @Serializable

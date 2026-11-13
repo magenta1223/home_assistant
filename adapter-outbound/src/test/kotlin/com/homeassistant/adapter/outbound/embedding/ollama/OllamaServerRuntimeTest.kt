@@ -1,11 +1,15 @@
 package com.homeassistant.adapter.outbound.embedding.ollama
 
 import com.homeassistant.infrastructure.runtime.RuntimeState
+import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.sun.net.httpserver.HttpExchange
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
 import java.nio.file.Files
 import java.time.Duration
+import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
@@ -127,15 +131,38 @@ class OllamaServerRuntimeTest {
         }
     }
 
+    @Test
+    fun `embeds at the configured vector size`() {
+        withFakeOllamaApi(embedSize = { requested -> requested ?: 8 }) { endpoint ->
+            val runtime = runtime(endpoint = endpoint, command = longRunningCommand(), vectorSize = 4)
+
+            assertEquals(4, runtime.embedDocument("text").dimension)
+            assertEquals(4, runtime.embedQuery("text").dimension)
+        }
+    }
+
+    @Test
+    fun `rejects a vector of another size`() {
+        withFakeOllamaApi(embedSize = { 8 }) { endpoint ->
+            val runtime = runtime(endpoint = endpoint, command = longRunningCommand(), vectorSize = 4)
+
+            val failure = assertFailsWith<IllegalStateException> { runtime.embedDocument("text") }
+
+            assertContains(failure.message.orEmpty(), "size mismatch")
+        }
+    }
+
     private fun runtime(
         endpoint: OllamaEndpoint,
         command: List<String>,
         processStarted: (Process) -> Unit = {},
+        vectorSize: Int = 1024,
     ) = OllamaServerRuntime(
         command = command,
         environment = emptyMap(),
         endpoint = endpoint,
         model = "test-model",
+        vectorSize = vectorSize,
         startTimeout = Duration.ofSeconds(5),
         enforceFreePort = false,
         processStarter = OllamaProcessStarter { processCommand, processEnvironment ->
@@ -173,13 +200,23 @@ class OllamaServerRuntimeTest {
         assertTrue(condition(), "condition was not satisfied before timeout")
     }
 
-    private inline fun withFakeOllamaApi(embedStatus: Int = 200, block: (OllamaEndpoint) -> Unit) {
+    /**
+     * A fake Ollama API whose `/api/embed` answers with [embedSize] values for the `dimensions` the request asked for,
+     * or for none when it asked for none.
+     */
+    private inline fun withFakeOllamaApi(
+        embedStatus: Int = 200,
+        noinline embedSize: (requestedDimensions: Int?) -> Int = { it ?: 2048 },
+        block: (OllamaEndpoint) -> Unit,
+    ) {
         val server = HttpServer.create(InetSocketAddress("127.0.0.1", 0), 0)
         server.createContext("/api/version") { exchange ->
             exchange.respond(200, "{\"version\":\"test\"}")
         }
         server.createContext("/api/embed") { exchange ->
-            val vector = List(768) { "1.0" }.joinToString(",")
+            val requested = JsonSerializer.json.parseToJsonElement(exchange.requestBody.readBytes().decodeToString())
+                .jsonObject["dimensions"]?.jsonPrimitive?.int
+            val vector = List(embedSize(requested)) { "1.0" }.joinToString(",")
             exchange.respond(embedStatus, "{\"embeddings\":[[$vector]]}")
         }
         server.start()

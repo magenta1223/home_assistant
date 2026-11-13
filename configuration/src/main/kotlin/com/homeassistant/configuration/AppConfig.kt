@@ -11,8 +11,8 @@ object AppConfig {
     const val DEFAULT_OLLAMA_HOST           = "127.0.0.1:11435"
     const val DEFAULT_OLLAMA_BASE_URL       = "http://$DEFAULT_OLLAMA_HOST"
     const val DEFAULT_OLLAMA_RUNTIME_DIR    = "runtime/ollama"
-    const val DEFAULT_EMBEDDING_MODEL_NAME  = "qllama/multilingual-e5-base"
-    const val DEFAULT_EMBEDDING_VECTOR_SIZE = 768
+    const val DEFAULT_EMBEDDING_MODEL_NAME  = "hf.co/mradermacher/KURE-v3-GGUF:Q8_0"
+    const val DEFAULT_EMBEDDING_VECTOR_SIZE = 1024
     const val DEFAULT_AGENT_BACKEND         = "claude"
     const val DEFAULT_AGENT_TIMEOUT_SECONDS = 600L
     const val DEFAULT_DB_PATH           = "db/homeAssistant.sqlite"

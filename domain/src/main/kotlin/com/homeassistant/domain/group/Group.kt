@@ -23,10 +23,10 @@ data class ComponentPartition(val parts: List<Set<Int>>) {
 }
 
 data class GroupPolicySettings(
-    val attachThreshold: Double = 0.6,
+    val attachThreshold: Double = 0.24,
     val maxComponents: Int = 12,
-    val splitThreshold: Double = 0.65,
-    val mergeThreshold: Double = 0.65,
+    val splitThreshold: Double = 0.26,
+    val mergeThreshold: Double = 0.26,
     /** How many nearest Groups a single-Component Group is offered to for merging (xMemory kNN size). */
     val mergeNeighbors: Int = 10,
 ) {

@@ -15,7 +15,7 @@ internal data class ClaudeChatConfig(
     val systemPromptFile: Path get() = workDir.resolve(SYSTEM_PROMPT_FILE)
 
     companion object {
-        const val DEFAULT_MODEL = "claude-opus-5-5"
+        const val DEFAULT_MODEL = "claude-sonnet-5-5"
         const val DEFAULT_EFFORT = "medium"
         private const val SYSTEM_PROMPT_FILE = "system-prompt.txt"
         private const val SYSTEM_PROMPT =

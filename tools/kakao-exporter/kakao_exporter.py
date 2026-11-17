@@ -14,24 +14,25 @@ import os
 import re
 import sys
 import time
-import warnings
 from dataclasses import dataclass
 from pathlib import Path
 
-from pywinauto import Application, Desktop
+from pywinauto import Desktop
 from pywinauto.keyboard import send_keys
 
 from knowledge_import import KakaoSource, send_export
-
-# KakaoTalk is a 32-bit process; the win32 messages used here work from 64-bit Python too.
-warnings.filterwarnings("ignore", message="32-bit application should be automated")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 EXPORT_DIR = REPO_ROOT / "runtime" / "kakao" / "exports"
 DEFAULT_IMPORT_URL = "http://127.0.0.1:8080"
 CHAT_KEY = re.compile(r"[A-Za-z0-9_-]+")
 MAIN_TITLE = "카카오톡"
-WINDOW_CLASS = "EVA_Window_Dblclk"
+MAIN_WINDOW_CLASS = r"MainWindow_QMLTYPE_\d+"
+CHAT_WINDOW_CLASS = re.compile(r"\w*ChatWindow_QMLTYPE_\d+")
+MAIN_TABS_TITLE = "메인"
+CHAT_TAB_TITLE = "채팅"
+CHAT_SEARCH_CLASS = r"TextField_QMLTYPE_\d+"
+ROOM_OPEN_TIMEOUT_SECONDS = 10
 SAVE_TIMEOUT_SECONDS = 60
 
 
@@ -105,35 +106,32 @@ def require_unlocked_desktop():
 
 
 def kakao_main_window():
-    try:
-        app = Application(backend="win32").connect(title=MAIN_TITLE, class_name=WINDOW_CLASS, timeout=5)
-    except Exception as error:
-        raise DesktopUnavailable("KakaoTalk main window is not open; start KakaoTalk and sign in") from error
-    main = app.window(title=MAIN_TITLE, class_name=WINDOW_CLASS)
-    lock_view = main.child_window(title_re="LockModeView.*")
-    if lock_view.exists(timeout=0) and lock_view.is_visible():
-        raise DesktopUnavailable("KakaoTalk is locked with its passcode; unlock it before exporting")
-    return app, main
+    """The signed-in KakaoTalk PC (Qt client) main window, reached through UI Automation."""
+    main = Desktop(backend="uia").window(title=MAIN_TITLE, class_name_re=MAIN_WINDOW_CLASS)
+    if not main.exists(timeout=5):
+        raise DesktopUnavailable("KakaoTalk main window is not open; start KakaoTalk and sign in")
+    return main
 
 
-def open_room(app, main, room_name):
+def open_room(main, room_name):
     """
-    Searches the chat list and opens the top result. KakaoTalk draws the results itself, so they cannot be read;
-    the opened window's title must equal room_name exactly, and exactly one such window must be open.
+    Searches the chat list and opens the top result.
+    The opened window's title must equal room_name exactly, and exactly one such window must be open.
     Room names are assumed unique and stable, which the allowlist owner guarantees.
     """
+    process_id = main.wrapper_object().process_id()
     main.set_focus()
+    main_tabs = main.child_window(title=MAIN_TABS_TITLE, control_type="Tab")
+    main_tabs.child_window(title=CHAT_TAB_TITLE, control_type="TabItem").select()
     send_keys("^f")
-    search = main.child_window(title_re="ChatRoomListView.*").child_window(class_name="Edit", control_id=100)
-    search.wait("visible", timeout=5)
-    search.set_edit_text(room_name)
+    main.child_window(class_name_re=CHAT_SEARCH_CLASS, control_type="Edit").wait("visible", timeout=5)
+    send_keys("^a")
+    send_keys(room_name, with_spaces=True)
     time.sleep(1.0)
-    before = room_windows(main.process_id())
+    before = {w.handle for w in chat_windows(process_id)}
     send_keys("{ENTER}")
-    time.sleep(1.5)
-    opened = [w for w in room_windows(main.process_id()) if w.handle not in before]
-    exact = [w for w in room_windows(main.process_id()) if w.window_text() == room_name]
-    for wrong in (w for w in opened if w.window_text() != room_name):
+    exact = wait_for_room_windows(process_id, room_name)
+    for wrong in (w for w in chat_windows(process_id) if w.handle not in before and w.window_text() != room_name):
         wrong.close()
     if len(exact) != 1:
         main.set_focus()
@@ -142,23 +140,33 @@ def open_room(app, main, room_name):
     return exact[0]
 
 
-def room_windows(process_id):
-    """Visible KakaoTalk top-level windows other than the main window."""
+def wait_for_room_windows(process_id, room_name):
+    """Chat windows titled room_name, once at least one has opened or the wait runs out."""
+    deadline = time.monotonic() + ROOM_OPEN_TIMEOUT_SECONDS
+    while True:
+        exact = [w for w in chat_windows(process_id) if w.window_text() == room_name]
+        if exact or time.monotonic() >= deadline:
+            return exact
+        time.sleep(0.5)
+
+
+def chat_windows(process_id):
+    """Top-level KakaoTalk chat room windows."""
     return [
-        w for w in Desktop(backend="win32").windows(process=process_id, class_name=WINDOW_CLASS, visible_only=True)
-        if w.window_text() not in ("", MAIN_TITLE)
+        w for w in Desktop(backend="uia").windows(process=process_id)
+        if CHAT_WINDOW_CLASS.fullmatch(w.element_info.class_name)
     ]
 
 
-def save_room(app, room, pending):
+def save_room(room, pending):
     """KakaoTalk's "save chat" (Ctrl+S) opens a standard Save As dialog; the file appears once it finishes writing."""
     if pending.exists():
         pending.unlink()
     room.set_focus()
     send_keys("^s")
-    dialog = app.window(class_name="#32770")
+    dialog = Desktop(backend="uia").window(handle=room.handle).child_window(class_name="#32770", control_type="Window")
     dialog.wait("visible", timeout=10)
-    dialog.child_window(class_name="Edit", found_index=0).set_edit_text(str(pending))
+    dialog.child_window(class_name="Edit", control_type="Edit").set_edit_text(str(pending))
     send_keys("{ENTER}")
     wait_for_complete_file(pending)
 
@@ -185,12 +193,12 @@ def normalize_to_utf8(path):
         path.write_bytes(data.decode("cp949").encode("utf-8"))
 
 
-def export_chat(app, main, chat):
+def export_chat(main, chat):
     """Saves the room and returns the path of its complete UTF-8 export."""
     pending = EXPORT_DIR / f"{chat.chat_key}.tmp.txt"
-    room = open_room(app, main, chat.room_name)
+    room = open_room(main, chat.room_name)
     try:
-        save_room(app, room, pending)
+        save_room(room, pending)
     finally:
         room.close()
     normalize_to_utf8(pending)
@@ -212,7 +220,7 @@ def main():
     EXPORT_DIR.mkdir(parents=True, exist_ok=True)
     try:
         require_unlocked_desktop()
-        app, main_window = kakao_main_window()
+        main_window = kakao_main_window()
     except DesktopUnavailable as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
@@ -220,7 +228,7 @@ def main():
     failed = 0
     for chat in chats:
         try:
-            export = export_chat(app, main_window, chat)
+            export = export_chat(main_window, chat)
             outcome = send_export(import_url, token, chat.source, export.read_text(encoding="utf-8"))
             print(f"{chat.chat_key}: {outcome.value}")
         except Exception as error:  # one room failing must not stop the others

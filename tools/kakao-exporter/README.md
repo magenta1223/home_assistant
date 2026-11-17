@@ -12,7 +12,8 @@
 py -3 -m pip install --user pywinauto
 ```
 
-- 카카오톡 PC에 로그인해 메인 창을 띄워 둔다.
+- 카카오톡 PC(Qt 클라이언트, `KakaoTalkUI.exe`)에 로그인해 메인 창을 띄워 둔다. 창 구조는 UI Automation으로 읽는다.
+  카카오톡 "자동 로그인"을 켜 두면 Windows 로그온 때 카카오톡이 로그인된 채로 뜬다.
 - 설정은 프로세스 환경변수가 먼저, 없으면 저장소 루트 `.env`.
   - `KAKAO_EXPORTER_CHATS_JSON`: 채팅방 목록. 항목마다 `chatKey`(파일 이름, `[A-Za-z0-9_-]`),
     `roomName`(카카오톡 채팅방 이름), `sourceName`(앱의 source 이름), `isPublic`, `allowedUserIds`.
@@ -36,10 +37,9 @@ py -3 tools/kakao-exporter/kakao_exporter.py --only hongseungmin
 
 채팅방마다 다음을 한다.
 
-1. 채팅 목록에서 `Ctrl+F`로 `roomName`을 검색하고 첫 결과를 연다. 카카오톡은 검색 결과를 직접 그려서
-   읽을 수 없으므로, 열린 창 제목이 `roomName`과 정확히 같은 창이 하나일 때만 진행한다. 아니면 잘못 열린
-   창을 닫고 그 방은 건너뛰며 오류를 남긴다. 방 이름은 고유하고 바꾸지 않는다고 전제한다
-   (같은 이름의 방 둘은 구분하지 못한다).
+1. 채팅 탭에서 `Ctrl+F`로 `roomName`을 검색하고 첫 결과를 연다. 열린 창 제목이 `roomName`과 정확히 같은
+   창이 하나일 때만 진행한다. 아니면 잘못 열린 창을 닫고 그 방은 건너뛰며 오류를 남긴다. 방 이름은 고유하고
+   바꾸지 않는다고 전제한다 (같은 이름의 방 둘은 구분하지 못한다).
 2. 채팅방 창에서 `Ctrl+S` → 저장 대화상자에 `<chatKey>.tmp.txt` 경로를 넣고 저장한다.
 3. 채팅방 창을 닫고, UTF-8이 아니면 UTF-8로 바꾼 뒤 `runtime/kakao/exports/<chatKey>.txt`로 원자적으로 교체한다.
 4. 파일 전체를 주입 API로 보낸다. 앱은 새 메시지를 저장하고 분석 job을 등록한 뒤 응답한다. 요청 타임아웃은 30분이다.
@@ -47,8 +47,7 @@ py -3 tools/kakao-exporter/kakao_exporter.py --only hongseungmin
    - `409`이고 `alreadyAnalyzedRecordCount`가 있음: 새 메시지가 없다. 성공으로 본다.
    - 그 밖의 응답(공개 범위가 저장된 값과 다른 `409` 포함)과 연결 실패: 그 방의 실패로 남긴다.
 
-종료 코드: `0` 전부 성공, `1` 일부 방 실패, `2` 실행 불가(Windows 화면 잠김, 카카오톡 잠금모드,
-카카오톡 미실행). 화면이 잠겨 있으면 UI 자동화가 창에 닿지 않으므로 시작하자마자 실패한다.
+종료 코드: `0` 전부 성공, `1` 일부 방 실패, `2` 실행 불가(Windows 화면 잠김, 카카오톡 미실행·미로그인). 화면이 잠겨 있으면 UI 자동화가 창에 닿지 않으므로 시작하자마자 실패한다.
 
 ## 테스트
 

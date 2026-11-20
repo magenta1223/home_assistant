@@ -1,0 +1,106 @@
+package com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component
+
+import kotlin.test.assertIs
+import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memory.xmemory.component.EpisodeComponents
+import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentExtractionTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentTable
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
+import com.homeassistant.domain.memory.xmemory.component.Component
+import com.homeassistant.domain.identity.UserId
+import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal
+import com.homeassistant.domain.source.SourceDescriptor
+import com.homeassistant.domain.source.SourceRecordDraft
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
+import org.jetbrains.exposed.sql.selectAll
+import java.nio.file.Files
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFails
+import kotlin.test.assertFailsWith
+import kotlin.test.assertTrue
+
+class ComponentRepositoryTest {
+    private val ab = AccessControl.restricted(listOf(UserId("a"), UserId("b")))
+
+    @Test
+    fun `an extraction stores its statements with the source episode's access across restarts`() = withDatabase { db, path ->
+        val episode = createEpisode(db, "a", ab)
+        val saved = ComponentRepositoryImpl(db).save(EpisodeComponents(episode, listOf("first fact", "second fact")))
+
+        val expected = listOf(Component(saved[0].id, "first fact", episode, ab), Component(saved[1].id, "second fact", episode, ab))
+        assertEquals(expected, saved)
+        assertEquals(expected, ComponentRepositoryImpl(DatabaseFactory.init(path)).findVisibleTo(UserId("a")))
+    }
+
+    @Test
+    fun `access conditions select the Components the domain access rules select`() = withDatabase { db, _ ->
+        val repository = ComponentRepositoryImpl(db)
+        val accesses = listOf(AccessControl.PUBLIC, ab, AccessControl.restricted(listOf(UserId("a"))))
+        val stored = accesses.mapIndexed { index, access ->
+            repository.save(EpisodeComponents(createEpisode(db, "e$index", access), listOf("fact $index"))).single()
+        }
+
+        listOf("a", "b", "c").map(::UserId).forEach { user ->
+            assertEquals(stored.filter { it.isVisibleTo(user) }, repository.findVisibleTo(user))
+        }
+        accesses.forEach { access ->
+            assertEquals(stored.filter { it.access.covers(access) }, repository.findCovering(access))
+        }
+    }
+
+    @Test
+    fun `unplaced Components are paged in id order after the last id read`() = withDatabase { db, _ ->
+        val repository = ComponentRepositoryImpl(db)
+        val stored = repository.save(EpisodeComponents(createEpisode(db, "a"), listOf("first", "second", "third")))
+
+        val firstPage = repository.findUngroupedAfter(0, 2)
+        assertEquals(stored.take(2), firstPage)
+        assertEquals(stored.drop(2), repository.findUngroupedAfter(firstPage.last().id, 2))
+        assertTrue(repository.findUngroupedAfter(stored.last().id, 2).isEmpty())
+    }
+
+    @Test
+    fun `an episode without long-term knowledge is still marked extracted`() = withDatabase { db, _ ->
+        val episode = createEpisode(db, "a")
+
+        assertTrue(ComponentRepositoryImpl(db).save(EpisodeComponents(episode, emptyList())).isEmpty())
+        assertEquals(1L, db.write { ComponentExtractionTable.selectAll().count() })
+    }
+
+    @Test
+    fun `a second extraction or a missing episode rolls the write back`() = withDatabase { db, _ ->
+        val episode = createEpisode(db, "a")
+        val repository = ComponentRepositoryImpl(db)
+        repository.save(EpisodeComponents(episode, listOf("fact")))
+
+        assertFails { repository.save(EpisodeComponents(episode, listOf("again"))) }
+        assertFailsWith<IllegalArgumentException> { repository.save(EpisodeComponents(999, listOf("orphan"))) }
+        assertEquals(listOf("fact"), repository.findCovering(AccessControl.PUBLIC).map { it.statement })
+        assertEquals(1L, db.write { ComponentTable.selectAll().count() })
+    }
+
+    private fun createEpisode(db: SqliteDatabases, name: String, access: AccessControl = AccessControl.PUBLIC): Int {
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(
+            SourceDescriptor("test", name), listOf(SourceRecordDraft(name, "source-$name")), access,
+        )).recordsToAnalyze.single()
+        return EpisodeRepositoryImpl(db).save(EpisodeBatch(
+            UserId("creator"),
+            listOf(EpisodeProposal("title", "fact-$name", listOf(record.id))),
+            listOf(record.id),
+        )).single().id
+    }
+
+    private fun withDatabase(block: (SqliteDatabases, String) -> Unit) {
+        val path = Files.createTempFile("component-store", ".db")
+        try {
+            block(DatabaseFactory.init(path.toString()), path.toString())
+        } finally {
+            Files.deleteIfExists(path)
+        }
+    }
+}

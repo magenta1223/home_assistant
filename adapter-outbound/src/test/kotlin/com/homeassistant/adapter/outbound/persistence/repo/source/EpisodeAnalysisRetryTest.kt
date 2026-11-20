@@ -2,15 +2,15 @@ package com.homeassistant.adapter.outbound.persistence.repo.source
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
 import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
 import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
 import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
 import com.homeassistant.application.port.inbound.memoryextraction.SourceAnalysisRoundResult
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractor
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
@@ -19,9 +19,9 @@ import com.homeassistant.application.usecase.memoryextraction.episode.AnalyzeSub
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
-import com.homeassistant.domain.episode.Episode
+import com.homeassistant.domain.memory.xmemory.episode.Episode
 import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
-import com.homeassistant.domain.episode.EpisodeProposal
+import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument

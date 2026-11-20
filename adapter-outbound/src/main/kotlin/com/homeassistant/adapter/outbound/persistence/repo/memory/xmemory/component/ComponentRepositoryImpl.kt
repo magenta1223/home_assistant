@@ -1,0 +1,80 @@
+package com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component
+
+import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentExtractionTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.EpisodeTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.EpisodeViewerTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.GroupMembershipTable
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeAccessCondition
+import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memory.xmemory.component.EpisodeComponents
+import com.homeassistant.domain.memory.xmemory.component.Component
+import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.access.Visibility
+import com.homeassistant.domain.identity.UserId
+import org.jetbrains.exposed.sql.*
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inSubQuery
+
+internal class ComponentRepositoryImpl(private val db: SqliteDatabases) : ComponentRepository {
+    override fun findCovering(access: AccessControl): List<Component> = db.read {
+        fromEpisodes(EpisodeAccessCondition.covering(access))
+    }
+
+    override fun findVisibleTo(userId: UserId): List<Component> = db.read {
+        fromEpisodes(EpisodeAccessCondition.visibleTo(userId))
+    }
+
+    override fun findUngroupedAfter(afterId: Int, limit: Int): List<Component> = db.read {
+        require(limit > 0)
+        components(ComponentTable.selectAll().where {
+            (ComponentTable.id greater afterId) and
+                notExists(GroupMembershipTable.selectAll().where { GroupMembershipTable.componentId eq ComponentTable.id })
+        }.orderBy(ComponentTable.id).limit(limit))
+    }
+
+    /** A second extraction of the same episode violates the extraction key and rolls back the whole write. */
+    override fun save(extraction: EpisodeComponents): List<Component> = db.write {
+        val episodeId = extraction.episodeId
+        require(extraction.statements.none(String::isBlank)) { "a component statement must not be blank" }
+        require(EpisodeTable.select(EpisodeTable.id).where { EpisodeTable.id eq episodeId }.any()) { "episode reference does not exist" }
+        ComponentExtractionTable.insert { it[ComponentExtractionTable.episodeId] = episodeId }
+        withIds(extraction.statements.map { text ->
+            ComponentTable.insert {
+                it[statement] = text
+                it[sourceEpisodeId] = episodeId
+            }[ComponentTable.id]
+        })
+    }
+
+    private fun withIds(ids: Collection<Int>): List<Component> =
+        if (ids.isEmpty()) emptyList() else components(ComponentTable.selectAll().where { ComponentTable.id inList ids })
+
+    private fun fromEpisodes(episodes: Op<Boolean>): List<Component> = components(ComponentTable.selectAll().where(sourcedFrom(episodes)))
+
+    private fun components(query: Query): List<Component> {
+        val rows = query.orderBy(ComponentTable.id).toList()
+        val access = accessOf(rows.map { it[ComponentTable.sourceEpisodeId] }.distinct())
+        return rows.map { row ->
+            val source = row[ComponentTable.sourceEpisodeId]
+            Component(row[ComponentTable.id], row[ComponentTable.statement], source, access.getValue(source))
+        }
+    }
+
+    private fun accessOf(episodeIds: List<Int>): Map<Int, AccessControl> {
+        if (episodeIds.isEmpty()) return emptyMap()
+        val viewers = EpisodeViewerTable.selectAll().where { EpisodeViewerTable.episodeId inList episodeIds }
+            .groupBy({ it[EpisodeViewerTable.episodeId] }, { it[EpisodeViewerTable.userId] })
+        return EpisodeTable.select(EpisodeTable.id, EpisodeTable.visibility).where { EpisodeTable.id inList episodeIds }.associate { row ->
+            val id = row[EpisodeTable.id]
+            val visibility = Visibility.valueOf(row[EpisodeTable.visibility])
+            id to AccessControl(visibility, if (visibility == Visibility.PUBLIC) emptySet() else viewers[id].orEmpty().toSet())
+        }
+    }
+
+    companion object {
+        /** Components whose source episode matches [episodes]; a Component's access is its source episode's. */
+        fun sourcedFrom(episodes: Op<Boolean>): Op<Boolean> =
+            ComponentTable.sourceEpisodeId inSubQuery EpisodeTable.select(EpisodeTable.id).where(episodes)
+    }
+}

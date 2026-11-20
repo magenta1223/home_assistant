@@ -5,9 +5,9 @@ import com.homeassistant.application.port.inbound.memoryextraction.SourceAnalysi
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJob
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobQueue
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeExtractor
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeRepository
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractor
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation

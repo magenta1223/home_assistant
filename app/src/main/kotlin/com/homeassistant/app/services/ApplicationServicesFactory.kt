@@ -3,7 +3,7 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
-import com.homeassistant.domain.group.GroupPolicySettings
+import com.homeassistant.domain.memory.xmemory.group.GroupPolicySettings
 import com.homeassistant.llm.AgentBackend
 import com.homeassistant.llm.AgentClientFactory
 

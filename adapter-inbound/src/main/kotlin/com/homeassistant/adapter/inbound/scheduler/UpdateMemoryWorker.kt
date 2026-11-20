@@ -1,10 +1,10 @@
 package com.homeassistant.adapter.inbound.scheduler
 
-import com.homeassistant.application.port.inbound.memoryextraction.ComponentPlacementOutcome
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAssignmentOutcome
-import com.homeassistant.application.port.inbound.memoryextraction.GroupMergeOutcome
-import com.homeassistant.application.port.inbound.memoryextraction.MemoryUpdateResult
-import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemory
+import com.homeassistant.application.port.inbound.memory.ComponentPlacementOutcome
+import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentOutcome
+import com.homeassistant.application.port.inbound.memory.GroupMergeOutcome
+import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
+import com.homeassistant.application.port.inbound.memory.UpdateMemory
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors

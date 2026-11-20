@@ -2,23 +2,23 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.inbound.scheduler.EpisodeAnalysisWorker
 import com.homeassistant.adapter.inbound.scheduler.UpdateMemoryWorker
-import com.homeassistant.adapter.outbound.componentextraction.ComponentExtractorImpl
-import com.homeassistant.adapter.outbound.episodeanalysis.EpisodeExtractorImpl
+import com.homeassistant.adapter.outbound.memory.xmemory.componentextraction.ComponentExtractorImpl
+import com.homeassistant.adapter.outbound.memory.xmemory.episodeextraction.EpisodeExtractorImpl
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
-import com.homeassistant.application.usecase.memoryextraction.UpdateMemoryService
-import com.homeassistant.application.usecase.memoryextraction.component.AssignEpisodeToComponents
-import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memory.xmemory.XMemoryUpdateService
+import com.homeassistant.application.usecase.memory.xmemory.component.AssignEpisodeToComponents
+import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memoryextraction.episode.AnalyzeSubmittedSourcesService
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
-import com.homeassistant.application.usecase.memoryextraction.group.MergeSmallGroups
-import com.homeassistant.application.usecase.memoryextraction.group.OrganizeComponentIntoGroups
-import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
-import com.homeassistant.domain.group.GroupMergePolicy
-import com.homeassistant.domain.group.GroupOrganizationPlanner
-import com.homeassistant.domain.group.GroupPlacementPolicy
-import com.homeassistant.domain.group.GroupPolicySettings
-import com.homeassistant.domain.group.GroupSplitPolicy
+import com.homeassistant.application.usecase.memory.xmemory.group.MergeSmallGroups
+import com.homeassistant.application.usecase.memory.xmemory.group.OrganizeComponentIntoGroups
+import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
+import com.homeassistant.domain.memory.xmemory.group.GroupMergePolicy
+import com.homeassistant.domain.memory.xmemory.group.GroupOrganizationPlanner
+import com.homeassistant.domain.memory.xmemory.group.GroupPlacementPolicy
+import com.homeassistant.domain.memory.xmemory.group.GroupPolicySettings
+import com.homeassistant.domain.memory.xmemory.group.GroupSplitPolicy
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.llm.CompletionClient
@@ -47,7 +47,7 @@ internal class MemoryExtractionModule(
         referenceInterpreter = ModelSourceReferenceInterpreter(completionClient),
     )
 
-    private val updateHierarchy = UpdateMemoryService(
+    private val updateHierarchy = XMemoryUpdateService(
         repositories.componentAssignmentOutbox,
         repositories.components,
         AssignEpisodeToComponents(

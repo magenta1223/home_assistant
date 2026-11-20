@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.scheduler
 
-import com.homeassistant.application.port.inbound.memoryextraction.MemoryUpdateResult
-import com.homeassistant.application.port.inbound.memoryextraction.UpdateMemory
+import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
+import com.homeassistant.application.port.inbound.memory.UpdateMemory
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

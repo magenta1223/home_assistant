@@ -1,6 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.db
 
 import com.homeassistant.adapter.outbound.persistence.db.tables.*
+import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
 import org.sqlite.SQLiteConfig

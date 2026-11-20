@@ -2,16 +2,16 @@ package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.EpisodeEmbeddingRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentAssignmentOutboxRepository
-import com.homeassistant.adapter.outbound.persistence.repo.component.ComponentRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.group.GroupRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.embedding.ComponentEmbeddingRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.embedding.EpisodeEmbeddingRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component.ComponentAssignmentOutboxRepository
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component.ComponentRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.group.GroupRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.finance.FinanceTransactionRepositoryImpl
 
 object RepositoryFactory {

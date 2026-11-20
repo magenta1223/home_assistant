@@ -29,7 +29,7 @@ Episode가 Component·Group으로 정리되는 속도가 Episode 수에 비례�
 
 - 전역 모델 동시 실행 한도를 Episode 분석 worker와 Component 배정 worker가 함께 지키는 방법.
 - `findSnapshot`은 배치·분할·병합이 partition 전체를 보는 이유로 둔 조건 없는 조회다
-  ([group port README](../../../application/src/main/kotlin/com/homeassistant/application/port/outbound/memoryextraction/group/README.md)).
+  ([group port README](../../../application/src/main/kotlin/com/homeassistant/application/port/outbound/memory/xmemory/group/README.md)).
   배치는 centroid만으로 후보를 고르고 분할·병합은 고른 Group만 읽도록 나눌 수 있는지 판단한다.
 - 병렬 배정이 Group 저장의 revision 충돌을 늘리는지와 재시도 상한.
 

@@ -8,9 +8,9 @@
 대화 검색이 질문 하나에 읽을 수 있는 항목 수만큼 DB transaction을 연다.
 
 - `ComponentSearcher.search`가 읽을 수 있는 Component마다 `PrepareComponentEmbedding.prepare`를 부른다
-  (`application/.../contextprovider/component/ComponentSearcher.kt`).
+  (`application/.../memory/xmemory/component/ComponentSearcher.kt`).
 - `EpisodeSearcher.search`가 읽을 수 있는 Episode마다 `PrepareEpisodeEmbedding.prepare`를 부른다
-  (`application/.../contextprovider/episode/EpisodeSearcher.kt`).
+  (`application/.../memory/xmemory/episode/EpisodeSearcher.kt`).
 - `prepare`는 항목 하나의 embedding을 `find`로 읽고, 없으면 만들어 `save`한다. `find`가 호출마다 transaction 하나를 연다.
 
 항목이 수천 개면 질문 하나에 쿼리가 수천 개 생긴다.

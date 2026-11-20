@@ -12,14 +12,14 @@ import com.homeassistant.application.usecase.chatservice.ChatContextDelivery
 import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChatsService
 import com.homeassistant.application.usecase.contextprovider.ContextAssembler
-import com.homeassistant.application.usecase.contextprovider.MemoryContextProvider
-import com.homeassistant.application.usecase.contextprovider.component.ComponentSearcher
+import com.homeassistant.application.usecase.memory.xmemory.XMemoryContextProvider
+import com.homeassistant.application.usecase.memory.xmemory.component.ComponentSearcher
 import com.homeassistant.application.usecase.contexttool.ContextGrants
 import com.homeassistant.application.usecase.contexttool.FindTransactionsService
 import com.homeassistant.application.usecase.contexttool.SearchMemoryService
-import com.homeassistant.application.usecase.contextprovider.episode.EpisodeSearcher
-import com.homeassistant.application.usecase.embedding.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.embedding.PrepareComponentEmbedding
+import com.homeassistant.application.usecase.memory.xmemory.episode.EpisodeSearcher
+import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.domain.identity.UserAccessPolicy
@@ -40,7 +40,7 @@ internal class ChatModule(
 ) {
     private val chatClient = AgentClientFactory.conversation(backend = backend, timeout = agentTimeout())
     private val chatGateway = chatClient?.let { AgentChatGateway(it, CONTEXT_TOOL_URL) }
-    private val memory = ContextAssembler(listOf(MemoryContextProvider(componentSearcher(), episodeSearcher())))
+    private val memory = ContextAssembler(listOf(XMemoryContextProvider(componentSearcher(), episodeSearcher())))
     private val contextGrants = ContextGrants(agentTimeout())
     private val delivery = contextDelivery(backend)
 

@@ -28,6 +28,8 @@ sequenceDiagram
     participant Jobs as EpisodeAnalysisJobQueue
     participant Round as AnalyzeSubmittedSourcesService
     participant Reference as SourceReferenceInterpreter
+    participant Update as XMemoryUpdateService
+    participant Queue as EpisodeExtractionQueue
     participant Extractor as EpisodeExtractor
     participant DB as EpisodeRepository
 
@@ -41,15 +43,16 @@ sequenceDiagram
         Round->>Reference: 페이지/이미지별 근거 해석
         Round->>Sources: 원본에 연결한 해석 record 저장
     end
-    Round->>Sources: 아직 분석되지 않은 record 조회
-    Round->>Extractor: 분석 대상에서 proposal 추출
-    Round->>DB: episode + evidence + outbox 원자적 commit
-    Round->>Jobs: 완료(episode 수) 또는 실패(오류) 기록
+    Round->>Jobs: 완료(record 수) 또는 실패(오류) 기록
+    Update->>Queue: 아직 추출하지 않은 source 하나의 record claim
+    Update->>Extractor: claim한 record에서 proposal 추출
+    Update->>DB: episode + evidence + outbox + 추출 표시 원자적 commit
 ```
 
-접수 요청은 source record 저장과 job 등록까지가 성공의 기준이다. 분석은 worker가 job을 하나씩 처리하며,
-Canonical database commit이 끝난 뒤 job을 완료로 기록한다. Component 배정은 commit에 함께 남긴 outbox를
-worker가 이후에 처리하며, 실패해도 저장된 canonical episode를 되돌리지 않는다.
+접수 요청은 source record 저장과 job 등록까지가 성공의 기준이다. 분석 worker는 job을 하나씩 처리해 reference
+해석 record를 저장한 뒤 job을 완료로 기록한다. episode 추출은 memory update round의 첫 단계가 source마다 하고,
+canonical commit에 추출 표시와 Component 할당 outbox를 함께 남긴다. Component 배정은 같은 round가 이어서 처리하며,
+실패해도 저장된 canonical episode를 되돌리지 않는다.
 
 HTTP 지식 입력은 인증된 application userId로 `EpisodeAnalysis`를 직접 호출하고, 같은 사용자가 job 상태를 조회한다.
 

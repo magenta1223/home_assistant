@@ -19,7 +19,6 @@ import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
 import com.homeassistant.domain.source.SourceDescriptor
-import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceReference
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -269,7 +268,7 @@ class KnowledgeInjectionRoutesTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
-            Json.parseToJsonElement("""{"jobId":7,"status":"COMPLETED","episodeCount":2}"""),
+            Json.parseToJsonElement("""{"jobId":7,"status":"COMPLETED","recordCount":2}"""),
             Json.parseToJsonElement(response.bodyAsText()),
         )
     }
@@ -323,20 +322,18 @@ class KnowledgeInjectionRoutesTest {
         }
 
         override fun findJob(userId: String, jobId: Int): EpisodeAnalysisJobReport? =
-            EpisodeAnalysisJobReport(jobId, EpisodeAnalysisJobStatus.COMPLETED, episodeCount = 2, lastError = null)
+            EpisodeAnalysisJobReport(jobId, EpisodeAnalysisJobStatus.COMPLETED, recordCount = 2, lastError = null)
                 .takeIf { userId == "operator" && jobId == 7 }
     }
 
     /** Source records that were all stored and analyzed before, so nothing is left to analyze. */
     private class AlreadyAnalyzedSourceRecords : SourceRecordRepository {
-        override fun save(source: SourceDescriptor, records: List<SourceRecordDraft>, access: AccessControl) =
+        override fun save(source: SourceDescriptor, records: List<SourceRecordDraft>, submittedBy: UserId, access: AccessControl) =
             SourceRecordSaveResult.Saved(emptyList(), importedRecordCount = 0, retriedRecordCount = 0, alreadyAnalyzedRecordCount = records.size)
 
         override fun saveReference(reference: SourceReferenceDraft): SourceReference = error("no reference is submitted")
 
         override fun findReferenceContent(referenceId: Int): SourceReferenceDraft? = null
-
-        override fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord> = emptyList()
     }
 
     /** A job queue that a submission with nothing to analyze never reaches. */
@@ -345,7 +342,7 @@ class KnowledgeInjectionRoutesTest {
 
         override fun claimNext(now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): EpisodeAnalysisJob? = null
 
-        override fun markCompleted(jobId: Int, expectedAttempt: Int, episodeCount: Int, now: Long) = false
+        override fun markCompleted(jobId: Int, expectedAttempt: Int, recordCount: Int, now: Long) = false
 
         override fun markFailed(jobId: Int, expectedAttempt: Int, error: String, now: Long) = false
 

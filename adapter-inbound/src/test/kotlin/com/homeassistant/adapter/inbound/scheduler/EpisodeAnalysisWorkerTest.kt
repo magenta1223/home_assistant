@@ -10,14 +10,14 @@ class EpisodeAnalysisWorkerTest {
     fun `a run analyzes ready jobs until none is left`() {
         val rounds = ArrayDeque(
             listOf(
-                SourceAnalysisRoundResult.Completed(jobId = 1, episodeCount = 2),
+                SourceAnalysisRoundResult.Completed(jobId = 1, recordCount = 2),
                 SourceAnalysisRoundResult.Failed(jobId = 2, reason = "extractor unavailable"),
                 SourceAnalysisRoundResult.Idle,
-                SourceAnalysisRoundResult.Completed(jobId = 3, episodeCount = 1),
+                SourceAnalysisRoundResult.Completed(jobId = 3, recordCount = 1),
             ),
         )
         EpisodeAnalysisWorker(AnalyzeSubmittedSources { rounds.removeFirst() }).analyzeReadyJobs()
-        assertEquals(listOf(SourceAnalysisRoundResult.Completed(jobId = 3, episodeCount = 1)), rounds.toList())
+        assertEquals(listOf(SourceAnalysisRoundResult.Completed(jobId = 3, recordCount = 1)), rounds.toList())
     }
 
     @Test

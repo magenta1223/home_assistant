@@ -32,7 +32,7 @@ class EpisodeAnalysisService(
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         requireAuthorizedAudience(request.access.allowedUserIds)
-        val saved = saveSourceRecords(request.source, request.access)
+        val saved = saveSourceRecords(request.source, userId, request.access)
         requireSomethingToAnalyze(request.source, saved)
         val reference = request.source.reference?.let { reference ->
             rethrowAsUnavailable { sourceRecords.saveReference(reference) }
@@ -53,9 +53,13 @@ class EpisodeAnalysisService(
         return rethrowAsUnavailable { jobs.findRequestedBy(jobId, requester) }?.toReport()
     }
 
-    /** Saves [source]'s records, reporting an access conflict apart from an unavailable store. */
-    private fun saveSourceRecords(source: SourceDocumentDraft, access: AccessControl): SourceRecordSaveResult.Saved =
-        when (val result = rethrowAsUnavailable { sourceRecords.save(source.source, source.records, access) }) {
+    /** Saves [source]'s records as [submittedBy]'s, reporting an access conflict apart from an unavailable store. */
+    private fun saveSourceRecords(
+        source: SourceDocumentDraft,
+        submittedBy: UserId,
+        access: AccessControl,
+    ): SourceRecordSaveResult.Saved =
+        when (val result = rethrowAsUnavailable { sourceRecords.save(source.source, source.records, submittedBy, access) }) {
             is SourceRecordSaveResult.Saved -> result
             is SourceRecordSaveResult.AccessConflict ->
                 throw SourceAccessConflictException(source.source.name, result.existingAccess)
@@ -96,7 +100,7 @@ class EpisodeAnalysisService(
         if (invalid.isNotEmpty()) throw InvalidAllowedUsersException(invalid)
     }
 
-    private fun EpisodeAnalysisJob.toReport() = EpisodeAnalysisJobReport(id, status, episodeCount, lastError)
+    private fun EpisodeAnalysisJob.toReport() = EpisodeAnalysisJobReport(id, status, recordCount, lastError)
 
     /** The result of [operation], rethrowing its failure as [EpisodeAnalysisUnavailableException]. */
     private fun <T> rethrowAsUnavailable(operation: () -> T): T =

@@ -24,8 +24,8 @@ data class EpisodeAnalysisJob(
     val status: EpisodeAnalysisJobStatus,
     /** Monotonically increasing claim generation used to fence stale workers. */
     val attempt: Int,
-    /** How many episodes the completed analysis produced; null until the job completes. */
-    val episodeCount: Int?,
+    /** How many source records the completed analysis covers; null until the job completes. */
+    val recordCount: Int?,
     /** Why the latest attempt failed; null when no attempt failed or the job completed. */
     val lastError: String?,
 )
@@ -41,8 +41,8 @@ interface EpisodeAnalysisJobQueue {
      */
     fun claimNext(now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): EpisodeAnalysisJob?
 
-    /** Records the [episodeCount] of the analysis; returns true only when the matching in-progress generation was transitioned. */
-    fun markCompleted(jobId: Int, expectedAttempt: Int, episodeCount: Int, now: Long): Boolean
+    /** Records the [recordCount] of the analysis; returns true only when the matching in-progress generation was transitioned. */
+    fun markCompleted(jobId: Int, expectedAttempt: Int, recordCount: Int, now: Long): Boolean
 
     /** Returns true only when the matching in-progress generation was transitioned. */
     fun markFailed(jobId: Int, expectedAttempt: Int, error: String, now: Long): Boolean

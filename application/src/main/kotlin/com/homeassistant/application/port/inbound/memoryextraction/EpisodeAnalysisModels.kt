@@ -25,8 +25,8 @@ data class EpisodeAnalysisSubmissionResult(
 data class EpisodeAnalysisJobReport(
     val jobId: Int,
     val status: EpisodeAnalysisJobStatus,
-    /** How many episodes the analysis saved; null until it completes. */
-    val episodeCount: Int?,
+    /** How many source records the analysis stored for memory updates; null until it completes. */
+    val recordCount: Int?,
     /** Why the latest attempt failed; null when no attempt failed or the analysis completed. */
     val lastError: String?,
 )

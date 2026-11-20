@@ -4,13 +4,18 @@ import com.homeassistant.application.port.inbound.memory.ComponentPlacementOutco
 import com.homeassistant.application.port.inbound.memory.ComponentPlacementResult
 import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentResult
+import com.homeassistant.application.port.inbound.memory.EpisodeExtractionOutcome
+import com.homeassistant.application.port.inbound.memory.EpisodeExtractionResult
 import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
 import com.homeassistant.application.port.inbound.memory.UpdateMemory
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentTask
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentRepository
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionQueue
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupRebuildRequired
 import com.homeassistant.application.usecase.memory.xmemory.component.AssignEpisodeToComponents
+import com.homeassistant.application.usecase.memory.xmemory.episode.ExtractEpisodes
 import com.homeassistant.application.usecase.memory.xmemory.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memory.xmemory.group.OrganizeComponentIntoGroups
 import com.homeassistant.domain.memory.xmemory.component.Component
@@ -18,11 +23,14 @@ import java.time.Clock
 import java.util.concurrent.CancellationException
 
 /**
- * Relays the Component-assignment outbox to [AssignEpisodeToComponents], places the unplaced Components with
- * [OrganizeComponentIntoGroups], and then runs [MergeSmallGroups]. One failed Episode or Component never stops the others;
- * a [GroupRebuildRequired] stops placement and skips merging, since merge scores from outdated Group vectors would be wrong.
+ * Relays the [EpisodeExtractionQueue] to [ExtractEpisodes], relays the Component-assignment outbox to
+ * [AssignEpisodeToComponents], places the unplaced Components with [OrganizeComponentIntoGroups], and then runs
+ * [MergeSmallGroups]. One failed source, Episode or Component never stops the others; a [GroupRebuildRequired] stops
+ * placement and skips merging, since merge scores from outdated Group vectors would be wrong.
  */
 class XMemoryUpdateService(
+    private val extractionQueue: EpisodeExtractionQueue,
+    private val extractEpisodes: ExtractEpisodes,
     private val outbox: ComponentAssignmentOutbox,
     private val components: ComponentRepository,
     private val assignEpisode: AssignEpisodeToComponents,
@@ -39,14 +47,50 @@ class XMemoryUpdateService(
         require(maxAttempts > 0) { "maxAttempts must be positive" }
     }
 
-    override fun execute(batchSize: Int): MemoryUpdateResult {
+    override suspend fun execute(batchSize: Int): MemoryUpdateResult {
         require(batchSize > 0) { "batchSize must be positive" }
         if (!assignEpisode.isReady()) return MemoryUpdateResult.Skipped
-        val episodes = assignWaitingEpisodes(batchSize, roundStartedAt = clock.millis())
+        val roundStartedAt = clock.millis()
+        val sources = extractWaitingSources(roundStartedAt)
+        val episodes = assignWaitingEpisodes(batchSize, roundStartedAt)
         return when (val placement = placeUnplacedComponents(batchSize)) {
-            is Placement.Completed -> MemoryUpdateResult.Completed(episodes, placement.components, mergeSmallGroups.execute())
-            is Placement.Stopped -> MemoryUpdateResult.RebuildRequired(episodes, placement.components, placement.reason)
+            is Placement.Completed -> MemoryUpdateResult.Completed(sources, episodes, placement.components, mergeSmallGroups.execute())
+            is Placement.Stopped -> MemoryUpdateResult.RebuildRequired(sources, episodes, placement.components, placement.reason)
         }
+    }
+
+    /**
+     * Extracts Episodes from every source whose records were ready when the round started at [roundStartedAt], one
+     * claimed source at a time, so a source that fails in this round waits for the next one.
+     */
+    private suspend fun extractWaitingSources(roundStartedAt: Long): List<EpisodeExtractionResult> = buildList {
+        while (true) {
+            val claim = claimSource(roundStartedAt) ?: break
+            add(EpisodeExtractionResult(claim.document.source, extract(claim)))
+        }
+    }
+
+    /** The waiting records of the next source that was ready when the round started at [roundStartedAt]. */
+    private fun claimSource(roundStartedAt: Long): EpisodeExtractionClaim? =
+        extractionQueue.claimNext(
+            now = clock.millis(),
+            retryBefore = roundStartedAt - retryDelayMillis,
+            staleProcessingBefore = roundStartedAt - processingLeaseMillis,
+            maxAttempts = maxAttempts,
+        )
+
+    /** Extracts [claim]'s Episodes; a failure is recorded on the claim. */
+    private suspend fun extract(claim: EpisodeExtractionClaim): EpisodeExtractionOutcome {
+        return runCatching { extractEpisodes.extract(claim) }
+            .fold(
+                onSuccess = { episodes -> EpisodeExtractionOutcome.Extracted(episodes.size) },
+                onFailure = { failure ->
+                    if (failure is CancellationException) throw failure
+                    val reason = failure.message ?: failure.javaClass.simpleName
+                    extractionQueue.markFailed(claim.claimId, reason, clock.millis())
+                    EpisodeExtractionOutcome.Failed(reason)
+                },
+            )
     }
 
     /** Places every unplaced Component, stopping at the first [GroupRebuildRequired]. */

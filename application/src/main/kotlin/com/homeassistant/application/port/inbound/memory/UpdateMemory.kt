@@ -1,15 +1,17 @@
 package com.homeassistant.application.port.inbound.memory
 
 import com.homeassistant.domain.memory.xmemory.group.GroupSplit
+import com.homeassistant.domain.source.SourceDescriptor
 
-/** Grows the Episode → Component → Group hierarchy from the Episodes saved since the last update. */
+/** Grows the Episode → Component → Group hierarchy from the source records stored since the last update. */
 fun interface UpdateMemory {
     /**
-     * Assigns every waiting Episode to Components, places every unplaced Component in Groups, and then merges small
-     * Groups, reading [batchSize] at a time. Each Episode and Component is tried at most once per call; one that fails
-     * waits for the next call. Nothing runs when the assignment services are unavailable, so no attempt is used up.
+     * Extracts Episodes from the stored records of every source waiting for extraction, assigns every waiting Episode
+     * to Components, places every unplaced Component in Groups, and then merges small Groups, reading [batchSize]
+     * Episodes and Components at a time. Each source, Episode and Component is tried at most once per call; one that
+     * fails waits for the next call. Nothing runs when the assignment services are unavailable, so no attempt is used up.
      */
-    fun execute(batchSize: Int): MemoryUpdateResult
+    suspend fun execute(batchSize: Int): MemoryUpdateResult
 }
 
 sealed interface MemoryUpdateResult {
@@ -18,6 +20,7 @@ sealed interface MemoryUpdateResult {
 
     /** Every step ran. */
     data class Completed(
+        val sources: List<EpisodeExtractionResult>,
         val episodes: List<EpisodeAssignmentResult>,
         val components: List<ComponentPlacementResult>,
         val merges: List<GroupMergeOutcome>,
@@ -25,10 +28,20 @@ sealed interface MemoryUpdateResult {
 
     /** Placement stopped because stored Group vectors must be rebuilt first, so no Group was merged. */
     data class RebuildRequired(
+        val sources: List<EpisodeExtractionResult>,
         val episodes: List<EpisodeAssignmentResult>,
         val components: List<ComponentPlacementResult>,
         val reason: String,
     ) : MemoryUpdateResult
+}
+
+/** How Episode extraction from the waiting records of [source] ended. */
+data class EpisodeExtractionResult(val source: SourceDescriptor, val outcome: EpisodeExtractionOutcome)
+
+sealed interface EpisodeExtractionOutcome {
+    /** [episodeCount] Episodes were stored; zero when the records held none. */
+    data class Extracted(val episodeCount: Int) : EpisodeExtractionOutcome
+    data class Failed(val reason: String) : EpisodeExtractionOutcome
 }
 
 data class EpisodeAssignmentResult(val episodeId: Int, val outcome: EpisodeAssignmentOutcome)

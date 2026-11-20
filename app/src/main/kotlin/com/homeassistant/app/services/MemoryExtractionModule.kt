@@ -9,6 +9,7 @@ import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpre
 import com.homeassistant.application.usecase.memory.xmemory.XMemoryUpdateService
 import com.homeassistant.application.usecase.memory.xmemory.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
+import com.homeassistant.application.usecase.memory.xmemory.episode.ExtractEpisodes
 import com.homeassistant.application.usecase.memoryextraction.episode.AnalyzeSubmittedSourcesService
 import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
 import com.homeassistant.application.usecase.memory.xmemory.group.MergeSmallGroups
@@ -23,7 +24,7 @@ import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.llm.CompletionClient
 
-/** Assembles Episode analysis, the worker that analyzes submitted sources, and the worker that builds Components and Groups from the stored Episodes. */
+/** Assembles source submission, the worker that completes submitted analyses, and the worker that builds Episodes, Components and Groups from the stored source records. */
 internal class MemoryExtractionModule(
     repositories: RepositoryStores,
     episodeEmbeddings: PrepareEpisodeEmbedding,
@@ -42,12 +43,12 @@ internal class MemoryExtractionModule(
     private val analyzeSubmittedSources = AnalyzeSubmittedSourcesService(
         jobs = repositories.episodeAnalysisJobQueue,
         sourceRecords = repositories.sourceRecords,
-        episodes = repositories.episodes,
-        episodeExtractor = EpisodeExtractorImpl(completionClient),
         referenceInterpreter = ModelSourceReferenceInterpreter(completionClient),
     )
 
     private val updateHierarchy = XMemoryUpdateService(
+        repositories.episodeExtractionQueue,
+        ExtractEpisodes(EpisodeExtractorImpl(completionClient), repositories.episodes),
         repositories.componentAssignmentOutbox,
         repositories.components,
         AssignEpisodeToComponents(
@@ -64,6 +65,6 @@ internal class MemoryExtractionModule(
         MergeSmallGroups(repositories.groups, GroupMergePolicy(groupSettings)),
     )
 
-    /** The workers that analyze submitted sources and update the memory hierarchy in rounds. */
+    /** The workers that complete submitted analyses and update the memory hierarchy in rounds. */
     val runtimes: List<Runtime> = listOf(EpisodeAnalysisWorker(analyzeSubmittedSources), UpdateMemoryWorker(updateHierarchy))
 }

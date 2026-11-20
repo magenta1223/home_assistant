@@ -99,7 +99,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
     ): Episode {
         val evidence = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
             SourceDescriptor(type = "test", name = content),
-            listOf(SourceRecordDraft(content, content)),
+            listOf(SourceRecordDraft(content, content)), SUBMITTER,
             access,
         )).recordsToAnalyze.single()
         val proposal = EpisodeProposal(
@@ -114,3 +114,5 @@ class EpisodeRepositoryUseCaseIntegrationTest {
         )).single()
     }
 }
+
+private val SUBMITTER = UserId("submitter")

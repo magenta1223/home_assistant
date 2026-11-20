@@ -7,6 +7,20 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.inbound.memory.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentOutcome
 import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentResult
+import com.homeassistant.application.port.inbound.memory.EpisodeExtractionOutcome
+import com.homeassistant.application.port.inbound.memory.EpisodeExtractionResult
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionQueue
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractor
+import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
+import com.homeassistant.application.usecase.memory.xmemory.episode.ExtractEpisodes
+import com.homeassistant.domain.memory.xmemory.episode.Episode
+import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal
+import com.homeassistant.domain.source.SourceDescriptor
+import com.homeassistant.domain.source.SourceDocument
+import com.homeassistant.domain.source.SourceRecord
+import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentTask
@@ -36,6 +50,7 @@ import com.homeassistant.domain.memory.xmemory.group.GroupOrganizationPlanner
 import com.homeassistant.domain.memory.xmemory.group.GroupPlacementPolicy
 import com.homeassistant.domain.memory.xmemory.group.GroupPolicySettings
 import com.homeassistant.domain.memory.xmemory.group.GroupSplitPolicy
+import kotlinx.coroutines.runBlocking
 import java.time.Clock
 import java.time.Instant
 import java.time.ZoneId
@@ -47,21 +62,51 @@ import kotlin.test.assertTrue
 
 class XMemoryUpdateServiceTest {
     @Test
-    fun `nothing is read or written without the assignment services`() {
+    fun `nothing is read or written without the assignment services`() = runBlocking<Unit> {
         val fixture = Fixture(embeddingReady = false)
         assertEquals(MemoryUpdateResult.Skipped, fixture.service.execute(20))
         assertEquals(emptyList(), fixture.outboxCalls)
+        assertEquals(emptyList(), fixture.extractionCalls)
     }
 
     @Test
-    fun `claims use the batch size, retry delay, processing lease and attempt limit after queuing unassigned episodes`() {
+    fun `waiting sources are extracted first and their Episodes are assigned in the same update`() = runBlocking<Unit> {
+        val fixture = Fixture(claimable = 0, waitingSources = 2)
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(20))
+        assertEquals(
+            listOf(
+                EpisodeExtractionResult(source(1), EpisodeExtractionOutcome.Extracted(1)),
+                EpisodeExtractionResult(source(2), EpisodeExtractionOutcome.Extracted(1)),
+            ),
+            update.sources,
+        )
+        assertEquals(listOf(101, 102), update.episodes.map { it.episodeId })
+        assertEquals("claim:${NOW - 60_000L}:${NOW - 600_000L}:5", fixture.extractionCalls.first())
+    }
+
+    @Test
+    fun `a failed source is recorded as failed and the next source is still extracted`() = runBlocking<Unit> {
+        val fixture = Fixture(claimable = 0, waitingSources = 2, failingSources = setOf(1))
+        val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(20))
+        assertEquals(
+            listOf(
+                EpisodeExtractionResult(source(1), EpisodeExtractionOutcome.Failed("model unavailable")),
+                EpisodeExtractionResult(source(2), EpisodeExtractionOutcome.Extracted(1)),
+            ),
+            update.sources,
+        )
+        assertEquals(listOf("failed:claim-1"), fixture.extractionCalls.filterNot { it.startsWith("claim") })
+    }
+
+    @Test
+    fun `claims use the batch size, retry delay, processing lease and attempt limit after queuing unassigned episodes`() = runBlocking<Unit> {
         val fixture = Fixture()
         fixture.service.execute(7)
         assertEquals(listOf("enqueueUnassigned", "claim:7:${NOW - 60_000L}:${NOW - 600_000L}:5"), fixture.outboxCalls.take(2))
     }
 
     @Test
-    fun `a failed episode is recorded as failed and the next episode is still assigned`() {
+    fun `a failed episode is recorded as failed and the next episode is still assigned`() = runBlocking<Unit> {
         val fixture = Fixture(claimable = 2, failingEpisodes = setOf(1))
         fixture.statements = mapOf(2 to listOf("fact"))
         val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(20))
@@ -76,14 +121,14 @@ class XMemoryUpdateServiceTest {
     }
 
     @Test
-    fun `every waiting episode is assigned in one update, batch after batch`() {
+    fun `every waiting episode is assigned in one update, batch after batch`() = runBlocking<Unit> {
         val fixture = Fixture(claimable = 5)
         val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(2))
         assertEquals(listOf(1, 2, 3, 4, 5), update.episodes.map { it.episodeId })
     }
 
     @Test
-    fun `an episode that fails is not retried in the same update even after the retry delay passes`() {
+    fun `an episode that fails is not retried in the same update even after the retry delay passes`() = runBlocking<Unit> {
         val fixture = Fixture(claimable = 2, failingEpisodes = setOf(1), clock = AdvancingClock(stepMillis = 61_000L))
         val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(1))
         assertEquals(listOf(1, 2), update.episodes.map { it.episodeId })
@@ -91,14 +136,14 @@ class XMemoryUpdateServiceTest {
     }
 
     @Test
-    fun `every unplaced component is placed in one update and a failing one is read only once`() {
+    fun `every unplaced component is placed in one update and a failing one is read only once`() = runBlocking<Unit> {
         val fixture = Fixture(claimable = 0, unplaced = 5, failingComponents = setOf(1))
         val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(2))
         assertEquals(listOf(1, 2, 3, 4, 5), update.components.map { it.componentId })
     }
 
     @Test
-    fun `every unplaced component is placed and a failure fails that component only`() {
+    fun `every unplaced component is placed and a failure fails that component only`() = runBlocking<Unit> {
         val fixture = Fixture(claimable = 0, unplaced = 3, failingComponents = setOf(2))
         val update = assertIs<MemoryUpdateResult.Completed>(fixture.service.execute(20))
         assertEquals(listOf(1, 2, 3), update.components.map { it.componentId })
@@ -107,7 +152,7 @@ class XMemoryUpdateServiceTest {
     }
 
     @Test
-    fun `outdated group vectors stop placement without merging`() {
+    fun `outdated group vectors stop placement without merging`() = runBlocking<Unit> {
         val fixture = Fixture(claimable = 0, unplaced = 2)
         fixture.snapshot = GroupSnapshot(
             listOf(StoredGroup(Group(4, setOf(9)), 1, VECTOR)),
@@ -124,15 +169,51 @@ class XMemoryUpdateServiceTest {
         private val failingEpisodes: Set<Int> = emptySet(),
         private val unplaced: Int = 0,
         private val failingComponents: Set<Int> = emptySet(),
+        private val waitingSources: Int = 0,
+        private val failingSources: Set<Int> = emptySet(),
         private val clock: Clock = Clock.fixed(Instant.ofEpochMilli(NOW), ZoneOffset.UTC),
     ) {
         val outboxCalls = mutableListOf<String>()
+        val extractionCalls = mutableListOf<String>()
         val groupWrites = mutableListOf<GroupChange>()
         var statements = emptyMap<Int, List<String>>()
         var snapshot = GroupSnapshot(emptyList(), emptyMap())
         private val components = mutableListOf<Component>()
         private val pending = (1..claimable).toMutableList()
         private val failedAt = mutableMapOf<Int, Long>()
+        private val sources = (1..waitingSources).toMutableList()
+
+        private val extractionQueue = object : EpisodeExtractionQueue {
+            override fun claimNext(now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): EpisodeExtractionClaim? {
+                extractionCalls += "claim:$retryBefore:$staleProcessingBefore:$maxAttempts"
+                val id = sources.removeFirstOrNull() ?: return null
+                val record = SourceRecord(id, "record $id", "message $id", SourceRecordAnalysisStatus.PENDING, AccessControl.PUBLIC)
+                return EpisodeExtractionClaim("claim-$id", UserId("member"), SourceDocument(source(id), listOf(record)))
+            }
+
+            override fun markFailed(claimId: String, error: String, now: Long): Boolean = extractionCalls.add("failed:$claimId")
+        }
+
+        /** Stores each extracted Episode as id 100 + its record id and queues it for assignment like the real outbox. */
+        private val episodes = object : EpisodeRepository {
+            override fun findVisibleTo(userId: UserId) = error("extraction never searches Episodes")
+            override fun save(batch: EpisodeBatch) = batch.proposals.map { proposal ->
+                val id = 100 + proposal.evidenceIds.single()
+                pending += id
+                Episode(id, batch.createdBy.value, proposal.title, proposal.content, AccessControl.PUBLIC, proposal.evidenceIds, NOW)
+            }
+        }
+
+        private val extractEpisodes = ExtractEpisodes(
+            object : EpisodeExtractor {
+                override suspend fun analyze(document: SourceDocument): List<EpisodeProposal> {
+                    val id = document.records.single().id
+                    if (id in failingSources) error("model unavailable")
+                    return listOf(EpisodeProposal("title $id", "$id", listOf(id)))
+                }
+            },
+            episodes,
+        )
 
         private val outbox = object : ComponentAssignmentOutbox {
             override fun claimReady(
@@ -209,6 +290,8 @@ class XMemoryUpdateServiceTest {
         private val settings = GroupPolicySettings()
 
         val service = XMemoryUpdateService(
+            extractionQueue = extractionQueue,
+            extractEpisodes = extractEpisodes,
             outbox = outbox,
             components = unplacedComponents,
             assignEpisode = assignEpisode,
@@ -247,6 +330,7 @@ class XMemoryUpdateServiceTest {
     }
 
     private companion object {
+        fun source(id: Int) = SourceDescriptor("test", "source $id")
         const val NOW = 1_000_000L
         val SPACE = EmbeddingSpace("test", "v1")
         val VECTOR = EmbeddingVector.normalized(listOf(1.0, 0.0))

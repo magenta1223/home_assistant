@@ -35,7 +35,7 @@ class SourceRecordRepositoryTest {
                 listOf(
                     SourceRecordDraft("reference:${reference.sha256}:page-1", "page one", reference = reference),
                     SourceRecordDraft("reference:${reference.sha256}:page-2", "page two", reference = reference),
-                ),
+                ), SUBMITTER,
             )).recordsToAnalyze
 
             assertEquals(2, records.size)
@@ -62,7 +62,7 @@ class SourceRecordRepositoryTest {
             val db = DatabaseFactory.init(databasePath.toString())
             assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(
                 SourceDescriptor("kakao", "room"),
-                listOf(SourceRecordDraft("key", "content", recordedAt = 1_234L)),
+                listOf(SourceRecordDraft("key", "content", recordedAt = 1_234L)), SUBMITTER,
             ))
 
             assertEquals(1_234L, db.write { SourceRecordTable.selectAll().single()[SourceRecordTable.recordedAt] })
@@ -80,16 +80,16 @@ class SourceRecordRepositoryTest {
             val existingAccess = AccessControl.restricted(listOf(UserId("member-1")))
             assertIs<SourceRecordSaveResult.Saved>(repository.save(
                 source,
-                listOf(draft("same")),
+                listOf(draft("same")), SUBMITTER,
                 existingAccess,
             ))
 
             val otherAccess = AccessControl.restricted(listOf(UserId("member-2")))
-            val result = repository.save(source, listOf(draft("new"), draft("same")), otherAccess)
+            val result = repository.save(source, listOf(draft("new"), draft("same")), SUBMITTER, otherAccess)
             assertEquals(SourceRecordSaveResult.AccessConflict(existingAccess), result)
 
             // The conflict wrote nothing, so the new draft is still new.
-            val retried = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("new")), otherAccess))
+            val retried = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("new")), SUBMITTER, otherAccess))
             assertEquals(1, retried.importedRecordCount)
         } finally {
             Files.deleteIfExists(databasePath)
@@ -104,12 +104,12 @@ class SourceRecordRepositoryTest {
             val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("kakao", "conversation")
             val existingDrafts = (1..25).map { draft("old-$it") }
-            val initial = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, existingDrafts))
+            val initial = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, existingDrafts, SUBMITTER))
             markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
 
             val incremental = assertIs<SourceRecordSaveResult.Saved>(repository.save(
                 source.copy(name = "renamed-conversation"),
-                existingDrafts + draft("new") + draft("old-1"),
+                existingDrafts + draft("new") + draft("old-1"), SUBMITTER,
             ))
 
             assertEquals(listOf("new"), incremental.recordsToAnalyze.map { it.deduplicationKey })
@@ -125,10 +125,10 @@ class SourceRecordRepositoryTest {
             val db = DatabaseFactory.init(databasePath.toString())
             val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("test", "source")
-            val first = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"))))
+            val first = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b")), SUBMITTER))
             markAnalyzed(db, listOf(first.recordsToAnalyze.single { it.deduplicationKey == "b" }.id))
 
-            val second = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c"))))
+            val second = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c")), SUBMITTER))
 
             assertEquals(1, second.importedRecordCount)
             assertEquals(1, second.retriedRecordCount)
@@ -137,7 +137,7 @@ class SourceRecordRepositoryTest {
             assertTrue(second.recordsToAnalyze.all { it.analysisStatus == SourceRecordAnalysisStatus.PENDING })
 
             markAnalyzed(db, second.recordsToAnalyze.map { it.id })
-            val completed = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c"))))
+            val completed = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c")), SUBMITTER))
             assertTrue(completed.recordsToAnalyze.isEmpty())
             assertEquals(3, completed.alreadyAnalyzedRecordCount)
         } finally {
@@ -169,29 +169,11 @@ class SourceRecordRepositoryTest {
         }
     }
 
-    @Test
-    fun `finding pending records skips analyzed and unlisted records`() {
-        val databasePath = Files.createTempFile("source-record-pending", ".db")
-        try {
-            val db = DatabaseFactory.init(databasePath.toString())
-            val repository = SourceRecordRepositoryImpl(db)
-            val source = SourceDescriptor("test", "source")
-            val records = assertIs<SourceRecordSaveResult.Saved>(
-                repository.save(source, listOf(draft("pending"), draft("analyzed"), draft("unlisted"))),
-            ).recordsToAnalyze
-            val (pending, analyzed) = records
-            markAnalyzed(db, listOf(analyzed.id))
-
-            assertEquals(listOf(pending), repository.findPendingByIds(listOf(analyzed.id, pending.id)))
-            assertTrue(repository.findPendingByIds(emptyList()).isEmpty())
-        } finally {
-            Files.deleteIfExists(databasePath)
-        }
-    }
-
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
     private fun markAnalyzed(db: com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases, recordIds: Collection<Int>) {
         EpisodeRepositoryImpl(db).save(EpisodeBatch(UserId("test-member"), emptyList(), recordIds))
     }
 }
+
+private val SUBMITTER = UserId("submitter")

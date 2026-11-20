@@ -91,6 +91,7 @@ internal class EpisodeRepositoryImpl(
             SourceRecordTable.update({ SourceRecordTable.id inList recordIds }) {
                 it[analysisStatus] = SourceRecordAnalysisStatus.ANALYZED.name
             }
+            EpisodeExtractionQueueRepository.markExtracted(recordIds, now)
         }
         episodes
     }

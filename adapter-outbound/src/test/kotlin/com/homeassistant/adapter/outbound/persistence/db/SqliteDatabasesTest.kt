@@ -1,9 +1,12 @@
 package com.homeassistant.adapter.outbound.persistence.db
 
+import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
+import org.jetbrains.exposed.sql.selectAll
 import java.nio.file.Files
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.CountDownLatch
@@ -20,13 +23,12 @@ class SqliteDatabasesTest {
 
     @Test fun `a read does not wait for a writer that holds the write lock`() = withDatabase { db ->
         val records = SourceRecordRepositoryImpl(db)
-        val committed = assertIs<SourceRecordSaveResult.Saved>(records.save(source, listOf(SourceRecordDraft("committed", "content"))))
-            .recordsToAnalyze.single()
+        assertIs<SourceRecordSaveResult.Saved>(records.save(source, listOf(SourceRecordDraft("committed", "content")), SUBMITTER))
         val writing = CountDownLatch(1)
         val release = CountDownLatch(1)
         val writer = CompletableFuture.runAsync {
             db.write {
-                records.save(source, listOf(SourceRecordDraft("uncommitted", "content")))
+                records.save(source, listOf(SourceRecordDraft("uncommitted", "content")), SUBMITTER)
                 writing.countDown()
                 release.await()
             }
@@ -34,7 +36,7 @@ class SqliteDatabasesTest {
         try {
             assertTrue(writing.await(10, TimeUnit.SECONDS))
             val elapsed = measureTimeMillis {
-                assertEquals(listOf(committed), records.findPendingByIds((1..10).toList()))
+                assertEquals(listOf("committed"), db.read { SourceRecordTable.selectAll().map { it[SourceRecordTable.deduplicationKey] } })
             }
             assertTrue(elapsed < READ_WITHOUT_WAITING_MILLIS, "read waited $elapsed ms for the writer")
         } finally {
@@ -58,3 +60,5 @@ class SqliteDatabasesTest {
         const val READ_WITHOUT_WAITING_MILLIS = 1_000L
     }
 }
+
+private val SUBMITTER = UserId("submitter")

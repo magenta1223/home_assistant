@@ -29,7 +29,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: SqliteDatabases
             it[visibility] = submission.access.visibility.name
             it[status] = PENDING.name
             it[attempts] = 0
-            it[episodeCount] = null
+            it[recordCount] = null
             it[lastError] = null
             it[updatedAt] = now
         }[EpisodeAnalysisJobTable.id]
@@ -66,8 +66,8 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: SqliteDatabases
         if (claimed == 0) null else findJob(EpisodeAnalysisJobTable.id eq jobId)
     }
 
-    override fun markCompleted(jobId: Int, expectedAttempt: Int, episodeCount: Int, now: Long): Boolean =
-        transition(jobId, expectedAttempt, COMPLETED, episodeCount, null, now)
+    override fun markCompleted(jobId: Int, expectedAttempt: Int, recordCount: Int, now: Long): Boolean =
+        transition(jobId, expectedAttempt, COMPLETED, recordCount, null, now)
 
     override fun markFailed(jobId: Int, expectedAttempt: Int, error: String, now: Long): Boolean =
         transition(jobId, expectedAttempt, FAILED, null, error.take(MAX_ERROR_LENGTH), now)
@@ -80,7 +80,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: SqliteDatabases
         jobId: Int,
         expectedAttempt: Int,
         next: EpisodeAnalysisJobStatus,
-        episodeCount: Int?,
+        recordCount: Int?,
         error: String?,
         now: Long,
     ): Boolean = db.write {
@@ -90,7 +90,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: SqliteDatabases
                 (EpisodeAnalysisJobTable.attempts eq expectedAttempt)
         }) {
             it[status] = next.name
-            it[EpisodeAnalysisJobTable.episodeCount] = episodeCount
+            it[EpisodeAnalysisJobTable.recordCount] = recordCount
             it[lastError] = error
             it[updatedAt] = now
         } == 1
@@ -115,7 +115,7 @@ internal class EpisodeAnalysisJobQueueRepository(private val db: SqliteDatabases
                 ),
                 status = EpisodeAnalysisJobStatus.valueOf(row[EpisodeAnalysisJobTable.status]),
                 attempt = row[EpisodeAnalysisJobTable.attempts],
-                episodeCount = row[EpisodeAnalysisJobTable.episodeCount],
+                recordCount = row[EpisodeAnalysisJobTable.recordCount],
                 lastError = row[EpisodeAnalysisJobTable.lastError],
             )
         }

@@ -2,8 +2,9 @@
 
 `EpisodeAnalysisService`는 입력 source record와 PDF·이미지 reference 원본을 저장하고 분석 job 하나를
 `EpisodeAnalysisJobQueue`에 넣은 뒤 job id를 돌려준다. `AnalyzeSubmittedSourcesService`가 job을 하나씩 꺼내
-reference를 해석하고, 아직 분석되지 않은 record에서 episode proposal을 추출해 canonical episode로 확정한다.
-별도의 preview/review 단계는 없다.
+reference를 해석해 source record로 저장하고, job이 다루는 record 수를 기록한다. 저장된 record에서 episode를
+추출하는 일은 memory update(`XMemoryUpdateService`)의 첫 단계가 `EpisodeExtractionQueue`로 맡는다. source record에는
+제출한 사용자(`submittedBy`)가 함께 저장되고, 추출된 episode의 작성자가 된다. 별도의 preview/review 단계는 없다.
 
 추출 계약은 독립적인 `content`와 `evidenceIds`만 갖는다. 모델 응답의 `text`와
 `evidenceRecordIds`를 이 계약으로 변환하며, 고정된 정보 종류·대상 필드·확실성 enum을 요구하지
@@ -12,7 +13,7 @@ reference를 해석하고, 아직 분석되지 않은 record에서 episode propo
 권한은 추출 모델이 판단하지 않고 근거 source의 immutable access에서 결정한다.
 
 HTTP adapter가 인증된 principal의 application userId, source, access를 `EpisodeAnalysis.submit`에 직접 전달하고,
-같은 사용자가 `EpisodeAnalysis.findJob`으로 job의 상태·episode 수·마지막 오류를 조회한다. 다른 사용자의 job은 찾지 못한다.
+같은 사용자가 `EpisodeAnalysis.findJob`으로 job의 상태·record 수·마지막 오류를 조회한다. 다른 사용자의 job은 찾지 못한다.
 scheduler adapter의 `EpisodeAnalysisWorker`가 `AnalyzeSubmittedSources.analyzeNextJob`을 준비된 job이 없을 때까지
 한 스레드에서 차례로 호출하므로 두 job이 동시에 분석되지 않는다. job이 없으면 10초 뒤 다시 확인한다.
 사용자 목록 조회는 공통 `UserRegistry`를 사용한다. 채널 identity 해석과 등록 대기 workflow는 없다.
@@ -32,7 +33,7 @@ sequenceDiagram
     loop restricted audience userId
         Analysis->>Access: audience 인가
     end
-    Analysis->>Sources: save(source, records, access)
+    Analysis->>Sources: save(source, records, submittedBy, access)
     alt 동일 record가 다른 열람 범위로 저장됨
         Sources-->>Analysis: AccessConflict(existingAccess)
         Analysis-->>Caller: SourceAccessConflictException(existingAccess)
@@ -59,30 +60,20 @@ sequenceDiagram
     participant Jobs as EpisodeAnalysisJobQueue
     participant Sources as SourceRecordRepository
     participant Reference as SourceReferenceInterpreter
-    participant Extractor as EpisodeExtractor
-    participant Episodes as EpisodeRepository
 
     Worker->>Round: analyzeNextJob()
     Round->>Jobs: claimNext(now, retryBefore, staleProcessingBefore, maxAttempts)
     alt 준비된 job 없음
         Round-->>Worker: Idle
     else job claim
-        Round->>Sources: findPendingByIds(job record ids)
         opt job에 reference가 있음
             Round->>Sources: findReferenceContent(referenceId)
             Round->>Reference: interpret(reference)
             Reference-->>Round: 페이지/이미지별 evidence text
-            Round->>Sources: save(source, segment records, job access)
+            Round->>Sources: save(source, segment records, requestedBy, job access)
         end
-        alt 분석할 record 없음
-            Round->>Jobs: markCompleted(episodeCount = 0)
-        else 분석 대상 존재
-            Round->>Extractor: analyze(SourceDocument)
-            Extractor-->>Round: EpisodeProposal 목록
-            Round->>Episodes: save(EpisodeBatch(requestedBy, proposals, recordIds))
-            Round->>Jobs: markCompleted(episodeCount)
-        end
-        Round-->>Worker: Completed(jobId, episodeCount)
+        Round->>Jobs: markCompleted(recordCount)
+        Round-->>Worker: Completed(jobId, recordCount)
     end
     Note over Round,Jobs: 어느 단계든 실패하면 markFailed(reason) 후 Failed(jobId, reason)
 ```
@@ -106,7 +97,6 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
 - 접수 중 source·reference 저장과 job 등록 실패는 `EpisodeAnalysisUnavailableException`으로 변환한다.
 - record 저장과 job 등록은 별도 호출이다. 등록 전에 실패하면 record가 `PENDING`으로 남고, 같은 source를 다시
   제출하면 재시도 record로 돌아와 새 job에 담긴다.
-- 분석 round의 실패(손상되었거나 지원하지 않는 reference, 빈 해석 결과, extraction, canonical commit)는 job에
-  마지막 오류로 남긴다. 실패한 job은 60초 뒤부터 다시 claim되며 시도가 5회에 이르면 `FAILED`로 남는다. 처리 중인
+- 분석 round의 실패(손상되었거나 지원하지 않는 reference, 빈 해석 결과)는 job에 마지막 오류로 남긴다. 실패한 job은 60초 뒤부터 다시 claim되며 시도가 5회에 이르면 `FAILED`로 남는다. 처리 중인
   job이 10분 안에 끝나지 않으면 다른 round가 다시 claim하고, 이전 시도의 완료·실패 기록은 무시된다.
-- Episode 저장 후 Component 배정을 직접 호출하지 않는다. commit에 함께 남긴 Component 할당 outbox를 worker가 처리한다.
+- episode 추출과 그 실패는 job과 무관하다. `EpisodeExtractionQueue`가 source record마다 시도 횟수와 마지막 오류를 남긴다.

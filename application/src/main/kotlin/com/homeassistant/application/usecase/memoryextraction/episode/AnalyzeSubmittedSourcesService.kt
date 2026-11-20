@@ -5,15 +5,11 @@ import com.homeassistant.application.port.inbound.memoryextraction.SourceAnalysi
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJob
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobQueue
 import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractor
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
-import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -21,15 +17,14 @@ import java.time.Clock
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Claims submitted analyses from the [EpisodeAnalysisJobQueue] one at a time, turns their pending records and
- * interpreted reference into episodes, and records each outcome on the job. A failed job is retried after
- * [retryDelayMillis] until [maxAttempts]; a job left in progress longer than [processingLeaseMillis] is reclaimed.
+ * Claims submitted analyses from the [EpisodeAnalysisJobQueue] one at a time, stores the records interpreted from their
+ * reference, and records each outcome on the job. Episodes are extracted from the stored records by the memory update.
+ * A failed job is retried after [retryDelayMillis] until [maxAttempts]; a job left in progress longer than
+ * [processingLeaseMillis] is reclaimed.
  */
 class AnalyzeSubmittedSourcesService(
     private val jobs: EpisodeAnalysisJobQueue,
     private val sourceRecords: SourceRecordRepository,
-    private val episodes: EpisodeRepository,
-    private val episodeExtractor: EpisodeExtractor,
     private val referenceInterpreter: SourceReferenceInterpreter,
     private val clock: Clock = Clock.systemUTC(),
     private val retryDelayMillis: Long = DEFAULT_RETRY_DELAY_MILLIS,
@@ -44,11 +39,11 @@ class AnalyzeSubmittedSourcesService(
 
     override suspend fun analyzeNextJob(): SourceAnalysisRoundResult {
         val job = claimNext() ?: return SourceAnalysisRoundResult.Idle
-        return runCatching { analyze(job.submission) }
+        return runCatching { storeRecords(job.submission) }
             .fold(
-                onSuccess = { episodeCount ->
-                    jobs.markCompleted(job.id, job.attempt, episodeCount, clock.millis())
-                    SourceAnalysisRoundResult.Completed(job.id, episodeCount)
+                onSuccess = { recordCount ->
+                    jobs.markCompleted(job.id, job.attempt, recordCount, clock.millis())
+                    SourceAnalysisRoundResult.Completed(job.id, recordCount)
                 },
                 onFailure = { failure ->
                     if (failure is CancellationException) throw failure
@@ -70,25 +65,19 @@ class AnalyzeSubmittedSourcesService(
         )
     }
 
-    /** Saves the episodes of [submission]'s records still pending analysis and returns how many were saved. */
-    private suspend fun analyze(submission: EpisodeAnalysisSubmission): Int {
-        val records = recordsToAnalyze(submission)
-        if (records.isEmpty()) return 0
-        val proposals = episodeExtractor.analyze(SourceDocument(submission.source, records))
-        episodes.save(EpisodeBatch(submission.requestedBy, proposals, records.map { it.id }))
-        return proposals.size
-    }
-
-    /** [submission]'s typed records still pending analysis, then the pending records of its interpreted reference. */
-    private suspend fun recordsToAnalyze(submission: EpisodeAnalysisSubmission): List<SourceRecord> =
-        (sourceRecords.findPendingByIds(submission.sourceRecordIds) + referenceRecords(submission)).distinctBy { it.id }
+    /**
+     * Stores the records of [submission]'s interpreted reference and returns how many source records it covers: its
+     * submitted records and the pending records of its reference.
+     */
+    private suspend fun storeRecords(submission: EpisodeAnalysisSubmission): Int =
+        (submission.sourceRecordIds + referenceRecords(submission).map { it.id }).distinct().size
 
     /** The pending records stored from [submission]'s interpreted reference; empty when it has none. */
     private suspend fun referenceRecords(submission: EpisodeAnalysisSubmission): List<SourceRecord> {
         val referenceId = submission.referenceId ?: return emptyList()
         val reference = checkNotNull(sourceRecords.findReferenceContent(referenceId)) { "reference $referenceId is not stored" }
         val drafts = interpretSegments(reference).map { it.toRecordOf(reference) }
-        return when (val saved = sourceRecords.save(submission.source, drafts, submission.access)) {
+        return when (val saved = sourceRecords.save(submission.source, drafts, submission.requestedBy, submission.access)) {
             is SourceRecordSaveResult.Saved -> saved.recordsToAnalyze
             is SourceRecordSaveResult.AccessConflict ->
                 error("reference records already exist with a different audience: ${submission.source.name}")

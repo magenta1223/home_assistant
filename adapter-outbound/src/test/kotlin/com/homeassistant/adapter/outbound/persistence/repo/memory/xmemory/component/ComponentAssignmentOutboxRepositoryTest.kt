@@ -84,7 +84,7 @@ class ComponentAssignmentOutboxRepositoryTest {
     }
 
     private fun seedEpisodes(db: SqliteDatabases, key: String, vararg contents: String): List<Int> {
-        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())),
+        val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())), SUBMITTER,
             AccessControl.restricted(listOf(user)))).recordsToAnalyze.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
            EpisodeProposal("title", content, listOf(record.id))
@@ -97,3 +97,5 @@ class ComponentAssignmentOutboxRepositoryTest {
         finally { Files.deleteIfExists(path) }
     }
 }
+
+private val SUBMITTER = UserId("submitter")

@@ -26,7 +26,7 @@ class EpisodeAnalysisJobQueueRepositoryTest {
         assertEquals(submission, enqueued.submission)
         assertEquals(EpisodeAnalysisJobStatus.PENDING, enqueued.status)
         assertEquals(0, enqueued.attempt)
-        assertNull(enqueued.episodeCount)
+        assertNull(enqueued.recordCount)
         assertNull(enqueued.lastError)
         assertEquals(enqueued, jobs.findRequestedBy(enqueued.id, owner))
     }
@@ -72,8 +72,8 @@ class EpisodeAnalysisJobQueueRepositoryTest {
         val fresh = assertNotNull(jobs.claimNext(now = 1_000, retryBefore = 0, staleProcessingBefore = 0, maxAttempts = 5))
         assertEquals(stale.id, fresh.id)
         assertEquals(2, fresh.attempt)
-        assertFalse(jobs.markCompleted(stale.id, stale.attempt, episodeCount = 1, now = 1_000))
-        assertTrue(jobs.markCompleted(fresh.id, fresh.attempt, episodeCount = 1, now = 1_000))
+        assertFalse(jobs.markCompleted(stale.id, stale.attempt, recordCount = 1, now = 1_000))
+        assertTrue(jobs.markCompleted(fresh.id, fresh.attempt, recordCount = 1, now = 1_000))
     }
 
     @Test fun `a completed job reports its episode count and clears the last error`() = withDatabase { db ->
@@ -82,10 +82,10 @@ class EpisodeAnalysisJobQueueRepositoryTest {
         val failed = assertNotNull(jobs.claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
         jobs.markFailed(failed.id, failed.attempt, "analysis failed", now = 0)
         val retried = assertNotNull(jobs.claimNext(now = 1_000, retryBefore = 1_000, staleProcessingBefore = -1, maxAttempts = 5))
-        assertTrue(jobs.markCompleted(retried.id, retried.attempt, episodeCount = 3, now = 1_000))
+        assertTrue(jobs.markCompleted(retried.id, retried.attempt, recordCount = 3, now = 1_000))
         val completed = assertNotNull(jobs.findRequestedBy(enqueued.id, owner))
         assertEquals(EpisodeAnalysisJobStatus.COMPLETED, completed.status)
-        assertEquals(3, completed.episodeCount)
+        assertEquals(3, completed.recordCount)
         assertNull(completed.lastError)
         assertNull(jobs.claimNext(now = 10_000, retryBefore = 10_000, staleProcessingBefore = 10_000, maxAttempts = 5))
     }
@@ -101,7 +101,7 @@ class EpisodeAnalysisJobQueueRepositoryTest {
 
     private fun saveRecords(db: SqliteDatabases, drafts: List<SourceRecordDraft>) =
         assertIs<SourceRecordSaveResult.Saved>(
-            SourceRecordRepositoryImpl(db).save(source, drafts, access),
+            SourceRecordRepositoryImpl(db).save(source, drafts, SUBMITTER, access),
         ).recordsToAnalyze
 
     private fun withDatabase(block: (SqliteDatabases) -> Unit) {
@@ -110,3 +110,5 @@ class EpisodeAnalysisJobQueueRepositoryTest {
         finally { Files.deleteIfExists(path) }
     }
 }
+
+private val SUBMITTER = UserId("submitter")

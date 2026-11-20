@@ -2,6 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeExtractionQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepositoryImpl
@@ -20,6 +21,7 @@ object RepositoryFactory {
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
+            episodeExtractionQueue = EpisodeExtractionQueueRepository(db),
             episodeAnalysisJobQueue = EpisodeAnalysisJobQueueRepository(db),
             components = ComponentRepositoryImpl(db),
             componentEmbeddings = ComponentEmbeddingRepositoryImpl(db),

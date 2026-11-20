@@ -1,6 +1,7 @@
 package com.homeassistant.application.port.outbound.source
 
 import com.homeassistant.domain.access.AccessControl
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -11,12 +12,14 @@ import com.homeassistant.domain.source.SourceReferenceDraft
 interface SourceRecordRepository {
 
     /**
-     * Stores the new drafts of [source] with [access] and returns them with the earlier records still pending analysis.
-     * Nothing is written when a record of [source] was stored before with a different access.
+     * Stores the new drafts of [source] as submitted by [submittedBy] with [access] and returns them with the earlier
+     * records still pending analysis. An earlier record keeps its first submitter. Nothing is written when a record of
+     * [source] was stored before with a different access.
      */
     fun save(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
+        submittedBy: UserId,
         access: AccessControl = AccessControl.PUBLIC,
     ): SourceRecordSaveResult
 
@@ -25,9 +28,6 @@ interface SourceRecordRepository {
 
     /** The stored file of reference [referenceId], or null when there is none. */
     fun findReferenceContent(referenceId: Int): SourceReferenceDraft?
-
-    /** The records among [recordIds] still pending analysis, oldest first. */
-    fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord>
 }
 
 /** How a [SourceRecordRepository.save] ended. */

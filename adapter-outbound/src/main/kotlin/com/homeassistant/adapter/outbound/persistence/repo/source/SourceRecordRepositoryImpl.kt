@@ -6,6 +6,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.SourceReferenceT
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
+import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
@@ -23,6 +24,7 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
     override fun save(
         source: SourceDescriptor,
         records: List<SourceRecordDraft>,
+        submittedBy: UserId,
         access: AccessControl,
     ): SourceRecordSaveResult = db.write {
         val drafts = records.distinctBy { it.deduplicationKey }
@@ -38,7 +40,7 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             val existing = stored.getValue(draft.deduplicationKey)
             when {
                 existing == null -> {
-                    recordsToAnalyze += insert(source, draft, access)
+                    recordsToAnalyze += insert(source, draft, submittedBy, access)
                     importedRecordCount++
                 }
                 existing.analysisStatus == SourceRecordAnalysisStatus.PENDING -> {
@@ -70,16 +72,6 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             }
     }
 
-    override fun findPendingByIds(recordIds: Collection<Int>): List<SourceRecord> = db.read {
-        SourceRecordTable.selectAll()
-            .where {
-                (SourceRecordTable.id inList recordIds) and
-                    (SourceRecordTable.analysisStatus eq SourceRecordAnalysisStatus.PENDING.name)
-            }
-            .orderBy(SourceRecordTable.id)
-            .map { it.toSourceRecord() }
-    }
-
     /** The record of [source]'s type stored under [deduplicationKey], or null when there is none. */
     private fun findStored(source: SourceDescriptor, deduplicationKey: String): SourceRecord? =
         SourceRecordTable.selectAll()
@@ -90,8 +82,13 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             .singleOrNull()
             ?.toSourceRecord()
 
-    /** Stores [draft] as a pending record of [source] readable as [access]. */
-    private fun insert(source: SourceDescriptor, draft: SourceRecordDraft, access: AccessControl): SourceRecord {
+    /** Stores [draft] as a pending record of [source] that [submittedBy] submitted, readable as [access]. */
+    private fun insert(
+        source: SourceDescriptor,
+        draft: SourceRecordDraft,
+        submittedBy: UserId,
+        access: AccessControl,
+    ): SourceRecord {
         val referenceId = draft.reference?.let(::storeReference)
         val id = SourceRecordTable.insert {
             it[sourceType] = source.type
@@ -99,6 +96,7 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             it[content] = draft.content
             it[deduplicationKey] = draft.deduplicationKey
             it[recordedAt] = draft.recordedAt
+            it[SourceRecordTable.submittedBy] = submittedBy.value
             it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
             it[visibility] = access.visibility.name
             it[SourceRecordTable.referenceId] = referenceId
@@ -127,7 +125,8 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             },
         )
 
-    private fun ResultRow.toSourceRecord(): SourceRecord =
+    /** The source record stored in this row, read inside the caller's transaction. */
+    internal fun ResultRow.toSourceRecord(): SourceRecord =
         SourceRecord(
             id = this[SourceRecordTable.id],
             deduplicationKey = this[SourceRecordTable.deduplicationKey],

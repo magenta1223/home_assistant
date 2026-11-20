@@ -29,7 +29,7 @@ class EpisodeRepositoryTest {
             val userId = UserId("member-1")
             val record = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
                 SourceDescriptor(type = "test", name = "created-at"),
-                listOf(SourceRecordDraft("episode", "episode")),
+                listOf(SourceRecordDraft("episode", "episode")), SUBMITTER,
             )).recordsToAnalyze.single()
 
             val saved = episodes.save(episodeProposal(record.id, "episode"), userId)
@@ -59,7 +59,7 @@ class EpisodeRepositoryTest {
             val otherMember = UserId("member-3")
             val record = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
                 SourceDescriptor(type = "test", name = "visibility"),
-                listOf(SourceRecordDraft("private", "private")),
+                listOf(SourceRecordDraft("private", "private")), SUBMITTER,
                 AccessControl.restricted(listOf(uploader, participant)),
             )).recordsToAnalyze.single()
             episodes.save(
@@ -87,12 +87,12 @@ class EpisodeRepositoryTest {
             val member3 = UserId("member-3")
             val first = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
                 SourceDescriptor("test", "first"),
-                listOf(SourceRecordDraft("first", "first")),
+                listOf(SourceRecordDraft("first", "first")), SUBMITTER,
                 AccessControl.restricted(listOf(member1, member2)),
             )).recordsToAnalyze.single()
             val second = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
                 SourceDescriptor("test", "second"),
-                listOf(SourceRecordDraft("second", "second")),
+                listOf(SourceRecordDraft("second", "second")), SUBMITTER,
                 AccessControl.restricted(listOf(member2, member3)),
             )).recordsToAnalyze.single()
             val proposal = episodeProposal(first.id, "combined").copy(evidenceIds = listOf(first.id, second.id))
@@ -116,3 +116,5 @@ class EpisodeRepositoryTest {
     private fun EpisodeRepositoryImpl.save(proposal: EpisodeProposal, createdBy: UserId) =
         save(EpisodeBatch(createdBy, listOf(proposal), proposal.evidenceIds)).single()
 }
+
+private val SUBMITTER = UserId("submitter")

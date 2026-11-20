@@ -20,6 +20,7 @@ internal object SourceRecordTable : Table("source_records") {
     val content = text("content")
     val deduplicationKey = text("deduplication_key")
     val recordedAt = long("created_at")
+    val submittedBy = text("submitted_by")
     val analysisStatus = text("analysis_status")
     val visibility = text("visibility")
     val referenceId = integer("reference_id").references(SourceReferenceTable.id).nullable()

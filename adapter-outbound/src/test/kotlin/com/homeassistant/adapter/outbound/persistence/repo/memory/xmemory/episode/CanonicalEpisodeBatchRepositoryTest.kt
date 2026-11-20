@@ -22,7 +22,7 @@ class CanonicalEpisodeBatchRepositoryTest {
     @Test
     fun `second episode failure rolls back episodes evidence outbox and source status`() = withDatabase("batch-rollback") { db ->
         val sourceRecords = SourceRecordRepositoryImpl(db)
-        val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).recordsToAnalyze
+        val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).recordsToAnalyze
         db.write {
             exec(
                 """
@@ -48,14 +48,14 @@ class CanonicalEpisodeBatchRepositoryTest {
 
         assertTrue(repository.findVisibleTo(USER).isEmpty())
         assertEquals(0L, db.write { ComponentAssignmentOutboxTable.selectAll().count() })
-        assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).retriedRecordCount)
+        assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).retriedRecordCount)
     }
 
     @Test
     fun `retry reuses exact episodes while different content or evidence is preserved`() =
         withDatabase("batch-idempotency") { db ->
             val sourceRecords = SourceRecordRepositoryImpl(db)
-            val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).recordsToAnalyze
+            val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).recordsToAnalyze
             val repository = EpisodeRepositoryImpl(db)
             val firstRequest = listOf(item("stable-key", proposal("same", records[0].id)))
 
@@ -77,7 +77,7 @@ class CanonicalEpisodeBatchRepositoryTest {
             assertEquals(3, repository.findVisibleTo(USER).size)
             assertEquals(2, variants.size)
             assertEquals(3L, db.write { ComponentAssignmentOutboxTable.selectAll().count() })
-            assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")))).alreadyAnalyzedRecordCount)
+            assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).alreadyAnalyzedRecordCount)
         }
 
     private fun item(key: String, proposal: EpisodeProposal) = proposal
@@ -104,3 +104,5 @@ class CanonicalEpisodeBatchRepositoryTest {
         val SOURCE = SourceDescriptor("test", "source")
     }
 }
+
+private val SUBMITTER = UserId("submitter")

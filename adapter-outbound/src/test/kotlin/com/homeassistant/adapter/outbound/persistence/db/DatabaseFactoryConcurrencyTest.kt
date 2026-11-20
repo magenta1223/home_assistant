@@ -24,13 +24,13 @@ class DatabaseFactoryConcurrencyTest {
 
         val saved = concurrently { thread ->
             (0 until SAVES_PER_THREAD).map { save ->
-                records.save(source, listOf(SourceRecordDraft("record-$thread-$save", "content")))
+                records.save(source, listOf(SourceRecordDraft("record-$thread-$save", "content")), SUBMITTER)
             }
         }.flatten()
 
         assertEquals(THREADS * SAVES_PER_THREAD, saved.sumOf { assertIs<SourceRecordSaveResult.Saved>(it).importedRecordCount })
         val all = (0 until THREADS).flatMap { thread -> (0 until SAVES_PER_THREAD).map { SourceRecordDraft("record-$thread-$it", "content") } }
-        assertEquals(THREADS * SAVES_PER_THREAD, assertIs<SourceRecordSaveResult.Saved>(records.save(source, all)).retriedRecordCount)
+        assertEquals(THREADS * SAVES_PER_THREAD, assertIs<SourceRecordSaveResult.Saved>(records.save(source, all, SUBMITTER)).retriedRecordCount)
     }
 
     @Test fun `concurrent claims take every queued job exactly once`() = withDatabase { db ->
@@ -73,3 +73,5 @@ class DatabaseFactoryConcurrencyTest {
         const val SAVES_PER_THREAD = 25
     }
 }
+
+private val SUBMITTER = UserId("submitter")

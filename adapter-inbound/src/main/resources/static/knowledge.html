@@ -261,7 +261,7 @@
           throw new Error(body.error || '분석 상태를 확인하지 못했습니다.');
         }
         if (body.status === 'COMPLETED') {
-          status.textContent = accepted + '\n완료: 에피소드 ' + body.episodeCount + '개를 저장했습니다.';
+          status.textContent = accepted + '\n완료: 기록 ' + body.recordCount + '개를 저장했습니다. 에피소드는 메모리 갱신 때 만들어집니다.';
           return;
         }
         if (body.status === 'FAILED') {

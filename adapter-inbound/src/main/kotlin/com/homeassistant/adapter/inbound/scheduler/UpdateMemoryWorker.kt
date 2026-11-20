@@ -2,10 +2,12 @@ package com.homeassistant.adapter.inbound.scheduler
 
 import com.homeassistant.application.port.inbound.memory.ComponentPlacementOutcome
 import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentOutcome
+import com.homeassistant.application.port.inbound.memory.EpisodeExtractionOutcome
 import com.homeassistant.application.port.inbound.memory.GroupMergeOutcome
 import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
 import com.homeassistant.application.port.inbound.memory.UpdateMemory
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
+import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
@@ -28,7 +30,7 @@ class UpdateMemoryWorker(
 
     /** Contains every failure: an exception escaping a scheduled task would cancel later rounds. */
     internal fun runRound() {
-        runCatching { updateHierarchy.execute(batchSize) }
+        runCatching { runBlocking { updateHierarchy.execute(batchSize) } }
             .onSuccess(::log)
             .onFailure { log.warn("Memory hierarchy update failed", it) }
     }
@@ -40,9 +42,10 @@ class UpdateMemoryWorker(
     private fun log(update: MemoryUpdateResult) {
         when (update) {
             MemoryUpdateResult.Skipped -> log.debug("Memory hierarchy update skipped: assignment services are not ready")
-            is MemoryUpdateResult.Completed -> if (update.episodes.isNotEmpty() || update.components.isNotEmpty()) {
+            is MemoryUpdateResult.Completed -> if (update.sources.isNotEmpty() || update.episodes.isNotEmpty() || update.components.isNotEmpty()) {
                 log.info(
-                    "Memory hierarchy updated episodes={} episodeFailures={} components={} componentFailures={} groupMerges={}",
+                    "Memory hierarchy updated sources={} sourceFailures={} episodes={} episodeFailures={} components={} componentFailures={} groupMerges={}",
+                    update.sources.size, update.sources.count { it.outcome is EpisodeExtractionOutcome.Failed },
                     update.episodes.size, update.episodes.count { it.outcome is EpisodeAssignmentOutcome.Failed },
                     update.components.size, update.components.count { it.outcome is ComponentPlacementOutcome.Failed },
                     update.merges.count { it is GroupMergeOutcome.Merged },

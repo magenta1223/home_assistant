@@ -226,14 +226,14 @@ private data class AlreadyAnalyzedResponse(
 private data class KnowledgeImportJobResponse(
     val jobId: Int,
     val status: EpisodeAnalysisJobStatus,
-    val episodeCount: Int?,
+    val recordCount: Int?,
     val lastError: String?,
 )
 
 private fun EpisodeAnalysisJobReport.toResponse() = KnowledgeImportJobResponse(
     jobId = jobId,
     status = status,
-    episodeCount = episodeCount,
+    recordCount = recordCount,
     lastError = lastError,
 )
 

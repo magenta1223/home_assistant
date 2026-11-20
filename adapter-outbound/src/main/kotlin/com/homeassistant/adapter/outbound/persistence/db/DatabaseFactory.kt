@@ -42,6 +42,7 @@ internal object DatabaseFactory {
                 SourceRecordTable,
                 SourceRecordViewerTable,
                 ComponentAssignmentOutboxTable,
+                SourceRecordExtractionTable,
                 EpisodeAnalysisJobTable,
                 EpisodeAnalysisJobRecordTable,
                 EpisodeAnalysisJobViewerTable,

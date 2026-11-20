@@ -48,7 +48,7 @@ class EpisodeAnalysisWorker(
         when (round) {
             SourceAnalysisRoundResult.Idle -> Unit
             is SourceAnalysisRoundResult.Completed ->
-                log.info("Episode analysis job completed jobId={} episodes={}", round.jobId, round.episodeCount)
+                log.info("Episode analysis job completed jobId={} records={}", round.jobId, round.recordCount)
             is SourceAnalysisRoundResult.Failed ->
                 log.warn("Episode analysis job failed jobId={} reason={}", round.jobId, round.reason)
         }

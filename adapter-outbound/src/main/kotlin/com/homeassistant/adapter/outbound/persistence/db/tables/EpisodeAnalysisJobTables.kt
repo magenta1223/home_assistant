@@ -11,7 +11,7 @@ internal object EpisodeAnalysisJobTable : Table("episode_analysis_jobs") {
     val visibility = text("visibility")
     val status = text("status")
     val attempts = integer("attempts")
-    val episodeCount = integer("episode_count").nullable()
+    val recordCount = integer("record_count").nullable()
     val lastError = text("last_error").nullable()
     val updatedAt = long("updated_at")
     override val primaryKey = PrimaryKey(id)

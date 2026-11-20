@@ -12,8 +12,8 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component.ComponentRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.inbound.memory.ComponentOrganizationOutcome
-import com.homeassistant.application.port.inbound.memory.GroupMergeOutcome
+import com.homeassistant.application.usecase.memory.xmemory.group.ComponentOrganizationOutcome
+import com.homeassistant.application.usecase.memory.xmemory.group.GroupMergeOutcome
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace

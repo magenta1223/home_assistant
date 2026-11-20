@@ -1,10 +1,8 @@
 package com.homeassistant.adapter.inbound.scheduler
 
-import com.homeassistant.application.port.inbound.memory.ComponentPlacementOutcome
-import com.homeassistant.application.port.inbound.memory.EpisodeAssignmentOutcome
-import com.homeassistant.application.port.inbound.memory.EpisodeExtractionOutcome
-import com.homeassistant.application.port.inbound.memory.GroupMergeOutcome
 import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
+import com.homeassistant.application.port.inbound.memory.SourceMemorizationOutcome
+import com.homeassistant.application.port.inbound.memory.SourceMemorizationResult
 import com.homeassistant.application.port.inbound.memory.UpdateMemory
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import kotlinx.coroutines.runBlocking
@@ -17,11 +15,11 @@ import java.util.concurrent.TimeUnit
  * Runs [UpdateMemory] every [intervalSeconds] and logs what each round changed.
  */
 class UpdateMemoryWorker(
-    private val updateHierarchy: UpdateMemory,
+    private val updateMemory: UpdateMemory,
     private val batchSize: Int = DEFAULT_BATCH_SIZE,
     private val intervalSeconds: Long = DEFAULT_INTERVAL_SECONDS,
     private val executor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { task ->
-        Thread(task, "component-assignment-outbox").apply { isDaemon = true }
+        Thread(task, "memory-update").apply { isDaemon = true }
     },
 ) : AbstractRuntime() {
     override fun onStart() {
@@ -30,9 +28,9 @@ class UpdateMemoryWorker(
 
     /** Contains every failure: an exception escaping a scheduled task would cancel later rounds. */
     internal fun runRound() {
-        runCatching { runBlocking { updateHierarchy.execute(batchSize) } }
+        runCatching { runBlocking { updateMemory.execute(batchSize) } }
             .onSuccess(::log)
-            .onFailure { log.warn("Memory hierarchy update failed", it) }
+            .onFailure { log.warn("Memory update failed", it) }
     }
 
     override fun onStop() {
@@ -41,19 +39,19 @@ class UpdateMemoryWorker(
 
     private fun log(update: MemoryUpdateResult) {
         when (update) {
-            MemoryUpdateResult.Skipped -> log.debug("Memory hierarchy update skipped: assignment services are not ready")
-            is MemoryUpdateResult.Completed -> if (update.sources.isNotEmpty() || update.episodes.isNotEmpty() || update.components.isNotEmpty()) {
-                log.info(
-                    "Memory hierarchy updated sources={} sourceFailures={} episodes={} episodeFailures={} components={} componentFailures={} groupMerges={}",
-                    update.sources.size, update.sources.count { it.outcome is EpisodeExtractionOutcome.Failed },
-                    update.episodes.size, update.episodes.count { it.outcome is EpisodeAssignmentOutcome.Failed },
-                    update.components.size, update.components.count { it.outcome is ComponentPlacementOutcome.Failed },
-                    update.merges.count { it is GroupMergeOutcome.Merged },
-                )
+            MemoryUpdateResult.Skipped -> log.debug("Memory update skipped: the memory services are not ready")
+            is MemoryUpdateResult.Completed -> if (update.sources.isNotEmpty()) {
+                log.info("Memory updated sources={} sourceFailures={}", update.sources.size, failures(update.sources))
             }
-            is MemoryUpdateResult.RebuildRequired -> log.warn("Memory hierarchy update stopped: {}", update.reason)
+            is MemoryUpdateResult.Stopped -> log.warn(
+                "Memory update stopped sources={} sourceFailures={} reason={}",
+                update.sources.size, failures(update.sources), update.reason,
+            )
         }
     }
+
+    private fun failures(sources: List<SourceMemorizationResult>): Int =
+        sources.count { it.outcome is SourceMemorizationOutcome.Failed }
 
     private companion object {
         const val DEFAULT_BATCH_SIZE = 20

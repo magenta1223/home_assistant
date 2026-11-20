@@ -3,7 +3,6 @@ package com.homeassistant.application.usecase.memory.xmemory.group
 import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
 import com.homeassistant.domain.embedding.EmbeddingGeometry
 import com.homeassistant.application.port.outbound.memory.xmemory.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.inbound.memory.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupChange
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupChangeConflict
@@ -79,4 +78,10 @@ class OrganizeComponentIntoGroups(
             setOf(incoming.key.componentId), results, allEmbeddings.filterKeys { it in componentIds },
         )
     }
+}
+
+sealed interface ComponentOrganizationOutcome {
+    data class Organized(val groupIds: List<Int>, val split: GroupSplit) : ComponentOrganizationOutcome
+    data object AlreadyOrganized : ComponentOrganizationOutcome
+    data object ConflictExhausted : ComponentOrganizationOutcome
 }

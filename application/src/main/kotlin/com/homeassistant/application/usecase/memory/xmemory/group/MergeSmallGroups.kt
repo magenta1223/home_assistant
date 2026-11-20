@@ -1,6 +1,5 @@
 package com.homeassistant.application.usecase.memory.xmemory.group
 
-import com.homeassistant.application.port.inbound.memory.GroupMergeOutcome
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupChange
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupChangeConflict
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupSnapshot
@@ -67,4 +66,11 @@ class MergeSmallGroups(
             embeddings,
         )
     }
+}
+
+sealed interface GroupMergeOutcome {
+    /** [absorbedGroupId]'s Components joined [survivorGroupId] and [absorbedGroupId] was deleted. */
+    data class Merged(val survivorGroupId: Int, val absorbedGroupId: Int) : GroupMergeOutcome
+    /** Concurrent changes kept merges from being written; the next round decides again. */
+    data object ConflictExhausted : GroupMergeOutcome
 }

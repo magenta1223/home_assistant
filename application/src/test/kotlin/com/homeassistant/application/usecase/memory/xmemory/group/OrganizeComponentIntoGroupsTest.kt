@@ -4,7 +4,7 @@ import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupRepository
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupChangeConflict
 import com.homeassistant.domain.identity.UserId
-import com.homeassistant.application.port.inbound.memory.ComponentOrganizationOutcome
+import com.homeassistant.application.usecase.memory.xmemory.group.ComponentOrganizationOutcome
 import com.homeassistant.application.port.outbound.embedding.Embedding
 import com.homeassistant.application.port.outbound.memory.xmemory.embedding.ComponentEmbeddingKey
 import com.homeassistant.application.port.outbound.memory.xmemory.embedding.ComponentEmbeddingRepository

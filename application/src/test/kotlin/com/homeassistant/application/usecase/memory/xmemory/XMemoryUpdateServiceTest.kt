@@ -20,7 +20,6 @@ import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.application.port.inbound.memory.MemoryUpdateResult
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentTask
@@ -187,7 +186,7 @@ class XMemoryUpdateServiceTest {
             override fun claimNext(now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): EpisodeExtractionClaim? {
                 extractionCalls += "claim:$retryBefore:$staleProcessingBefore:$maxAttempts"
                 val id = sources.removeFirstOrNull() ?: return null
-                val record = SourceRecord(id, "record $id", "message $id", SourceRecordAnalysisStatus.PENDING, AccessControl.PUBLIC)
+                val record = SourceRecord(id, "record $id", "message $id", AccessControl.PUBLIC)
                 return EpisodeExtractionClaim("claim-$id", UserId("member"), SourceDocument(source(id), listOf(record)))
             }
 

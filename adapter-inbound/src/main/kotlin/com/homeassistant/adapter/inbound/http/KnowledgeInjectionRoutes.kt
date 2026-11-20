@@ -2,21 +2,21 @@ package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.adapter.inbound.kakao.KakaoExportParser
 import com.homeassistant.adapter.inbound.text.PlainTextSourceParser
-import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
-import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
+import com.homeassistant.application.port.inbound.sourceimport.SourceAccessConflictException
+import com.homeassistant.application.port.inbound.sourceimport.DuplicateSourceRecordsException
+import com.homeassistant.application.port.inbound.sourceimport.InvalidAllowedUsersException
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportJobReport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmissionResult
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportUnavailableException
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
-import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
+import com.homeassistant.domain.source.SourceImportJobStatus
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -33,7 +33,7 @@ import kotlinx.serialization.Serializable
 import java.util.Base64
 
 internal fun Route.knowledgeInjectionRoutes(
-    episodeAnalysis: EpisodeAnalysis,
+    sourceImport: SourceImport,
     users: UserRegistry,
 ) {
     get(AppConfig.ROUTE_KNOWLEDGE_USERS) {
@@ -94,8 +94,8 @@ internal fun Route.knowledgeInjectionRoutes(
 
         try {
             val submitted = withContext(Dispatchers.IO) {
-                episodeAnalysis.submit(
-                    EpisodeAnalysisRequest(
+                sourceImport.submit(
+                    SourceImportRequest(
                         userId = principal.userId.value,
                         source = source,
                         access = access,
@@ -106,9 +106,9 @@ internal fun Route.knowledgeInjectionRoutes(
         } catch (error: DuplicateSourceRecordsException) {
             call.respond(
                 HttpStatusCode.Conflict,
-                AlreadyAnalyzedResponse(
-                    error = "all source records have already been analyzed",
-                    alreadyAnalyzedRecordCount = error.recordCount,
+                AlreadyStoredResponse(
+                    error = "all source records were stored before",
+                    alreadyStoredRecordCount = error.recordCount,
                 ),
             )
         } catch (error: SourceAccessConflictException) {
@@ -118,7 +118,7 @@ internal fun Route.knowledgeInjectionRoutes(
                 HttpStatusCode.BadRequest,
                 mapOf("error" to error.message, "userIds" to error.userIds.sorted()),
             )
-        } catch (error: EpisodeAnalysisUnavailableException) {
+        } catch (error: SourceImportUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         } catch (_: UserAccessDeniedException) {
             call.respond(HttpStatusCode.Forbidden, mapOf("error" to "user access denied"))
@@ -138,11 +138,11 @@ internal fun Route.knowledgeInjectionRoutes(
         }
 
         try {
-            when (val report = withContext(Dispatchers.IO) { episodeAnalysis.findJob(principal.userId.value, jobId) }) {
-                null -> call.respond(HttpStatusCode.NotFound, mapOf("error" to "analysis job not found"))
+            when (val report = withContext(Dispatchers.IO) { sourceImport.findJob(principal.userId.value, jobId) }) {
+                null -> call.respond(HttpStatusCode.NotFound, mapOf("error" to "import job not found"))
                 else -> call.respond(HttpStatusCode.OK, report.toResponse())
             }
-        } catch (error: EpisodeAnalysisUnavailableException) {
+        } catch (error: SourceImportUnavailableException) {
             call.respond(HttpStatusCode.ServiceUnavailable, mapOf("error" to error.message))
         }
     }
@@ -210,38 +210,36 @@ private data class KnowledgeUserResponse(
 private data class KnowledgeImportResponse(
     val jobId: Int,
     val importedRecordCount: Int,
-    val retriedRecordCount: Int,
-    val alreadyAnalyzedRecordCount: Int,
+    val alreadyStoredRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
 )
 
 @Serializable
-private data class AlreadyAnalyzedResponse(
+private data class AlreadyStoredResponse(
     val error: String,
-    val alreadyAnalyzedRecordCount: Int,
+    val alreadyStoredRecordCount: Int,
 )
 
 @Serializable
 private data class KnowledgeImportJobResponse(
     val jobId: Int,
-    val status: EpisodeAnalysisJobStatus,
+    val status: SourceImportJobStatus,
     val recordCount: Int?,
     val lastError: String?,
 )
 
-private fun EpisodeAnalysisJobReport.toResponse() = KnowledgeImportJobResponse(
+private fun SourceImportJobReport.toResponse() = KnowledgeImportJobResponse(
     jobId = jobId,
     status = status,
     recordCount = recordCount,
     lastError = lastError,
 )
 
-private fun EpisodeAnalysisSubmissionResult.toResponse() = KnowledgeImportResponse(
+private fun SourceImportSubmissionResult.toResponse() = KnowledgeImportResponse(
     jobId = jobId,
     importedRecordCount = importedRecordCount,
-    retriedRecordCount = retriedRecordCount,
-    alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
+    alreadyStoredRecordCount = alreadyStoredRecordCount,
     visibility = visibility,
     allowedUserIds = allowedUserIds,
 )

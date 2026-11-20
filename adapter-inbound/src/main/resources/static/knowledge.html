@@ -240,7 +240,7 @@
         if (response.status === 401) showLogin();
         throw new Error(body.error || '저장하지 못했습니다.');
       }
-      const accepted = '접수됨: 새 소스 레코드 ' + body.importedRecordCount + '개, 다시 분석할 레코드 ' + body.retriedRecordCount + '개';
+      const accepted = '접수됨: 새 소스 레코드 ' + body.importedRecordCount + '개, 이미 저장된 레코드 ' + body.alreadyStoredRecordCount + '개';
       status.textContent = accepted + '\n분석을 기다리는 중입니다…';
       pollJob(body.jobId, accepted);
     } catch (error) {

@@ -1,17 +1,17 @@
-package com.homeassistant.application.usecase.memoryextraction.episode
+package com.homeassistant.application.usecase.sourceimport
 
 import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
-import com.homeassistant.application.port.inbound.memoryextraction.DuplicateSourceRecordsException
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisUnavailableException
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
-import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJob
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobQueue
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
+import com.homeassistant.application.port.inbound.sourceimport.DuplicateSourceRecordsException
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportJobReport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmissionResult
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportUnavailableException
+import com.homeassistant.application.port.inbound.sourceimport.InvalidAllowedUsersException
+import com.homeassistant.application.port.inbound.sourceimport.SourceAccessConflictException
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.access.AccessControl
@@ -21,34 +21,33 @@ import com.homeassistant.domain.source.SourceDocumentDraft
 import com.homeassistant.domain.source.SourceReference
 import java.time.Clock
 
-/** Stores submitted source records and their reference, queues their analysis and reports it back to the submitter. */
-class EpisodeAnalysisService(
+/** Stores submitted source records and their reference, queues their import job and reports it back to the submitter. */
+class SourceImportService(
     private val sourceRecords: SourceRecordRepository,
-    private val jobs: EpisodeAnalysisJobQueue,
+    private val jobs: SourceImportJobQueue,
     private val accessPolicy: UserAccessPolicy,
     private val clock: Clock = Clock.systemUTC(),
-) : EpisodeAnalysis {
-    override fun submit(request: EpisodeAnalysisRequest): EpisodeAnalysisSubmissionResult {
+) : SourceImport {
+    override fun submit(request: SourceImportRequest): SourceImportSubmissionResult {
         val userId = UserId(request.userId)
         requireAuthorized(userId)
         requireAuthorizedAudience(request.access.allowedUserIds)
         val saved = saveSourceRecords(request.source, userId, request.access)
-        requireSomethingToAnalyze(request.source, saved)
+        requireSomethingNew(request.source, saved)
         val reference = request.source.reference?.let { reference ->
             rethrowAsUnavailable { sourceRecords.saveReference(reference) }
         }
         val job = enqueue(userId, request, saved, reference)
-        return EpisodeAnalysisSubmissionResult(
+        return SourceImportSubmissionResult(
             jobId = job.id,
-            importedRecordCount = saved.importedRecordCount,
-            retriedRecordCount = saved.retriedRecordCount,
-            alreadyAnalyzedRecordCount = saved.alreadyAnalyzedRecordCount,
+            importedRecordCount = saved.newRecords.size,
+            alreadyStoredRecordCount = saved.alreadyStoredRecords.size,
             visibility = request.access.visibility,
             allowedUserIds = request.access.allowedUserIds,
         )
     }
 
-    override fun findJob(userId: String, jobId: Int): EpisodeAnalysisJobReport? {
+    override fun findJob(userId: String, jobId: Int): SourceImportJobReport? {
         val requester = UserId(userId)
         return rethrowAsUnavailable { jobs.findRequestedBy(jobId, requester) }?.toReport()
     }
@@ -65,24 +64,24 @@ class EpisodeAnalysisService(
                 throw SourceAccessConflictException(source.source.name, result.existingAccess)
         }
 
-    /** Rejects a submission whose every record was analyzed before and that brings no reference to interpret. */
-    private fun requireSomethingToAnalyze(source: SourceDocumentDraft, saved: SourceRecordSaveResult.Saved) {
-        if (saved.recordsToAnalyze.isEmpty() && source.records.isNotEmpty() && source.reference == null) {
-            throw DuplicateSourceRecordsException(source.source.name, saved.alreadyAnalyzedRecordCount)
+    /** Rejects a submission whose every record was stored before and that brings no reference to interpret. */
+    private fun requireSomethingNew(source: SourceDocumentDraft, saved: SourceRecordSaveResult.Saved) {
+        if (saved.newRecords.isEmpty() && source.records.isNotEmpty() && source.reference == null) {
+            throw DuplicateSourceRecordsException(source.source.name, saved.alreadyStoredRecords.size)
         }
     }
 
-    /** Queues the analysis of [saved]'s records and the stored [reference] for [requestedBy]. */
+    /** Queues the import of [saved]'s new records and the stored [reference] for [requestedBy]. */
     private fun enqueue(
         requestedBy: UserId,
-        request: EpisodeAnalysisRequest,
+        request: SourceImportRequest,
         saved: SourceRecordSaveResult.Saved,
         reference: SourceReference?,
-    ): EpisodeAnalysisJob {
-        val submission = EpisodeAnalysisSubmission(
+    ): SourceImportJob {
+        val submission = SourceImportSubmission(
             requestedBy = requestedBy,
             source = request.source.source,
-            sourceRecordIds = saved.recordsToAnalyze.map { it.id },
+            sourceRecordIds = saved.newRecords.map { it.id },
             referenceId = reference?.id,
             access = request.access,
         )
@@ -100,13 +99,13 @@ class EpisodeAnalysisService(
         if (invalid.isNotEmpty()) throw InvalidAllowedUsersException(invalid)
     }
 
-    private fun EpisodeAnalysisJob.toReport() = EpisodeAnalysisJobReport(id, status, recordCount, lastError)
+    private fun SourceImportJob.toReport() = SourceImportJobReport(id, status, recordCount, lastError)
 
-    /** The result of [operation], rethrowing its failure as [EpisodeAnalysisUnavailableException]. */
+    /** The result of [operation], rethrowing its failure as [SourceImportUnavailableException]. */
     private fun <T> rethrowAsUnavailable(operation: () -> T): T =
         try {
             operation()
         } catch (error: Exception) {
-            throw EpisodeAnalysisUnavailableException(error)
+            throw SourceImportUnavailableException(error)
         }
 }

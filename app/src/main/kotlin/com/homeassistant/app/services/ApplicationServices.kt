@@ -2,7 +2,7 @@ package com.homeassistant.app.services
 
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
 import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.contexttool.ContextAccess
 import com.homeassistant.application.port.inbound.contexttool.FindTransactions
@@ -13,8 +13,8 @@ import com.homeassistant.infrastructure.runtime.RuntimeState
 
 /** Serves the application's top-level use cases while [runtimes] run: they start in order and stop in reverse order. */
 class ApplicationServices internal constructor(
-    /** The episode-analysis use case. */
-    val episodeAnalysis: EpisodeAnalysis,
+    /** The source import use case. */
+    val sourceImport: SourceImport,
     /** Episode-backed conversations, or null when the selected agent backend CLI is unavailable. */
     val chat: Chat? = null,
     /** Registered application users that may be selected as knowledge viewers. */

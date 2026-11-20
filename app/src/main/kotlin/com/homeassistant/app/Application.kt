@@ -53,7 +53,7 @@ fun Application.module() {
     try {
         services.start()
         configureRoutes(
-            episodeAnalysis = services.episodeAnalysis,
+            sourceImport = services.sourceImport,
             httpApiKeys = httpApiKeys,
             users = services.users,
             authentication = services.authentication,

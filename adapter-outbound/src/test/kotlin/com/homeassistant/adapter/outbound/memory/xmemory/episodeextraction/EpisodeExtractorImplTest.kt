@@ -7,7 +7,6 @@ import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -110,7 +109,7 @@ class EpisodeExtractorImplTest {
     private fun document(recordCount: Int): SourceDocument = SourceDocument(
         source = SourceDescriptor(type = "test", name = "source"),
         records = (1..recordCount).map {
-            SourceRecord(it, "key-$it", "content-$it", SourceRecordAnalysisStatus.PENDING, AccessControl.PUBLIC)
+            SourceRecord(it, "key-$it", "content-$it", AccessControl.PUBLIC)
         },
     )
 

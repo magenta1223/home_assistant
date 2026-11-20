@@ -14,7 +14,6 @@ import com.homeassistant.domain.memory.xmemory.episode.Episode
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal
 import com.homeassistant.domain.access.Visibility
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import org.jetbrains.exposed.sql.*
 import java.nio.ByteBuffer
 import java.nio.charset.StandardCharsets
@@ -87,12 +86,7 @@ internal class EpisodeRepositoryImpl(
                 item.toEpisode(createdBy, episodeId, now, access)
             }
         }
-        if (recordIds.isNotEmpty()) {
-            SourceRecordTable.update({ SourceRecordTable.id inList recordIds }) {
-                it[analysisStatus] = SourceRecordAnalysisStatus.ANALYZED.name
-            }
-            EpisodeExtractionQueueRepository.markExtracted(recordIds, now)
-        }
+        EpisodeExtractionQueueRepository.markExtracted(recordIds, now)
         episodes
     }
 

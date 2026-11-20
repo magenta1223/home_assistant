@@ -23,7 +23,7 @@ class KakaoSource:
 
 class ImportOutcome(Enum):
     ACCEPTED = "accepted"
-    ALREADY_ANALYZED = "already analyzed"
+    ALREADY_STORED = "already stored"
 
 
 class ImportFailed(Exception):
@@ -33,7 +33,7 @@ class ImportFailed(Exception):
 def send_export(base_url, token, source, text):
     """
     Posts the whole export. The app stores only the messages it does not have yet and answers 202 once their
-    analysis is queued, or 409 with alreadyAnalyzedRecordCount when it has analyzed all of them.
+    import is queued, or 409 with alreadyStoredRecordCount when it has stored all of them before.
     """
     request = urllib.request.Request(
         base_url.rstrip("/") + IMPORT_PATH,
@@ -48,8 +48,8 @@ def send_export(base_url, token, source, text):
             return ImportOutcome.ACCEPTED
     except urllib.error.HTTPError as error:
         body = error.read()
-        if error.code == 409 and is_already_analyzed(body):
-            return ImportOutcome.ALREADY_ANALYZED
+        if error.code == 409 and is_already_stored(body):
+            return ImportOutcome.ALREADY_STORED
         raise ImportFailed(f"HTTP {error.code}: {excerpt(body)}") from error
     except urllib.error.URLError as error:
         raise ImportFailed(f"app is unreachable: {error.reason}") from error
@@ -65,10 +65,10 @@ def import_body(source, text):
     }
 
 
-def is_already_analyzed(body):
+def is_already_stored(body):
     """A 409 also reports an audience that differs from the stored one; only the duplicate answer is success."""
     try:
-        return "alreadyAnalyzedRecordCount" in json.loads(body)
+        return "alreadyStoredRecordCount" in json.loads(body)
     except ValueError:
         return False
 

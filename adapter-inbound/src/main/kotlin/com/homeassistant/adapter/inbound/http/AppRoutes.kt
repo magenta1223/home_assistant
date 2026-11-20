@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.chatservice.Chat
@@ -16,7 +16,7 @@ import io.ktor.server.http.content.staticResources
 import io.ktor.server.routing.routing
 
 fun Application.configureRoutes(
-    episodeAnalysis: EpisodeAnalysis,
+    sourceImport: SourceImport,
     httpApiKeys: Map<String, UserId> = emptyMap(),
     users: UserRegistry = UserRegistry.NONE,
     authentication: UserAuthentication = UserAuthentication.NONE,
@@ -36,7 +36,7 @@ fun Application.configureRoutes(
         publicLoginRoutes(authentication)
         authenticate(*HTTP_AUTHENTICATION_NAMES) {
             sessionStatusRoute()
-            knowledgeInjectionRoutes(episodeAnalysis, users)
+            knowledgeInjectionRoutes(sourceImport, users)
             chatRoutes(chat)
             financeImportRoutes(importFinanceTransactions)
         }

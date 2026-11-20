@@ -4,7 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeExtractionQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
+import com.homeassistant.adapter.outbound.persistence.repo.sourceimport.SourceImportJobQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepositoryImpl
@@ -22,7 +22,7 @@ object RepositoryFactory {
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
             episodeExtractionQueue = EpisodeExtractionQueueRepository(db),
-            episodeAnalysisJobQueue = EpisodeAnalysisJobQueueRepository(db),
+            sourceImportJobQueue = SourceImportJobQueueRepository(db),
             components = ComponentRepositoryImpl(db),
             componentEmbeddings = ComponentEmbeddingRepositoryImpl(db),
             groups = GroupRepositoryImpl(db),

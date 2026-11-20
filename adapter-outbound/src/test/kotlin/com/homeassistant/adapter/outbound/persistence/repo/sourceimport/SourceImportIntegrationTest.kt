@@ -1,25 +1,24 @@
-package com.homeassistant.adapter.outbound.persistence.repo.source
+package com.homeassistant.adapter.outbound.persistence.repo.sourceimport
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
+import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeExtractionQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.InvalidAllowedUsersException
-import com.homeassistant.application.port.inbound.memoryextraction.SourceAccessConflictException
-import com.homeassistant.application.port.inbound.memoryextraction.SourceAnalysisRoundResult
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
+import com.homeassistant.application.port.inbound.sourceimport.InvalidAllowedUsersException
+import com.homeassistant.application.port.inbound.sourceimport.SourceAccessConflictException
+import com.homeassistant.application.port.inbound.sourceimport.SourceAnalysisRoundResult
 import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
-import com.homeassistant.application.usecase.memoryextraction.episode.AnalyzeSubmittedSourcesService
-import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
+import com.homeassistant.application.usecase.sourceimport.AnalyzeSubmittedSourcesService
+import com.homeassistant.application.usecase.sourceimport.SourceImportService
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
-import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
+import com.homeassistant.domain.source.SourceImportJobStatus
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocumentDraft
@@ -35,7 +34,7 @@ import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
-class EpisodeAnalysisRetryTest {
+class SourceImportIntegrationTest {
     @Test
     fun `audience conflict reports the existing access scope`() = withDatabase { db ->
         val request = request("same", AccessControl.restricted(listOf(USER_ID)))
@@ -52,7 +51,7 @@ class EpisodeAnalysisRetryTest {
 
         assertFailsWith<InvalidAllowedUsersException> { submission(db).submit(request) }
 
-        assertEquals(1, resubmit(db, request).importedRecordCount)
+        assertEquals(1, resubmit(db, request).newRecords.size)
     }
 
     @Test
@@ -69,35 +68,18 @@ class EpisodeAnalysisRetryTest {
     }
 
     @Test
-    fun `renamed cumulative import counts only the new records`() = withDatabase { db ->
+    fun `renamed cumulative import stores and counts only the new records`() = withDatabase { db ->
         val original = SourceDescriptor("kakao", "original.txt")
-        val initial = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(original, listOf(draft("old-1"), draft("old-2")), USER_ID))
-        markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
+        assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(original, listOf(draft("old-1"), draft("old-2")), USER_ID))
 
         val submitted = submission(db).submit(
-            EpisodeAnalysisRequest(USER_ID.value, SourceDocumentDraft(original.copy(name = "renamed.txt"), listOf(draft("old-1"), draft("old-2"), draft("new")))),
+            SourceImportRequest(USER_ID.value, SourceDocumentDraft(original.copy(name = "renamed.txt"), listOf(draft("old-1"), draft("old-2"), draft("new")))),
         )
 
         assertEquals(1, submitted.importedRecordCount)
-        assertEquals(2, submitted.alreadyAnalyzedRecordCount)
-        assertEquals(SourceAnalysisRoundResult.Completed(submitted.jobId, 1), worker(db).analyzeNextJob())
-    }
-
-    @Test
-    fun `partial new upload covers pending and new records and reports counts`() = withDatabase { db ->
-        val source = SourceDescriptor("test", "source")
-        val initial = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(source, listOf(draft("pending"), draft("analyzed")), USER_ID))
-        markAnalyzed(db, listOf(initial.recordsToAnalyze.single { it.deduplicationKey == "analyzed" }.id))
-
-        val submitted = submission(db).submit(
-            EpisodeAnalysisRequest(USER_ID.value, SourceDocumentDraft(source, listOf(draft("analyzed"), draft("pending"), draft("new")))),
-        )
-
-        assertEquals(1, submitted.importedRecordCount)
-        assertEquals(1, submitted.retriedRecordCount)
-        assertEquals(1, submitted.alreadyAnalyzedRecordCount)
+        assertEquals(2, submitted.alreadyStoredRecordCount)
         assertEquals(Visibility.PUBLIC, submitted.visibility)
-        assertEquals(SourceAnalysisRoundResult.Completed(submitted.jobId, 2), worker(db).analyzeNextJob())
+        assertEquals(SourceAnalysisRoundResult.Completed(submitted.jobId, 1), worker(db).analyzeNextJob())
     }
 
     @Test
@@ -107,7 +89,7 @@ class EpisodeAnalysisRetryTest {
 
         val report = submission(db).findJob(USER_ID.value, submitted.jobId)
 
-        assertEquals(EpisodeAnalysisJobStatus.COMPLETED, report?.status)
+        assertEquals(SourceImportJobStatus.COMPLETED, report?.status)
         assertEquals(1, report?.recordCount)
         assertNull(report?.lastError)
         assertNull(submission(db).findJob(OTHER_USER_ID.value, submitted.jobId))
@@ -149,9 +131,9 @@ class EpisodeAnalysisRetryTest {
         assertEquals(listOf("typed"), waitingRecords(db).document.records.map { it.deduplicationKey })
     }
 
-    private fun submission(db: SqliteDatabases) = EpisodeAnalysisService(
+    private fun submission(db: SqliteDatabases) = SourceImportService(
         sourceRecords = SourceRecordRepositoryImpl(db),
-        jobs = EpisodeAnalysisJobQueueRepository(db),
+        jobs = SourceImportJobQueueRepository(db),
         accessPolicy = { it == USER_ID || it == OTHER_USER_ID },
     )
 
@@ -159,7 +141,7 @@ class EpisodeAnalysisRetryTest {
         db: SqliteDatabases,
         interpreter: SourceReferenceInterpreter = SourceReferenceInterpreter { error("no reference expected") },
     ) = AnalyzeSubmittedSourcesService(
-        jobs = EpisodeAnalysisJobQueueRepository(db),
+        jobs = SourceImportJobQueueRepository(db),
         sourceRecords = SourceRecordRepositoryImpl(db),
         referenceInterpreter = interpreter,
         retryDelayMillis = 0,
@@ -169,13 +151,13 @@ class EpisodeAnalysisRetryTest {
     private fun waitingRecords(db: SqliteDatabases): EpisodeExtractionClaim =
         assertNotNull(EpisodeExtractionQueueRepository(db).claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
 
-    private fun request(key: String, access: AccessControl = AccessControl.PUBLIC) = EpisodeAnalysisRequest(
+    private fun request(key: String, access: AccessControl = AccessControl.PUBLIC) = SourceImportRequest(
         userId = USER_ID.value,
         source = SourceDocumentDraft(SourceDescriptor("test", "source"), listOf(draft(key))),
         access = access,
     )
 
-    private fun referenceRequest(reference: SourceReferenceDraft) = EpisodeAnalysisRequest(
+    private fun referenceRequest(reference: SourceReferenceDraft) = SourceImportRequest(
         userId = USER_ID.value,
         source = SourceDocumentDraft(
             SourceDescriptor("text", "manual"),
@@ -187,16 +169,12 @@ class EpisodeAnalysisRetryTest {
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
 
-    /** Submits [request]'s records again; the counts tell whether they are stored, pending or analyzed. */
-    private fun resubmit(db: SqliteDatabases, request: EpisodeAnalysisRequest) =
+    /** Submits [request]'s records again; the result tells whether they were stored before. */
+    private fun resubmit(db: SqliteDatabases, request: SourceImportRequest) =
         assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(request.source.source, request.source.records, USER_ID, request.access))
 
-    private fun markAnalyzed(db: SqliteDatabases, recordIds: Collection<Int>) {
-        EpisodeRepositoryImpl(db).save(EpisodeBatch(USER_ID, emptyList(), recordIds))
-    }
-
     private fun withDatabase(block: suspend (SqliteDatabases) -> Unit) = runBlocking {
-        val path = Files.createTempFile("episode-analysis-retry", ".db")
+        val path = Files.createTempFile("source-import", ".db")
         try { block(DatabaseFactory.init(path.toString())) }
         finally { Files.deleteIfExists(path) }
     }

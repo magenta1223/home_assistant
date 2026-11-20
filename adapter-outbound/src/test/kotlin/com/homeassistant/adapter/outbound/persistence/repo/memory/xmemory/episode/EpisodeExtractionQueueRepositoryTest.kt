@@ -93,7 +93,7 @@ class EpisodeExtractionQueueRepositoryTest {
 
     private fun store(db: SqliteDatabases, source: SourceDescriptor, submittedBy: UserId, vararg drafts: SourceRecordDraft): List<Int> {
         val saved = SourceRecordRepositoryImpl(db).save(source, drafts.toList(), submittedBy, AccessControl.PUBLIC)
-        return (saved as SourceRecordSaveResult.Saved).recordsToAnalyze.map { it.id }
+        return (saved as SourceRecordSaveResult.Saved).newRecords.map { it.id }
     }
 
     private fun claim(

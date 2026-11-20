@@ -17,7 +17,7 @@ object ApplicationServicesFactory {
         val repositories = RepositoryFactory.create(dbPath)
         val identity = IdentityModule(repositories)
         val embeddings = EmbeddingModule(repositories)
-        val memoryExtraction = MemoryExtractionModule(
+        val sourceImport = SourceImportModule(
             repositories = repositories,
             episodeEmbeddings = embeddings.episodeEmbeddings,
             componentEmbeddings = embeddings.componentEmbeddings,
@@ -35,7 +35,7 @@ object ApplicationServicesFactory {
         )
         val finance = FinanceModule(repositories)
         return ApplicationServices(
-            episodeAnalysis = memoryExtraction.episodeAnalysis,
+            sourceImport = sourceImport.sourceImport,
             chat = chat.chat,
             users = identity.users,
             authentication = identity.authentication,
@@ -43,7 +43,7 @@ object ApplicationServicesFactory {
             contextAccess = chat.contextAccess,
             searchMemory = chat.searchMemory,
             findTransactions = chat.findTransactions,
-            runtimes = embeddings.runtimes + memoryExtraction.runtimes + chat.runtimes,
+            runtimes = embeddings.runtimes + sourceImport.runtimes + chat.runtimes,
         )
     }
 

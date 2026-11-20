@@ -20,9 +20,9 @@ import kotlin.test.assertTrue
 
 class CanonicalEpisodeBatchRepositoryTest {
     @Test
-    fun `second episode failure rolls back episodes evidence outbox and source status`() = withDatabase("batch-rollback") { db ->
+    fun `second episode failure rolls back episodes evidence outbox and extraction mark`() = withDatabase("batch-rollback") { db ->
         val sourceRecords = SourceRecordRepositoryImpl(db)
-        val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).recordsToAnalyze
+        val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).newRecords
         db.write {
             exec(
                 """
@@ -48,14 +48,14 @@ class CanonicalEpisodeBatchRepositoryTest {
 
         assertTrue(repository.findVisibleTo(USER).isEmpty())
         assertEquals(0L, db.write { ComponentAssignmentOutboxTable.selectAll().count() })
-        assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).retriedRecordCount)
+        assertEquals(records.map { it.id }, waitingRecordIds(db))
     }
 
     @Test
     fun `retry reuses exact episodes while different content or evidence is preserved`() =
         withDatabase("batch-idempotency") { db ->
             val sourceRecords = SourceRecordRepositoryImpl(db)
-            val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).recordsToAnalyze
+            val records = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).newRecords
             val repository = EpisodeRepositoryImpl(db)
             val firstRequest = listOf(item("stable-key", proposal("same", records[0].id)))
 
@@ -77,7 +77,7 @@ class CanonicalEpisodeBatchRepositoryTest {
             assertEquals(3, repository.findVisibleTo(USER).size)
             assertEquals(2, variants.size)
             assertEquals(3L, db.write { ComponentAssignmentOutboxTable.selectAll().count() })
-            assertEquals(2, assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(SOURCE, listOf(draft("one"), draft("two")), SUBMITTER)).alreadyAnalyzedRecordCount)
+            assertEquals(emptyList(), waitingRecordIds(db))
         }
 
     private fun item(key: String, proposal: EpisodeProposal) = proposal
@@ -89,6 +89,11 @@ class CanonicalEpisodeBatchRepositoryTest {
     )
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
+
+    /** The ids of the records still waiting for xMemory extraction. */
+    private fun waitingRecordIds(db: SqliteDatabases): List<Int> =
+        EpisodeExtractionQueueRepository(db).claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5)
+            ?.document?.records?.map { it.id }.orEmpty()
 
     private inline fun withDatabase(prefix: String, block: (SqliteDatabases) -> Unit) {
         val path = Files.createTempFile(prefix, ".db")

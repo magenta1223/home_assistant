@@ -1,6 +1,6 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.adapter.inbound.scheduler.EpisodeAnalysisWorker
+import com.homeassistant.adapter.inbound.scheduler.SourceImportWorker
 import com.homeassistant.adapter.inbound.scheduler.UpdateMemoryWorker
 import com.homeassistant.adapter.outbound.memory.xmemory.componentextraction.ComponentExtractorImpl
 import com.homeassistant.adapter.outbound.memory.xmemory.episodeextraction.EpisodeExtractorImpl
@@ -10,8 +10,8 @@ import com.homeassistant.application.usecase.memory.xmemory.XMemoryUpdateService
 import com.homeassistant.application.usecase.memory.xmemory.component.AssignEpisodeToComponents
 import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memory.xmemory.episode.ExtractEpisodes
-import com.homeassistant.application.usecase.memoryextraction.episode.AnalyzeSubmittedSourcesService
-import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
+import com.homeassistant.application.usecase.sourceimport.AnalyzeSubmittedSourcesService
+import com.homeassistant.application.usecase.sourceimport.SourceImportService
 import com.homeassistant.application.usecase.memory.xmemory.group.MergeSmallGroups
 import com.homeassistant.application.usecase.memory.xmemory.group.OrganizeComponentIntoGroups
 import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
@@ -24,8 +24,8 @@ import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.llm.CompletionClient
 
-/** Assembles source submission, the worker that completes submitted analyses, and the worker that builds Episodes, Components and Groups from the stored source records. */
-internal class MemoryExtractionModule(
+/** Assembles source import, the worker that completes submitted import jobs, and the worker that builds Episodes, Components and Groups from the stored source records. */
+internal class SourceImportModule(
     repositories: RepositoryStores,
     episodeEmbeddings: PrepareEpisodeEmbedding,
     componentEmbeddings: PrepareComponentEmbedding,
@@ -33,15 +33,15 @@ internal class MemoryExtractionModule(
     accessPolicy: UserAccessPolicy,
     groupSettings: GroupPolicySettings,
 ) {
-    /** Accepts source records for Episode analysis. */
-    val episodeAnalysis = EpisodeAnalysisService(
+    /** Accepts submitted source records. */
+    val sourceImport = SourceImportService(
         sourceRecords = repositories.sourceRecords,
-        jobs = repositories.episodeAnalysisJobQueue,
+        jobs = repositories.sourceImportJobQueue,
         accessPolicy = accessPolicy,
     )
 
     private val analyzeSubmittedSources = AnalyzeSubmittedSourcesService(
-        jobs = repositories.episodeAnalysisJobQueue,
+        jobs = repositories.sourceImportJobQueue,
         sourceRecords = repositories.sourceRecords,
         referenceInterpreter = ModelSourceReferenceInterpreter(completionClient),
     )
@@ -65,6 +65,6 @@ internal class MemoryExtractionModule(
         MergeSmallGroups(repositories.groups, GroupMergePolicy(groupSettings)),
     )
 
-    /** The workers that complete submitted analyses and update the memory hierarchy in rounds. */
-    val runtimes: List<Runtime> = listOf(EpisodeAnalysisWorker(analyzeSubmittedSources), UpdateMemoryWorker(updateHierarchy))
+    /** The workers that complete submitted import jobs and update the memory hierarchy in rounds. */
+    val runtimes: List<Runtime> = listOf(SourceImportWorker(analyzeSubmittedSources), UpdateMemoryWorker(updateHierarchy))
 }

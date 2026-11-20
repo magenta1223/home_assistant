@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
 import io.ktor.client.request.get
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
@@ -12,8 +12,8 @@ class RetiredEpisodeTreeRoutesTest {
     @Test
     fun `tree routes are retired but shared auth and remaining pages stay available`() = testApplication {
         application {
-            configureRoutes(object : EpisodeAnalysis {
-                override fun submit(request: EpisodeAnalysisRequest) = error("unused")
+            configureRoutes(object : SourceImport {
+                override fun submit(request: SourceImportRequest) = error("unused")
                 override fun findJob(userId: String, jobId: Int) = error("unused")
             })
         }

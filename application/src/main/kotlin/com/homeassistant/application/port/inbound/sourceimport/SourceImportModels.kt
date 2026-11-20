@@ -1,42 +1,43 @@
-package com.homeassistant.application.port.inbound.memoryextraction
+package com.homeassistant.application.port.inbound.sourceimport
 
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
-import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
+import com.homeassistant.domain.source.SourceImportJobStatus
 import com.homeassistant.domain.source.SourceDocumentDraft
 
-data class EpisodeAnalysisRequest(
+data class SourceImportRequest(
     val userId: String,
     val source: SourceDocumentDraft,
     val access: AccessControl = AccessControl.PUBLIC,
 )
 
-/** The queued analysis [jobId] and what happened to the submitted records. */
-data class EpisodeAnalysisSubmissionResult(
+/** The queued import job [jobId] and what happened to the submitted records. */
+data class SourceImportSubmissionResult(
     val jobId: Int,
+    /** How many submitted records were stored now. */
     val importedRecordCount: Int,
-    val retriedRecordCount: Int,
-    val alreadyAnalyzedRecordCount: Int,
+    /** How many submitted records were stored before under the same deduplication key. */
+    val alreadyStoredRecordCount: Int,
     val visibility: Visibility,
     val allowedUserIds: Set<String>,
 )
 
-/** How the submitted analysis [jobId] is going. */
-data class EpisodeAnalysisJobReport(
+/** How the submitted import job [jobId] is going. */
+data class SourceImportJobReport(
     val jobId: Int,
-    val status: EpisodeAnalysisJobStatus,
-    /** How many source records the analysis stored for memory updates; null until it completes. */
+    val status: SourceImportJobStatus,
+    /** How many source records the job stored for memory updates; null until it completes. */
     val recordCount: Int?,
-    /** Why the latest attempt failed; null when no attempt failed or the analysis completed. */
+    /** Why the latest attempt failed; null when no attempt failed or the job completed. */
     val lastError: String?,
 )
 
 class DuplicateSourceRecordsException internal constructor(
     val sourceName: String,
     val recordCount: Int,
-) : RuntimeException("All $recordCount source records already exist: $sourceName")
+) : RuntimeException("All $recordCount source records were stored before: $sourceName")
 
-class EpisodeAnalysisUnavailableException internal constructor(
+class SourceImportUnavailableException internal constructor(
     cause: Throwable,
 ) : RuntimeException("episode analysis is unavailable", cause)
 

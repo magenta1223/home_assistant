@@ -101,7 +101,7 @@ class EpisodeRepositoryUseCaseIntegrationTest {
             SourceDescriptor(type = "test", name = content),
             listOf(SourceRecordDraft(content, content)), SUBMITTER,
             access,
-        )).recordsToAnalyze.single()
+        )).newRecords.single()
         val proposal = EpisodeProposal(
                 title = "title",
                 content = content,

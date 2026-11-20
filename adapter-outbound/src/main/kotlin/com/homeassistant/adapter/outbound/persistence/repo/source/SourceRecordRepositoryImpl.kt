@@ -10,7 +10,6 @@ import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceReference
@@ -32,29 +31,10 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
         stored.values.filterNotNull().firstOrNull { it.access != access }
             ?.let { return@write SourceRecordSaveResult.AccessConflict(it.access) }
 
-        val recordsToAnalyze = mutableListOf<SourceRecord>()
-        var importedRecordCount = 0
-        var retriedRecordCount = 0
-        var alreadyAnalyzedRecordCount = 0
-        drafts.forEach { draft ->
-            val existing = stored.getValue(draft.deduplicationKey)
-            when {
-                existing == null -> {
-                    recordsToAnalyze += insert(source, draft, submittedBy, access)
-                    importedRecordCount++
-                }
-                existing.analysisStatus == SourceRecordAnalysisStatus.PENDING -> {
-                    recordsToAnalyze += existing
-                    retriedRecordCount++
-                }
-                else -> alreadyAnalyzedRecordCount++
-            }
-        }
         SourceRecordSaveResult.Saved(
-            recordsToAnalyze = recordsToAnalyze,
-            importedRecordCount = importedRecordCount,
-            retriedRecordCount = retriedRecordCount,
-            alreadyAnalyzedRecordCount = alreadyAnalyzedRecordCount,
+            newRecords = drafts.filter { stored.getValue(it.deduplicationKey) == null }
+                .map { insert(source, it, submittedBy, access) },
+            alreadyStoredRecords = stored.values.filterNotNull(),
         )
     }
 
@@ -82,7 +62,7 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             .singleOrNull()
             ?.toSourceRecord()
 
-    /** Stores [draft] as a pending record of [source] that [submittedBy] submitted, readable as [access]. */
+    /** Stores [draft] as a record of [source] that [submittedBy] submitted, readable as [access]. */
     private fun insert(
         source: SourceDescriptor,
         draft: SourceRecordDraft,
@@ -97,7 +77,6 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             it[deduplicationKey] = draft.deduplicationKey
             it[recordedAt] = draft.recordedAt
             it[SourceRecordTable.submittedBy] = submittedBy.value
-            it[analysisStatus] = SourceRecordAnalysisStatus.PENDING.name
             it[visibility] = access.visibility.name
             it[SourceRecordTable.referenceId] = referenceId
         }[SourceRecordTable.id]
@@ -115,7 +94,6 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             id = id,
             deduplicationKey = deduplicationKey,
             content = content,
-            analysisStatus = SourceRecordAnalysisStatus.PENDING,
             access = access,
             reference = reference?.let { draft ->
                 val stored = SourceReferenceTable.selectAll()
@@ -131,7 +109,6 @@ internal class SourceRecordRepositoryImpl(private val db: SqliteDatabases) : Sou
             id = this[SourceRecordTable.id],
             deduplicationKey = this[SourceRecordTable.deduplicationKey],
             content = this[SourceRecordTable.content],
-            analysisStatus = SourceRecordAnalysisStatus.valueOf(this[SourceRecordTable.analysisStatus]),
             access = toAccess(),
             reference = this[SourceRecordTable.referenceId]?.let { referenceId ->
                 SourceReferenceTable.selectAll()

@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
 import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.chatservice.ChatRequest
 import com.homeassistant.application.port.inbound.chatservice.ChatResult
@@ -75,7 +75,7 @@ class ChatRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = unusedEpisodeAnalysis(),
+                sourceImport = unusedSourceImport(),
                 httpApiKeys = mapOf(
                     HttpApiKeyConfig.hash(API_TOKEN) to UserId("member-1"),
                     HttpApiKeyConfig.hash(SECOND_API_TOKEN) to UserId("member-2"),
@@ -152,7 +152,7 @@ class ChatRoutesTest {
     ) {
         install(ContentNegotiation) { json(JsonSerializer.json) }
         configureRoutes(
-            episodeAnalysis = unusedEpisodeAnalysis(),
+            sourceImport = unusedSourceImport(),
             httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("member-1")),
             users = FixedUserRegistry(RegisteredUser(UserId("member-1"), "첫째")),
             chat = chat,
@@ -186,8 +186,8 @@ class ChatRoutesTest {
         override fun list(): List<RegisteredUser> = users.toList()
     }
 
-    private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
-        override fun submit(request: EpisodeAnalysisRequest) = error("unused")
+    private fun unusedSourceImport() = object : SourceImport {
+        override fun submit(request: SourceImportRequest) = error("unused")
         override fun findJob(userId: String, jobId: Int) = error("unused")
     }
 

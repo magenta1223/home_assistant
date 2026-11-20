@@ -30,7 +30,7 @@ class EpisodeRepositoryTest {
             val record = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
                 SourceDescriptor(type = "test", name = "created-at"),
                 listOf(SourceRecordDraft("episode", "episode")), SUBMITTER,
-            )).recordsToAnalyze.single()
+            )).newRecords.single()
 
             val saved = episodes.save(episodeProposal(record.id, "episode"), userId)
             val laterReader = EpisodeRepositoryImpl(
@@ -61,7 +61,7 @@ class EpisodeRepositoryTest {
                 SourceDescriptor(type = "test", name = "visibility"),
                 listOf(SourceRecordDraft("private", "private")), SUBMITTER,
                 AccessControl.restricted(listOf(uploader, participant)),
-            )).recordsToAnalyze.single()
+            )).newRecords.single()
             episodes.save(
                 episodeProposal(record.id, "private"),
                 uploader,
@@ -89,12 +89,12 @@ class EpisodeRepositoryTest {
                 SourceDescriptor("test", "first"),
                 listOf(SourceRecordDraft("first", "first")), SUBMITTER,
                 AccessControl.restricted(listOf(member1, member2)),
-            )).recordsToAnalyze.single()
+            )).newRecords.single()
             val second = assertIs<SourceRecordSaveResult.Saved>(sourceRecords.save(
                 SourceDescriptor("test", "second"),
                 listOf(SourceRecordDraft("second", "second")), SUBMITTER,
                 AccessControl.restricted(listOf(member2, member3)),
-            )).recordsToAnalyze.single()
+            )).newRecords.single()
             val proposal = episodeProposal(first.id, "combined").copy(evidenceIds = listOf(first.id, second.id))
 
             episodes.save(proposal, member1)

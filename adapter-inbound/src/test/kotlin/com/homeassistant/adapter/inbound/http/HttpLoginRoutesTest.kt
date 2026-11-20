@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.http
 
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
 import com.homeassistant.application.port.outbound.identity.PasswordHash
 import com.homeassistant.application.port.outbound.identity.PasswordHasher
 import com.homeassistant.application.port.outbound.identity.StoredCredential
@@ -126,7 +126,7 @@ class HttpLoginRoutesTest {
             testApplication {
                 application {
                     configureRoutes(
-                        episodeAnalysis = unusedEpisodeAnalysis(),
+                        sourceImport = unusedSourceImport(),
                         httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_KEY) to UserId("not-registered")),
                     )
                 }
@@ -138,7 +138,7 @@ class HttpLoginRoutesTest {
     private fun Application.configure() {
         install(ContentNegotiation) { json(JsonSerializer.json) }
         configureRoutes(
-            episodeAnalysis = unusedEpisodeAnalysis(),
+            sourceImport = unusedSourceImport(),
             httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_KEY) to MACHINE.userId),
             users = object : UserRegistry {
                 override fun list() = listOf(MACHINE)
@@ -159,8 +159,8 @@ class HttpLoginRoutesTest {
     private fun sessionCookie(login: HttpResponse): String =
         login.headers[HttpHeaders.SetCookie].orEmpty().substringBefore(';')
 
-    private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
-        override fun submit(request: EpisodeAnalysisRequest) = error("unused")
+    private fun unusedSourceImport() = object : SourceImport {
+        override fun submit(request: SourceImportRequest) = error("unused")
         override fun findJob(userId: String, jobId: Int) = error("unused")
     }
 

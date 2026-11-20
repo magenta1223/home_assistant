@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.inbound.memoryextraction
+package com.homeassistant.application.port.inbound.sourceimport
 
 /** Completes submitted source analyses one job at a time, so every record they cover is stored for memory updates. */
 fun interface AnalyzeSubmittedSources {

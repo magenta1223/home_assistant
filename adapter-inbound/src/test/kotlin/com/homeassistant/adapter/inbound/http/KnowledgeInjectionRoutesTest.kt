@@ -1,24 +1,25 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportJobReport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmissionResult
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJob
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobQueue
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.usecase.memoryextraction.episode.EpisodeAnalysisService
+import com.homeassistant.application.usecase.sourceimport.SourceImportService
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.access.AccessControl
-import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
+import com.homeassistant.domain.source.SourceImportJobStatus
 import com.homeassistant.domain.source.SourceDescriptor
+import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceReference
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -46,7 +47,7 @@ class KnowledgeInjectionRoutesTest {
     fun `episode answers are not exposed over HTTP`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
-            configureRoutes(RecordingEpisodeAnalysis())
+            configureRoutes(RecordingSourceImport())
         }
 
         assertEquals(HttpStatusCode.NotFound, client.post("/api/episodes/answer").status)
@@ -56,7 +57,7 @@ class KnowledgeInjectionRoutesTest {
     fun `knowledge page is hosted without exposing data`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
-            configureRoutes(RecordingEpisodeAnalysis())
+            configureRoutes(RecordingSourceImport())
         }
 
         val response = client.get("/knowledge")
@@ -71,11 +72,11 @@ class KnowledgeInjectionRoutesTest {
 
     @Test
     fun `authenticated import passes selected viewers as restricted source access`() = testApplication {
-        val analysis = RecordingEpisodeAnalysis()
+        val analysis = RecordingSourceImport()
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = analysis,
+                sourceImport = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = FixedUserRegistry(
                     RegisteredUser(UserId("operator"), "운영자"),
@@ -116,7 +117,7 @@ class KnowledgeInjectionRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = RecordingEpisodeAnalysis(),
+                sourceImport = RecordingSourceImport(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -141,8 +142,7 @@ class KnowledgeInjectionRoutesTest {
                 """{
                   "jobId":7,
                   "importedRecordCount":1,
-                  "retriedRecordCount":0,
-                  "alreadyAnalyzedRecordCount":0,
+                  "alreadyStoredRecordCount":0,
                   "visibility":"PUBLIC",
                   "allowedUserIds":[]
                 }""",
@@ -152,11 +152,11 @@ class KnowledgeInjectionRoutesTest {
     }
 
     @Test
-    fun `importing records that were all analyzed before answers conflict with the analyzed count`() = testApplication {
+    fun `importing records that were all stored before answers conflict with the stored count`() = testApplication {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = EpisodeAnalysisService(AlreadyAnalyzedSourceRecords(), UnusedJobQueue(), { true }),
+                sourceImport = SourceImportService(AlreadyStoredSourceRecords(), UnusedJobQueue(), { true }),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -179,8 +179,8 @@ class KnowledgeInjectionRoutesTest {
         assertEquals(
             Json.parseToJsonElement(
                 """{
-                  "error":"all source records have already been analyzed",
-                  "alreadyAnalyzedRecordCount":1
+                  "error":"all source records were stored before",
+                  "alreadyStoredRecordCount":1
                 }""",
             ),
             Json.parseToJsonElement(response.bodyAsText()),
@@ -192,7 +192,7 @@ class KnowledgeInjectionRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = RecordingEpisodeAnalysis(),
+                sourceImport = RecordingSourceImport(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -217,11 +217,11 @@ class KnowledgeInjectionRoutesTest {
 
     @Test
     fun `PDF reference can be submitted with direct text and keeps original bytes`() = testApplication {
-        val analysis = RecordingEpisodeAnalysis()
+        val analysis = RecordingSourceImport()
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = analysis,
+                sourceImport = analysis,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -258,7 +258,7 @@ class KnowledgeInjectionRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = RecordingEpisodeAnalysis(),
+                sourceImport = RecordingSourceImport(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -278,7 +278,7 @@ class KnowledgeInjectionRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = RecordingEpisodeAnalysis(),
+                sourceImport = RecordingSourceImport(),
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = operatorRegistry(),
             )
@@ -296,7 +296,7 @@ class KnowledgeInjectionRoutesTest {
                 application {
                     install(ContentNegotiation) { json(JsonSerializer.json) }
                     configureRoutes(
-                        episodeAnalysis = RecordingEpisodeAnalysis(),
+                        sourceImport = RecordingSourceImport(),
                         httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("unknown")),
                         users = operatorRegistry(),
                     )
@@ -306,47 +306,49 @@ class KnowledgeInjectionRoutesTest {
         }
     }
 
-    private class RecordingEpisodeAnalysis : EpisodeAnalysis {
-        val requests = mutableListOf<EpisodeAnalysisRequest>()
+    private class RecordingSourceImport : SourceImport {
+        val requests = mutableListOf<SourceImportRequest>()
 
-        override fun submit(request: EpisodeAnalysisRequest): EpisodeAnalysisSubmissionResult {
+        override fun submit(request: SourceImportRequest): SourceImportSubmissionResult {
             requests += request
-            return EpisodeAnalysisSubmissionResult(
+            return SourceImportSubmissionResult(
                 jobId = 7,
                 importedRecordCount = request.source.records.size,
-                retriedRecordCount = 0,
-                alreadyAnalyzedRecordCount = 0,
+                alreadyStoredRecordCount = 0,
                 visibility = request.access.visibility,
                 allowedUserIds = request.access.allowedUserIds,
             )
         }
 
-        override fun findJob(userId: String, jobId: Int): EpisodeAnalysisJobReport? =
-            EpisodeAnalysisJobReport(jobId, EpisodeAnalysisJobStatus.COMPLETED, recordCount = 2, lastError = null)
+        override fun findJob(userId: String, jobId: Int): SourceImportJobReport? =
+            SourceImportJobReport(jobId, SourceImportJobStatus.COMPLETED, recordCount = 2, lastError = null)
                 .takeIf { userId == "operator" && jobId == 7 }
     }
 
-    /** Source records that were all stored and analyzed before, so nothing is left to analyze. */
-    private class AlreadyAnalyzedSourceRecords : SourceRecordRepository {
+    /** Source records that were all stored before, so the submission brings nothing new. */
+    private class AlreadyStoredSourceRecords : SourceRecordRepository {
         override fun save(source: SourceDescriptor, records: List<SourceRecordDraft>, submittedBy: UserId, access: AccessControl) =
-            SourceRecordSaveResult.Saved(emptyList(), importedRecordCount = 0, retriedRecordCount = 0, alreadyAnalyzedRecordCount = records.size)
+            SourceRecordSaveResult.Saved(
+                newRecords = emptyList(),
+                alreadyStoredRecords = records.mapIndexed { index, draft -> SourceRecord(index + 1, draft.deduplicationKey, draft.content, access) },
+            )
 
         override fun saveReference(reference: SourceReferenceDraft): SourceReference = error("no reference is submitted")
 
         override fun findReferenceContent(referenceId: Int): SourceReferenceDraft? = null
     }
 
-    /** A job queue that a submission with nothing to analyze never reaches. */
-    private class UnusedJobQueue : EpisodeAnalysisJobQueue {
-        override fun enqueue(submission: EpisodeAnalysisSubmission, now: Long): EpisodeAnalysisJob = error("nothing is queued")
+    /** A job queue that a submission with nothing new never reaches. */
+    private class UnusedJobQueue : SourceImportJobQueue {
+        override fun enqueue(submission: SourceImportSubmission, now: Long): SourceImportJob = error("nothing is queued")
 
-        override fun claimNext(now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): EpisodeAnalysisJob? = null
+        override fun claimNext(now: Long, retryBefore: Long, staleProcessingBefore: Long, maxAttempts: Int): SourceImportJob? = null
 
         override fun markCompleted(jobId: Int, expectedAttempt: Int, recordCount: Int, now: Long) = false
 
         override fun markFailed(jobId: Int, expectedAttempt: Int, error: String, now: Long) = false
 
-        override fun findRequestedBy(jobId: Int, userId: UserId): EpisodeAnalysisJob? = null
+        override fun findRequestedBy(jobId: Int, userId: UserId): SourceImportJob? = null
     }
 
     private class FixedUserRegistry(

@@ -4,10 +4,10 @@ import com.homeassistant.adapter.inbound.banksalad.BanksaladExportFixture
 import com.homeassistant.adapter.inbound.banksalad.BanksaladExportFixture.LedgerRow
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisJobReport
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisSubmissionResult
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportJobReport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmissionResult
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.RegisteredUser
@@ -83,7 +83,7 @@ class FinanceImportRoutesTest {
         application {
             install(ContentNegotiation) { json(JsonSerializer.json) }
             configureRoutes(
-                episodeAnalysis = UnusedEpisodeAnalysis,
+                sourceImport = UnusedSourceImport,
                 httpApiKeys = mapOf(HttpApiKeyConfig.hash(API_TOKEN) to UserId("operator")),
                 users = OperatorRegistry,
                 importFinanceTransactions = ledger,
@@ -108,9 +108,9 @@ class FinanceImportRoutesTest {
         override fun list(): List<RegisteredUser> = listOf(RegisteredUser(UserId("operator"), "운영자"))
     }
 
-    private object UnusedEpisodeAnalysis : EpisodeAnalysis {
-        override fun submit(request: EpisodeAnalysisRequest): EpisodeAnalysisSubmissionResult = error("unused")
-        override fun findJob(userId: String, jobId: Int): EpisodeAnalysisJobReport? = error("unused")
+    private object UnusedSourceImport : SourceImport {
+        override fun submit(request: SourceImportRequest): SourceImportSubmissionResult = error("unused")
+        override fun findJob(userId: String, jobId: Int): SourceImportJobReport? = error("unused")
     }
 
     /** Keeps one transaction per owner and key, as the ledger storage does. */

@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.inbound.scheduler
 
-import com.homeassistant.application.port.inbound.memoryextraction.AnalyzeSubmittedSources
-import com.homeassistant.application.port.inbound.memoryextraction.SourceAnalysisRoundResult
+import com.homeassistant.application.port.inbound.sourceimport.AnalyzeSubmittedSources
+import com.homeassistant.application.port.inbound.sourceimport.SourceAnalysisRoundResult
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-class EpisodeAnalysisWorkerTest {
+class SourceImportWorkerTest {
     @Test
     fun `a run analyzes ready jobs until none is left`() {
         val rounds = ArrayDeque(
@@ -16,12 +16,12 @@ class EpisodeAnalysisWorkerTest {
                 SourceAnalysisRoundResult.Completed(jobId = 3, recordCount = 1),
             ),
         )
-        EpisodeAnalysisWorker(AnalyzeSubmittedSources { rounds.removeFirst() }).analyzeReadyJobs()
+        SourceImportWorker(AnalyzeSubmittedSources { rounds.removeFirst() }).analyzeReadyJobs()
         assertEquals(listOf(SourceAnalysisRoundResult.Completed(jobId = 3, recordCount = 1)), rounds.toList())
     }
 
     @Test
     fun `a failing round is contained`() {
-        EpisodeAnalysisWorker(AnalyzeSubmittedSources { error("store unavailable") }).analyzeReadyJobs()
+        SourceImportWorker(AnalyzeSubmittedSources { error("store unavailable") }).analyzeReadyJobs()
     }
 }

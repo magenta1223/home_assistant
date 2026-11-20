@@ -49,7 +49,7 @@ class GroupRepositoryTest {
         val source = SourceDescriptor("test", "private")
         val user = UserId("owner")
         val record = assertIs<SourceRecordSaveResult.Saved>(sources.save(source, listOf(SourceRecordDraft("test", "original")), SUBMITTER, AccessControl.restricted(listOf(user))))
-            .recordsToAnalyze.single()
+            .newRecords.single()
         val committed = episodes.save(EpisodeBatch(user, (1..5).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
         val components = ComponentRepositoryImpl(db)
@@ -72,7 +72,7 @@ class GroupRepositoryTest {
         assertEquals(beforeComponents, components.findVisibleTo(user))
         assertEquals(beforeEpisodes, episodes.findVisibleTo(user))
         val resubmitted = assertIs<SourceRecordSaveResult.Saved>(sources.save(source, listOf(SourceRecordDraft("test", "original")), SUBMITTER, AccessControl.restricted(listOf(user))))
-        assertEquals(1, resubmitted.alreadyAnalyzedRecordCount)
+        assertEquals(1, resubmitted.alreadyStoredRecords.size)
     }
 
     @Test fun `stale revision and already assigned incoming reject`() = withDatabase { db, _ ->
@@ -206,7 +206,7 @@ class GroupRepositoryTest {
     ): Map<Int, Embedding<ComponentEmbeddingKey>> {
         val user = UserId("owner")
         val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, key)), SUBMITTER,
-            access)).recordsToAnalyze.single()
+            access)).newRecords.single()
         val episodes = EpisodeRepositoryImpl(db).save(EpisodeBatch(user, (1..count).map { EpisodeProposal("title", "fact $it", listOf(record.id)) },
             listOf(record.id)))
         val components = ComponentRepositoryImpl(db)

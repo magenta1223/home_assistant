@@ -11,7 +11,6 @@ import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument
 import com.homeassistant.domain.source.SourceRecord
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import kotlinx.coroutines.runBlocking
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -67,6 +66,6 @@ class ExtractEpisodesTest {
         val SUBMITTER = UserId("member")
         val SOURCE = SourceDescriptor("test", "chat")
 
-        fun record(id: Int) = SourceRecord(id, "record $id", "message $id", SourceRecordAnalysisStatus.PENDING, AccessControl.PUBLIC)
+        fun record(id: Int) = SourceRecord(id, "record $id", "message $id", AccessControl.PUBLIC)
     }
 }

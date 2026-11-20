@@ -1,11 +1,11 @@
-package com.homeassistant.adapter.outbound.persistence.repo.episode
+package com.homeassistant.adapter.outbound.persistence.repo.sourceimport
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.access.AccessControl
-import com.homeassistant.domain.episode.EpisodeAnalysisJobStatus
+import com.homeassistant.domain.source.SourceImportJobStatus
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceRecordDraft
@@ -14,17 +14,17 @@ import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import java.nio.file.Files
 import kotlin.test.*
 
-class EpisodeAnalysisJobQueueRepositoryTest {
+class SourceImportJobQueueRepositoryTest {
     private val owner = UserId("owner")
     private val source = SourceDescriptor("test", "chat")
     private val access = AccessControl.restricted(listOf(owner, UserId("member")))
 
     @Test fun `an enqueued job keeps its records, reference and audience and is found by its requester`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         val submission = submissionWithReference(db)
         val enqueued = jobs.enqueue(submission, now = 0)
         assertEquals(submission, enqueued.submission)
-        assertEquals(EpisodeAnalysisJobStatus.PENDING, enqueued.status)
+        assertEquals(SourceImportJobStatus.PENDING, enqueued.status)
         assertEquals(0, enqueued.attempt)
         assertNull(enqueued.recordCount)
         assertNull(enqueued.lastError)
@@ -32,25 +32,25 @@ class EpisodeAnalysisJobQueueRepositoryTest {
     }
 
     @Test fun `another user cannot find the job`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         val enqueued = jobs.enqueue(submission(db, "a"), now = 0)
         assertNull(jobs.findRequestedBy(enqueued.id, UserId("other")))
     }
 
     @Test fun `jobs are claimed one at a time, oldest first`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         val first = jobs.enqueue(submission(db, "a"), now = 0)
         val second = jobs.enqueue(submission(db, "b"), now = 0)
         val claimed = assertNotNull(jobs.claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
         assertEquals(first.id, claimed.id)
-        assertEquals(EpisodeAnalysisJobStatus.PROCESSING, claimed.status)
+        assertEquals(SourceImportJobStatus.PROCESSING, claimed.status)
         assertEquals(1, claimed.attempt)
         assertEquals(second.id, jobs.claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5)?.id)
         assertNull(jobs.claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
     }
 
     @Test fun `a failed job waits for the retry delay and stops after the attempt limit`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         val enqueued = jobs.enqueue(submission(db, "a"), now = 0)
         repeat(2) { attempt ->
             val claimed = assertNotNull(jobs.claimNext(now = 1_000L * attempt, retryBefore = 1_000L * attempt, staleProcessingBefore = 0, maxAttempts = 2))
@@ -59,13 +59,13 @@ class EpisodeAnalysisJobQueueRepositoryTest {
         }
         assertNull(jobs.claimNext(now = 10_000L, retryBefore = 10_000L, staleProcessingBefore = 0, maxAttempts = 2))
         val failed = assertNotNull(jobs.findRequestedBy(enqueued.id, owner))
-        assertEquals(EpisodeAnalysisJobStatus.FAILED, failed.status)
+        assertEquals(SourceImportJobStatus.FAILED, failed.status)
         assertEquals(2, failed.attempt)
         assertEquals("analysis failed", failed.lastError)
     }
 
     @Test fun `a stale claim is reclaimed and can no longer complete`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         jobs.enqueue(submission(db, "a"), now = 0)
         val stale = assertNotNull(jobs.claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
         assertNull(jobs.claimNext(now = 500, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
@@ -77,35 +77,35 @@ class EpisodeAnalysisJobQueueRepositoryTest {
     }
 
     @Test fun `a completed job reports its episode count and clears the last error`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         val enqueued = jobs.enqueue(submission(db, "a"), now = 0)
         val failed = assertNotNull(jobs.claimNext(now = 0, retryBefore = 0, staleProcessingBefore = -1, maxAttempts = 5))
         jobs.markFailed(failed.id, failed.attempt, "analysis failed", now = 0)
         val retried = assertNotNull(jobs.claimNext(now = 1_000, retryBefore = 1_000, staleProcessingBefore = -1, maxAttempts = 5))
         assertTrue(jobs.markCompleted(retried.id, retried.attempt, recordCount = 3, now = 1_000))
         val completed = assertNotNull(jobs.findRequestedBy(enqueued.id, owner))
-        assertEquals(EpisodeAnalysisJobStatus.COMPLETED, completed.status)
+        assertEquals(SourceImportJobStatus.COMPLETED, completed.status)
         assertEquals(3, completed.recordCount)
         assertNull(completed.lastError)
         assertNull(jobs.claimNext(now = 10_000, retryBefore = 10_000, staleProcessingBefore = 10_000, maxAttempts = 5))
     }
 
-    private fun submission(db: SqliteDatabases, vararg contents: String): EpisodeAnalysisSubmission =
-        EpisodeAnalysisSubmission(owner, source, saveRecords(db, contents.map { SourceRecordDraft(it, it) }).map { it.id }, referenceId = null, access)
+    private fun submission(db: SqliteDatabases, vararg contents: String): SourceImportSubmission =
+        SourceImportSubmission(owner, source, saveRecords(db, contents.map { SourceRecordDraft(it, it) }).map { it.id }, referenceId = null, access)
 
-    private fun submissionWithReference(db: SqliteDatabases): EpisodeAnalysisSubmission {
+    private fun submissionWithReference(db: SqliteDatabases): SourceImportSubmission {
         val reference = SourceReferenceDraft("guide.pdf", "application/pdf", "pdf".toByteArray())
         val records = saveRecords(db, listOf(SourceRecordDraft("a", "a"), SourceRecordDraft("b", "b", reference)))
-        return EpisodeAnalysisSubmission(owner, source, records.map { it.id }, records.last().reference?.id, access)
+        return SourceImportSubmission(owner, source, records.map { it.id }, records.last().reference?.id, access)
     }
 
     private fun saveRecords(db: SqliteDatabases, drafts: List<SourceRecordDraft>) =
         assertIs<SourceRecordSaveResult.Saved>(
             SourceRecordRepositoryImpl(db).save(source, drafts, SUBMITTER, access),
-        ).recordsToAnalyze
+        ).newRecords
 
     private fun withDatabase(block: (SqliteDatabases) -> Unit) {
-        val path = Files.createTempFile("episode-analysis-jobs", ".db")
+        val path = Files.createTempFile("source-import-jobs", ".db")
         try { block(DatabaseFactory.init(path.toString())) }
         finally { Files.deleteIfExists(path) }
     }

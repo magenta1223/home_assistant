@@ -106,7 +106,7 @@ class EpisodeComponentAssignmentTest {
 
     private fun seedEpisodes(db: SqliteDatabases, key: String, vararg contents: String): List<Int> {
         val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())), SUBMITTER,
-            access)).recordsToAnalyze.single()
+            access)).newRecords.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
             EpisodeProposal("title", content, listOf(record.id))
         }, listOf(record.id))).map { it.id }

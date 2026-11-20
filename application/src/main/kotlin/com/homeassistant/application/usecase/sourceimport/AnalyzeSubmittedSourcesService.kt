@@ -1,10 +1,10 @@
-package com.homeassistant.application.usecase.memoryextraction.episode
+package com.homeassistant.application.usecase.sourceimport
 
-import com.homeassistant.application.port.inbound.memoryextraction.AnalyzeSubmittedSources
-import com.homeassistant.application.port.inbound.memoryextraction.SourceAnalysisRoundResult
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJob
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisJobQueue
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
+import com.homeassistant.application.port.inbound.sourceimport.AnalyzeSubmittedSources
+import com.homeassistant.application.port.inbound.sourceimport.SourceAnalysisRoundResult
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
@@ -17,13 +17,13 @@ import java.time.Clock
 import kotlin.coroutines.cancellation.CancellationException
 
 /**
- * Claims submitted analyses from the [EpisodeAnalysisJobQueue] one at a time, stores the records interpreted from their
+ * Claims submitted analyses from the [SourceImportJobQueue] one at a time, stores the records interpreted from their
  * reference, and records each outcome on the job. Episodes are extracted from the stored records by the memory update.
  * A failed job is retried after [retryDelayMillis] until [maxAttempts]; a job left in progress longer than
  * [processingLeaseMillis] is reclaimed.
  */
 class AnalyzeSubmittedSourcesService(
-    private val jobs: EpisodeAnalysisJobQueue,
+    private val jobs: SourceImportJobQueue,
     private val sourceRecords: SourceRecordRepository,
     private val referenceInterpreter: SourceReferenceInterpreter,
     private val clock: Clock = Clock.systemUTC(),
@@ -55,7 +55,7 @@ class AnalyzeSubmittedSourcesService(
     }
 
     /** The oldest job that is ready now. */
-    private fun claimNext(): EpisodeAnalysisJob? {
+    private fun claimNext(): SourceImportJob? {
         val now = clock.millis()
         return jobs.claimNext(
             now = now,
@@ -67,18 +67,18 @@ class AnalyzeSubmittedSourcesService(
 
     /**
      * Stores the records of [submission]'s interpreted reference and returns how many source records it covers: its
-     * submitted records and the pending records of its reference.
+     * newly submitted records and every record of its reference.
      */
-    private suspend fun storeRecords(submission: EpisodeAnalysisSubmission): Int =
+    private suspend fun storeRecords(submission: SourceImportSubmission): Int =
         (submission.sourceRecordIds + referenceRecords(submission).map { it.id }).distinct().size
 
-    /** The pending records stored from [submission]'s interpreted reference; empty when it has none. */
-    private suspend fun referenceRecords(submission: EpisodeAnalysisSubmission): List<SourceRecord> {
+    /** The records of [submission]'s interpreted reference, stored now or by an earlier attempt; empty when it has none. */
+    private suspend fun referenceRecords(submission: SourceImportSubmission): List<SourceRecord> {
         val referenceId = submission.referenceId ?: return emptyList()
         val reference = checkNotNull(sourceRecords.findReferenceContent(referenceId)) { "reference $referenceId is not stored" }
         val drafts = interpretSegments(reference).map { it.toRecordOf(reference) }
         return when (val saved = sourceRecords.save(submission.source, drafts, submission.requestedBy, submission.access)) {
-            is SourceRecordSaveResult.Saved -> saved.recordsToAnalyze
+            is SourceRecordSaveResult.Saved -> saved.newRecords + saved.alreadyStoredRecords
             is SourceRecordSaveResult.AccessConflict ->
                 error("reference records already exist with a different audience: ${submission.source.name}")
         }

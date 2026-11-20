@@ -76,9 +76,9 @@ class SendExportTest(unittest.TestCase):
             send_export(self.base_url, "secret", SOURCE, "text")
 
     def test_duplicate_conflict_means_nothing_was_new(self):
-        self.answer(409, {"error": "all source records have already been analyzed", "alreadyAnalyzedRecordCount": 3})
+        self.answer(409, {"error": "all source records were stored before", "alreadyStoredRecordCount": 3})
 
-        self.assertEqual(ImportOutcome.ALREADY_ANALYZED, send_export(self.base_url, "secret", SOURCE, "text"))
+        self.assertEqual(ImportOutcome.ALREADY_STORED, send_export(self.base_url, "secret", SOURCE, "text"))
 
     def test_audience_conflict_fails(self):
         self.answer(409, {"error": "source hongseungmin already has another audience"})

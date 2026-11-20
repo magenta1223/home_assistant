@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
 import io.ktor.client.request.get
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
@@ -39,8 +39,8 @@ class StaticPagesTest {
         }
     }
 
-    private val unusedAnalysis = object : EpisodeAnalysis {
-        override fun submit(request: EpisodeAnalysisRequest) = error("unused")
+    private val unusedAnalysis = object : SourceImport {
+        override fun submit(request: SourceImportRequest) = error("unused")
         override fun findJob(userId: String, jobId: Int) = error("unused")
     }
 }

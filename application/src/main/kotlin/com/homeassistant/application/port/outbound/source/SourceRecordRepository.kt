@@ -12,9 +12,9 @@ import com.homeassistant.domain.source.SourceReferenceDraft
 interface SourceRecordRepository {
 
     /**
-     * Stores the new drafts of [source] as submitted by [submittedBy] with [access] and returns them with the earlier
-     * records still pending analysis. An earlier record keeps its first submitter. Nothing is written when a record of
-     * [source] was stored before with a different access.
+     * Stores the drafts of [source] whose deduplication key is not stored yet, as submitted by [submittedBy] with
+     * [access], and returns them apart from the records stored before. An earlier record keeps its first submitter.
+     * Nothing is written when a record of [source] was stored before with a different access.
      */
     fun save(
         source: SourceDescriptor,
@@ -32,12 +32,10 @@ interface SourceRecordRepository {
 
 /** How a [SourceRecordRepository.save] ended. */
 sealed interface SourceRecordSaveResult {
-    /** The new drafts were stored; [recordsToAnalyze] holds them and the earlier pending records, in draft order. */
+    /** [newRecords] were stored now and [alreadyStoredRecords] were stored before, each in draft order. */
     data class Saved(
-        val recordsToAnalyze: List<SourceRecord>,
-        val importedRecordCount: Int,
-        val retriedRecordCount: Int,
-        val alreadyAnalyzedRecordCount: Int,
+        val newRecords: List<SourceRecord>,
+        val alreadyStoredRecords: List<SourceRecord>,
     ) : SourceRecordSaveResult
 
     /** A record was stored before with [existingAccess], which differs from the submitted access; nothing was written. */

@@ -1,7 +1,7 @@
 package com.homeassistant.app.services
 
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysis
-import com.homeassistant.application.port.inbound.memoryextraction.EpisodeAnalysisRequest
+import com.homeassistant.application.port.inbound.sourceimport.SourceImport
+import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import com.homeassistant.infrastructure.runtime.RuntimeState
 import kotlin.test.Test
@@ -15,7 +15,7 @@ class ApplicationServicesTest {
     fun `starts runtimes in order and stops them in reverse order`() {
         val events = mutableListOf<String>()
         val services = ApplicationServices(
-            episodeAnalysis = unusedEpisodeAnalysis(),
+            sourceImport = unusedSourceImport(),
             runtimes = listOf(
                 RecordingRuntime("embedding", events),
                 RecordingRuntime("codex", events),
@@ -50,7 +50,7 @@ class ApplicationServicesTest {
         val events = mutableListOf<String>()
         val embedding = RecordingRuntime("embedding", events)
         val services = ApplicationServices(
-            episodeAnalysis = unusedEpisodeAnalysis(),
+            sourceImport = unusedSourceImport(),
             runtimes = listOf(
                 embedding,
                 RecordingRuntime("expiry", events, stopFailure = IllegalStateException("stop failed")),
@@ -67,8 +67,8 @@ class ApplicationServicesTest {
         assertEquals(RuntimeState.TERMINATED, embedding.state)
     }
 
-    private fun unusedEpisodeAnalysis() = object : EpisodeAnalysis {
-        override fun submit(request: EpisodeAnalysisRequest) = error("unused")
+    private fun unusedSourceImport() = object : SourceImport {
+        override fun submit(request: SourceImportRequest) = error("unused")
         override fun findJob(userId: String, jobId: Int) = error("unused")
     }
 

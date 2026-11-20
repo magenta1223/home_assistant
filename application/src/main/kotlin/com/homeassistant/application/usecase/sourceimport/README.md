@@ -1,7 +1,7 @@
-# Episode analysis use case
+# Source import use case
 
-`EpisodeAnalysisService`는 입력 source record와 PDF·이미지 reference 원본을 저장하고 분석 job 하나를
-`EpisodeAnalysisJobQueue`에 넣은 뒤 job id를 돌려준다. `AnalyzeSubmittedSourcesService`가 job을 하나씩 꺼내
+`SourceImportService`는 입력 source record와 PDF·이미지 reference 원본을 저장하고 주입 job 하나를
+`SourceImportJobQueue`에 넣은 뒤 job id를 돌려준다. `AnalyzeSubmittedSourcesService`가 job을 하나씩 꺼내
 reference를 해석해 source record로 저장하고, job이 다루는 record 수를 기록한다. 저장된 record에서 episode를
 추출하는 일은 memory update(`XMemoryUpdateService`)의 첫 단계가 `EpisodeExtractionQueue`로 맡는다. source record에는
 제출한 사용자(`submittedBy`)가 함께 저장되고, 추출된 episode의 작성자가 된다. 별도의 preview/review 단계는 없다.
@@ -12,10 +12,10 @@ reference를 해석해 source record로 저장하고, job이 다루는 record �
 모델 입력에는 메시지 시각을 넣지 않는다. 분야별 분류로 수집 범위를 제한하지 않는다.
 권한은 추출 모델이 판단하지 않고 근거 source의 immutable access에서 결정한다.
 
-HTTP adapter가 인증된 principal의 application userId, source, access를 `EpisodeAnalysis.submit`에 직접 전달하고,
-같은 사용자가 `EpisodeAnalysis.findJob`으로 job의 상태·record 수·마지막 오류를 조회한다. 다른 사용자의 job은 찾지 못한다.
-scheduler adapter의 `EpisodeAnalysisWorker`가 `AnalyzeSubmittedSources.analyzeNextJob`을 준비된 job이 없을 때까지
-한 스레드에서 차례로 호출하므로 두 job이 동시에 분석되지 않는다. job이 없으면 10초 뒤 다시 확인한다.
+HTTP adapter가 인증된 principal의 application userId, source, access를 `SourceImport.submit`에 직접 전달하고,
+같은 사용자가 `SourceImport.findJob`으로 job의 상태·record 수·마지막 오류를 조회한다. 다른 사용자의 job은 찾지 못한다.
+scheduler adapter의 `SourceImportWorker`가 `AnalyzeSubmittedSources.analyzeNextJob`을 준비된 job이 없을 때까지
+한 스레드에서 차례로 호출하므로 두 job이 동시에 처리되지 않는다. job이 없으면 10초 뒤 다시 확인한다.
 사용자 목록 조회는 공통 `UserRegistry`를 사용한다. 채널 identity 해석과 등록 대기 workflow는 없다.
 
 ## 접수
@@ -23,41 +23,41 @@ scheduler adapter의 `EpisodeAnalysisWorker`가 `AnalyzeSubmittedSources.analyze
 ```mermaid
 sequenceDiagram
     actor Caller
-    participant Analysis as EpisodeAnalysisService
+    participant Import as SourceImportService
     participant Access as UserAccessPolicy
     participant Sources as SourceRecordRepository
-    participant Jobs as EpisodeAnalysisJobQueue
+    participant Jobs as SourceImportJobQueue
 
-    Caller->>Analysis: submit(request)
-    Analysis->>Access: request.userId 인가
+    Caller->>Import: submit(request)
+    Import->>Access: request.userId 인가
     loop restricted audience userId
-        Analysis->>Access: audience 인가
+        Import->>Access: audience 인가
     end
-    Analysis->>Sources: save(source, records, submittedBy, access)
+    Import->>Sources: save(source, records, submittedBy, access)
     alt 동일 record가 다른 열람 범위로 저장됨
-        Sources-->>Analysis: AccessConflict(existingAccess)
-        Analysis-->>Caller: SourceAccessConflictException(existingAccess)
+        Sources-->>Import: AccessConflict(existingAccess)
+        Import-->>Caller: SourceAccessConflictException(existingAccess)
     else 저장 성공
-        Sources-->>Analysis: recordsToAnalyze
-        alt 새 분석 대상과 reference가 모두 없음
-            Analysis-->>Caller: DuplicateSourceRecordsException
-        else 분석할 것이 있음
+        Sources-->>Import: Saved(newRecords, alreadyStoredRecords)
+        alt 새 record와 reference가 모두 없음
+            Import-->>Caller: DuplicateSourceRecordsException
+        else 새로 저장할 것이 있음
             opt PDF 또는 이미지 reference
-                Analysis->>Sources: saveReference(reference)
+                Import->>Sources: saveReference(reference)
             end
-            Analysis->>Jobs: enqueue(submission)
-            Analysis-->>Caller: EpisodeAnalysisSubmissionResult(jobId)
+            Import->>Jobs: enqueue(submission)
+            Import-->>Caller: SourceImportSubmissionResult(jobId)
         end
     end
 ```
 
-## 분석 round
+## 주입 round
 
 ```mermaid
 sequenceDiagram
-    participant Worker as EpisodeAnalysisWorker
+    participant Worker as SourceImportWorker
     participant Round as AnalyzeSubmittedSourcesService
-    participant Jobs as EpisodeAnalysisJobQueue
+    participant Jobs as SourceImportJobQueue
     participant Sources as SourceRecordRepository
     participant Reference as SourceReferenceInterpreter
 
@@ -94,9 +94,9 @@ PDF·이미지 reference는 최대 20MB까지 받는다. PDF는 네 페이지 �
 - 등록되지 않은 작성자는 `UserAccessDeniedException`, 등록되지 않은 열람 허용 사용자는 `InvalidAllowedUsersException`으로 거절한다.
 - 동일 source record가 다른 access scope로 이미 저장돼 있으면 기존 scope를 포함한
   `SourceAccessConflictException`으로 변환하여 호출자가 정확한 재등록 방법을 안내할 수 있게 한다.
-- 접수 중 source·reference 저장과 job 등록 실패는 `EpisodeAnalysisUnavailableException`으로 변환한다.
-- record 저장과 job 등록은 별도 호출이다. 등록 전에 실패하면 record가 `PENDING`으로 남고, 같은 source를 다시
-  제출하면 재시도 record로 돌아와 새 job에 담긴다.
-- 분석 round의 실패(손상되었거나 지원하지 않는 reference, 빈 해석 결과)는 job에 마지막 오류로 남긴다. 실패한 job은 60초 뒤부터 다시 claim되며 시도가 5회에 이르면 `FAILED`로 남는다. 처리 중인
+- 접수 중 source·reference 저장과 job 등록 실패는 `SourceImportUnavailableException`으로 변환한다.
+- record 저장과 job 등록은 별도 호출이다. 등록 전에 실패해도 저장된 record는 memory update가 추출한다. 같은 source를
+  다시 제출하면 그 record는 이미 저장된 record로 센다.
+- 주입 round의 실패(손상되었거나 지원하지 않는 reference, 빈 해석 결과)는 job에 마지막 오류로 남긴다. 실패한 job은 60초 뒤부터 다시 claim되며 시도가 5회에 이르면 `FAILED`로 남는다. 처리 중인
   job이 10분 안에 끝나지 않으면 다른 round가 다시 claim하고, 이전 시도의 완료·실패 기록은 무시된다.
 - episode 추출과 그 실패는 job과 무관하다. `EpisodeExtractionQueue`가 source record마다 시도 횟수와 마지막 오류를 남긴다.

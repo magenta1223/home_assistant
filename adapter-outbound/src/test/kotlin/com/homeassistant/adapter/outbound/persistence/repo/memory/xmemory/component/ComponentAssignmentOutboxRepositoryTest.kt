@@ -85,7 +85,7 @@ class ComponentAssignmentOutboxRepositoryTest {
 
     private fun seedEpisodes(db: SqliteDatabases, key: String, vararg contents: String): List<Int> {
         val record = assertIs<SourceRecordSaveResult.Saved>(SourceRecordRepositoryImpl(db).save(SourceDescriptor("test", key), listOf(SourceRecordDraft(key, contents.joinToString())), SUBMITTER,
-            AccessControl.restricted(listOf(user)))).recordsToAnalyze.single()
+            AccessControl.restricted(listOf(user)))).newRecords.single()
         return EpisodeRepositoryImpl(db).save(EpisodeBatch(user, contents.map { content ->
            EpisodeProposal("title", content, listOf(record.id))
         }, listOf(record.id))).map { it.id }

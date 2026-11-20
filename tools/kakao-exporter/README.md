@@ -44,7 +44,7 @@ py -3 tools/kakao-exporter/kakao_exporter.py --only hongseungmin
 3. 채팅방 창을 닫고, UTF-8이 아니면 UTF-8로 바꾼 뒤 `runtime/kakao/exports/<chatKey>.txt`로 원자적으로 교체한다.
 4. 파일 전체를 주입 API로 보낸다. 앱은 새 메시지를 저장하고 분석 job을 등록한 뒤 응답한다. 요청 타임아웃은 30분이다.
    - `202`: 새 메시지를 저장하고 분석을 접수했다. 결과(`accepted`)만 출력하며 분석이 끝날 때까지 기다리지 않는다.
-   - `409`이고 `alreadyAnalyzedRecordCount`가 있음: 새 메시지가 없다. 성공으로 본다.
+   - `409`이고 `alreadyStoredRecordCount`가 있음: 새 메시지가 없다. 성공으로 본다.
    - 그 밖의 응답(공개 범위가 저장된 값과 다른 `409` 포함)과 연결 실패: 그 방의 실패로 남긴다.
 
 종료 코드: `0` 전부 성공, `1` 일부 방 실패, `2` 실행 불가(Windows 화면 잠김, 카카오톡 미실행·미로그인). 화면이 잠겨 있으면 UI 자동화가 창에 닿지 않으므로 시작하자마자 실패한다.

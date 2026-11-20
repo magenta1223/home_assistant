@@ -1,13 +1,10 @@
 package com.homeassistant.adapter.outbound.persistence.repo.source
 
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
-import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceDescriptor
-import com.homeassistant.domain.source.SourceRecordAnalysisStatus
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.source.SourceReferenceDraft
@@ -36,7 +33,7 @@ class SourceRecordRepositoryTest {
                     SourceRecordDraft("reference:${reference.sha256}:page-1", "page one", reference = reference),
                     SourceRecordDraft("reference:${reference.sha256}:page-2", "page two", reference = reference),
                 ), SUBMITTER,
-            )).recordsToAnalyze
+            )).newRecords
 
             assertEquals(2, records.size)
             assertEquals(1, records.mapNotNull { it.reference?.id }.distinct().size)
@@ -90,56 +87,47 @@ class SourceRecordRepositoryTest {
 
             // The conflict wrote nothing, so the new draft is still new.
             val retried = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("new")), SUBMITTER, otherAccess))
-            assertEquals(1, retried.importedRecordCount)
+            assertEquals(1, retried.newRecords.size)
         } finally {
             Files.deleteIfExists(databasePath)
         }
     }
 
     @Test
-    fun `incremental import analyzes only the new records`() {
+    fun `incremental import stores only the new records`() {
         val databasePath = Files.createTempFile("source-record-incremental", ".db")
         try {
             val db = DatabaseFactory.init(databasePath.toString())
             val repository = SourceRecordRepositoryImpl(db)
             val source = SourceDescriptor("kakao", "conversation")
             val existingDrafts = (1..25).map { draft("old-$it") }
-            val initial = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, existingDrafts, SUBMITTER))
-            markAnalyzed(db, initial.recordsToAnalyze.map { it.id })
+            assertIs<SourceRecordSaveResult.Saved>(repository.save(source, existingDrafts, SUBMITTER))
 
             val incremental = assertIs<SourceRecordSaveResult.Saved>(repository.save(
                 source.copy(name = "renamed-conversation"),
                 existingDrafts + draft("new") + draft("old-1"), SUBMITTER,
             ))
 
-            assertEquals(listOf("new"), incremental.recordsToAnalyze.map { it.deduplicationKey })
+            assertEquals(listOf("new"), incremental.newRecords.map { it.deduplicationKey })
+            assertEquals(25, incremental.alreadyStoredRecords.size)
         } finally {
             Files.deleteIfExists(databasePath)
         }
     }
 
     @Test
-    fun `returns pending records for retry alongside newly imported records`() {
-        val databasePath = Files.createTempFile("source-record-retry", ".db")
+    fun `a resubmission returns the records stored before apart from the new ones`() {
+        val databasePath = Files.createTempFile("source-record-resubmission", ".db")
         try {
-            val db = DatabaseFactory.init(databasePath.toString())
-            val repository = SourceRecordRepositoryImpl(db)
+            val repository = SourceRecordRepositoryImpl(DatabaseFactory.init(databasePath.toString()))
             val source = SourceDescriptor("test", "source")
             val first = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b")), SUBMITTER))
-            markAnalyzed(db, listOf(first.recordsToAnalyze.single { it.deduplicationKey == "b" }.id))
 
-            val second = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c")), SUBMITTER))
+            val second = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("b"), draft("c"), draft("a")), SUBMITTER))
 
-            assertEquals(1, second.importedRecordCount)
-            assertEquals(1, second.retriedRecordCount)
-            assertEquals(1, second.alreadyAnalyzedRecordCount)
-            assertEquals(listOf("a", "c"), second.recordsToAnalyze.map { it.deduplicationKey })
-            assertTrue(second.recordsToAnalyze.all { it.analysisStatus == SourceRecordAnalysisStatus.PENDING })
-
-            markAnalyzed(db, second.recordsToAnalyze.map { it.id })
-            val completed = assertIs<SourceRecordSaveResult.Saved>(repository.save(source, listOf(draft("a"), draft("b"), draft("c")), SUBMITTER))
-            assertTrue(completed.recordsToAnalyze.isEmpty())
-            assertEquals(3, completed.alreadyAnalyzedRecordCount)
+            assertEquals(listOf("c"), second.newRecords.map { it.deduplicationKey })
+            assertEquals(listOf("b", "a"), second.alreadyStoredRecords.map { it.deduplicationKey })
+            assertEquals(first.newRecords.map { it.id }.toSet(), second.alreadyStoredRecords.map { it.id }.toSet())
         } finally {
             Files.deleteIfExists(databasePath)
         }
@@ -170,10 +158,6 @@ class SourceRecordRepositoryTest {
     }
 
     private fun draft(key: String) = SourceRecordDraft(key, "content-$key")
-
-    private fun markAnalyzed(db: com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases, recordIds: Collection<Int>) {
-        EpisodeRepositoryImpl(db).save(EpisodeBatch(UserId("test-member"), emptyList(), recordIds))
-    }
 }
 
 private val SUBMITTER = UserId("submitter")

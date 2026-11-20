@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.outbound.persistence.db
 
-import com.homeassistant.adapter.outbound.persistence.repo.episode.EpisodeAnalysisJobQueueRepository
+import com.homeassistant.adapter.outbound.persistence.repo.sourceimport.SourceImportJobQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memoryextraction.episode.EpisodeAnalysisSubmission
+import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId
@@ -28,15 +28,15 @@ class DatabaseFactoryConcurrencyTest {
             }
         }.flatten()
 
-        assertEquals(THREADS * SAVES_PER_THREAD, saved.sumOf { assertIs<SourceRecordSaveResult.Saved>(it).importedRecordCount })
+        assertEquals(THREADS * SAVES_PER_THREAD, saved.sumOf { assertIs<SourceRecordSaveResult.Saved>(it).newRecords.size })
         val all = (0 until THREADS).flatMap { thread -> (0 until SAVES_PER_THREAD).map { SourceRecordDraft("record-$thread-$it", "content") } }
-        assertEquals(THREADS * SAVES_PER_THREAD, assertIs<SourceRecordSaveResult.Saved>(records.save(source, all, SUBMITTER)).retriedRecordCount)
+        assertEquals(THREADS * SAVES_PER_THREAD, assertIs<SourceRecordSaveResult.Saved>(records.save(source, all, SUBMITTER)).alreadyStoredRecords.size)
     }
 
     @Test fun `concurrent claims take every queued job exactly once`() = withDatabase { db ->
-        val jobs = EpisodeAnalysisJobQueueRepository(db)
+        val jobs = SourceImportJobQueueRepository(db)
         val queued = (1..THREADS * SAVES_PER_THREAD).map {
-            jobs.enqueue(EpisodeAnalysisSubmission(UserId("owner"), source, emptyList(), referenceId = null, AccessControl.PUBLIC), now = 0).id
+            jobs.enqueue(SourceImportSubmission(UserId("owner"), source, emptyList(), referenceId = null, AccessControl.PUBLIC), now = 0).id
         }
 
         val claimed = concurrently {

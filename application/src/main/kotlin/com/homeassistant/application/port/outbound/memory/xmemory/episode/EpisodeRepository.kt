@@ -19,9 +19,8 @@ interface EpisodeRepository {
     /**
      * Atomically commits [batch] and returns its canonical episodes.
      *
-     * Implementations must persist episodes, evidence, indexing and Component-assignment outbox entries, the
-     * source-record status change, and the removal of the analyzed records from the [EpisodeExtractionQueue] in one
-     * transaction. External indexing must not happen inside this call.
+     * Implementations must persist episodes, evidence, indexing and Component-assignment outbox entries, and the
+     * removal of the analyzed records from the [EpisodeExtractionQueue] in one transaction. External indexing must not happen inside this call.
      */
     fun save(batch: EpisodeBatch): List<Episode>
 }

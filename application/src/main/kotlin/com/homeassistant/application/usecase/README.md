@@ -13,7 +13,7 @@ payload 형식은 여기에서 직접 다루지 않는다.
 | `component` | Episode에서 장기 지식을 Component로 추출한 뒤 Group 정리까지 이어가고, 대화용 Component 검색을 읽을 수 있는 출처 Episode로 거른다. | [component](memory/xmemory/component/README.md) |
 | `embedding` | Episode·Component 벡터를 저장된 것이 있으면 재사용하고 없으면 만들어 저장한다. 추출·Group·검색이 함께 쓴다. | - |
 | `episode/search` | 대화용으로 질문에 가까운, 사용자가 읽을 수 있는 Episode를 찾는다. | - |
-| `episode/analysis` | source record를 저장하고 분석 job을 접수한 뒤, worker round에서 job을 하나씩 분석해 canonical episode로 저장한다. | [analysis](memoryextraction/episode/README.md) |
+| `sourceimport` | source record와 reference 원본을 저장하고 주입 job을 접수한 뒤, worker round에서 job을 하나씩 꺼내 reference 해석 record를 저장한다. | [sourceimport](sourceimport/README.md) |
 | `episode/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](chatservice/README.md) |
 | `episode/write` | proposal을 원자적으로 저장하고 Component 할당 outbox를 같은 transaction으로 남긴다. | [write](episode/write/README.md) |
 
@@ -22,10 +22,10 @@ payload 형식은 여기에서 직접 다루지 않는다.
 ```mermaid
 sequenceDiagram
     actor Caller
-    participant Analysis as EpisodeAnalysisService
+    participant Import as SourceImportService
     participant Access as UserAccessPolicy
     participant Sources as SourceRecordRepository
-    participant Jobs as EpisodeAnalysisJobQueue
+    participant Jobs as SourceImportJobQueue
     participant Round as AnalyzeSubmittedSourcesService
     participant Reference as SourceReferenceInterpreter
     participant Update as XMemoryUpdateService
@@ -33,11 +33,11 @@ sequenceDiagram
     participant Extractor as EpisodeExtractor
     participant DB as EpisodeRepository
 
-    Caller->>Analysis: submit(request)
-    Analysis->>Access: 작성자와 audience 인가 확인
-    Analysis->>Sources: source record와 reference 원본 저장
-    Analysis->>Jobs: 분석 job 등록
-    Analysis-->>Caller: EpisodeAnalysisSubmissionResult(jobId)
+    Caller->>Import: submit(request)
+    Import->>Access: 작성자와 audience 인가 확인
+    Import->>Sources: source record와 reference 원본 저장
+    Import->>Jobs: 주입 job 등록
+    Import-->>Caller: SourceImportSubmissionResult(jobId)
     Round->>Jobs: 준비된 job 하나 claim
     opt PDF 또는 이미지 reference
         Round->>Reference: 페이지/이미지별 근거 해석
@@ -54,7 +54,7 @@ sequenceDiagram
 canonical commit에 추출 표시와 Component 할당 outbox를 함께 남긴다. Component 배정은 같은 round가 이어서 처리하며,
 실패해도 저장된 canonical episode를 되돌리지 않는다.
 
-HTTP 지식 입력은 인증된 application userId로 `EpisodeAnalysis`를 직접 호출하고, 같은 사용자가 job 상태를 조회한다.
+HTTP 지식 입력은 인증된 application userId로 `SourceImport`를 직접 호출하고, 같은 사용자가 job 상태를 조회한다.
 
 ## HTTP episode 응답 흐름
 

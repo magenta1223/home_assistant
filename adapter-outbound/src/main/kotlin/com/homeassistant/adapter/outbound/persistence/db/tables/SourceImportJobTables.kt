@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.db.tables
 
 import org.jetbrains.exposed.sql.Table
 
-internal object EpisodeAnalysisJobTable : Table("episode_analysis_jobs") {
+internal object SourceImportJobTable : Table("source_import_jobs") {
     val id = integer("id").autoIncrement()
     val requestedByUserId = text("requested_by_user_id")
     val sourceType = text("source_type")
@@ -17,14 +17,14 @@ internal object EpisodeAnalysisJobTable : Table("episode_analysis_jobs") {
     override val primaryKey = PrimaryKey(id)
 }
 
-internal object EpisodeAnalysisJobRecordTable : Table("episode_analysis_job_records") {
-    val jobId = integer("job_id").references(EpisodeAnalysisJobTable.id)
+internal object SourceImportJobRecordTable : Table("source_import_job_records") {
+    val jobId = integer("job_id").references(SourceImportJobTable.id)
     val sourceRecordId = integer("source_record_id").references(SourceRecordTable.id)
     override val primaryKey = PrimaryKey(jobId, sourceRecordId)
 }
 
-internal object EpisodeAnalysisJobViewerTable : Table("episode_analysis_job_viewers") {
-    val jobId = integer("job_id").references(EpisodeAnalysisJobTable.id)
+internal object SourceImportJobViewerTable : Table("source_import_job_viewers") {
+    val jobId = integer("job_id").references(SourceImportJobTable.id)
     val userId = text("user_id")
     override val primaryKey = PrimaryKey(jobId, userId)
 }

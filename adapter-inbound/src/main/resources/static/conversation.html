@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Home Second Brain · 대화</title>
   <style>
     :root {
@@ -14,15 +14,21 @@
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      min-height: 100vh;
-      overflow-x: hidden;
+      height: 100vh;
+      height: var(--viewport-height, 100dvh);
+      overflow: hidden;
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
       background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea;
     }
     main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
       width: min(780px, calc(100% - 32px));
-      margin: 36px auto;
-      padding-bottom: env(safe-area-inset-bottom);
+      margin: 0 auto;
+      padding: 36px 0 calc(36px + env(safe-area-inset-bottom));
     }
+    nav, header { flex: none; }
     nav { display: flex; gap: 8px; margin-bottom: 20px; }
     nav a {
       color: #1e5b46;
@@ -44,7 +50,12 @@
       border-radius: 22px;
       box-shadow: 0 22px 55px rgba(36,53,46,.09);
       overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
     }
+    .panel > * { flex: none; }
     .auth {
       display: grid;
       grid-template-columns: 1fr auto;
@@ -70,7 +81,7 @@
     input:focus, textarea:focus { border-color: #3f8068; box-shadow: 0 0 0 3px rgba(63,128,104,.13); }
     .hint { margin-top: 6px; color: #738079; font-size: 12px; }
     #connection {
-      align-self: center;
+      align-self: flex-start;
       width: max-content;
       min-width: 72px;
       margin: 14px 20px 0;
@@ -88,9 +99,10 @@
       display: flex;
       flex-direction: column;
       gap: 14px;
-      min-height: 360px;
-      max-height: min(58vh, 620px);
+      flex: 1;
+      min-height: 0;
       overflow-y: auto;
+      overscroll-behavior: contain;
       padding: 22px 20px;
       scroll-behavior: smooth;
     }
@@ -132,10 +144,10 @@
     }
     button:disabled { opacity: .55; cursor: wait; }
     @media (max-width: 620px) {
-      main { width: min(100% - 20px, 780px); margin: 18px auto; }
+      main { width: min(100% - 20px, 780px); padding: 18px 0 calc(18px + env(safe-area-inset-bottom)); }
       .auth { grid-template-columns: 1fr; padding: 16px; }
       #connection { justify-self: start; }
-      #messages { min-height: 44vh; max-height: 56vh; padding: 18px 14px; }
+      #messages { padding: 18px 14px; }
       .message { max-width: 92%; }
       .composer { padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
       button { min-width: 68px; padding: 0 14px; }
@@ -220,6 +232,7 @@
   document.getElementById('conversation-form').addEventListener('submit', async function (event) {
     event.preventDefault();
     const text = question.value.trim();
+    if (send.disabled) return;
     if (!authenticated) {
       showLogin();
       return;
@@ -280,7 +293,6 @@
 
   function setBusy(isBusy) {
     send.disabled = isBusy;
-    question.disabled = isBusy;
     loginPassword.disabled = isBusy;
   }
 
@@ -345,6 +357,15 @@
     return error.message || '답변을 가져오지 못했습니다.';
   }
 
+  function trackVisualViewportHeight() {
+    const applyHeight = function () {
+      document.documentElement.style.setProperty('--viewport-height', window.visualViewport.height + 'px');
+    };
+    window.visualViewport.addEventListener('resize', applyHeight);
+    applyHeight();
+  }
+
+  trackVisualViewportHeight();
   restoreAuthentication();
 </script>
 </body>

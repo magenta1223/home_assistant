@@ -1,5 +1,6 @@
 package com.homeassistant.app.services
 
+import com.homeassistant.adapter.inbound.scheduler.UpdateMemoryWorker
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
@@ -14,25 +15,16 @@ object ApplicationServicesFactory {
         groupSettings: GroupPolicySettings = GroupPolicySettings(),
     ): ApplicationServices {
         val agentBackend = agentBackend()
+        val completionClient = AgentClientFactory.completion(agentBackend)
         val repositories = RepositoryFactory.create(dbPath)
         val identity = IdentityModule(repositories)
-        val embeddings = EmbeddingModule(repositories)
-        val sourceImport = SourceImportModule(
-            repositories = repositories,
-            episodeEmbeddings = embeddings.episodeEmbeddings,
-            componentEmbeddings = embeddings.componentEmbeddings,
-            completionClient = AgentClientFactory.completion(agentBackend),
-            accessPolicy = identity.users,
-            groupSettings = groupSettings,
-        )
-        val chat = ChatModule(
-            backend = agentBackend,
-            repositories = repositories,
-            queries = embeddings.queries,
-            episodeEmbeddings = embeddings.episodeEmbeddings,
-            componentEmbeddings = embeddings.componentEmbeddings,
-            accessPolicy = identity.users,
-        )
+        val embeddings = EmbeddingModule()
+        val sourceImport = SourceImportModule(repositories, completionClient, identity.users)
+        val memory = when (memoryMethod()) {
+            MemoryMethod.XMEMORY ->
+                XMemoryModule(repositories, embeddings.generator, completionClient, identity.users, groupSettings)
+        }
+        val chat = ChatModule(backend = agentBackend, repositories = repositories, memoryContext = memory.context)
         val finance = FinanceModule(repositories)
         return ApplicationServices(
             sourceImport = sourceImport.sourceImport,
@@ -43,7 +35,7 @@ object ApplicationServicesFactory {
             contextAccess = chat.contextAccess,
             searchMemory = chat.searchMemory,
             findTransactions = chat.findTransactions,
-            runtimes = embeddings.runtimes + sourceImport.runtimes + chat.runtimes,
+            runtimes = embeddings.runtimes + sourceImport.runtimes + UpdateMemoryWorker(memory.updateMemory) + chat.runtimes,
         )
     }
 
@@ -52,5 +44,12 @@ object ApplicationServicesFactory {
         val value = Env[AppConfig.ENV_VAR_AGENT_BACKEND] ?: AppConfig.DEFAULT_AGENT_BACKEND
         return AgentBackend.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }
             ?: error("Unknown ${AppConfig.ENV_VAR_AGENT_BACKEND}: $value (expected one of ${AgentBackend.entries.joinToString { it.name.lowercase() }})")
+    }
+
+    /** Reads [AppConfig.ENV_VAR_MEMORY_METHOD]; an unknown value stops startup instead of silently using the default. */
+    private fun memoryMethod(): MemoryMethod {
+        val value = Env[AppConfig.ENV_VAR_MEMORY_METHOD] ?: AppConfig.DEFAULT_MEMORY_METHOD
+        return MemoryMethod.entries.firstOrNull { it.name.equals(value.trim(), ignoreCase = true) }
+            ?: error("Unknown ${AppConfig.ENV_VAR_MEMORY_METHOD}: $value (expected one of ${MemoryMethod.entries.joinToString { it.name.lowercase() }})")
     }
 }

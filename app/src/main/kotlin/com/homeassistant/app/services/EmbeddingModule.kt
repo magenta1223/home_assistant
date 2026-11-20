@@ -1,28 +1,19 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.embedding.ollama.ManagedOllamaEmbeddingFactory
-import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
-import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
 import com.homeassistant.infrastructure.runtime.Runtime
 import org.slf4j.LoggerFactory
 
-/** Assembles the managed embedding model and the Episode and Component embeddings shared by extraction and search. */
-internal class EmbeddingModule(repositories: RepositoryStores) {
+/** Assembles the managed embedding model. */
+internal class EmbeddingModule {
     private val model = Env[AppConfig.ENV_VAR_EMBEDDING_MODEL] ?: AppConfig.DEFAULT_EMBEDDING_MODEL_NAME
     private val ollama = ManagedOllamaEmbeddingFactory.create(model = model)
 
-    /** Embeds query text with the managed model. */
-    val queries: EmbeddingGenerator = ollama
-
-    /** Provides stored or newly generated Episode embeddings. */
-    val episodeEmbeddings = PrepareEpisodeEmbedding(ollama, repositories.episodeEmbeddings)
-
-    /** Provides stored or newly generated Component embeddings. */
-    val componentEmbeddings = PrepareComponentEmbedding(ollama, repositories.componentEmbeddings)
+    /** Embeds documents and queries with the managed model. */
+    val generator: EmbeddingGenerator = ollama
 
     /** The managed Ollama server. */
     val runtimes: List<Runtime> = listOf(ollama)

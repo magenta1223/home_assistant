@@ -7,40 +7,34 @@ import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.contexttool.ContextAccess
 import com.homeassistant.application.port.inbound.contexttool.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
-import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.usecase.chatservice.ChatContextDelivery
 import com.homeassistant.application.usecase.chatservice.ChatService
 import com.homeassistant.application.usecase.chatservice.ExpireIdleChatsService
 import com.homeassistant.application.usecase.contextprovider.ContextAssembler
-import com.homeassistant.application.usecase.memory.xmemory.XMemoryContextProvider
-import com.homeassistant.application.usecase.memory.xmemory.component.ComponentSearcher
+import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.application.usecase.contexttool.ContextGrants
 import com.homeassistant.application.usecase.contexttool.FindTransactionsService
 import com.homeassistant.application.usecase.contexttool.SearchMemoryService
-import com.homeassistant.application.usecase.memory.xmemory.episode.EpisodeSearcher
-import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env
-import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.llm.AgentBackend
 import com.homeassistant.llm.AgentClientFactory
 import org.slf4j.LoggerFactory
 import java.time.Duration
 
-/** Assembles memory-backed conversations on the [backend]'s chat client, when the backend offers one. */
+/**
+ * Assembles memory-backed conversations on the [backend]'s chat client, when the backend offers one, answering from
+ * the [memoryContext] of the chosen memory method.
+ */
 internal class ChatModule(
     backend: AgentBackend,
     private val repositories: RepositoryStores,
-    private val queries: EmbeddingGenerator,
-    private val episodeEmbeddings: PrepareEpisodeEmbedding,
-    private val componentEmbeddings: PrepareComponentEmbedding,
-    private val accessPolicy: UserAccessPolicy,
+    memoryContext: ContextProvider,
 ) {
     private val chatClient = AgentClientFactory.conversation(backend = backend, timeout = agentTimeout())
     private val chatGateway = chatClient?.let { AgentChatGateway(it, CONTEXT_TOOL_URL) }
-    private val memory = ContextAssembler(listOf(XMemoryContextProvider(componentSearcher(), episodeSearcher())))
+    private val memory = ContextAssembler(listOf(memoryContext))
     private val contextGrants = ContextGrants(agentTimeout())
     private val delivery = contextDelivery(backend)
 
@@ -76,17 +70,6 @@ internal class ChatModule(
             contextDelivery = delivery,
             chatGateway = gateway,
         )
-
-    private fun componentSearcher() = ComponentSearcher(
-        components = repositories.components,
-        groups = repositories.groups,
-        queries = queries,
-        episodes = repositories.episodes,
-        componentEmbeddings = componentEmbeddings,
-        accessPolicy = accessPolicy,
-    )
-
-    private fun episodeSearcher() = EpisodeSearcher(repositories.episodes, queries, episodeEmbeddings, accessPolicy)
 
     private fun expiryWorker(gateway: AgentChatGateway) = IdleChatExpiryWorker(
         ExpireIdleChatsService(sessions = repositories.chatSessions, chatGateway = gateway),

@@ -1,15 +1,15 @@
-package com.homeassistant.application.usecase.identity
+package com.homeassistant.feature.identity.usecase
 
 import com.homeassistant.application.port.inbound.identity.InvalidCredentialsException
 import com.homeassistant.application.port.inbound.identity.UserNameTakenException
-import com.homeassistant.application.port.outbound.identity.PasswordHash
-import com.homeassistant.application.port.outbound.identity.PasswordHasher
-import com.homeassistant.application.port.outbound.identity.StoredCredential
-import com.homeassistant.application.port.outbound.identity.StoredSession
-import com.homeassistant.application.port.outbound.identity.UserNameConflict
-import com.homeassistant.application.port.outbound.identity.UserRegistration
-import com.homeassistant.application.port.outbound.identity.UserRepository
-import com.homeassistant.application.port.outbound.identity.UserSessionRepository
+import com.homeassistant.feature.identity.port.outbound.PasswordHash
+import com.homeassistant.feature.identity.port.outbound.PasswordHasher
+import com.homeassistant.feature.identity.port.outbound.StoredCredential
+import com.homeassistant.feature.identity.port.outbound.StoredSession
+import com.homeassistant.feature.identity.port.outbound.UserNameConflict
+import com.homeassistant.feature.identity.port.outbound.UserRegistration
+import com.homeassistant.feature.identity.port.outbound.UserRepository
+import com.homeassistant.feature.identity.port.outbound.UserSessionRepository
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId

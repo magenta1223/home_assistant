@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.outbound.identity
+package com.homeassistant.feature.identity.port.outbound
 
 import com.homeassistant.domain.identity.UserId
 

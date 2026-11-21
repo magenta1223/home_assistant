@@ -76,7 +76,7 @@ class ApplicationPackageArchitectureTest {
     }
 
     @Test
-    fun `application exceptions are usecase contracts with module restricted constructors`() {
+    fun `application exceptions are usecase contracts declared beside their input ports`() {
         val inputPortPath = "com/homeassistant/application/port/inbound"
         val usecasePath = "com/homeassistant/application/usecase"
         val exceptionDeclaration = Regex("class\\s+(\\w+Exception)\\b")
@@ -93,10 +93,6 @@ class ApplicationPackageArchitectureTest {
                 assertTrue(
                     relativePath.startsWith(inputPortPath),
                     "$exceptionName must be declared beside its input port: $source",
-                )
-                assertTrue(
-                    Regex("class\\s+$exceptionName\\s+internal\\s+constructor\\s*\\(").containsMatchIn(content),
-                    "$exceptionName must only be constructible inside the application module",
                 )
             }
         }

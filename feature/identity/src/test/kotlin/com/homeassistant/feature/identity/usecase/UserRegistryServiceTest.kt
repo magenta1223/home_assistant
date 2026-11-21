@@ -1,7 +1,7 @@
-package com.homeassistant.application.usecase.identity
+package com.homeassistant.feature.identity.usecase
 
-import com.homeassistant.application.port.outbound.identity.UserRegistration
-import com.homeassistant.application.port.outbound.identity.UserRepository
+import com.homeassistant.feature.identity.port.outbound.UserRegistration
+import com.homeassistant.feature.identity.port.outbound.UserRepository
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import kotlin.test.Test

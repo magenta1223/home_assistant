@@ -4,3 +4,6 @@ include("domain", "application", "configuration", "adapter-inbound", "adapter-ou
 include("integration-llm")
 include("infrastructure")
 include("architecture-test")
+
+include("feature-identity")
+project(":feature-identity").projectDir = file("feature/identity")

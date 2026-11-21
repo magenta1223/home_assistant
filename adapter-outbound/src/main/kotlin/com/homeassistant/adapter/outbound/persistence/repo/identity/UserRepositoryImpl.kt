@@ -3,11 +3,11 @@ package com.homeassistant.adapter.outbound.persistence.repo.identity
 import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.UserCredentialTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.UserTable
-import com.homeassistant.application.port.outbound.identity.PasswordHash
-import com.homeassistant.application.port.outbound.identity.StoredCredential
-import com.homeassistant.application.port.outbound.identity.UserNameConflict
-import com.homeassistant.application.port.outbound.identity.UserRegistration
-import com.homeassistant.application.port.outbound.identity.UserRepository
+import com.homeassistant.feature.identity.port.outbound.PasswordHash
+import com.homeassistant.feature.identity.port.outbound.StoredCredential
+import com.homeassistant.feature.identity.port.outbound.UserNameConflict
+import com.homeassistant.feature.identity.port.outbound.UserRegistration
+import com.homeassistant.feature.identity.port.outbound.UserRepository
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.JoinType

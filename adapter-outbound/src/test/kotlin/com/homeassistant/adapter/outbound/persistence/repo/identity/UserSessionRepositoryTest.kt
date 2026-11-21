@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.persistence.repo.identity
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.outbound.identity.StoredSession
+import com.homeassistant.feature.identity.port.outbound.StoredSession
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import kotlin.test.Test

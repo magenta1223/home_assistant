@@ -48,8 +48,8 @@ data class LoginSession(
     val lifetime: Duration,
 )
 
-class UserNameTakenException internal constructor(
+class UserNameTakenException(
     name: String,
 ) : RuntimeException("user name is already in use: $name")
 
-class InvalidCredentialsException internal constructor() : RuntimeException("name or password is incorrect")
+class InvalidCredentialsException : RuntimeException("name or password is incorrect")

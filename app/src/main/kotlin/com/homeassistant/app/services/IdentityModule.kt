@@ -2,8 +2,8 @@ package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.identity.Pbkdf2PasswordHasher
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.usecase.identity.UserAuthenticationService
-import com.homeassistant.application.usecase.identity.UserRegistryService
+import com.homeassistant.feature.identity.usecase.UserAuthenticationService
+import com.homeassistant.feature.identity.usecase.UserRegistryService
 
 /** Assembles user registration, authentication, and the access policy other modules check viewers against. */
 internal class IdentityModule(repositories: RepositoryStores) {

@@ -20,6 +20,7 @@ dependencies {
     implementation(libs.poi.ooxml)
     implementation(libs.mcp.kotlin.sdk.server)
 
+    testImplementation(project(":feature-identity"))
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)
 }

@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":configuration"))
     implementation(project(":integration-llm"))
     implementation(project(":infrastructure"))
+    implementation(project(":feature-identity"))
 
 
     implementation(libs.kotlinx.serialization.json)

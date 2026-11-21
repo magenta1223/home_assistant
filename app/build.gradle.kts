@@ -29,6 +29,7 @@ dependencies {
     implementation(project(":domain"))
     implementation(project(":integration-llm"))
     implementation(project(":infrastructure"))
+    implementation(project(":feature-identity"))
 
     // Ktor server
     implementation(libs.ktor.server.core)

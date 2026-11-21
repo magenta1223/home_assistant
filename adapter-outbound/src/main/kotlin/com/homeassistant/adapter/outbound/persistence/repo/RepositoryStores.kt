@@ -5,8 +5,8 @@ import com.homeassistant.application.port.outbound.memory.xmemory.episode.Episod
 import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
 import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
-import com.homeassistant.application.port.outbound.identity.UserRepository
-import com.homeassistant.application.port.outbound.identity.UserSessionRepository
+import com.homeassistant.feature.identity.port.outbound.UserRepository
+import com.homeassistant.feature.identity.port.outbound.UserSessionRepository
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentOutbox
 import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentRepository
 import com.homeassistant.application.port.outbound.memory.xmemory.embedding.EpisodeEmbeddingRepository

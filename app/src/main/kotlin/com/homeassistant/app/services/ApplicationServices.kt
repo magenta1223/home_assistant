@@ -3,10 +3,10 @@ package com.homeassistant.app.services
 import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.sourceimport.SourceImport
-import com.homeassistant.application.port.inbound.chatservice.Chat
-import com.homeassistant.application.port.inbound.contexttool.ContextAccess
+import com.homeassistant.application.port.inbound.chat.Chat
+import com.homeassistant.application.port.inbound.chat.ContextAccess
 import com.homeassistant.application.port.inbound.finance.FindTransactions
-import com.homeassistant.application.port.inbound.contexttool.SearchMemory
+import com.homeassistant.application.port.inbound.chat.SearchMemory
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.infrastructure.runtime.RuntimeState

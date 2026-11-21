@@ -12,7 +12,7 @@ import com.homeassistant.application.usecase.memory.xmemory.component.ComponentS
 import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
 import com.homeassistant.application.usecase.memory.xmemory.episode.EpisodeSearcher
 import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
-import com.homeassistant.application.usecase.contextprovider.ContextAssembler
+import com.homeassistant.feature.chat.usecase.ContextAssembler
 import com.homeassistant.application.usecase.memory.xmemory.XMemoryContextProvider
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessPolicy

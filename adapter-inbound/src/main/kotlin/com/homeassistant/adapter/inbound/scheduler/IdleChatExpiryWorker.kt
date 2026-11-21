@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.inbound.scheduler
 
-import com.homeassistant.application.port.inbound.chatservice.ExpireIdleChats
+import com.homeassistant.application.port.inbound.chat.ExpireIdleChats
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
 import org.slf4j.LoggerFactory
 import java.util.concurrent.Executors

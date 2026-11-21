@@ -11,7 +11,7 @@ import io.mockk.mockk
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
-import com.homeassistant.application.usecase.contextprovider.ContextSection
+import com.homeassistant.application.port.outbound.context.ContextSection
 
 class XMemoryContextProviderTest {
     @Test

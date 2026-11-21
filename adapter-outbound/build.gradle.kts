@@ -13,6 +13,7 @@ dependencies {
     implementation(project(":feature-identity"))
     implementation(project(":feature-finance"))
     implementation(project(":feature-sourceimport"))
+    implementation(project(":feature-chat"))
 
 
     implementation(libs.kotlinx.serialization.json)

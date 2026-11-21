@@ -5,7 +5,7 @@ import com.homeassistant.adapter.outbound.memory.xmemory.episodeextraction.Episo
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.inbound.memory.UpdateMemory
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
-import com.homeassistant.application.usecase.contextprovider.ContextProvider
+import com.homeassistant.application.port.outbound.context.ContextProvider
 import com.homeassistant.application.usecase.memory.xmemory.XMemoryContextProvider
 import com.homeassistant.application.usecase.memory.xmemory.XMemoryUpdateService
 import com.homeassistant.application.usecase.memory.xmemory.component.AssignEpisodeToComponents

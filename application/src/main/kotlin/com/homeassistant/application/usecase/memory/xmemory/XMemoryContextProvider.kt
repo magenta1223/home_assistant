@@ -6,8 +6,8 @@ import com.homeassistant.domain.memory.xmemory.component.Component
 import com.homeassistant.domain.memory.xmemory.episode.Episode
 import com.homeassistant.domain.identity.UserId
 import java.time.Instant
-import com.homeassistant.application.usecase.contextprovider.ContextProvider
-import com.homeassistant.application.usecase.contextprovider.ContextSection
+import com.homeassistant.application.port.outbound.context.ContextProvider
+import com.homeassistant.application.port.outbound.context.ContextSection
 
 /**
  * Memory as xMemory gives it to the reader: the statements of the matched Components, then the nearest episodes with the

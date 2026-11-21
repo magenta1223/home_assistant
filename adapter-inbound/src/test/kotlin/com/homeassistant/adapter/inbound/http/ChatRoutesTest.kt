@@ -3,9 +3,9 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.sourceimport.SourceImport
 import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
-import com.homeassistant.application.port.inbound.chatservice.Chat
-import com.homeassistant.application.port.inbound.chatservice.ChatRequest
-import com.homeassistant.application.port.inbound.chatservice.ChatResult
+import com.homeassistant.application.port.inbound.chat.Chat
+import com.homeassistant.application.port.inbound.chat.ChatRequest
+import com.homeassistant.application.port.inbound.chat.ChatResult
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.RegisteredUser

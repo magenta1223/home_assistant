@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.outbound.conversation
 
-import com.homeassistant.application.port.outbound.chatgateway.ChatId
-import com.homeassistant.application.port.outbound.chatgateway.ChatGatewayResult
+import com.homeassistant.feature.chat.port.outbound.ChatId
+import com.homeassistant.feature.chat.port.outbound.ChatGatewayResult
 import com.homeassistant.infrastructure.runtime.AbstractRuntime
-import com.homeassistant.application.port.outbound.chatgateway.ChatTurn
+import com.homeassistant.feature.chat.port.outbound.ChatTurn
 import com.homeassistant.llm.ChatClient
 import com.homeassistant.llm.McpToolServer
 import kotlin.test.Test

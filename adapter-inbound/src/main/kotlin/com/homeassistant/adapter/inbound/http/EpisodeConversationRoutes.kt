@@ -1,8 +1,8 @@
 package com.homeassistant.adapter.inbound.http
 
-import com.homeassistant.application.port.inbound.chatservice.Chat
-import com.homeassistant.application.port.inbound.chatservice.ChatRequest
-import com.homeassistant.application.port.inbound.chatservice.ChatResult
+import com.homeassistant.application.port.inbound.chat.Chat
+import com.homeassistant.application.port.inbound.chat.ChatRequest
+import com.homeassistant.application.port.inbound.chat.ChatResult
 import com.homeassistant.configuration.AppConfig
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal

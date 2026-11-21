@@ -1,12 +1,12 @@
 package com.homeassistant.adapter.outbound.persistence.repo.episodeconversation
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
-import com.homeassistant.application.port.outbound.chatgateway.ChatId
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionConflict
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionDeactivation
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRenewal
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
-import com.homeassistant.application.port.outbound.chatgateway.ChatSessionStart
+import com.homeassistant.feature.chat.port.outbound.ChatId
+import com.homeassistant.feature.chat.port.outbound.ChatSessionConflict
+import com.homeassistant.feature.chat.port.outbound.ChatSessionDeactivation
+import com.homeassistant.feature.chat.port.outbound.ChatSessionRenewal
+import com.homeassistant.feature.chat.port.outbound.ChatSessionRepository
+import com.homeassistant.feature.chat.port.outbound.ChatSessionStart
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import kotlin.test.Test

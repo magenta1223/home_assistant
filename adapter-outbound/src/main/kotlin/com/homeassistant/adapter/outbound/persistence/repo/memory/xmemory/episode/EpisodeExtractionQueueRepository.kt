@@ -7,8 +7,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.S
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.SourceRecordExtractionTable.FAILED
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.SourceRecordExtractionTable.PROCESSING
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionQueue
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeExtractionClaim
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeExtractionQueue
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.source.SourceDescriptor
 import com.homeassistant.domain.source.SourceDocument

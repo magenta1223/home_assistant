@@ -3,8 +3,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episo
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeBatch
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeExtractionClaim
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.identity.UserId

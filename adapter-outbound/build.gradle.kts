@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":feature-finance"))
     implementation(project(":feature-sourceimport"))
     implementation(project(":feature-chat"))
+    implementation(project(":feature-memory-xmemory"))
 
 
     implementation(libs.kotlinx.serialization.json)

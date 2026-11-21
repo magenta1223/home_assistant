@@ -7,8 +7,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.E
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.EpisodeViewerTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.GroupMembershipTable
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeAccessCondition
-import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentRepository
-import com.homeassistant.application.port.outbound.memory.xmemory.component.EpisodeComponents
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.ComponentRepository
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.EpisodeComponents
 import com.homeassistant.domain.memory.xmemory.component.Component
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility

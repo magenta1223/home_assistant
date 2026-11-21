@@ -1,7 +1,7 @@
 package com.homeassistant.adapter.outbound.memory.xmemory.componentextraction
 
-import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentExtractor
-import com.homeassistant.application.port.outbound.memory.xmemory.component.PendingEpisode
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.ComponentExtractor
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.PendingEpisode
 import com.homeassistant.infrastructure.serialization.JsonSerializer.decodeFromString
 import com.homeassistant.infrastructure.serialization.JsonSerializer.encodeToString
 import com.homeassistant.llm.CompletionClient

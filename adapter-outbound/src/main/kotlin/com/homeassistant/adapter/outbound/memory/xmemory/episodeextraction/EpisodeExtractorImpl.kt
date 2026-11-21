@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.memory.xmemory.episodeextraction
 
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractor
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeExtractor
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.infrastructure.serialization.JsonSerializer.encodeToString
 import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal

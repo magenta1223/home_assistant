@@ -4,8 +4,8 @@ import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentEmbeddingTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentTable
 import com.homeassistant.application.port.outbound.embedding.Embedding
-import com.homeassistant.application.port.outbound.memory.xmemory.embedding.ComponentEmbeddingKey
-import com.homeassistant.application.port.outbound.memory.xmemory.embedding.ComponentEmbeddingRepository
+import com.homeassistant.feature.memory.xmemory.port.outbound.embedding.ComponentEmbeddingKey
+import com.homeassistant.feature.memory.xmemory.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
 import com.homeassistant.application.port.outbound.embedding.contentFingerprint
 import kotlinx.serialization.json.add

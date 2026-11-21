@@ -7,8 +7,8 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.E
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordViewerTable
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component.ComponentAssignmentOutboxRepository
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeBatch
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeRepository
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.memory.xmemory.episode.Episode
 import com.homeassistant.domain.access.AccessControl

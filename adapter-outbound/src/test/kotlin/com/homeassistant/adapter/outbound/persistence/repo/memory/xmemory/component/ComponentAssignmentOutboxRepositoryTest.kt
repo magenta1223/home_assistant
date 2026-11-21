@@ -1,13 +1,13 @@
 package com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.component
 
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memory.xmemory.component.EpisodeComponents
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeBatch
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.EpisodeComponents
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentAssignmentOutboxTable
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.memory.xmemory.component.PendingEpisode
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.PendingEpisode
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.memory.xmemory.episode.EpisodeProposal

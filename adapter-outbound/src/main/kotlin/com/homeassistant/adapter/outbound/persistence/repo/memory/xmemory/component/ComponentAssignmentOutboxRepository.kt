@@ -11,9 +11,9 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.C
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.EpisodeEvidenceTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceRecordTable
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
-import com.homeassistant.application.port.outbound.memory.xmemory.component.PendingEpisode
-import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentOutbox
-import com.homeassistant.application.port.outbound.memory.xmemory.component.ComponentAssignmentTask
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.PendingEpisode
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.ComponentAssignmentOutbox
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.ComponentAssignmentTask
 import org.jetbrains.exposed.sql.*
 
 internal class ComponentAssignmentOutboxRepository(private val db: SqliteDatabases) : ComponentAssignmentOutbox {

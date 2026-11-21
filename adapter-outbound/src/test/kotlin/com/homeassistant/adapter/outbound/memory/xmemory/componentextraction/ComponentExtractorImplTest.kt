@@ -1,6 +1,6 @@
 package com.homeassistant.adapter.outbound.memory.xmemory.componentextraction
 
-import com.homeassistant.application.port.outbound.memory.xmemory.component.PendingEpisode
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.PendingEpisode
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.llm.CompletionImage

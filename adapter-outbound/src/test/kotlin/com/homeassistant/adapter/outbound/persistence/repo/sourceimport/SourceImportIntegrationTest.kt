@@ -9,7 +9,7 @@ import com.homeassistant.application.port.inbound.sourceimport.SourceImportReque
 import com.homeassistant.application.port.inbound.sourceimport.InvalidAllowedUsersException
 import com.homeassistant.application.port.inbound.sourceimport.SourceAccessConflictException
 import com.homeassistant.application.port.inbound.sourceimport.SourceAnalysisRoundResult
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeExtractionClaim
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretation
 import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult

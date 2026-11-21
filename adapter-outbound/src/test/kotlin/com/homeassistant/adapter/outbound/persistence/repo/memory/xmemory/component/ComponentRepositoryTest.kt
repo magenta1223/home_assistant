@@ -2,8 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.compo
 
 import kotlin.test.assertIs
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
-import com.homeassistant.application.port.outbound.memory.xmemory.component.EpisodeComponents
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeBatch
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.EpisodeComponents
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentExtractionTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.memory.xmemory.ComponentTable

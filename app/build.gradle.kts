@@ -33,6 +33,7 @@ dependencies {
     implementation(project(":feature-finance"))
     implementation(project(":feature-sourceimport"))
     implementation(project(":feature-chat"))
+    implementation(project(":feature-memory-xmemory"))
 
     // Ktor server
     implementation(libs.ktor.server.core)

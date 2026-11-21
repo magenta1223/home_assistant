@@ -2,18 +2,18 @@ package com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episo
 
 import kotlin.test.assertIs
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.port.outbound.memory.xmemory.component.EpisodeComponents
-import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeBatch
+import com.homeassistant.feature.memory.xmemory.port.outbound.component.EpisodeComponents
+import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeBatch
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.outbound.embedding.EmbeddingGenerator
 import com.homeassistant.application.port.outbound.embedding.EmbeddingSpace
-import com.homeassistant.application.usecase.memory.xmemory.component.ComponentSearcher
-import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareEpisodeEmbedding
-import com.homeassistant.application.usecase.memory.xmemory.episode.EpisodeSearcher
-import com.homeassistant.application.usecase.memory.xmemory.embedding.PrepareComponentEmbedding
+import com.homeassistant.feature.memory.xmemory.usecase.component.ComponentSearcher
+import com.homeassistant.feature.memory.xmemory.usecase.embedding.PrepareEpisodeEmbedding
+import com.homeassistant.feature.memory.xmemory.usecase.episode.EpisodeSearcher
+import com.homeassistant.feature.memory.xmemory.usecase.embedding.PrepareComponentEmbedding
 import com.homeassistant.feature.chat.usecase.ContextAssembler
-import com.homeassistant.application.usecase.memory.xmemory.XMemoryContextProvider
+import com.homeassistant.feature.memory.xmemory.usecase.XMemoryContextProvider
 import com.homeassistant.domain.embedding.EmbeddingVector
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.domain.identity.UserId

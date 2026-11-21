@@ -3,3 +3,4 @@ include("domain", "application", "configuration", "adapter-inbound", "adapter-ou
 
 include("integration-llm")
 include("infrastructure")
+include("architecture-test")

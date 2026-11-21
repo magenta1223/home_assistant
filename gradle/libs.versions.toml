@@ -13,6 +13,7 @@ dotenv = "6.4.1"
 pdfbox = "3.0.8"
 poi = "5.4.1"
 mcpKotlinSdk = "0.9.0"
+konsist = "0.18.1"
 
 [libraries]
 # Ktor server
@@ -54,6 +55,7 @@ mcp-kotlin-sdk-server = { module = "io.modelcontextprotocol:kotlin-sdk-server", 
 
 # Testing
 mockk = { module = "io.mockk:mockk", version.ref = "mockk" }
+konsist = { module = "com.lemonappdev:konsist", version.ref = "konsist" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

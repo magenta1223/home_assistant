@@ -32,6 +32,7 @@ object ApplicationServicesFactory {
             users = identity.users,
             authentication = identity.authentication,
             importFinanceTransactions = finance.importTransactions,
+            findMonthlySpending = finance.findMonthlySpending,
             contextAccess = chat.contextAccess,
             searchMemory = chat.searchMemory,
             findTransactions = chat.findTransactions,

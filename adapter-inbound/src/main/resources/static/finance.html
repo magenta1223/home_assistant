@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Home Second Brain · 지출</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, Pretendard, system-ui, sans-serif;
+      background: #f4f1ea;
+      color: #1d2a26;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      height: var(--viewport-height, 100dvh);
+      overflow: hidden;
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+      background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: min(780px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 calc(36px + env(safe-area-inset-bottom));
+    }
+    .menu-bar { flex: none; margin-bottom: 14px; }
+    button.menu-toggle {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #1e5b46;
+    }
+    .menu-toggle svg { width: 24px; height: 24px; }
+    .drawer {
+      margin: 0;
+      width: min(280px, 80vw);
+      max-width: none;
+      height: 100%;
+      max-height: none;
+      border: 0;
+      border-radius: 0 22px 22px 0;
+      padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+      background: #fbfaf6;
+      color: #1d2a26;
+      box-shadow: 0 22px 55px rgba(36,53,46,.18);
+    }
+    .drawer[open] { display: flex; flex-direction: column; gap: 18px; animation: drawer-slide-in .2s ease-out; }
+    .drawer::backdrop { background: rgba(29,42,38,.4); }
+    @keyframes drawer-slide-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+    .drawer ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .drawer a {
+      display: block;
+      color: #1e5b46;
+      border-radius: 12px;
+      padding: 12px 14px;
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .drawer a[aria-current="page"] { color: white; background: #1e5b46; }
+    button.menu-close { align-self: flex-start; min-width: 0; height: 40px; background: #e8eee9; color: #1e5b46; }
+    .panel {
+      background: rgba(255,255,255,.88);
+      border: 1px solid #d9ded8;
+      border-radius: 22px;
+      box-shadow: 0 22px 55px rgba(36,53,46,.09);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .panel > * { flex: none; }
+    .auth {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      padding: 18px 20px;
+      border-bottom: 1px solid #e1e5e1;
+      background: rgba(250,251,249,.8);
+    }
+    .auth[hidden] { display: none; }
+    .auth > div { min-width: 0; }
+    label { display: block; margin-bottom: 7px; color: #43524c; font-size: 13px; font-weight: 800; }
+    input, button { font: inherit; }
+    input {
+      width: 100%;
+      border: 1px solid #cbd3cd;
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: #fff;
+      color: #1d2a26;
+      outline: none;
+    }
+    input:focus { border-color: #3f8068; box-shadow: 0 0 0 3px rgba(63,128,104,.13); }
+    .hint { margin-top: 6px; color: #738079; font-size: 12px; }
+    button {
+      min-width: 82px;
+      height: 48px;
+      border: 0;
+      border-radius: 13px;
+      padding: 0 18px;
+      background: #1e5b46;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .summary { padding: 20px; border-bottom: 1px solid #e1e5e1; background: rgba(250,251,249,.8); }
+    .summary .month { color: #43524c; font-size: 13px; font-weight: 800; }
+    .summary .total { margin-top: 6px; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    .summary .count { margin-top: 4px; color: #738079; font-size: 12px; }
+    .tabs { display: inline-flex; gap: 4px; margin-top: 14px; padding: 4px; border-radius: 12px; background: #e8eee9; }
+    .tabs button { min-width: 0; height: 34px; padding: 0 14px; border-radius: 9px; background: transparent; color: #1e5b46; font-size: 13px; }
+    .tabs button[aria-selected="true"] { background: #1e5b46; color: white; }
+    #status { margin: 0; padding: 14px 20px 0; color: #738079; font-size: 13px; }
+    #status:empty { display: none; }
+    #status[data-state="error"] { color: #8a332b; }
+    #groups {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 16px 20px 20px;
+    }
+    details { flex: none; border: 1px solid #e1e5e1; border-radius: 16px; background: #fff; }
+    summary { list-style: none; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; padding: 14px 16px; cursor: pointer; }
+    summary::-webkit-details-marker { display: none; }
+    .group-name { font-weight: 800; color: #1e5b46; overflow-wrap: anywhere; }
+    .group-total { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .group-meta { grid-column: 1 / -1; color: #738079; font-size: 12px; }
+    .bar { grid-column: 1 / -1; height: 6px; border-radius: 999px; background: #e8eee9; overflow: hidden; }
+    .bar > span { display: block; height: 100%; border-radius: 999px; background: #3f8068; }
+    ul.transactions { list-style: none; margin: 0; padding: 0 16px 8px; border-top: 1px solid #eef1ee; }
+    ul.transactions li { display: grid; grid-template-columns: 1fr auto; gap: 2px 12px; padding: 10px 0; border-bottom: 1px solid #f1f3f1; }
+    ul.transactions li:last-child { border-bottom: 0; }
+    .description { font-weight: 700; overflow-wrap: anywhere; }
+    .amount { font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+    .amount.cancellation { color: #1e654a; }
+    .detail { grid-column: 1 / -1; color: #738079; font-size: 12px; }
+    @media (max-width: 620px) {
+      main { width: min(100% - 20px, 780px); padding: 18px 0 calc(18px + env(safe-area-inset-bottom)); }
+      .auth { grid-template-columns: 1fr; padding: 16px; }
+      .summary { padding: 16px; }
+      #status { padding: 12px 14px 0; }
+      #groups { padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="menu-bar">
+    <button id="menu-toggle" type="button" class="menu-toggle" aria-label="메뉴 열기" aria-controls="menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+  <dialog id="menu" class="drawer" aria-label="주요 기능">
+    <button id="menu-close" type="button" class="menu-close">닫기</button>
+    <nav>
+      <ul>
+        <li><a href="/conversation">대화</a></li>
+        <li><a href="/finance" aria-current="page">지출</a></li>
+        <li><a href="/knowledge">지식 주입</a></li>
+      </ul>
+    </nav>
+  </dialog>
+  <section class="panel" aria-label="이번 달 지출">
+    <div id="auth" class="auth" hidden>
+      <div>
+        <label for="login-name">이름</label>
+        <input id="login-name" autocomplete="username" maxlength="50">
+        <label for="login-password">비밀번호</label>
+        <input id="login-password" type="password" autocomplete="current-password">
+        <div class="hint">이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
+      </div>
+      <div>
+        <button id="login" type="button">로그인</button>
+      </div>
+    </div>
+    <div class="summary">
+      <div id="month" class="month"></div>
+      <div id="total" class="total"></div>
+      <div id="count" class="count"></div>
+      <div class="tabs" role="tablist" aria-label="묶는 기준">
+        <button type="button" role="tab" data-by="category" aria-selected="true">카테고리별</button>
+        <button type="button" role="tab" data-by="paymentMethod" aria-selected="false">카드별</button>
+      </div>
+    </div>
+    <p id="status" role="status"></p>
+    <div id="groups"></div>
+  </section>
+</main>
+<script src="/assets/http-auth-session.js"></script>
+<script>
+  const auth = document.getElementById('auth');
+  const loginName = document.getElementById('login-name');
+  const loginPassword = document.getElementById('login-password');
+  const login = document.getElementById('login');
+  const status = document.getElementById('status');
+  const groupList = document.getElementById('groups');
+  const tabs = document.querySelectorAll('.tabs button');
+  const menu = document.getElementById('menu');
+  const menuToggle = document.getElementById('menu-toggle');
+  const thisMonth = currentMonth();
+  let grouping = 'category';
+
+  menuToggle.addEventListener('click', function () {
+    menu.showModal();
+    menuToggle.setAttribute('aria-expanded', 'true');
+  });
+  document.getElementById('menu-close').addEventListener('click', function () {
+    menu.close();
+  });
+  menu.addEventListener('click', function (event) {
+    const panel = menu.getBoundingClientRect();
+    if (event.clientX > panel.right) menu.close();
+  });
+  menu.addEventListener('close', function () {
+    menuToggle.setAttribute('aria-expanded', 'false');
+  });
+
+  tabs.forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      grouping = tab.dataset.by;
+      tabs.forEach(function (other) { other.setAttribute('aria-selected', String(other === tab)); });
+      loadSpending();
+    });
+  });
+
+  login.addEventListener('click', authenticate);
+  loginPassword.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      authenticate();
+    }
+  });
+
+  async function loadSpending() {
+    setStatus('', '불러오는 중…');
+    try {
+      const response = await fetch('/api/finance/spending?month=' + thisMonth + '&by=' + grouping);
+      if (response.status === 401) {
+        showLogin();
+        return;
+      }
+      if (!response.ok) throw new Error();
+      showSpending(await response.json());
+      setStatus('', '');
+    } catch (_) {
+      setStatus('error', '지출을 불러오지 못했습니다. 잠시 후 다시 시도하세요.');
+    }
+  }
+
+  function showSpending(spending) {
+    const [year, month] = spending.month.split('-');
+    document.getElementById('month').textContent = year + '년 ' + Number(month) + '월 지출';
+    const won = spending.groups.filter(function (group) { return group.currency === 'KRW'; });
+    document.getElementById('total').textContent =
+      money(won.reduce(function (sum, group) { return sum + group.total; }, 0), 'KRW');
+    const count = spending.groups.reduce(function (sum, group) { return sum + group.count; }, 0);
+    const otherCurrencies = won.length < spending.groups.length ? ' · 다른 통화는 아래에 따로 표시' : '';
+    document.getElementById('count').textContent = count + '건' + otherCurrencies;
+
+    const largest = Math.min.apply(null, won.map(function (group) { return group.total; }).concat([0]));
+    groupList.replaceChildren.apply(groupList, spending.groups.map(function (group, index) {
+      return groupCard(group, index === 0, group.currency === 'KRW' && largest < 0 ? group.total / largest : 0);
+    }));
+    if (spending.groups.length === 0) setStatus('', '이번 달 지출이 없습니다.');
+  }
+
+  function groupCard(group, open, share) {
+    const card = document.createElement('details');
+    card.open = open;
+    const summary = document.createElement('summary');
+    const bar = element('span', 'bar', '');
+    const fill = document.createElement('span');
+    fill.style.width = Math.max(0, Math.min(1, share)) * 100 + '%';
+    bar.appendChild(fill);
+    summary.append(
+      element('span', 'group-name', group.name),
+      element('span', 'group-total', money(group.total, group.currency)),
+      element('span', 'group-meta', group.count + '건' + (group.currency === 'KRW' ? '' : ' · ' + group.currency)),
+      bar
+    );
+    const rows = element('ul', 'transactions', '');
+    group.transactions.forEach(function (transaction) { rows.appendChild(transactionRow(transaction)); });
+    card.append(summary, rows);
+    return card;
+  }
+
+  function transactionRow(transaction) {
+    const row = document.createElement('li');
+    const amount = element('span', 'amount', money(transaction.amount, transaction.currency));
+    if (transaction.amount > 0) amount.classList.add('cancellation');
+    const time = transaction.occurredAt.slice(5, 10).replace('-', '.') + ' ' + transaction.occurredAt.slice(11, 16);
+    const where = grouping === 'category'
+      ? [transaction.minorCategory, transaction.paymentMethod]
+      : [transaction.majorCategory + ' > ' + transaction.minorCategory];
+    const detail = [time].concat(where, transaction.memo ? ['메모: ' + transaction.memo] : []).join(' · ');
+    row.append(element('span', 'description', transaction.description), amount, element('span', 'detail', detail));
+    return row;
+  }
+
+  function element(tag, className, text) {
+    const node = document.createElement(tag);
+    node.className = className;
+    node.textContent = text;
+    return node;
+  }
+
+  function money(amount, currency) {
+    return amount.toLocaleString('ko-KR') + (currency === 'KRW' ? '원' : ' ' + currency);
+  }
+
+  function currentMonth() {
+    const today = new Date();
+    return today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0');
+  }
+
+  function setStatus(state, text) {
+    status.dataset.state = state;
+    status.textContent = text;
+  }
+
+  async function authenticate() {
+    login.disabled = true;
+    try {
+      await window.HomeSecondBrainAuth.login(loginName.value, loginPassword.value);
+      loginPassword.value = '';
+      auth.hidden = true;
+      loadSpending();
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      login.disabled = false;
+    }
+  }
+
+  function showLogin() {
+    auth.hidden = false;
+    setStatus('', '로그인이 필요합니다.');
+    loginName.focus();
+  }
+
+  function trackVisualViewportHeight() {
+    const applyHeight = function () {
+      document.documentElement.style.setProperty('--viewport-height', window.visualViewport.height + 'px');
+    };
+    window.visualViewport.addEventListener('resize', applyHeight);
+    applyHeight();
+  }
+
+  trackVisualViewportHeight();
+  loadSpending();
+</script>
+</body>
+</html>

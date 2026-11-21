@@ -1,6 +1,7 @@
 package com.homeassistant.feature.finance.port.outbound
 
 import com.homeassistant.domain.finance.FinanceTransaction
+import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
 import java.time.LocalDateTime
 
@@ -17,12 +18,18 @@ interface FinanceTransactionRepository {
 
     /** The transactions matching [criteria], oldest first. */
     fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction>
+
+    /**
+     * The totals of the transactions matching [criteria], one per [grouping] value and currency, the smallest sum (the
+     * largest spending) first.
+     */
+    fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal>
 }
 
 /**
  * Which transactions of [ownerId] to find: those that occurred at or after [from] and before [to], only those whose
- * major or minor category is [category] when it is given, and only those whose description contains
- * [descriptionContains] when it is given.
+ * major or minor category is [category] when it is given, only those whose description contains
+ * [descriptionContains] when it is given, and only those of [type] when it is given.
  */
 data class FinanceTransactionCriteria(
     val ownerId: UserId,
@@ -30,4 +37,13 @@ data class FinanceTransactionCriteria(
     val to: LocalDateTime,
     val category: String? = null,
     val descriptionContains: String? = null,
+    val type: String? = null,
+)
+
+/** The [count] transactions in [currency] whose grouped value is [name], and the signed sum of their amounts. */
+data class SpendingTotal(
+    val name: String,
+    val currency: String,
+    val amount: Long,
+    val count: Int,
 )

@@ -4,11 +4,15 @@ import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.FinanceTransactionTable
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import com.homeassistant.domain.finance.FinanceTransaction
+import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
+import org.jetbrains.exposed.sql.Column
 import org.jetbrains.exposed.sql.ResultRow
+import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
@@ -16,6 +20,8 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.batchUpsert
+import org.jetbrains.exposed.sql.count
+import org.jetbrains.exposed.sql.sum
 import org.jetbrains.exposed.sql.selectAll
 import java.time.Instant
 import java.time.LocalDateTime
@@ -59,6 +65,31 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
             .map { it.toFinanceTransaction() }
     }
 
+    override fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal> =
+        db.read {
+            val name = grouping.column()
+            val amount = FinanceTransactionTable.amount.sum()
+            val count = FinanceTransactionTable.amount.count()
+            FinanceTransactionTable.select(name, FinanceTransactionTable.currency, amount, count)
+                .where { matching(criteria) }
+                .groupBy(name, FinanceTransactionTable.currency)
+                .orderBy(amount to SortOrder.ASC, name to SortOrder.ASC, FinanceTransactionTable.currency to SortOrder.ASC)
+                .map {
+                    SpendingTotal(
+                        name = it[name],
+                        currency = it[FinanceTransactionTable.currency],
+                        amount = checkNotNull(it[amount]),
+                        count = it[count].toInt(),
+                    )
+                }
+        }
+
+    /** The column holding the value that [this] groups by. */
+    private fun SpendingGrouping.column(): Column<String> = when (this) {
+        SpendingGrouping.CATEGORY -> FinanceTransactionTable.majorCategory
+        SpendingGrouping.PAYMENT_METHOD -> FinanceTransactionTable.paymentMethod
+    }
+
     /** The SQL condition of [criteria]; a criterion that is not given adds no condition. */
     private fun matching(criteria: FinanceTransactionCriteria): Op<Boolean> =
         listOfNotNull(
@@ -69,6 +100,7 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
                 (FinanceTransactionTable.majorCategory eq it) or (FinanceTransactionTable.minorCategory eq it)
             },
             criteria.descriptionContains?.let { FinanceTransactionTable.description like containing(it) },
+            criteria.type?.let { FinanceTransactionTable.type eq it },
         ).reduce(Op<Boolean>::and)
 
     /** Matches text that contains [part] anywhere, with the wildcards in [part] taken literally. */

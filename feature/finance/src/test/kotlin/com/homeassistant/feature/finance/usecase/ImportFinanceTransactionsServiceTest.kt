@@ -2,7 +2,9 @@ package com.homeassistant.feature.finance.usecase
 
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import com.homeassistant.domain.finance.FinanceTransaction
+import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
 import java.time.LocalDateTime
 import kotlin.test.Test
@@ -45,6 +47,9 @@ class ImportFinanceTransactionsServiceTest {
             stored.values
                 .filter { it.ownerId == criteria.ownerId && it.occurredAt >= criteria.from && it.occurredAt < criteria.to }
                 .sortedBy { it.occurredAt }
+
+        override fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal> =
+            error("unused")
     }
 
     private companion object {

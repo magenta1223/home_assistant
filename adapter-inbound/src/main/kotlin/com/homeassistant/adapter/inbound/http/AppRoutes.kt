@@ -5,6 +5,7 @@ import com.homeassistant.application.port.inbound.identity.UserAuthentication
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.chat.Chat
 import com.homeassistant.application.port.inbound.chat.ContextAccess
+import com.homeassistant.application.port.inbound.finance.FindMonthlySpending
 import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.chat.SearchMemory
 import com.homeassistant.adapter.inbound.mcp.contextToolServer
@@ -22,6 +23,7 @@ fun Application.configureRoutes(
     authentication: UserAuthentication = UserAuthentication.NONE,
     chat: Chat? = null,
     importFinanceTransactions: ImportFinanceTransactions? = null,
+    findMonthlySpending: FindMonthlySpending? = null,
     contextAccess: ContextAccess? = null,
     searchMemory: SearchMemory? = null,
     findTransactions: FindTransactions? = null,
@@ -39,6 +41,7 @@ fun Application.configureRoutes(
             knowledgeInjectionRoutes(sourceImport, users)
             chatRoutes(chat)
             financeImportRoutes(importFinanceTransactions)
+            financeSpendingRoutes(findMonthlySpending)
         }
     }
     // Context tools authenticate with the per-turn context token instead of a user login.

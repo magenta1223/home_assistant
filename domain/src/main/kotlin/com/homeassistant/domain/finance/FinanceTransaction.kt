@@ -39,15 +39,18 @@ data class FinanceTransaction(
             .joinToString(FIELD_SEPARATOR),
     )
 
-    private companion object {
-        const val FIELD_SEPARATOR = "\u001F"
+    companion object {
+        /** The ledger's [type] of an expense. */
+        const val EXPENSE_TYPE = "지출"
 
-        fun canonicalTime(time: LocalDateTime): String =
+        private const val FIELD_SEPARATOR = "\u001F"
+
+        private fun canonicalTime(time: LocalDateTime): String =
             "%04d-%02d-%02dT%02d:%02d:%02d".format(
                 time.year, time.monthValue, time.dayOfMonth, time.hour, time.minute, time.second,
             )
 
-        fun sha256(value: String): String =
+        private fun sha256(value: String): String =
             MessageDigest.getInstance("SHA-256")
                 .digest(value.toByteArray(Charsets.UTF_8))
                 .joinToString("") { "%02x".format(it) }

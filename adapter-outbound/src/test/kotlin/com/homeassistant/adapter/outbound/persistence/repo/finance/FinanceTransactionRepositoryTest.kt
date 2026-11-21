@@ -3,7 +3,9 @@ package com.homeassistant.adapter.outbound.persistence.repo.finance
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import com.homeassistant.domain.finance.FinanceTransaction
+import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
 import java.nio.file.Files
 import java.time.LocalDateTime
@@ -85,6 +87,64 @@ class FinanceTransactionRepositoryTest {
             assertEquals(listOf(discount), transactions.findInNovember(OWNER, descriptionContains = "50%"))
             assertEquals(emptyList(), transactions.findInNovember(OWNER, descriptionContains = "_"))
         }
+
+    @Test
+    fun `a type filter finds only transactions of that type`() = withRepository { transactions ->
+        val transfer = DINNER.copy(type = "이체")
+        transactions.save(listOf(LUNCH, transfer))
+
+        assertEquals(listOf(LUNCH), transactions.findMatching(novemberOf(OWNER, type = "지출")))
+    }
+
+    @Test
+    fun `totals sum the amounts per category and currency, the largest spending first`() =
+        withRepository { transactions ->
+            val cancelledDinner = DINNER.copy(occurredAt = DINNER.occurredAt.plusHours(1), amount = 5_000)
+            val taxi = LUNCH.copy(
+                occurredAt = LUNCH.occurredAt.plusHours(2),
+                majorCategory = "교통",
+                description = "택시",
+                amount = -30_000,
+            )
+            val dollarLunch = LUNCH.copy(amount = -12, currency = "USD")
+            transactions.save(listOf(LUNCH, DINNER, cancelledDinner, taxi, dollarLunch))
+
+            assertEquals(
+                listOf(
+                    SpendingTotal("교통", "KRW", -30_000, 1),
+                    SpendingTotal("식비", "KRW", -24_000, 3),
+                    SpendingTotal("식비", "USD", -12, 1),
+                ),
+                transactions.findTotalsBy(SpendingGrouping.CATEGORY, novemberOf(OWNER)),
+            )
+        }
+
+    @Test
+    fun `totals by payment method sum the amounts per payment method`() = withRepository { transactions ->
+        val coffee = LUNCH.copy(occurredAt = LUNCH.occurredAt.plusHours(1), amount = -5_000, paymentMethod = "체크카드")
+        transactions.save(listOf(LUNCH, DINNER, coffee))
+
+        assertEquals(
+            listOf(SpendingTotal("신용카드", "KRW", -29_000, 2), SpendingTotal("체크카드", "KRW", -5_000, 1)),
+            transactions.findTotalsBy(SpendingGrouping.PAYMENT_METHOD, novemberOf(OWNER)),
+        )
+    }
+
+    @Test
+    fun `totals count only the matching transactions`() = withRepository { transactions ->
+        val othersLunch = LUNCH.copy(ownerId = UserId("member-2"))
+        val octoberLunch = LUNCH.copy(occurredAt = NOVEMBER_START.minusSeconds(1))
+        val transfer = DINNER.copy(type = "이체")
+        transactions.save(listOf(LUNCH, othersLunch, octoberLunch, transfer))
+
+        assertEquals(
+            listOf(SpendingTotal("식비", "KRW", -8_000, 1)),
+            transactions.findTotalsBy(SpendingGrouping.CATEGORY, novemberOf(OWNER, type = "지출")),
+        )
+    }
+
+    private fun novemberOf(ownerId: UserId, type: String? = null) =
+        FinanceTransactionCriteria(ownerId, NOVEMBER_START, DECEMBER_START, type = type)
 
     private fun FinanceTransactionRepository.findInNovember(
         ownerId: UserId,

@@ -3,7 +3,9 @@ package com.homeassistant.feature.finance.usecase
 import com.homeassistant.application.port.inbound.finance.TransactionSearch
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import com.homeassistant.domain.finance.FinanceTransaction
+import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -69,6 +71,9 @@ class FindTransactionsServiceTest {
             this.criteria += criteria
             return matches
         }
+
+        override fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal> =
+            error("unused")
     }
 
     private companion object {

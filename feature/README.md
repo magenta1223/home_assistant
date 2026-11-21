@@ -8,14 +8,14 @@ payload 형식은 여기에서 직접 다루지 않는다.
 
 | 패키지 | 책임 | 상세 문서 |
 |---|---|---|
-| `identity` | 사용자를 이름·비밀번호로 등록·로그인시키고, 목록을 제공하고 인가한다. | [identity](identity/README.md) |
-| `group` | 저장된 Component를 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](memory/xmemory/group/README.md) |
-| `component` | Episode에서 장기 지식을 Component로 추출한 뒤 Group 정리까지 이어가고, 대화용 Component 검색을 읽을 수 있는 출처 Episode로 거른다. | [component](memory/xmemory/component/README.md) |
-| `embedding` | Episode·Component 벡터를 저장된 것이 있으면 재사용하고 없으면 만들어 저장한다. 추출·Group·검색이 함께 쓴다. | - |
-| `episode/search` | 대화용으로 질문에 가까운, 사용자가 읽을 수 있는 Episode를 찾는다. | - |
-| `sourceimport` | source record와 reference 원본을 저장하고 주입 job을 접수한 뒤, worker round에서 job을 하나씩 꺼내 reference 해석 record를 저장한다. | [sourceimport](sourceimport/README.md) |
-| `episode/conversation` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](chatservice/README.md) |
-| `episode/write` | proposal을 원자적으로 저장하고 Component 할당 outbox를 같은 transaction으로 남긴다. | [write](episode/write/README.md) |
+| `identity` `usecase` | 사용자를 이름·비밀번호로 등록·로그인시키고, 목록을 제공하고 인가한다. | [identity](identity/src/main/kotlin/com/homeassistant/feature/identity/usecase/README.md) |
+| `memory-xmemory` `usecase/group` | 저장된 Component를 Group에 배치·분할하고 원자 확정한다. 명시적 내부 호출 전용이다. | [group](memory-xmemory/src/main/kotlin/com/homeassistant/feature/memory/xmemory/usecase/group/README.md) |
+| `memory-xmemory` `usecase/component` | Episode에서 장기 지식을 Component로 추출한 뒤 Group 정리까지 이어가고, 대화용 Component 검색을 읽을 수 있는 출처 Episode로 거른다. | [component](memory-xmemory/src/main/kotlin/com/homeassistant/feature/memory/xmemory/usecase/component/README.md) |
+| `memory-xmemory` `usecase/embedding` | Episode·Component 벡터를 저장된 것이 있으면 재사용하고 없으면 만들어 저장한다. 추출·Group·검색이 함께 쓴다. | - |
+| `memory-xmemory` `usecase/episode` | 대화용으로 질문에 가까운, 사용자가 읽을 수 있는 Episode를 찾는다. | - |
+| `sourceimport` `usecase` | source record와 reference 원본을 저장하고 주입 job을 접수한 뒤, worker round에서 job을 하나씩 꺼내 reference 해석 record를 저장한다. | [sourceimport](sourceimport/src/main/kotlin/com/homeassistant/feature/sourceimport/usecase/README.md) |
+| `chat` `usecase` | 질문 멱등성, 10분 세션 lease, context와 provider conversation을 관리한다. | [conversation](chat/src/main/kotlin/com/homeassistant/feature/chat/usecase/README.md) |
+| `memory-xmemory` `usecase/episode` | proposal을 원자적으로 저장하고 Component 할당 outbox를 같은 transaction으로 남긴다. | - |
 
 ## 전체 episode 쓰기 흐름
 
@@ -64,7 +64,7 @@ sequenceDiagram
     participant HTTP as Authenticated HTTP adapter
     participant Conversation as EpisodeConversation
     participant Sessions as ChatSessionRepository
-    participant Context as EpisodeConversationContextSource
+    participant Context as ContextAssembler
     participant Gateway as ConversationGateway
 
     User->>HTTP: question

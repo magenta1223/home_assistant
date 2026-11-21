@@ -6,4 +6,4 @@
 | `EpisodeEmbeddingRepository` | Episode document 벡터를 Episode ID·content hash·모델·입력 규약별로 불변 저장; 내용이 바뀐 Episode의 벡터는 거절; 경쟁 생성 시 먼저 저장한 벡터 반환 |
 | `ComponentEmbeddingRepository` | Component 벡터를 key별로 불변 저장; 요청 버전이 지난 벡터는 거절; 경쟁 생성 시 먼저 저장한 벡터 반환 |
 
-저장소는 key마다 따로 둔다. 재사용·생성 흐름은 `usecase/embedding`의 `PrepareEpisodeEmbedding`, `PrepareComponentEmbedding`이 맡는다.
+저장소는 key마다 따로 둔다. 재사용·생성 흐름은 `feature-memory-xmemory`의 `usecase/embedding`에 있는 `PrepareEpisodeEmbedding`, `PrepareComponentEmbedding`이 맡는다.

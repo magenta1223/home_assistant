@@ -55,7 +55,7 @@ sequenceDiagram
   처리 중 중단된 행은 lease(기본 10분)가 지나면 다시 claim된다.
 - Group 배치·병합 단계의 오류는 그 회차를 멈춘다. 앞 단계의 저장 결과는 유지되고 다음 회차가 이어간다.
 - 아는 지식은 `findCovering(episode access)`가 DB에서 고른 Component의 벡터와 매번 비교해 고른다. 가족 규모를 전제로 하며 ANN 색인은 없다.
-- Component 분할·병합(보류)은 [후속 작업](../../../../../../../../../docs/todolist/p1/component-group-merge-and-knn-links.md)이다.
+- Component 분할·병합(보류)은 [후속 작업](../../../../../../../../../../../../docs/todolist/p1/component-group-merge-and-knn-links.md)이다.
 
 ## Component 검색
 
@@ -95,7 +95,7 @@ sequenceDiagram
   읽을 수 있는 소속이 없는 Group은 꺼낼 Component가 없으므로 후보에서 뺀다.
   Component의 후보·이웃·순위는 사용자가 읽을 수 있는 Component만으로 정한다. 뽑힐 수 없는 Component가 이웃 자리를 차지해
   coverage를 깎지 않게 하기 위해서다.
-- 논문의 Stage II(reader entropy가 줄 때만 하위 텍스트 추가)는 하지 않는다([후속 작업](../../../../../../../../../docs/todolist/p2/xmemory-stage2-entropy.md)). 대화 context가 Episode를 순서대로 8,000자 안에서
+- 논문의 Stage II(reader entropy가 줄 때만 하위 텍스트 추가)는 하지 않는다([후속 작업](../../../../../../../../../../../../docs/todolist/p2/xmemory-stage2-entropy.md)). 대화 context가 Episode를 순서대로 8,000자 안에서
   줄 단위로 싣는다. 최소 점수는 아직 두지 않는다.
 
 검증은 fake port application 테스트와 임시 SQLite 통합 테스트를 사용한다. 실제 임베딩 서버는 호출하지 않는다.

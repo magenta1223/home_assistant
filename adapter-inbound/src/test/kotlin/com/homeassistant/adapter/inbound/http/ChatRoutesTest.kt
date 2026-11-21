@@ -37,7 +37,7 @@ class ChatRoutesTest {
         val html = response.bodyAsText()
 
         assertEquals(HttpStatusCode.OK, response.status)
-        assertTrue(html.contains("Episode Conversation"))
+        assertTrue(html.contains("<title>Home Second Brain · 대화</title>"))
         assertTrue(html.contains(AppConfig.ROUTE_EPISODE_CONVERSATION))
         assertTrue(html.contains("/assets/http-auth-session.js"))
         assertTrue(!html.contains("localStorage"))

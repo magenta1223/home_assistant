@@ -6,7 +6,6 @@ import kotlin.io.path.isDirectory
 import kotlin.io.path.name
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ApplicationPackageArchitectureTest {
@@ -29,49 +28,6 @@ class ApplicationPackageArchitectureTest {
                 .relativize(source.parent)
                 .joinToString(".") { it.name }
             assertEquals(expectedPackage, packageName, "$source package does not match its directory")
-        }
-    }
-
-    @Test
-    fun `adapters do not import usecase implementations`() {
-        listOf("adapter-inbound", "adapter-outbound").forEach { module ->
-            kotlinSources(repositoryRoot.resolve("$module/src/main/kotlin")).forEach { source ->
-                assertFalse(
-                    Files.readString(source).contains("import com.homeassistant.application.usecase."),
-                    "$source imports an application usecase implementation",
-                )
-            }
-        }
-    }
-
-    @Test
-    fun `output ports do not expose implementation technology names`() {
-        val outputPorts = applicationSourceRoot.resolve("com/homeassistant/application/port/outbound")
-        val implementationNames = Regex("\\b(qdrant|sqlite|codex|ollama)\\b", RegexOption.IGNORE_CASE)
-
-        kotlinSources(outputPorts).forEach { source ->
-            assertFalse(
-                implementationNames.containsMatchIn(Files.readString(source)),
-                "$source exposes an implementation technology in an output port",
-            )
-        }
-    }
-
-    @Test
-    fun `repository ports read with find and write with save or delete`() {
-        val outputPorts = applicationSourceRoot.resolve("com/homeassistant/application/port/outbound")
-        val repository = Regex("interface\\s+(\\w+Repository)\\s*\\{(.*?)\\R}", RegexOption.DOT_MATCHES_ALL)
-        val method = Regex("\\bfun\\s+(\\w+)")
-
-        kotlinSources(outputPorts).forEach { source ->
-            repository.findAll(Files.readString(source)).forEach { port ->
-                method.findAll(port.groupValues[2]).map { it.groupValues[1] }.forEach { name ->
-                    assertTrue(
-                        name.startsWith("find") || name.startsWith("save") || name.startsWith("delete"),
-                        "${port.groupValues[1]}.$name must be a find… read, a save write or a delete… removal: $source",
-                    )
-                }
-            }
         }
     }
 

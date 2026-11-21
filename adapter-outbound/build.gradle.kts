@@ -11,6 +11,7 @@ dependencies {
     implementation(project(":integration-llm"))
     implementation(project(":infrastructure"))
     implementation(project(":feature-identity"))
+    implementation(project(":feature-finance"))
 
 
     implementation(libs.kotlinx.serialization.json)

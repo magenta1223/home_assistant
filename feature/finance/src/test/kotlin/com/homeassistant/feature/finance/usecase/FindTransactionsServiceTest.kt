@@ -1,8 +1,8 @@
-package com.homeassistant.application.usecase.contexttool
+package com.homeassistant.feature.finance.usecase
 
-import com.homeassistant.application.port.inbound.contexttool.TransactionSearch
-import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
-import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
+import com.homeassistant.application.port.inbound.finance.TransactionSearch
+import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
+import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
 import java.time.LocalDate

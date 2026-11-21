@@ -5,7 +5,7 @@ import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.sourceimport.SourceImport
 import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.contexttool.ContextAccess
-import com.homeassistant.application.port.inbound.contexttool.FindTransactions
+import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
 import com.homeassistant.infrastructure.runtime.Runtime

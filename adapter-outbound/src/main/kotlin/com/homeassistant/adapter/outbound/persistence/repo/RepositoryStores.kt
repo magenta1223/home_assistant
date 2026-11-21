@@ -12,7 +12,7 @@ import com.homeassistant.application.port.outbound.memory.xmemory.component.Comp
 import com.homeassistant.application.port.outbound.memory.xmemory.embedding.EpisodeEmbeddingRepository
 import com.homeassistant.application.port.outbound.memory.xmemory.embedding.ComponentEmbeddingRepository
 import com.homeassistant.application.port.outbound.memory.xmemory.group.GroupRepository
-import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,

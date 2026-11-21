@@ -7,3 +7,5 @@ include("architecture-test")
 
 include("feature-identity")
 project(":feature-identity").projectDir = file("feature/identity")
+include("feature-finance")
+project(":feature-finance").projectDir = file("feature/finance")

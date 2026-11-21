@@ -1,7 +1,7 @@
-package com.homeassistant.application.usecase.finance
+package com.homeassistant.feature.finance.usecase
 
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
-import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 
 /** Stores imported ledger transactions in the [FinanceTransactionRepository]. */

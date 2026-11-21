@@ -1,7 +1,7 @@
 package com.homeassistant.app.services
 
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
-import com.homeassistant.application.usecase.finance.ImportFinanceTransactionsService
+import com.homeassistant.feature.finance.usecase.ImportFinanceTransactionsService
 
 /** Assembles the household finance ledger. */
 internal class FinanceModule(repositories: RepositoryStores) {

@@ -30,6 +30,7 @@ dependencies {
     implementation(project(":integration-llm"))
     implementation(project(":infrastructure"))
     implementation(project(":feature-identity"))
+    implementation(project(":feature-finance"))
 
     // Ktor server
     implementation(libs.ktor.server.core)

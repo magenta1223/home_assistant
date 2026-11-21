@@ -1,9 +1,9 @@
 package com.homeassistant.adapter.inbound.mcp
 
 import com.homeassistant.application.port.inbound.contexttool.ContextAccess
-import com.homeassistant.application.port.inbound.contexttool.FindTransactions
+import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
-import com.homeassistant.application.port.inbound.contexttool.TransactionSearch
+import com.homeassistant.application.port.inbound.finance.TransactionSearch
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.infrastructure.serialization.JsonSerializer

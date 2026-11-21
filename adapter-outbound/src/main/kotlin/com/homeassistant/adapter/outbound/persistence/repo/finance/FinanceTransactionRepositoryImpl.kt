@@ -2,8 +2,8 @@ package com.homeassistant.adapter.outbound.persistence.repo.finance
 
 import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.FinanceTransactionTable
-import com.homeassistant.application.port.outbound.finance.FinanceTransactionCriteria
-import com.homeassistant.application.port.outbound.finance.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
+import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.LikePattern

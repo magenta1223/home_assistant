@@ -5,7 +5,7 @@ import com.homeassistant.adapter.outbound.conversation.AgentChatGateway
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.application.port.inbound.chatservice.Chat
 import com.homeassistant.application.port.inbound.contexttool.ContextAccess
-import com.homeassistant.application.port.inbound.contexttool.FindTransactions
+import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.contexttool.SearchMemory
 import com.homeassistant.application.usecase.chatservice.ChatContextDelivery
 import com.homeassistant.application.usecase.chatservice.ChatService
@@ -13,7 +13,7 @@ import com.homeassistant.application.usecase.chatservice.ExpireIdleChatsService
 import com.homeassistant.application.usecase.contextprovider.ContextAssembler
 import com.homeassistant.application.usecase.contextprovider.ContextProvider
 import com.homeassistant.application.usecase.contexttool.ContextGrants
-import com.homeassistant.application.usecase.contexttool.FindTransactionsService
+import com.homeassistant.feature.finance.usecase.FindTransactionsService
 import com.homeassistant.application.usecase.contexttool.SearchMemoryService
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.configuration.Env

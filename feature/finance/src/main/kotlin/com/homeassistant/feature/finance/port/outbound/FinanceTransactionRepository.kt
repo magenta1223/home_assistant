@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.outbound.finance
+package com.homeassistant.feature.finance.port.outbound
 
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId

@@ -17,6 +17,7 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.less
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.like
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.inList
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.batchUpsert
@@ -93,7 +94,7 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
     /** The SQL condition of [criteria]; a criterion that is not given adds no condition. */
     private fun matching(criteria: FinanceTransactionCriteria): Op<Boolean> =
         listOfNotNull(
-            FinanceTransactionTable.userId eq criteria.ownerId.value,
+            FinanceTransactionTable.userId inList criteria.ownerIds.map(UserId::value),
             FinanceTransactionTable.occurredAt greaterEq criteria.from.toEpochMillis(),
             FinanceTransactionTable.occurredAt less criteria.to.toEpochMillis(),
             criteria.category?.let {

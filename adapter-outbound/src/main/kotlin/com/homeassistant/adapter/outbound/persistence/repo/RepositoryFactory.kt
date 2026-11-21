@@ -19,6 +19,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.finance.FinanceTransa
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
         val db = DatabaseFactory.init(dbPath)
+        val households = HouseholdRepositoryImpl(db)
         return RepositoryStores(
             sourceRecords = SourceRecordRepositoryImpl(db),
             episodes = EpisodeRepositoryImpl(db),
@@ -32,8 +33,9 @@ object RepositoryFactory {
             chatSessions = ChatSessionRepositoryImpl(db),
             users = UserRepositoryImpl(db),
             userSessions = UserSessionRepositoryImpl(db),
-            households = HouseholdRepositoryImpl(db),
+            households = households,
             financeTransactions = FinanceTransactionRepositoryImpl(db),
+            householdMembers = households,
         )
     }
 }

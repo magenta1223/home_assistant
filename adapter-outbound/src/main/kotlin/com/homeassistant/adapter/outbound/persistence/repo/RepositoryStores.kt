@@ -14,6 +14,7 @@ import com.homeassistant.feature.memory.xmemory.port.outbound.embedding.EpisodeE
 import com.homeassistant.feature.memory.xmemory.port.outbound.embedding.ComponentEmbeddingRepository
 import com.homeassistant.feature.memory.xmemory.port.outbound.group.GroupRepository
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.HouseholdMembers
 
 data class RepositoryStores(
     val sourceRecords: SourceRecordRepository,
@@ -30,4 +31,5 @@ data class RepositoryStores(
     val userSessions: UserSessionRepository,
     val households: HouseholdRepository,
     val financeTransactions: FinanceTransactionRepository,
+    val householdMembers: HouseholdMembers,
 )

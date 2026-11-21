@@ -27,12 +27,12 @@ interface FinanceTransactionRepository {
 }
 
 /**
- * Which transactions of [ownerId] to find: those that occurred at or after [from] and before [to], only those whose
+ * Which transactions of [ownerIds] to find: those that occurred at or after [from] and before [to], only those whose
  * major or minor category is [category] when it is given, only those whose description contains
  * [descriptionContains] when it is given, and only those of [type] when it is given.
  */
 data class FinanceTransactionCriteria(
-    val ownerId: UserId,
+    val ownerIds: Set<UserId>,
     val from: LocalDateTime,
     val to: LocalDateTime,
     val category: String? = null,

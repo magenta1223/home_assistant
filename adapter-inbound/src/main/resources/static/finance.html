@@ -120,7 +120,8 @@
     .summary .month { color: #43524c; font-size: 13px; font-weight: 800; }
     .summary .total { margin-top: 6px; font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
     .summary .count { margin-top: 4px; color: #738079; font-size: 12px; }
-    .tabs { display: inline-flex; gap: 4px; margin-top: 14px; padding: 4px; border-radius: 12px; background: #e8eee9; }
+    .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    .tabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: #e8eee9; }
     .tabs button { min-width: 0; height: 34px; padding: 0 14px; border-radius: 9px; background: transparent; color: #1e5b46; font-size: 13px; }
     .tabs button[aria-selected="true"] { background: #1e5b46; color: white; }
     #status { margin: 0; padding: 14px 20px 0; color: #738079; font-size: 13px; }
@@ -197,9 +198,15 @@
       <div id="month" class="month"></div>
       <div id="total" class="total"></div>
       <div id="count" class="count"></div>
-      <div class="tabs" role="tablist" aria-label="묶는 기준">
-        <button type="button" role="tab" data-by="category" aria-selected="true">카테고리별</button>
-        <button type="button" role="tab" data-by="paymentMethod" aria-selected="false">카드별</button>
+      <div class="controls">
+        <div id="scope-tabs" class="tabs" role="tablist" aria-label="누구의 지출">
+          <button type="button" role="tab" data-scope="household" aria-selected="true">가족 전체</button>
+          <button type="button" role="tab" data-scope="mine" aria-selected="false">나</button>
+        </div>
+        <div id="grouping-tabs" class="tabs" role="tablist" aria-label="묶는 기준">
+          <button type="button" role="tab" data-by="category" aria-selected="true">카테고리별</button>
+          <button type="button" role="tab" data-by="paymentMethod" aria-selected="false">카드별</button>
+        </div>
       </div>
     </div>
     <p id="status" role="status"></p>
@@ -214,10 +221,12 @@
   const login = document.getElementById('login');
   const status = document.getElementById('status');
   const groupList = document.getElementById('groups');
-  const tabs = document.querySelectorAll('.tabs button');
+  const scopeTabs = document.querySelectorAll('#scope-tabs button');
+  const groupingTabs = document.querySelectorAll('#grouping-tabs button');
   const menu = document.getElementById('menu');
   const menuToggle = document.getElementById('menu-toggle');
   const thisMonth = currentMonth();
+  let scope = 'household';
   let grouping = 'category';
 
   menuToggle.addEventListener('click', function () {
@@ -235,13 +244,18 @@
     menuToggle.setAttribute('aria-expanded', 'false');
   });
 
-  tabs.forEach(function (tab) {
-    tab.addEventListener('click', function () {
-      grouping = tab.dataset.by;
-      tabs.forEach(function (other) { other.setAttribute('aria-selected', String(other === tab)); });
-      loadSpending();
+  selectOnClick(scopeTabs, function (tab) { scope = tab.dataset.scope; });
+  selectOnClick(groupingTabs, function (tab) { grouping = tab.dataset.by; });
+
+  function selectOnClick(tabs, choose) {
+    tabs.forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        choose(tab);
+        tabs.forEach(function (other) { other.setAttribute('aria-selected', String(other === tab)); });
+        loadSpending();
+      });
     });
-  });
+  }
 
   login.addEventListener('click', authenticate);
   loginPassword.addEventListener('keydown', function (event) {
@@ -254,7 +268,7 @@
   async function loadSpending() {
     setStatus('', '불러오는 중…');
     try {
-      const response = await fetch('/api/finance/spending?month=' + thisMonth + '&by=' + grouping);
+      const response = await fetch('/api/finance/spending?month=' + thisMonth + '&by=' + grouping + '&scope=' + scope);
       if (response.status === 401) {
         showLogin();
         return;
@@ -269,13 +283,15 @@
 
   function showSpending(spending) {
     const [year, month] = spending.month.split('-');
-    document.getElementById('month').textContent = year + '년 ' + Number(month) + '월 지출';
+    const whose = spending.members.length > 1 ? '가족 ' : '';
+    document.getElementById('month').textContent = year + '년 ' + Number(month) + '월 ' + whose + '지출';
     const won = spending.groups.filter(function (group) { return group.currency === 'KRW'; });
     document.getElementById('total').textContent =
       money(won.reduce(function (sum, group) { return sum + group.total; }, 0), 'KRW');
     const count = spending.groups.reduce(function (sum, group) { return sum + group.count; }, 0);
     const otherCurrencies = won.length < spending.groups.length ? ' · 다른 통화는 아래에 따로 표시' : '';
-    document.getElementById('count').textContent = count + '건' + otherCurrencies;
+    const members = spending.members.length > 1 ? ' · ' + spending.members.join(', ') : '';
+    document.getElementById('count').textContent = count + '건' + members + otherCurrencies;
 
     const largest = Math.min.apply(null, won.map(function (group) { return group.total; }).concat([0]));
     groupList.replaceChildren.apply(groupList, spending.groups.map(function (group, index) {
@@ -312,7 +328,8 @@
     const where = grouping === 'category'
       ? [transaction.minorCategory, transaction.paymentMethod]
       : [transaction.majorCategory + ' > ' + transaction.minorCategory];
-    const detail = [time].concat(where, transaction.memo ? ['메모: ' + transaction.memo] : []).join(' · ');
+    const detail = (transaction.owner ? [transaction.owner, time] : [time])
+      .concat(where, transaction.memo ? ['메모: ' + transaction.memo] : []).join(' · ');
     row.append(element('span', 'description', transaction.description), amount, element('span', 'detail', detail));
     return row;
   }

@@ -9,6 +9,6 @@ internal class FinanceModule(repositories: RepositoryStores) {
     /** Imports ledger transactions into storage. */
     val importTransactions = ImportFinanceTransactionsService(repositories.financeTransactions)
 
-    /** Shows a user's spending of a month. */
-    val findMonthlySpending = FindMonthlySpendingService(repositories.financeTransactions)
+    /** Shows the spending of a month of a user or of their household. */
+    val findMonthlySpending = FindMonthlySpendingService(repositories.financeTransactions, repositories.householdMembers)
 }

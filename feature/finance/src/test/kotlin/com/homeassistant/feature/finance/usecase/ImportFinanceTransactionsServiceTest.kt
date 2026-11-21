@@ -18,7 +18,7 @@ class ImportFinanceTransactionsServiceTest {
         val savedCount = ImportFinanceTransactionsService(ledger).import(listOf(LUNCH, LUNCH))
 
         assertEquals(1, savedCount)
-        assertEquals(listOf(LUNCH), ledger.findMatching(FinanceTransactionCriteria(OWNER, NOVEMBER_START, DECEMBER_START)))
+        assertEquals(listOf(LUNCH), ledger.findMatching(FinanceTransactionCriteria(setOf(OWNER), NOVEMBER_START, DECEMBER_START)))
     }
 
     @Test
@@ -45,7 +45,7 @@ class ImportFinanceTransactionsServiceTest {
 
         override fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction> =
             stored.values
-                .filter { it.ownerId == criteria.ownerId && it.occurredAt >= criteria.from && it.occurredAt < criteria.to }
+                .filter { it.ownerId in criteria.ownerIds && it.occurredAt >= criteria.from && it.occurredAt < criteria.to }
                 .sortedBy { it.occurredAt }
 
         override fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal> =

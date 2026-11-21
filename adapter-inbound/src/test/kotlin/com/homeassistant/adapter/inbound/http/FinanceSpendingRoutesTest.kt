@@ -11,6 +11,7 @@ import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmi
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
+import com.homeassistant.domain.finance.SpendingScope
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.infrastructure.serialization.JsonSerializer
@@ -36,29 +37,30 @@ class FinanceSpendingRoutesTest {
         val spending = RecordingSpending()
         configure(spending)
 
-        val response = client.get("${AppConfig.ROUTE_FINANCE_SPENDING}?month=2026-11&by=category")
+        val response = client.get("${AppConfig.ROUTE_FINANCE_SPENDING}?month=2026-11&by=category&scope=mine")
 
         assertEquals(HttpStatusCode.Unauthorized, response.status)
         assertTrue(spending.requests.isEmpty())
     }
 
     @Test
-    fun `the authenticated user's spending of the month is answered in the asked grouping`() = testApplication {
+    fun `the household's monthly spending is answered by grouping, naming each owner`() = testApplication {
         val spending = RecordingSpending()
         configure(spending)
 
-        val response = request("month=2026-11&by=paymentMethod")
+        val response = request("month=2026-11&by=paymentMethod&scope=household")
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertEquals(
-            listOf(Triple(UserId("operator"), YearMonth.of(2026, 11), SpendingGrouping.PAYMENT_METHOD)),
+            listOf(SpendingRequest(UserId("operator"), YearMonth.of(2026, 11), PAYMENT_METHOD, SpendingScope.HOUSEHOLD)),
             spending.requests,
         )
         assertEquals(
             JsonSerializer.json.parseToJsonElement(
                 """
-                {"month":"2026-11","by":"paymentMethod","groups":[{"name":"신용카드","currency":"KRW","total":-8000,
-                "count":1,"transactions":[{"occurredAt":"2026-11-03T12:30:15","majorCategory":"식비",
+                {"month":"2026-11","by":"paymentMethod","scope":"household","members":["운영자"],
+                "groups":[{"name":"신용카드","currency":"KRW","total":-8000,
+                "count":1,"transactions":[{"owner":"운영자","occurredAt":"2026-11-03T12:30:15","majorCategory":"식비",
                 "minorCategory":"한식","description":"김밥천국","amount":-8000,"currency":"KRW",
                 "paymentMethod":"신용카드"}]}]}
                 """.trimIndent(),
@@ -68,11 +70,18 @@ class FinanceSpendingRoutesTest {
     }
 
     @Test
-    fun `a month or grouping that cannot be read is a bad request`() = testApplication {
+    fun `a month, grouping or scope that cannot be read is a bad request`() = testApplication {
         val spending = RecordingSpending()
         configure(spending)
 
-        for (query in listOf("by=category", "month=2026-13&by=category", "month=2026-11", "month=2026-11&by=merchant")) {
+        for (query in listOf(
+            "by=category&scope=mine",
+            "month=2026-13&by=category&scope=mine",
+            "month=2026-11&scope=mine",
+            "month=2026-11&by=merchant&scope=mine",
+            "month=2026-11&by=category",
+            "month=2026-11&by=category&scope=everyone",
+        )) {
             assertEquals(HttpStatusCode.BadRequest, request(query).status, query)
         }
         assertTrue(spending.requests.isEmpty())
@@ -102,18 +111,33 @@ class FinanceSpendingRoutesTest {
         override fun findJob(userId: String, jobId: Int): SourceImportJobReport? = error("unused")
     }
 
-    /** Answers one group holding [LUNCH] and keeps what it was asked for. */
-    private class RecordingSpending : FindMonthlySpending {
-        val requests = mutableListOf<Triple<UserId, YearMonth, SpendingGrouping>>()
+    private data class SpendingRequest(
+        val userId: UserId,
+        val month: YearMonth,
+        val grouping: SpendingGrouping,
+        val scope: SpendingScope,
+    )
 
-        override fun find(userId: UserId, month: YearMonth, grouping: SpendingGrouping): MonthlySpending {
-            requests += Triple(userId, month, grouping)
-            return MonthlySpending(month, grouping, listOf(SpendingGroup("신용카드", "KRW", -8_000, 1, listOf(LUNCH))))
+    /** Answers one group holding [LUNCH] of the operator and keeps what it was asked for. */
+    private class RecordingSpending : FindMonthlySpending {
+        val requests = mutableListOf<SpendingRequest>()
+
+        override fun find(
+            userId: UserId,
+            month: YearMonth,
+            grouping: SpendingGrouping,
+            scope: SpendingScope,
+        ): MonthlySpending {
+            requests += SpendingRequest(userId, month, grouping, scope)
+            val group = SpendingGroup("신용카드", "KRW", -8_000, 1, listOf(LUNCH))
+            val operator = RegisteredUser(UserId("operator"), "운영자")
+            return MonthlySpending(month, grouping, scope, listOf(operator), listOf(group))
         }
     }
 
     private companion object {
         const val API_TOKEN = "test-token"
+        val PAYMENT_METHOD = SpendingGrouping.PAYMENT_METHOD
         val LUNCH = FinanceTransaction(
             ownerId = UserId("operator"),
             occurredAt = LocalDateTime.of(2026, 11, 3, 12, 30, 15),

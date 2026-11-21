@@ -20,7 +20,7 @@ class FindTransactionsServiceTest {
         val report = FindTransactionsService(ledger).find(MEMBER, TransactionSearch(NOV_1, NOV_30, category = "식비"))
 
         assertEquals(
-            FinanceTransactionCriteria(MEMBER, NOV_1.atStartOfDay(), NOV_30.plusDays(1).atStartOfDay(), "식비", null),
+            FinanceTransactionCriteria(setOf(MEMBER), NOV_1.atStartOfDay(), NOV_30.plusDays(1).atStartOfDay(), "식비", null),
             ledger.criteria.single(),
         )
         assertEquals(

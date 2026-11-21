@@ -25,7 +25,7 @@ class ApplicationServices internal constructor(
     val authentication: UserAuthentication = UserAuthentication.NONE,
     /** Imports household finance ledgers. */
     val importFinanceTransactions: ImportFinanceTransactions? = null,
-    /** Shows a user's spending of a month. */
+    /** Shows the spending of a month of a user or of their household. */
     val findMonthlySpending: FindMonthlySpending? = null,
     /** Forms households by invitation. */
     val households: Households? = null,

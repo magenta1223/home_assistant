@@ -89,6 +89,20 @@ class FinanceTransactionRepositoryTest {
         }
 
     @Test
+    fun `transactions and totals of several owners are found together`() = withRepository { transactions ->
+        val partnersDinner = DINNER.copy(ownerId = UserId("member-2"))
+        val strangersLunch = LUNCH.copy(ownerId = UserId("member-3"))
+        transactions.save(listOf(LUNCH, partnersDinner, strangersLunch))
+        val household = FinanceTransactionCriteria(setOf(OWNER, UserId("member-2")), NOVEMBER_START, DECEMBER_START)
+
+        assertEquals(listOf(LUNCH, partnersDinner), transactions.findMatching(household))
+        assertEquals(
+            listOf(SpendingTotal("식비", "KRW", -29_000, 2)),
+            transactions.findTotalsBy(SpendingGrouping.CATEGORY, household),
+        )
+    }
+
+    @Test
     fun `a type filter finds only transactions of that type`() = withRepository { transactions ->
         val transfer = DINNER.copy(type = "이체")
         transactions.save(listOf(LUNCH, transfer))
@@ -144,14 +158,14 @@ class FinanceTransactionRepositoryTest {
     }
 
     private fun novemberOf(ownerId: UserId, type: String? = null) =
-        FinanceTransactionCriteria(ownerId, NOVEMBER_START, DECEMBER_START, type = type)
+        FinanceTransactionCriteria(setOf(ownerId), NOVEMBER_START, DECEMBER_START, type = type)
 
     private fun FinanceTransactionRepository.findInNovember(
         ownerId: UserId,
         category: String? = null,
         descriptionContains: String? = null,
     ): List<FinanceTransaction> =
-        findMatching(FinanceTransactionCriteria(ownerId, NOVEMBER_START, DECEMBER_START, category, descriptionContains))
+        findMatching(FinanceTransactionCriteria(setOf(ownerId), NOVEMBER_START, DECEMBER_START, category, descriptionContains))
 
     private fun withRepository(test: (FinanceTransactionRepository) -> Unit) {
         val path = Files.createTempFile("finance-transactions", ".db")

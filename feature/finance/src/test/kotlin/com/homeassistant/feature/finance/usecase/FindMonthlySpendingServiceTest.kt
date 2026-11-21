@@ -4,9 +4,12 @@ import com.homeassistant.application.port.inbound.finance.MonthlySpending
 import com.homeassistant.application.port.inbound.finance.SpendingGroup
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
+import com.homeassistant.domain.finance.SpendingScope
+import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.HouseholdMembers
 import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import java.time.LocalDateTime
 import java.time.YearMonth
@@ -15,18 +18,36 @@ import kotlin.test.assertEquals
 
 class FindMonthlySpendingServiceTest {
     @Test
-    fun `the month's expenses of the user are asked for`() {
+    fun `the month's expenses of the user alone are asked for in the user's own scope`() {
         val ledger = StoredLedger(totals = emptyList(), transactions = emptyList())
 
-        FindMonthlySpendingService(ledger).find(MEMBER, NOVEMBER, SpendingGrouping.CATEGORY)
+        val spending = FindMonthlySpendingService(ledger, HOUSEHOLD).find(MEMBER, NOVEMBER, CATEGORY, SpendingScope.MINE)
 
-        val expensesInNovember = FinanceTransactionCriteria(
-            ownerId = MEMBER,
-            from = LocalDateTime.of(2026, 11, 1, 0, 0),
-            to = LocalDateTime.of(2026, 12, 1, 0, 0),
-            type = FinanceTransaction.EXPENSE_TYPE,
-        )
+        val expensesInNovember = novemberExpensesOf(setOf(MEMBER))
         assertEquals(listOf(expensesInNovember, expensesInNovember), ledger.criteria)
+        assertEquals(emptyList(), spending.members)
+    }
+
+    @Test
+    fun `the household scope asks for the expenses of every member and names them`() {
+        val ledger = StoredLedger(totals = emptyList(), transactions = emptyList())
+
+        val spending =
+            FindMonthlySpendingService(ledger, HOUSEHOLD).find(MEMBER, NOVEMBER, CATEGORY, SpendingScope.HOUSEHOLD)
+
+        assertEquals(novemberExpensesOf(setOf(PARTNER.userId, MEMBER)), ledger.criteria.first())
+        assertEquals(listOf(PARTNER, SELF), spending.members)
+    }
+
+    @Test
+    fun `someone in no household sees only their own expenses in the household scope`() {
+        val ledger = StoredLedger(totals = emptyList(), transactions = emptyList())
+
+        val spending = FindMonthlySpendingService(ledger, HouseholdMembers { emptyList() })
+            .find(MEMBER, NOVEMBER, CATEGORY, SpendingScope.HOUSEHOLD)
+
+        assertEquals(novemberExpensesOf(setOf(MEMBER)), ledger.criteria.first())
+        assertEquals(emptyList(), spending.members)
     }
 
     @Test
@@ -36,12 +57,15 @@ class FindMonthlySpendingServiceTest {
             transactions = listOf(LUNCH, COFFEE, DINNER),
         )
 
-        val spending = FindMonthlySpendingService(ledger).find(MEMBER, NOVEMBER, SpendingGrouping.PAYMENT_METHOD)
+        val spending = FindMonthlySpendingService(ledger, HOUSEHOLD)
+            .find(MEMBER, NOVEMBER, SpendingGrouping.PAYMENT_METHOD, SpendingScope.MINE)
 
         assertEquals(
             MonthlySpending(
                 month = NOVEMBER,
                 grouping = SpendingGrouping.PAYMENT_METHOD,
+                scope = SpendingScope.MINE,
+                members = emptyList(),
                 groups = listOf(
                     SpendingGroup("신용카드", "KRW", -29_000, 2, listOf(LUNCH, DINNER)),
                     SpendingGroup("체크카드", "KRW", -5_000, 1, listOf(COFFEE)),
@@ -60,7 +84,7 @@ class FindMonthlySpendingServiceTest {
             transactions = listOf(LUNCH, dollarLunch),
         )
 
-        val spending = FindMonthlySpendingService(ledger).find(MEMBER, NOVEMBER, SpendingGrouping.CATEGORY)
+        val spending = FindMonthlySpendingService(ledger, HOUSEHOLD).find(MEMBER, NOVEMBER, CATEGORY, SpendingScope.MINE)
 
         assertEquals(
             listOf(
@@ -93,8 +117,19 @@ class FindMonthlySpendingServiceTest {
         }
     }
 
+    private fun novemberExpensesOf(owners: Set<UserId>) = FinanceTransactionCriteria(
+        ownerIds = owners,
+        from = LocalDateTime.of(2026, 11, 1, 0, 0),
+        to = LocalDateTime.of(2026, 12, 1, 0, 0),
+        type = FinanceTransaction.EXPENSE_TYPE,
+    )
+
     private companion object {
         val MEMBER = UserId("member-1")
+        val SELF = RegisteredUser(MEMBER, "김동훈")
+        val PARTNER = RegisteredUser(UserId("member-2"), "Alex")
+        val HOUSEHOLD = HouseholdMembers { listOf(PARTNER, SELF) }
+        val CATEGORY = SpendingGrouping.CATEGORY
         val NOVEMBER: YearMonth = YearMonth.of(2026, 11)
         val LUNCH = FinanceTransaction(
             ownerId = MEMBER,

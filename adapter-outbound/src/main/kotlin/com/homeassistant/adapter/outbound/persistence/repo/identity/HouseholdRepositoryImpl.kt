@@ -8,6 +8,7 @@ import com.homeassistant.adapter.outbound.persistence.db.tables.UserTable
 import com.homeassistant.domain.household.HouseholdId
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
+import com.homeassistant.feature.finance.port.outbound.HouseholdMembers
 import com.homeassistant.feature.identity.port.outbound.HouseholdMembership
 import com.homeassistant.feature.identity.port.outbound.HouseholdRepository
 import com.homeassistant.feature.identity.port.outbound.StoredInvitation
@@ -23,7 +24,8 @@ import org.jetbrains.exposed.sql.select
 import org.jetbrains.exposed.sql.selectAll
 import org.jetbrains.exposed.sql.upsert
 
-internal class HouseholdRepositoryImpl(private val db: SqliteDatabases) : HouseholdRepository {
+/** Households for forming them by invitation and for sharing finances among their members. */
+internal class HouseholdRepositoryImpl(private val db: SqliteDatabases) : HouseholdRepository, HouseholdMembers {
 
     override fun findHouseholdOf(userId: UserId): HouseholdId? = db.read {
         HouseholdMemberTable.select(HouseholdMemberTable.householdId)

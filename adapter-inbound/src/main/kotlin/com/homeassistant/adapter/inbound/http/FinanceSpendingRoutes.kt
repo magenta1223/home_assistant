@@ -6,6 +6,8 @@ import com.homeassistant.application.port.inbound.finance.SpendingGroup
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
+import com.homeassistant.domain.finance.SpendingScope
+import com.homeassistant.domain.identity.UserId
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.auth.principal
 import io.ktor.server.response.respond
@@ -18,8 +20,9 @@ import java.time.YearMonth
 import java.time.format.DateTimeParseException
 
 /**
- * Answers the authenticated user's expenses of the `month` query parameter (`yyyy-MM`), grouped by the `by` query
- * parameter: `category` or `paymentMethod`.
+ * Answers the expenses of the `month` query parameter (`yyyy-MM`) of the authenticated user (`scope=mine`) or of
+ * their household (`scope=household`), grouped by the `by` query parameter: `category` or `paymentMethod`. In the
+ * household scope each expense names its owner.
  */
 internal fun Route.financeSpendingRoutes(findMonthlySpending: FindMonthlySpending?) {
     get(AppConfig.ROUTE_FINANCE_SPENDING) {
@@ -42,7 +45,14 @@ internal fun Route.financeSpendingRoutes(findMonthlySpending: FindMonthlySpendin
             call.respond(HttpStatusCode.BadRequest, mapOf("error" to "by must be one of ${GROUPINGS.keys.joinToString()}"))
             return@get
         }
-        val spending = withContext(Dispatchers.IO) { findMonthlySpending.find(principal.userId, month, grouping) }
+        val scope = SCOPES[call.request.queryParameters["scope"]]
+        if (scope == null) {
+            call.respond(HttpStatusCode.BadRequest, mapOf("error" to "scope must be one of ${SCOPES.keys.joinToString()}"))
+            return@get
+        }
+        val spending = withContext(Dispatchers.IO) {
+            findMonthlySpending.find(principal.userId, month, grouping, scope)
+        }
         call.respond(HttpStatusCode.OK, spending.toResponse())
     }
 }
@@ -60,21 +70,33 @@ private val GROUPINGS = mapOf(
     "paymentMethod" to SpendingGrouping.PAYMENT_METHOD,
 )
 
-private fun MonthlySpending.toResponse() = MonthlySpendingResponse(
-    month = month.toString(),
-    by = GROUPINGS.entries.single { it.value == grouping }.key,
-    groups = groups.map { it.toResponse() },
+/** The `scope` query parameter value of each scope. */
+private val SCOPES = mapOf(
+    "mine" to SpendingScope.MINE,
+    "household" to SpendingScope.HOUSEHOLD,
 )
 
-private fun SpendingGroup.toResponse() = SpendingGroupResponse(
+private fun MonthlySpending.toResponse(): MonthlySpendingResponse {
+    val memberNames = members.associate { it.userId to it.displayName }
+    return MonthlySpendingResponse(
+        month = month.toString(),
+        by = GROUPINGS.entries.single { it.value == grouping }.key,
+        scope = SCOPES.entries.single { it.value == scope }.key,
+        members = members.map { it.displayName },
+        groups = groups.map { it.toResponse(memberNames) },
+    )
+}
+
+private fun SpendingGroup.toResponse(memberNames: Map<UserId, String>) = SpendingGroupResponse(
     name = name,
     currency = currency,
     total = total,
     count = count,
-    transactions = transactions.map { it.toResponse() },
+    transactions = transactions.map { it.toResponse(memberNames[it.ownerId]) },
 )
 
-private fun FinanceTransaction.toResponse() = SpendingTransactionResponse(
+private fun FinanceTransaction.toResponse(owner: String?) = SpendingTransactionResponse(
+    owner = owner,
     occurredAt = occurredAt.toString(),
     majorCategory = majorCategory,
     minorCategory = minorCategory,
@@ -89,6 +111,8 @@ private fun FinanceTransaction.toResponse() = SpendingTransactionResponse(
 private data class MonthlySpendingResponse(
     val month: String,
     val by: String,
+    val scope: String,
+    val members: List<String>,
     val groups: List<SpendingGroupResponse>,
 )
 
@@ -103,6 +127,7 @@ private data class SpendingGroupResponse(
 
 @Serializable
 private data class SpendingTransactionResponse(
+    val owner: String?,
     val occurredAt: String,
     val majorCategory: String,
     val minorCategory: String,

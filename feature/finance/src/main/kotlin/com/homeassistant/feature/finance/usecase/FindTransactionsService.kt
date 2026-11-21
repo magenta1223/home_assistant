@@ -27,7 +27,7 @@ class FindTransactionsService(
     }
 
     private fun criteria(userId: UserId, search: TransactionSearch) = FinanceTransactionCriteria(
-        ownerId = userId,
+        ownerIds = setOf(userId),
         from = search.from.atStartOfDay(),
         to = search.to.plusDays(1).atStartOfDay(),
         category = search.category,

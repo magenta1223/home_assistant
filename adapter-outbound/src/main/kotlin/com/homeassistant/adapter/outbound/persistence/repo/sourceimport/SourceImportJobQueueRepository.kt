@@ -4,13 +4,13 @@ import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceImportJobRecordTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceImportJobTable
 import com.homeassistant.adapter.outbound.persistence.db.tables.SourceImportJobViewerTable
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJob
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJobQueue
 import com.homeassistant.domain.source.SourceImportJobStatus.COMPLETED
 import com.homeassistant.domain.source.SourceImportJobStatus.FAILED
 import com.homeassistant.domain.source.SourceImportJobStatus.PENDING
 import com.homeassistant.domain.source.SourceImportJobStatus.PROCESSING
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportSubmission
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceImportJobStatus

@@ -1,15 +1,15 @@
-package com.homeassistant.application.usecase.sourceimport
+package com.homeassistant.feature.sourceimport.usecase
 
 import com.homeassistant.application.port.inbound.sourceimport.AnalyzeSubmittedSources
 import com.homeassistant.application.port.inbound.sourceimport.SourceAnalysisRoundResult
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJob
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJobQueue
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretation
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpreter
 import com.homeassistant.domain.source.SourceRecord
 import com.homeassistant.domain.source.SourceRecordDraft
 import com.homeassistant.domain.source.SourceReferenceDraft

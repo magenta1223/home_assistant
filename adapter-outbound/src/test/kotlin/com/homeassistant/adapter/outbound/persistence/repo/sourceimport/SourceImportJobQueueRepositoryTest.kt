@@ -2,7 +2,7 @@ package com.homeassistant.adapter.outbound.persistence.repo.sourceimport
 
 import com.homeassistant.adapter.outbound.persistence.db.DatabaseFactory
 import com.homeassistant.adapter.outbound.persistence.repo.source.SourceRecordRepositoryImpl
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceImportJobStatus

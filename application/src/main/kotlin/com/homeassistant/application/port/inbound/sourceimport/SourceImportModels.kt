@@ -32,20 +32,20 @@ data class SourceImportJobReport(
     val lastError: String?,
 )
 
-class DuplicateSourceRecordsException internal constructor(
+class DuplicateSourceRecordsException(
     val sourceName: String,
     val recordCount: Int,
 ) : RuntimeException("All $recordCount source records were stored before: $sourceName")
 
-class SourceImportUnavailableException internal constructor(
+class SourceImportUnavailableException(
     cause: Throwable,
 ) : RuntimeException("episode analysis is unavailable", cause)
 
-class InvalidAllowedUsersException internal constructor(
+class InvalidAllowedUsersException(
     val userIds: Set<String>,
 ) : RuntimeException("allowed users contain unknown or unauthorized users")
 
-class SourceAccessConflictException internal constructor(
+class SourceAccessConflictException(
     val sourceName: String,
     val existingAccess: AccessControl,
 ) : RuntimeException("source already exists with a different audience: $sourceName")

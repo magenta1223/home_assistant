@@ -1,4 +1,4 @@
-package com.homeassistant.application.usecase.sourceimport
+package com.homeassistant.feature.sourceimport.usecase
 
 import com.homeassistant.application.port.inbound.identity.UserAccessDeniedException
 import com.homeassistant.application.port.inbound.sourceimport.DuplicateSourceRecordsException
@@ -9,9 +9,9 @@ import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmi
 import com.homeassistant.application.port.inbound.sourceimport.SourceImportUnavailableException
 import com.homeassistant.application.port.inbound.sourceimport.InvalidAllowedUsersException
 import com.homeassistant.application.port.inbound.sourceimport.SourceAccessConflictException
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJob
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJobQueue
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
 import com.homeassistant.domain.access.AccessControl

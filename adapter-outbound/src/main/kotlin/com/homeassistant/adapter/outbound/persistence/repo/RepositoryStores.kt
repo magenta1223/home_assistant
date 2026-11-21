@@ -3,7 +3,7 @@ package com.homeassistant.adapter.outbound.persistence.repo
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionQueue
 import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeRepository
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJobQueue
 import com.homeassistant.application.port.outbound.chatgateway.ChatSessionRepository
 import com.homeassistant.feature.identity.port.outbound.UserRepository
 import com.homeassistant.feature.identity.port.outbound.UserSessionRepository

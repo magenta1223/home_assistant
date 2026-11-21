@@ -12,6 +12,7 @@ dependencies {
     implementation(project(":infrastructure"))
     implementation(project(":feature-identity"))
     implementation(project(":feature-finance"))
+    implementation(project(":feature-sourceimport"))
 
 
     implementation(libs.kotlinx.serialization.json)

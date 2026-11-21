@@ -3,8 +3,8 @@ package com.homeassistant.app.services
 import com.homeassistant.adapter.inbound.scheduler.SourceImportWorker
 import com.homeassistant.adapter.outbound.persistence.repo.RepositoryStores
 import com.homeassistant.adapter.outbound.reference.ModelSourceReferenceInterpreter
-import com.homeassistant.application.usecase.sourceimport.AnalyzeSubmittedSourcesService
-import com.homeassistant.application.usecase.sourceimport.SourceImportService
+import com.homeassistant.feature.sourceimport.usecase.AnalyzeSubmittedSourcesService
+import com.homeassistant.feature.sourceimport.usecase.SourceImportService
 import com.homeassistant.domain.identity.UserAccessPolicy
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.llm.CompletionClient

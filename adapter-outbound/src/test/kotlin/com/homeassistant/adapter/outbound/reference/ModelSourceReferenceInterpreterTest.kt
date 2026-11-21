@@ -13,7 +13,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlin.test.assertIs
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult
 
 class ModelSourceReferenceInterpreterTest {
     @Test

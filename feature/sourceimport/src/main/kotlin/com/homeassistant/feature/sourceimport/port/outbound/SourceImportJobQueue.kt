@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.outbound.sourceimport
+package com.homeassistant.feature.sourceimport.port.outbound
 
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.source.SourceImportJobStatus

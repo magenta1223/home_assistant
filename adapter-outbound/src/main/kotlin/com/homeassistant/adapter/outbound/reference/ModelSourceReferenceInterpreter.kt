@@ -1,11 +1,11 @@
 package com.homeassistant.adapter.outbound.reference
 
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretation
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpreter
 import com.homeassistant.infrastructure.serialization.JsonSerializer
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult.Interpreted
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult.Rejected
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult.Interpreted
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult.Rejected
 import com.homeassistant.domain.source.SourceReferenceDraft
 import com.homeassistant.llm.CompletionClient
 import com.homeassistant.llm.CompletionImage

@@ -5,12 +5,12 @@ import com.homeassistant.application.port.inbound.sourceimport.SourceImportJobRe
 import com.homeassistant.application.port.inbound.sourceimport.SourceImportRequest
 import com.homeassistant.application.port.inbound.sourceimport.SourceImportSubmissionResult
 import com.homeassistant.application.port.inbound.identity.UserRegistry
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJob
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportJobQueue
-import com.homeassistant.application.port.outbound.sourceimport.SourceImportSubmission
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJob
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJobQueue
+import com.homeassistant.feature.sourceimport.port.outbound.SourceImportSubmission
 import com.homeassistant.application.port.outbound.source.SourceRecordRepository
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.usecase.sourceimport.SourceImportService
+import com.homeassistant.feature.sourceimport.usecase.SourceImportService
 import com.homeassistant.infrastructure.serialization.JsonSerializer
 import com.homeassistant.configuration.AppConfig
 import com.homeassistant.domain.identity.UserId

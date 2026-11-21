@@ -11,11 +11,11 @@ import com.homeassistant.application.port.inbound.sourceimport.SourceAccessConfl
 import com.homeassistant.application.port.inbound.sourceimport.SourceAnalysisRoundResult
 import com.homeassistant.application.port.outbound.memory.xmemory.episode.EpisodeExtractionClaim
 import com.homeassistant.application.port.outbound.source.SourceRecordSaveResult
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretation
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpretationResult
-import com.homeassistant.application.port.outbound.source.SourceReferenceInterpreter
-import com.homeassistant.application.usecase.sourceimport.AnalyzeSubmittedSourcesService
-import com.homeassistant.application.usecase.sourceimport.SourceImportService
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretation
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpretationResult
+import com.homeassistant.feature.sourceimport.port.outbound.SourceReferenceInterpreter
+import com.homeassistant.feature.sourceimport.usecase.AnalyzeSubmittedSourcesService
+import com.homeassistant.feature.sourceimport.usecase.SourceImportService
 import com.homeassistant.domain.access.AccessControl
 import com.homeassistant.domain.access.Visibility
 import com.homeassistant.domain.source.SourceImportJobStatus

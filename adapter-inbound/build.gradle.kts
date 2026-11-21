@@ -21,6 +21,7 @@ dependencies {
     implementation(libs.mcp.kotlin.sdk.server)
 
     testImplementation(project(":feature-identity"))
+    testImplementation(project(":feature-sourceimport"))
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test)
 }

@@ -1,4 +1,4 @@
-package com.homeassistant.application.port.outbound.source
+package com.homeassistant.feature.sourceimport.port.outbound
 
 import com.homeassistant.domain.source.SourceReferenceDraft
 

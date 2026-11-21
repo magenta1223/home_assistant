@@ -13,7 +13,6 @@ import com.homeassistant.feature.identity.port.outbound.UserSessionRepository
 import com.homeassistant.domain.identity.Password
 import com.homeassistant.domain.identity.RegisteredUser
 import com.homeassistant.domain.identity.UserId
-import java.security.MessageDigest
 import java.security.SecureRandom
 import java.time.Duration
 import java.util.Base64
@@ -44,23 +43,18 @@ class UserAuthenticationService(
         val now = clock()
         sessions.deleteExpiredBy(now)
         val sessionId = newSessionId()
-        sessions.save(StoredSession(hash(sessionId), credential.userId, now + SESSION_LIFETIME.toMillis()))
+        sessions.save(StoredSession(secretHash(sessionId), credential.userId, now + SESSION_LIFETIME.toMillis()))
         return LoginSession(sessionId, SESSION_LIFETIME)
     }
 
-    override fun logout(sessionId: String) = sessions.deleteByIdHash(hash(sessionId))
+    override fun logout(sessionId: String) = sessions.deleteByIdHash(secretHash(sessionId))
 
-    override fun resolveSession(sessionId: String): UserId? = sessions.findUnexpired(hash(sessionId), clock())?.userId
+    override fun resolveSession(sessionId: String): UserId? = sessions.findUnexpired(secretHash(sessionId), clock())?.userId
 
     private fun newSessionId(): String {
         val bytes = ByteArray(SESSION_ID_BYTES).also(SecureRandom()::nextBytes)
         return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes)
     }
-
-    private fun hash(sessionId: String): String =
-        MessageDigest.getInstance("SHA-256")
-            .digest(sessionId.toByteArray(Charsets.UTF_8))
-            .joinToString("") { "%02x".format(it) }
 
     private companion object {
         val SESSION_LIFETIME: Duration = Duration.ofDays(90)

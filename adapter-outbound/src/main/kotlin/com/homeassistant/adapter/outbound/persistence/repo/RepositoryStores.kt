@@ -5,6 +5,7 @@ import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeExt
 import com.homeassistant.feature.memory.xmemory.port.outbound.episode.EpisodeRepository
 import com.homeassistant.feature.sourceimport.port.outbound.SourceImportJobQueue
 import com.homeassistant.feature.chat.port.outbound.ChatSessionRepository
+import com.homeassistant.feature.identity.port.outbound.HouseholdRepository
 import com.homeassistant.feature.identity.port.outbound.UserRepository
 import com.homeassistant.feature.identity.port.outbound.UserSessionRepository
 import com.homeassistant.feature.memory.xmemory.port.outbound.component.ComponentAssignmentOutbox
@@ -27,5 +28,6 @@ data class RepositoryStores(
     val chatSessions: ChatSessionRepository,
     val users: UserRepository,
     val userSessions: UserSessionRepository,
+    val households: HouseholdRepository,
     val financeTransactions: FinanceTransactionRepository,
 )

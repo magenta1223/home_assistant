@@ -51,6 +51,9 @@ internal object DatabaseFactory {
                 UserTable,
                 UserCredentialTable,
                 UserSessionTable,
+                HouseholdTable,
+                HouseholdMemberTable,
+                HouseholdInvitationTable,
                 FinanceTransactionTable,
             )
         }

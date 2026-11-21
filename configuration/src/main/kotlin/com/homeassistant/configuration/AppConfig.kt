@@ -25,5 +25,8 @@ object AppConfig {
     const val ROUTE_EPISODE_CONVERSATION = "/api/episode/conversation"
     const val ROUTE_FINANCE_IMPORT = "/api/finance/import"
     const val ROUTE_FINANCE_SPENDING = "/api/finance/spending"
+    const val ROUTE_HOUSEHOLD_MEMBERS = "/api/household/members"
+    const val ROUTE_HOUSEHOLD_INVITATIONS = "/api/household/invitations"
+    const val ROUTE_HOUSEHOLD_JOIN = "/api/household/join"
     const val ROUTE_CONTEXT_TOOLS = "/mcp"
 }

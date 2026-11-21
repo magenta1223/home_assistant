@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+  <title>Home Second Brain · 가족</title>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: Inter, Pretendard, system-ui, sans-serif;
+      background: #f4f1ea;
+      color: #1d2a26;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      height: var(--viewport-height, 100dvh);
+      overflow: hidden;
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+      background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: min(780px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 calc(36px + env(safe-area-inset-bottom));
+    }
+    .menu-bar { flex: none; margin-bottom: 14px; }
+    button.menu-toggle {
+      display: grid;
+      place-items: center;
+      width: 40px;
+      min-width: 40px;
+      height: 40px;
+      padding: 0;
+      border-radius: 10px;
+      background: transparent;
+      color: #1e5b46;
+    }
+    .menu-toggle svg { width: 24px; height: 24px; }
+    .drawer {
+      margin: 0;
+      width: min(280px, 80vw);
+      max-width: none;
+      height: 100%;
+      max-height: none;
+      border: 0;
+      border-radius: 0 22px 22px 0;
+      padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+      background: #fbfaf6;
+      color: #1d2a26;
+      box-shadow: 0 22px 55px rgba(36,53,46,.18);
+    }
+    .drawer[open] { display: flex; flex-direction: column; gap: 18px; animation: drawer-slide-in .2s ease-out; }
+    .drawer::backdrop { background: rgba(29,42,38,.4); }
+    @keyframes drawer-slide-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+    .drawer ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+    .drawer a {
+      display: block;
+      color: #1e5b46;
+      border-radius: 12px;
+      padding: 12px 14px;
+      text-decoration: none;
+      font-weight: 800;
+    }
+    .drawer a[aria-current="page"] { color: white; background: #1e5b46; }
+    button.menu-close { align-self: flex-start; min-width: 0; height: 40px; background: #e8eee9; color: #1e5b46; }
+    .panel {
+      background: rgba(255,255,255,.88);
+      border: 1px solid #d9ded8;
+      border-radius: 22px;
+      box-shadow: 0 22px 55px rgba(36,53,46,.09);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .panel > * { flex: none; }
+    .auth {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      padding: 18px 20px;
+      border-bottom: 1px solid #e1e5e1;
+      background: rgba(250,251,249,.8);
+    }
+    .auth[hidden] { display: none; }
+    .auth > div { min-width: 0; }
+    label { display: block; margin-bottom: 7px; color: #43524c; font-size: 13px; font-weight: 800; }
+    input, button { font: inherit; }
+    input {
+      width: 100%;
+      border: 1px solid #cbd3cd;
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: #fff;
+      color: #1d2a26;
+      outline: none;
+    }
+    input:focus { border-color: #3f8068; box-shadow: 0 0 0 3px rgba(63,128,104,.13); }
+    .hint { margin-top: 6px; color: #738079; font-size: 12px; }
+    button {
+      min-width: 82px;
+      height: 48px;
+      border: 0;
+      border-radius: 13px;
+      padding: 0 18px;
+      background: #1e5b46;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .55; cursor: wait; }
+    .section { padding: 20px; border-bottom: 1px solid #e1e5e1; }
+    .section:last-child { border-bottom: 0; }
+    h2 { margin: 0 0 10px; color: #43524c; font-size: 13px; font-weight: 800; }
+    #members { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    #members li { padding: 8px 12px; border-radius: 999px; background: #e8eee9; color: #1e5b46; font-weight: 800; }
+    .empty { margin: 0; color: #738079; font-size: 13px; }
+    .code { margin-top: 12px; font-size: 28px; font-weight: 800; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
+    .join { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+    #status { margin: 0; padding: 14px 20px 0; color: #738079; font-size: 13px; }
+    #status:empty { display: none; }
+    #status[data-state="error"] { color: #8a332b; }
+    #status[data-state="ready"] { color: #1e654a; }
+    @media (max-width: 620px) {
+      main { width: min(100% - 20px, 780px); padding: 18px 0 calc(18px + env(safe-area-inset-bottom)); }
+      .auth { grid-template-columns: 1fr; padding: 16px; }
+      .section { padding: 16px; }
+      #status { padding: 12px 16px 0; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <div class="menu-bar">
+    <button id="menu-toggle" type="button" class="menu-toggle" aria-label="메뉴 열기" aria-controls="menu" aria-expanded="false">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 6h16M4 12h16M4 18h16"/>
+      </svg>
+    </button>
+  </div>
+  <dialog id="menu" class="drawer" aria-label="주요 기능">
+    <button id="menu-close" type="button" class="menu-close">닫기</button>
+    <nav>
+      <ul>
+        <li><a href="/conversation">대화</a></li>
+        <li><a href="/finance">지출</a></li>
+        <li><a href="/family" aria-current="page">가족</a></li>
+        <li><a href="/knowledge">지식 주입</a></li>
+      </ul>
+    </nav>
+  </dialog>
+  <section class="panel" aria-label="가족">
+    <div id="auth" class="auth" hidden>
+      <div>
+        <label for="login-name">이름</label>
+        <input id="login-name" autocomplete="username" maxlength="50">
+        <label for="login-password">비밀번호</label>
+        <input id="login-password" type="password" autocomplete="current-password">
+        <div class="hint">이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
+      </div>
+      <div>
+        <button id="login" type="button">로그인</button>
+      </div>
+    </div>
+    <p id="status" role="status"></p>
+    <div class="section">
+      <h2>우리 가족</h2>
+      <ul id="members"></ul>
+      <p id="no-members" class="empty" hidden>아직 가족이 없습니다. 초대 코드를 만들어 가족에게 알려 주거나, 받은 코드를 입력하세요.</p>
+    </div>
+    <div class="section">
+      <h2>가족 초대</h2>
+      <button id="invite" type="button">초대 코드 만들기</button>
+      <div id="code" class="code" hidden></div>
+      <div id="code-hint" class="hint" hidden></div>
+    </div>
+    <div class="section">
+      <h2>초대 코드로 합류</h2>
+      <form id="join-form" class="join">
+        <input id="join-code" maxlength="20" autocomplete="off" autocapitalize="characters" aria-label="초대 코드" placeholder="예: ABCD2345">
+        <button id="join" type="submit">합류</button>
+      </form>
+    </div>
+  </section>
+</main>
+<script src="/assets/http-auth-session.js"></script>
+<script>
+  const auth = document.getElementById('auth');
+  const loginName = document.getElementById('login-name');
+  const loginPassword = document.getElementById('login-password');
+  const login = document.getElementById('login');
+  const status = document.getElementById('status');
+  const memberList = document.getElementById('members');
+  const noMembers = document.getElementById('no-members');
+  const invite = document.getElementById('invite');
+  const code = document.getElementById('code');
+  const codeHint = document.getElementById('code-hint');
+  const joinCode = document.getElementById('join-code');
+  const join = document.getElementById('join');
+  const menu = document.getElementById('menu');
+  const menuToggle = document.getElementById('menu-toggle');
+
+  menuToggle.addEventListener('click', function () {
+    menu.showModal();
+    menuToggle.setAttribute('aria-expanded', 'true');
+  });
+  document.getElementById('menu-close').addEventListener('click', function () {
+    menu.close();
+  });
+  menu.addEventListener('click', function (event) {
+    const panel = menu.getBoundingClientRect();
+    if (event.clientX > panel.right) menu.close();
+  });
+  menu.addEventListener('close', function () {
+    menuToggle.setAttribute('aria-expanded', 'false');
+  });
+
+  login.addEventListener('click', authenticate);
+  loginPassword.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      authenticate();
+    }
+  });
+
+  invite.addEventListener('click', async function () {
+    invite.disabled = true;
+    try {
+      const invitation = await request('/api/household/invitations', { method: 'POST' });
+      code.textContent = invitation.code;
+      code.hidden = false;
+      codeHint.textContent = new Date(invitation.expiresAt).toLocaleString('ko-KR') + '까지 한 번 쓸 수 있습니다.';
+      codeHint.hidden = false;
+      setStatus('', '');
+      loadMembers();
+    } catch (error) {
+      showError(error);
+    } finally {
+      invite.disabled = false;
+    }
+  });
+
+  document.getElementById('join-form').addEventListener('submit', async function (event) {
+    event.preventDefault();
+    if (!joinCode.value.trim()) {
+      joinCode.focus();
+      return;
+    }
+    join.disabled = true;
+    try {
+      const household = await request('/api/household/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: joinCode.value })
+      });
+      joinCode.value = '';
+      showMembers(household.members);
+      setStatus('ready', '가족에 합류했습니다.');
+    } catch (error) {
+      showError(error);
+    } finally {
+      join.disabled = false;
+    }
+  });
+
+  async function loadMembers() {
+    try {
+      showMembers((await request('/api/household/members')).members);
+    } catch (error) {
+      showError(error);
+    }
+  }
+
+  function showMembers(members) {
+    memberList.replaceChildren.apply(memberList, members.map(function (name) {
+      const item = document.createElement('li');
+      item.textContent = name;
+      return item;
+    }));
+    noMembers.hidden = members.length > 0;
+  }
+
+  async function request(url, options) {
+    const response = await fetch(url, options);
+    if (!response.ok) throw new HouseholdError(response.status);
+    return response.json();
+  }
+
+  function HouseholdError(status) {
+    this.status = status;
+  }
+
+  function showError(error) {
+    if (error instanceof HouseholdError && error.status === 401) {
+      showLogin();
+      return;
+    }
+    const messages = {
+      400: '초대 코드가 맞지 않거나, 이미 쓰였거나, 만료되었습니다.',
+      409: '이미 다른 사람과 가족으로 묶여 있어 합류할 수 없습니다.'
+    };
+    setStatus('error', (error instanceof HouseholdError && messages[error.status]) ||
+      '요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.');
+  }
+
+  function setStatus(state, text) {
+    status.dataset.state = state;
+    status.textContent = text;
+  }
+
+  async function authenticate() {
+    login.disabled = true;
+    try {
+      await window.HomeSecondBrainAuth.login(loginName.value, loginPassword.value);
+      loginPassword.value = '';
+      auth.hidden = true;
+      setStatus('', '');
+      loadMembers();
+    } catch (error) {
+      setStatus('error', error.message);
+    } finally {
+      login.disabled = false;
+    }
+  }
+
+  function showLogin() {
+    auth.hidden = false;
+    setStatus('', '로그인이 필요합니다.');
+    loginName.focus();
+  }
+
+  function trackVisualViewportHeight() {
+    const applyHeight = function () {
+      document.documentElement.style.setProperty('--viewport-height', window.visualViewport.height + 'px');
+    };
+    window.visualViewport.addEventListener('resize', applyHeight);
+    applyHeight();
+  }
+
+  trackVisualViewportHeight();
+  loadMembers();
+</script>
+</body>
+</html>

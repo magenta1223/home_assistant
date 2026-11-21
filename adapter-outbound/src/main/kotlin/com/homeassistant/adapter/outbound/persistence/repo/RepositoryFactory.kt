@@ -6,6 +6,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episod
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.episode.EpisodeRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.sourceimport.SourceImportJobQueueRepository
 import com.homeassistant.adapter.outbound.persistence.repo.episodeconversation.ChatSessionRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.identity.HouseholdRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.identity.UserSessionRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.embedding.EpisodeEmbeddingRepositoryImpl
@@ -31,6 +32,7 @@ object RepositoryFactory {
             chatSessions = ChatSessionRepositoryImpl(db),
             users = UserRepositoryImpl(db),
             userSessions = UserSessionRepositoryImpl(db),
+            households = HouseholdRepositoryImpl(db),
             financeTransactions = FinanceTransactionRepositoryImpl(db),
         )
     }

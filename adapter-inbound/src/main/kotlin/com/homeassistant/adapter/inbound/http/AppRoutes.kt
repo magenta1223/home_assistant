@@ -10,6 +10,7 @@ import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.chat.SearchMemory
 import com.homeassistant.adapter.inbound.mcp.contextToolServer
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
+import com.homeassistant.application.port.inbound.household.Households
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
 import io.ktor.server.auth.authenticate
@@ -24,6 +25,7 @@ fun Application.configureRoutes(
     chat: Chat? = null,
     importFinanceTransactions: ImportFinanceTransactions? = null,
     findMonthlySpending: FindMonthlySpending? = null,
+    households: Households? = null,
     contextAccess: ContextAccess? = null,
     searchMemory: SearchMemory? = null,
     findTransactions: FindTransactions? = null,
@@ -42,6 +44,7 @@ fun Application.configureRoutes(
             chatRoutes(chat)
             financeImportRoutes(importFinanceTransactions)
             financeSpendingRoutes(findMonthlySpending)
+            householdRoutes(households)
         }
     }
     // Context tools authenticate with the per-turn context token instead of a user login.

@@ -31,6 +31,7 @@ object ApplicationServicesFactory {
             chat = chat.chat,
             users = identity.users,
             authentication = identity.authentication,
+            households = identity.households,
             importFinanceTransactions = finance.importTransactions,
             findMonthlySpending = finance.findMonthlySpending,
             contextAccess = chat.contextAccess,

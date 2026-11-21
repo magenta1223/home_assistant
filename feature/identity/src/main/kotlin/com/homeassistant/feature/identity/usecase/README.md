@@ -6,6 +6,8 @@
 `UserAuthenticationService`는 이름과 비밀번호로 사용자를 등록하고 세션으로 로그인 상태를 유지하는
 `UserAuthentication` input port다.
 
+`HouseholdService`는 초대 코드로 가구(household)를 이루고 구성원을 보여 주는 `Households` input port다.
+
 ## 목록과 인가
 
 ```mermaid
@@ -53,6 +55,30 @@ sequenceDiagram
     Auth-->>Http: UserId 또는 null
 ```
 
+## 가구 초대와 합류
+
+```mermaid
+sequenceDiagram
+    participant Http as HTTP route
+    participant Service as HouseholdService
+    participant Households as HouseholdRepository
+
+    Http->>Service: invite(userId)
+    Service->>Households: findHouseholdOf(userId)
+    Households-->>Service: HouseholdId 또는 null
+    Service->>Households: 없으면 save(HouseholdMembership(새 가구, userId))
+    Service->>Households: save(StoredInvitation(코드 해시, 가구, 만료))
+    Service-->>Http: HouseholdInvitation(코드, 만료)
+
+    Http->>Service: join(userId, code)
+    Service->>Households: findUnexpiredInvitation(코드 해시, now)
+    Households-->>Service: StoredInvitation 또는 null
+    Service->>Households: findMembersOf(userId)
+    Service->>Households: save(HouseholdMembership(초대한 가구, userId))
+    Service->>Households: deleteInvitationByCodeHash(코드 해시)
+    Service-->>Http: 구성원 목록, InvalidInvitationException 또는 AlreadyInHouseholdException
+```
+
 ## 규칙
 
 - 표시 이름의 빈 값 금지와 50자 제한은 domain의 `RegisteredUser`가 소유한다.
@@ -61,3 +87,6 @@ sequenceDiagram
 - 이름은 유일하다. 비밀번호는 8자 이상이며 해시만 저장한다. 세션은 90일 뒤 만료되고 id의 해시만 저장한다.
 - 기계 client는 비밀번호 대신 `HTTP_MEMBER_API_KEYS_JSON`의 Bearer key를 쓴다. key의 userId는 등록된 사용자여야 하며,
   아니면 서버가 시작하지 않는다. 그래서 사용자가 0명인 DB에서는 이 설정을 비워 두고 시작한다.
+- 사용자는 가구 하나에만 속한다. 초대한 사람에게 가구가 없으면 초대할 때 만든다.
+- 초대 코드는 8자, 하루 뒤 만료, 한 번만 쓴다. 코드의 해시만 저장한다.
+- 혼자인 가구에 있던 사람은 다른 가구에 합류하며 옮긴다. 다른 사람과 이미 함께인 사람의 합류는 거부한다.

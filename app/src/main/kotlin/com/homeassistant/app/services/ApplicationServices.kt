@@ -9,6 +9,7 @@ import com.homeassistant.application.port.inbound.finance.FindMonthlySpending
 import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.chat.SearchMemory
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
+import com.homeassistant.application.port.inbound.household.Households
 import com.homeassistant.infrastructure.runtime.Runtime
 import com.homeassistant.infrastructure.runtime.RuntimeState
 
@@ -26,6 +27,8 @@ class ApplicationServices internal constructor(
     val importFinanceTransactions: ImportFinanceTransactions? = null,
     /** Shows a user's spending of a month. */
     val findMonthlySpending: FindMonthlySpending? = null,
+    /** Forms households by invitation. */
+    val households: Households? = null,
     /** Whose context an agent's context token reads, or null when chats receive their context up front. */
     val contextAccess: ContextAccess? = null,
     /** Searches stored memory for an agent during a chat turn, or null when chats receive their context up front. */

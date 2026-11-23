@@ -2,133 +2,609 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <title>Home Second Brain · 지식 주입</title>
   <style>
-    :root { color-scheme: light; font-family: Inter, Pretendard, system-ui, sans-serif; background: #f4f1ea; color: #1d2a26; }
+    :root {
+      color-scheme: light;
+      font-family: Inter, Pretendard, system-ui, sans-serif;
+      background: #f4f1ea;
+      color: #1d2a26;
+    }
     * { box-sizing: border-box; }
-    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea; }
-    main { width: min(760px, calc(100% - 32px)); margin: 48px auto; }
-    header { margin-bottom: 28px; }
-    nav { display: flex; gap: 8px; margin-bottom: 20px; }
-    nav a { color: #1e5b46; background: rgba(255,255,255,.72); border: 1px solid #d9ded8; border-radius: 999px; padding: 8px 13px; text-decoration: none; font-size: 13px; font-weight: 800; }
-    nav a[aria-current="page"] { color: white; background: #1e5b46; border-color: #1e5b46; }
-    h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 42px); letter-spacing: -0.04em; }
-    header p { margin: 0; color: #607069; }
-    form { background: rgba(255,255,255,.88); border: 1px solid #d9ded8; border-radius: 22px; padding: 24px; box-shadow: 0 22px 55px rgba(36,53,46,.09); }
+    body {
+      margin: 0;
+      height: 100vh;
+      height: var(--viewport-height, 100dvh);
+      overflow: hidden;
+      padding: 0 env(safe-area-inset-right) 0 env(safe-area-inset-left);
+      background: radial-gradient(circle at top left, #dceadf 0, transparent 34rem), #f4f1ea;
+    }
+    main {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      width: min(780px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 calc(36px + env(safe-area-inset-bottom));
+    }
+    .panel {
+      background: rgba(255,255,255,.92);
+      border: 1px solid #d9ded8;
+      border-radius: 22px;
+      box-shadow: 0 22px 55px rgba(36,53,46,.09);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      min-height: 0;
+    }
+    .panel > * { flex: none; }
+    .auth {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 12px;
+      align-items: end;
+      padding: 18px 20px;
+      border-bottom: 1px solid #e1e5e1;
+      background: rgba(250,251,249,.8);
+    }
     .auth[hidden] { display: none; }
-    .auth button { margin-top: 12px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    label, legend { display: block; font-size: 13px; font-weight: 700; margin-bottom: 7px; color: #43524c; }
-    input, select, textarea, button { width: 100%; font: inherit; }
-    input, select, textarea { border: 1px solid #cbd3cd; border-radius: 12px; padding: 12px 13px; background: #fff; color: #1d2a26; }
-    textarea { min-height: 250px; resize: vertical; line-height: 1.55; }
-    .field { margin-bottom: 18px; }
-    fieldset { border: 0; padding: 0; margin: 0 0 18px; }
-    .audience { display: flex; gap: 10px; margin-bottom: 12px; }
-    .choice { display: flex; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid #d4dbd5; border-radius: 12px; background: #fafbf9; }
-    .choice input { width: auto; }
-    #users { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
-    button { border: 0; border-radius: 13px; padding: 14px; background: #1e5b46; color: white; font-weight: 800; cursor: pointer; }
-    button:disabled { opacity: .55; cursor: wait; }
-    #status { white-space: pre-wrap; margin-top: 16px; padding: 14px; border-radius: 12px; background: #e8eee9; min-height: 48px; color: #304039; }
-    .hint { font-size: 12px; color: #738079; margin-top: 6px; }
-    @media (max-width: 620px) { main { margin: 24px auto; } .grid { grid-template-columns: 1fr; } form { padding: 18px; } }
+    .auth > div { min-width: 0; }
+    .auth label { display: block; margin-bottom: 7px; color: #43524c; font-size: 13px; font-weight: 800; }
+    .auth input + label { margin-top: 10px; }
+    input, textarea, button { font: inherit; }
+    .auth input, textarea {
+      width: 100%;
+      border: 1px solid #cbd3cd;
+      border-radius: 12px;
+      padding: 12px 13px;
+      background: #fff;
+      color: #1d2a26;
+      outline: none;
+    }
+    .auth input:focus, textarea:focus { border-color: #3f8068; box-shadow: 0 0 0 3px rgba(63,128,104,.13); }
+    .hint { margin-top: 6px; color: #738079; font-size: 12px; }
+    button {
+      min-width: 82px;
+      height: 48px;
+      border: 0;
+      border-radius: 13px;
+      padding: 0 18px;
+      background: #1e5b46;
+      color: white;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .45; cursor: default; }
+    .auth-buttons { display: flex; gap: 8px; }
+
+    .step { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+    .step-head { flex: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px 0; }
+    button.back { display: grid; place-items: center; width: 36px; min-width: 36px; height: 36px; padding: 0; border-radius: 10px; background: transparent; color: #43524c; }
+    button.back[hidden] { display: grid; visibility: hidden; }
+    .back svg { width: 22px; height: 22px; }
+    .progress { flex: 1; height: 4px; border-radius: 999px; background: #e8eee9; overflow: hidden; }
+    .progress > span { display: block; height: 100%; border-radius: 999px; background: #1e5b46; }
+    .step-count { min-width: 26px; color: #8a958f; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+    .content { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; width: min(100%, 560px); margin: 0 auto; padding: 28px 24px 24px; }
+    h1 { margin: 0; font-size: 24px; line-height: 1.38; letter-spacing: -0.02em; }
+    .sub { margin: 8px 0 0; color: #6b7972; font-size: 15px; line-height: 1.5; }
+    .cta { flex: none; width: min(100%, 560px); margin: 0 auto; padding: 12px 20px 20px; }
+    .cta button { width: 100%; height: 56px; border-radius: 16px; font-size: 17px; }
+    .cta button.secondary { background: #e8eee9; color: #1e5b46; }
+    .error { margin: 12px 0 0; color: #8a332b; font-size: 13px; }
+    .error:empty { display: none; }
+    button.text-button { min-width: 0; height: auto; padding: 8px; background: transparent; color: #1e5b46; font-size: 14px; }
+    .check-mark { background: #1e5b46 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12l4 4 8-8"/></svg>') center/14px no-repeat; }
+
+    .kinds { display: flex; flex-direction: column; gap: 10px; margin-top: 28px; }
+    .kind { position: relative; display: grid; grid-template-columns: 44px 1fr 22px; gap: 14px; align-items: center; margin: 0; padding: 16px; border: 1.5px solid #e4e8e4; border-radius: 16px; background: #fff; cursor: pointer; }
+    .kind input { position: absolute; opacity: 0; pointer-events: none; }
+    .kind .icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #eef3ef; color: #1e5b46; }
+    .icon svg { width: 22px; height: 22px; }
+    .kind b { display: block; font-size: 16px; }
+    .kind small { display: block; margin-top: 3px; color: #7b8781; font-size: 13px; }
+    .kind .tick { width: 22px; height: 22px; border: 1.5px solid #cdd5cf; border-radius: 50%; }
+    .kind:has(input:checked) { border-color: #1e5b46; background: #f4f8f5; }
+    .kind:has(input:checked) .tick { border: 0; background: #1e5b46 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12l4 4 8-8"/></svg>') center/14px no-repeat; }
+    .kind:has(input:focus-visible) { box-shadow: 0 0 0 3px rgba(63,128,104,.25); }
+
+    .file-picker { position: relative; display: grid; place-items: center; gap: 8px; margin-top: 28px; padding: 28px 16px; border: 1.5px dashed #b9c9be; border-radius: 16px; background: #fafbf9; color: #1e5b46; font-weight: 800; text-align: center; cursor: pointer; }
+    .file-picker input { position: absolute; opacity: 0; pointer-events: none; }
+    .file-picker small { color: #8a958f; font-size: 12px; font-weight: 600; }
+    .file-picker[hidden], .file-card[hidden], .preview[hidden] { display: none; }
+    .file-card { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 14px; align-items: center; margin-top: 28px; padding: 16px; border: 1.5px solid #cfe0d5; border-radius: 16px; background: #f4f8f5; }
+    .file-card .icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: #1e5b46; color: #fff; }
+    .file-card b { display: block; font-size: 15px; overflow-wrap: anywhere; }
+    .file-card small { color: #6b7972; font-size: 13px; }
+    .preview { margin-top: 12px; padding: 14px 16px; border: 1px solid #edf0ed; border-radius: 14px; background: #fafbf9; color: #4d5c55; font-size: 13px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .preview::before { content: "미리보기"; display: block; margin-bottom: 4px; color: #8a958f; font-size: 12px; font-weight: 800; }
+    textarea { min-height: 220px; margin-top: 24px; resize: vertical; line-height: 1.55; }
+    .source-name { margin-top: 24px; }
+    .source-name label { display: block; margin-bottom: 6px; color: #6b7972; font-size: 13px; font-weight: 700; }
+    .source-name input { width: 100%; padding: 8px 0; border: 0; border-bottom: 2px solid #cbd3cd; border-radius: 0; background: transparent; color: #1d2a26; font-size: 17px; font-weight: 700; outline: none; }
+    .source-name input:focus { border-bottom-color: #1e5b46; }
+
+    .segment { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-top: 24px; padding: 4px; border-radius: 12px; background: #eef1ee; }
+    .segment label { position: relative; display: grid; place-items: center; height: 40px; border-radius: 9px; color: #6b7972; font-size: 14px; font-weight: 800; cursor: pointer; }
+    .segment input { position: absolute; opacity: 0; pointer-events: none; }
+    .segment label:has(input:checked) { background: #fff; color: #1d2a26; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    #users { margin: 16px 0 0; padding: 0; list-style: none; }
+    #users[hidden] { display: none; }
+    #users label { position: relative; display: grid; grid-template-columns: 40px 1fr 24px; gap: 14px; align-items: center; padding: 12px 4px; font-size: 16px; font-weight: 700; cursor: pointer; }
+    #users input { position: absolute; opacity: 0; pointer-events: none; }
+    .avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: #e3ece6; color: #1e5b46; font-size: 13px; font-weight: 800; }
+    .user-check { width: 24px; height: 24px; border: 1.5px solid #cdd5cf; border-radius: 50%; }
+    #users label:has(input:checked) .user-check { border: 0; background: #1e5b46 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12l4 4 8-8"/></svg>') center/14px no-repeat; }
+    .empty { margin-top: 16px; color: #738079; font-size: 14px; }
+    .empty[hidden] { display: none; }
+
+    .summary { margin: 28px 0 0; border: 1px solid #edf0ed; border-radius: 16px; background: #fafbf9; }
+    .summary > div { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px 8px 12px 16px; border-bottom: 1px solid #eef1ee; }
+    .summary > div:last-child { border-bottom: 0; }
+    .summary dt { color: #8a958f; font-size: 14px; }
+    .summary dd { margin: 0; font-size: 15px; font-weight: 700; overflow-wrap: anywhere; }
+
+    .job-mark { display: grid; place-items: center; width: 64px; height: 64px; margin: 12px 0 22px; border-radius: 50%; background: #e3ece6; }
+    .job-mark::after { content: ""; width: 30px; height: 30px; border: 3px solid #c6d8cc; border-top-color: #1e5b46; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    [data-job="COMPLETED"] .job-mark { background-color: #1e5b46; background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12l4 4 8-8"/></svg>'); background-position: center; background-size: 30px; background-repeat: no-repeat; }
+    [data-job="FAILED"] .job-mark { background: #f7dfdc; }
+    [data-job="COMPLETED"] .job-mark::after, [data-job="FAILED"] .job-mark::after { display: none; }
+    .timeline { margin: 28px 0 0; padding: 0; list-style: none; }
+    .timeline li { position: relative; display: grid; grid-template-columns: 24px 1fr; gap: 14px; padding-bottom: 22px; }
+    .timeline li:not(:last-child)::before { content: ""; position: absolute; left: 11px; top: 26px; bottom: 2px; width: 2px; background: #e4e8e4; }
+    .timeline li[data-state="done"]:not(:last-child)::before { background: #1e5b46; }
+    .dot { width: 24px; height: 24px; border: 2px solid #d4dbd5; border-radius: 50%; background: #fff; }
+    [data-state="done"] .dot { border: 0; background: #1e5b46 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12l4 4 8-8"/></svg>') center/13px no-repeat; }
+    [data-state="now"] .dot { border-color: #1e5b46; box-shadow: inset 0 0 0 5px #fff, inset 0 0 0 12px #1e5b46; }
+    [data-state="failed"] .dot { border-color: #8a332b; background: #f7dfdc; }
+    .timeline b { display: block; font-size: 15px; }
+    .timeline small { color: #8a958f; font-size: 13px; overflow-wrap: anywhere; }
+    .timeline li:not([data-state]) b { color: #a3ada8; }
+    .note { margin: 8px 0 0; padding: 14px 16px; border-radius: 14px; background: #f4f8f5; color: #4d5c55; font-size: 13px; line-height: 1.55; }
+
+    @media (max-width: 620px) {
+      main { width: min(100% - 20px, 780px); padding: 18px 0 calc(18px + env(safe-area-inset-bottom)); }
+      .auth { grid-template-columns: 1fr; padding: 16px; }
+      .content { padding: 24px 20px 20px; }
+      .cta { padding: 10px 16px calc(16px + env(safe-area-inset-bottom)); }
+    }
   </style>
+  <link rel="stylesheet" href="/assets/app-menu.css">
 </head>
 <body>
 <main>
-  <nav aria-label="주요 기능">
-    <a href="/conversation">대화</a>
-    <a href="/finance">지출</a>
-    <a href="/family">가족</a>
-    <a href="/knowledge" aria-current="page">지식 주입</a>
-  </nav>
-  <header>
-    <h1>지식 주입</h1>
-    <p>소스와 열람자를 명시하고, second brain에 근거가 남는 에피소드를 추가합니다.</p>
-  </header>
-  <form id="knowledge-form">
-    <div id="auth" class="field auth" hidden>
-      <label for="login-name">이름</label>
-      <input id="login-name" autocomplete="username" maxlength="50">
-      <label for="login-password">비밀번호</label>
-      <input id="login-password" type="password" autocomplete="current-password">
-      <div class="hint">처음이면 이름과 8자 이상의 비밀번호로 가입하세요. 이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
-      <button id="login" type="button">로그인</button>
-      <button id="signup" type="button">가입</button>
-    </div>
-    <div id="account" class="field auth" hidden>
-      <button id="logout" type="button">로그아웃</button>
-    </div>
-    <div class="grid">
-      <div class="field">
-        <label for="sourceType">소스</label>
-        <select id="sourceType">
-          <option value="TEXT">직접 작성</option>
-          <option value="KAKAO">카카오톡 내보내기</option>
-        </select>
+  <section class="panel" aria-label="지식 주입">
+    <div id="auth" class="auth" hidden>
+      <div>
+        <label for="login-name">이름</label>
+        <input id="login-name" autocomplete="username" maxlength="50">
+        <label for="login-password">비밀번호</label>
+        <input id="login-password" type="password" autocomplete="current-password">
+        <div class="hint">처음이면 이름과 8자 이상의 비밀번호로 가입하세요. 이 기기에 한 번 로그인하면 이후에는 자동으로 연결됩니다.</div>
+        <p id="auth-error" class="error" role="alert"></p>
       </div>
-      <div class="field">
-        <label for="sourceName">소스 이름</label>
-        <input id="sourceName" placeholder="예: 가족 대화 2026-08" required>
+      <div class="auth-buttons">
+        <button id="login" type="button">로그인</button>
+        <button id="signup" type="button">가입</button>
       </div>
     </div>
-    <fieldset>
-      <legend>열람 범위</legend>
-      <div class="audience">
-        <label class="choice"><input type="radio" name="audience" value="restricted" checked> 지정 사용자</label>
-        <label class="choice"><input type="radio" name="audience" value="public"> 전체 공개</label>
+
+    <form id="knowledge-form" class="step">
+      <div class="step-head">
+        <button type="button" class="back" aria-label="이전" hidden></button>
+        <div class="progress"><span id="progress"></span></div>
+        <span id="step-count" class="step-count"></span>
       </div>
-      <div id="users"><span class="hint">로그인하면 사용자 목록을 불러옵니다.</span></div>
-    </fieldset>
-    <div class="field">
-      <label for="text">데이터</label>
-      <input id="file" type="file" accept=".txt,text/plain,.pdf,application/pdf,image/*">
-      <div class="hint">텍스트 파일은 입력 내용으로 읽고, PDF·이미지는 원본과 해석을 evidence로 보존합니다. 직접 작성 내용과 PDF·이미지를 함께 넣을 수도 있습니다. 파일은 20MB 이하만 지원합니다.</div>
-      <textarea id="text" placeholder="지식 텍스트를 입력하거나 카카오톡 내보내기 내용을 붙여 넣으세요."></textarea>
-    </div>
-    <button id="submit" type="submit">분석하고 저장</button>
-    <div id="status" role="status">준비됨</div>
-  </form>
+
+      <div class="content" data-screen="kind">
+        <h1>어떤 기록을 넣을까요?</h1>
+        <p class="sub">넣은 기록은 대화에서 근거로 쓰여요.</p>
+        <div class="kinds">
+          <label class="kind">
+            <input type="radio" name="kind" value="KAKAO">
+            <span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/></svg></span>
+            <span><b>카카오톡 대화</b><small>대화 내보내기로 받은 .txt 파일</small></span>
+            <span class="tick"></span>
+          </label>
+          <label class="kind">
+            <input type="radio" name="kind" value="DOCUMENT">
+            <span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
+            <span><b>문서·사진</b><small>PDF, 이미지, 텍스트 파일 · 20MB까지</small></span>
+            <span class="tick"></span>
+          </label>
+          <label class="kind">
+            <input type="radio" name="kind" value="TEXT">
+            <span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z"/></svg></span>
+            <span><b>직접 쓰기</b><small>기억해 둘 내용을 바로 입력</small></span>
+            <span class="tick"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="content" data-screen="content">
+        <h1 id="content-title"></h1>
+        <p id="content-sub" class="sub"></p>
+        <label id="file-picker" class="file-picker">
+          <input id="file" type="file">
+          <span>파일 선택</span>
+          <small id="file-limit"></small>
+        </label>
+        <div id="file-card" class="file-card" hidden>
+          <span class="icon"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg></span>
+          <span><b id="file-name"></b><small id="file-size"></small></span>
+          <button id="change-file" type="button" class="text-button">바꾸기</button>
+        </div>
+        <div id="preview" class="preview" hidden></div>
+        <textarea id="text" aria-label="기록 내용" placeholder="기억해 둘 내용을 입력하세요." hidden></textarea>
+        <div class="source-name">
+          <label for="source-name">이 기록의 이름</label>
+          <input id="source-name" maxlength="200" placeholder="예: 가족 대화 2026-11">
+          <div class="hint">나중에 출처로 보여요.</div>
+        </div>
+        <p id="content-error" class="error" role="alert"></p>
+      </div>
+
+      <div class="content" data-screen="audience">
+        <h1>누가 볼 수 있나요?</h1>
+        <p class="sub">고른 사람의 대화에서만 이 기록이 근거로 쓰여요.</p>
+        <div class="segment">
+          <label><input type="radio" name="audience" value="restricted" checked>골라서</label>
+          <label><input type="radio" name="audience" value="public">모두에게</label>
+        </div>
+        <ul id="users"></ul>
+        <p id="no-users" class="empty" hidden>등록을 완료한 사용자가 없습니다.</p>
+      </div>
+
+      <div class="content" data-screen="confirm">
+        <h1>이대로 넣을까요?</h1>
+        <p class="sub">분석은 서버에서 진행돼요.</p>
+        <dl class="summary">
+          <div><dt>종류</dt><dd id="summary-kind"></dd><button type="button" class="text-button" data-go="1">변경</button></div>
+          <div><dt>내용</dt><dd id="summary-content"></dd><button type="button" class="text-button" data-go="2">변경</button></div>
+          <div><dt>이름</dt><dd id="summary-name"></dd><button type="button" class="text-button" data-go="2">변경</button></div>
+          <div><dt>볼 수 있는 사람</dt><dd id="summary-audience"></dd><button type="button" class="text-button" data-go="3">변경</button></div>
+        </dl>
+        <p id="submit-error" class="error" role="alert"></p>
+      </div>
+
+      <div class="content" data-screen="job" data-job="PENDING">
+        <div class="job-mark" aria-hidden="true"></div>
+        <h1 id="job-title"></h1>
+        <p id="job-source" class="sub"></p>
+        <ol class="timeline">
+          <li id="job-accepted"><span class="dot"></span><span><b>접수됨</b><small id="job-accepted-detail"></small></span></li>
+          <li id="job-analysis"><span class="dot"></span><span><b>분석</b><small id="job-analysis-detail"></small></span></li>
+          <li id="job-stored"><span class="dot"></span><span><b>저장 완료</b><small>에피소드는 메모리 갱신 때 만들어져요.</small></span></li>
+        </ol>
+        <p class="note">이 화면을 떠나도 분석은 계속돼요.</p>
+      </div>
+
+      <div class="cta"><button id="next" type="submit"></button></div>
+    </form>
+  </section>
 </main>
 <script src="/assets/http-auth-session.js"></script>
+<script src="/assets/app-menu.js"></script>
 <script>
+  const MAX_FILE_BYTES = 20 * 1024 * 1024;
+  const JOB_POLL_MILLIS = 3000;
+  const INPUT_STEPS = 4;
+  const SCREENS = ['kind', 'content', 'audience', 'confirm', 'job'];
+  const KINDS = {
+    KAKAO: {
+      name: '카카오톡 대화',
+      title: '카카오톡 대화 파일을 올려 주세요',
+      sub: '채팅방 설정 → 대화 내용 내보내기에서 받은 .txt 파일이에요.',
+      accept: '.txt,text/plain',
+      limit: '.txt 파일'
+    },
+    DOCUMENT: {
+      name: '문서·사진',
+      title: '문서나 사진을 올려 주세요',
+      sub: '텍스트 파일은 내용을 읽고, PDF·이미지는 원본과 해석을 evidence로 보존해요.',
+      accept: '.txt,text/plain,.pdf,application/pdf,image/*',
+      limit: 'PDF, 이미지, 텍스트 파일 · 20MB까지'
+    },
+    TEXT: {
+      name: '직접 쓰기',
+      title: '기억해 둘 내용을 적어 주세요',
+      sub: '가족과 나눈 결정, 일정, 메모 무엇이든 괜찮아요.'
+    }
+  };
+
+  const form = document.getElementById('knowledge-form');
+  const auth = document.getElementById('auth');
   const loginName = document.getElementById('login-name');
   const loginPassword = document.getElementById('login-password');
-  const auth = document.getElementById('auth');
-  const account = document.getElementById('account');
   const login = document.getElementById('login');
   const signup = document.getElementById('signup');
+  const back = form.querySelector('.back');
+  const next = document.getElementById('next');
+  const fileInput = document.getElementById('file');
+  const text = document.getElementById('text');
+  const sourceName = document.getElementById('source-name');
   const users = document.getElementById('users');
-  const status = document.getElementById('status');
-  const JOB_POLL_MILLIS = 3000;
+  const jobScreen = form.querySelector('[data-screen="job"]');
+  let step = 1;
+  let upload = null;
   let pollTimer = null;
-  let reference = null;
 
-  document.getElementById('file').addEventListener('change', async function (event) {
-    const file = event.target.files[0];
-    reference = null;
+  login.addEventListener('click', function () { authenticate(window.HomeSecondBrainAuth.login); });
+  signup.addEventListener('click', function () { authenticate(window.HomeSecondBrainAuth.signUp); });
+  loginPassword.addEventListener('keydown', function (event) {
+    if (event.key === 'Enter' && !event.isComposing) {
+      event.preventDefault();
+      authenticate(window.HomeSecondBrainAuth.login);
+    }
+  });
+
+  back.addEventListener('click', function () { showStep(step - 1); });
+  form.querySelectorAll('[data-go]').forEach(function (button) {
+    button.addEventListener('click', function () { showStep(Number(button.dataset.go)); });
+  });
+  form.addEventListener('input', refreshNext);
+  form.querySelectorAll('input[name="kind"]').forEach(function (radio) {
+    radio.addEventListener('change', startKind);
+  });
+  form.querySelectorAll('input[name="audience"]').forEach(function (radio) {
+    radio.addEventListener('change', function () { users.hidden = isPublic(); });
+  });
+  fileInput.addEventListener('change', function () { readUpload(fileInput.files[0]); });
+  document.getElementById('change-file').addEventListener('click', function () { fileInput.click(); });
+
+  form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    if (step === SCREENS.length) showStep(1);
+    else if (step === INPUT_STEPS) submitImport();
+    else showStep(step + 1);
+  });
+
+  function showStep(target) {
+    if (target !== SCREENS.length) stopPolling();
+    if (target === 1 && step === SCREENS.length) resetForm();
+    step = target;
+    SCREENS.forEach(function (screen, index) {
+      form.querySelector('[data-screen="' + screen + '"]').hidden = index + 1 !== step;
+    });
+    back.hidden = step === 1 || step === SCREENS.length;
+    document.getElementById('progress').style.width = Math.min(step, INPUT_STEPS) / INPUT_STEPS * 100 + '%';
+    document.getElementById('step-count').textContent = step <= INPUT_STEPS ? step + '/' + INPUT_STEPS : '';
+    if (step === INPUT_STEPS) showSummary();
+    refreshNext();
+  }
+
+  function refreshNext() {
+    next.disabled = !isStepComplete();
+    next.textContent = nextLabel();
+  }
+
+  function isStepComplete() {
+    if (step === 1) return chosenKind() !== null;
+    if (step === 2) return hasContent() && sourceName.value.trim() !== '';
+    if (step === 3) return isPublic() || chosenUsers().length > 0;
+    return true;
+  }
+
+  function nextLabel() {
+    if (step === 3 && !isPublic() && chosenUsers().length > 0) return chosenUsers().length + '명 선택 · 다음';
+    if (step === INPUT_STEPS) return '분석하고 저장';
+    if (step === SCREENS.length) return '다른 기록 넣기';
+    return '다음';
+  }
+
+  function startKind() {
+    const kind = KINDS[chosenKind()];
+    upload = null;
+    fileInput.value = '';
+    text.value = '';
+    sourceName.value = '';
+    document.getElementById('content-title').textContent = kind.title;
+    document.getElementById('content-sub').textContent = kind.sub;
+    document.getElementById('file-limit').textContent = kind.limit || '';
+    fileInput.accept = kind.accept || '';
+    text.hidden = Boolean(kind.accept);
+    showUpload();
+    showStep(2);
+  }
+
+  async function readUpload(file) {
+    document.getElementById('content-error').textContent = '';
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) {
-      status.textContent = 'PDF·이미지 파일은 20MB 이하여야 합니다.';
-      event.target.value = '';
+    if (file.size > MAX_FILE_BYTES) {
+      fileInput.value = '';
+      document.getElementById('content-error').textContent = '파일은 20MB 이하여야 합니다.';
       return;
     }
     const bytes = new Uint8Array(await file.arrayBuffer());
-    const isText = file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt');
-    if (isText) {
-      document.getElementById('text').value = decodeText(bytes);
+    if (isTextFile(file)) {
+      upload = { file: file, text: decodeText(bytes), reference: null };
+    } else if (chosenKind() === 'KAKAO') {
+      fileInput.value = '';
+      document.getElementById('content-error').textContent = '카카오톡 내보내기는 .txt 파일만 사용할 수 있습니다.';
+      return;
     } else {
-      reference = {
-        fileName: file.name,
-        mediaType: file.type,
-        contentBase64: encodeBase64(bytes)
-      };
-      status.textContent = 'Reference 준비됨: ' + file.name;
+      upload = { file: file, text: '', reference: { fileName: file.name, mediaType: file.type, contentBase64: encodeBase64(bytes) } };
     }
-    if (!document.getElementById('sourceName').value) document.getElementById('sourceName').value = file.name;
-  });
+    if (!sourceName.value) sourceName.value = file.name.replace(/\.[^.]+$/, '');
+    showUpload();
+    refreshNext();
+  }
+
+  function showUpload() {
+    const preview = document.getElementById('preview');
+    document.getElementById('file-card').hidden = upload === null;
+    document.getElementById('file-picker').hidden = upload !== null || text.hidden === false;
+    preview.hidden = upload === null || upload.text === '';
+    if (upload === null) return;
+    document.getElementById('file-name').textContent = upload.file.name;
+    document.getElementById('file-size').textContent = fileSize(upload.file.size);
+    preview.textContent = upload.text.split(/\r?\n/).filter(Boolean).slice(0, 3).join('\n');
+  }
+
+  function showSummary() {
+    document.getElementById('summary-kind').textContent = KINDS[chosenKind()].name;
+    document.getElementById('summary-content').textContent = upload ? upload.file.name : text.value.trim().length + '자';
+    document.getElementById('summary-name').textContent = sourceName.value.trim();
+    document.getElementById('summary-audience').textContent = isPublic()
+      ? '모두'
+      : chosenUsers().map(function (input) { return input.dataset.name; }).join(', ');
+    document.getElementById('submit-error').textContent = '';
+  }
+
+  async function submitImport() {
+    next.disabled = true;
+    document.getElementById('submit-error').textContent = '';
+    try {
+      const response = await fetch('/api/knowledge/import/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(importRequest())
+      });
+      const body = await response.json().catch(function () { return {}; });
+      if (!response.ok) {
+        if (response.status === 401) showLogin();
+        throw new Error(body.error || '저장하지 못했습니다.');
+      }
+      showAccepted(body);
+      showStep(SCREENS.length);
+      pollJob(body.jobId);
+    } catch (error) {
+      document.getElementById('submit-error').textContent = '실패: ' + error.message;
+      refreshNext();
+    }
+  }
+
+  function importRequest() {
+    return {
+      sourceType: chosenKind() === 'KAKAO' ? 'KAKAO' : 'TEXT',
+      sourceName: sourceName.value.trim(),
+      isPublic: isPublic(),
+      allowedUserIds: isPublic() ? [] : chosenUsers().map(function (input) { return input.value; }),
+      text: upload ? upload.text : text.value,
+      reference: upload ? upload.reference : null
+    };
+  }
+
+  function showAccepted(body) {
+    document.getElementById('job-source').textContent = sourceName.value.trim();
+    document.getElementById('job-accepted-detail').textContent =
+      '새 기록 ' + body.importedRecordCount + '개 · 이미 있던 기록 ' + body.alreadyStoredRecordCount + '개';
+    showJob({ status: 'PENDING' });
+  }
+
+  // Checks the submitted analysis every JOB_POLL_MILLIS until it completes or fails, or the step is left.
+  function pollJob(jobId) {
+    pollTimer = setTimeout(async function () {
+      try {
+        const response = await fetch('/api/knowledge/import/jobs/' + jobId);
+        const body = await response.json().catch(function () { return {}; });
+        if (!response.ok) {
+          if (response.status === 401) showLogin();
+          throw new Error(body.error || '분석 상태를 확인하지 못했습니다.');
+        }
+        showJob(body);
+        if (body.status !== 'COMPLETED' && body.status !== 'FAILED') pollJob(jobId);
+      } catch (error) {
+        showJob({ status: 'FAILED', lastError: error.message });
+      }
+    }, JOB_POLL_MILLIS);
+  }
+
+  function showJob(job) {
+    const analysis = document.getElementById('job-analysis');
+    const stored = document.getElementById('job-stored');
+    jobScreen.dataset.job = job.status;
+    document.getElementById('job-accepted').dataset.state = 'done';
+    if (job.status === 'COMPLETED') {
+      document.getElementById('job-title').textContent = '기록을 저장했어요';
+      analysis.dataset.state = 'done';
+      stored.dataset.state = 'done';
+      document.getElementById('job-analysis-detail').textContent = '기록 ' + job.recordCount + '개를 저장했어요.';
+    } else if (job.status === 'FAILED') {
+      document.getElementById('job-title').textContent = '분석하지 못했어요';
+      analysis.dataset.state = 'failed';
+      delete stored.dataset.state;
+      document.getElementById('job-analysis-detail').textContent = '서버가 잠시 뒤 다시 시도할 수 있어요. ' + job.lastError;
+    } else {
+      document.getElementById('job-title').textContent = '기록을 분석하고 있어요';
+      analysis.dataset.state = 'now';
+      delete stored.dataset.state;
+      document.getElementById('job-analysis-detail').textContent = job.status === 'PROCESSING' ? '분석 중이에요.' : '분석 순서를 기다리고 있어요.';
+    }
+  }
+
+  function stopPolling() {
+    clearTimeout(pollTimer);
+    pollTimer = null;
+  }
+
+  window.addEventListener('pagehide', stopPolling);
+
+  function resetForm() {
+    form.reset();
+    upload = null;
+    users.hidden = false;
+  }
+
+  function chosenKind() {
+    const checked = form.querySelector('input[name="kind"]:checked');
+    return checked ? checked.value : null;
+  }
+
+  function hasContent() {
+    return upload !== null || (!text.hidden && text.value.trim() !== '');
+  }
+
+  function isPublic() {
+    return form.querySelector('input[name="audience"]:checked').value === 'public';
+  }
+
+  function chosenUsers() {
+    return Array.from(users.querySelectorAll('input:checked'));
+  }
+
+  async function loadUsers() {
+    const response = await fetch('/api/knowledge/users');
+    if (!response.ok) {
+      showLogin();
+      return;
+    }
+    const body = await response.json();
+    users.replaceChildren(...body.users.map(userItem));
+    document.getElementById('no-users').hidden = body.users.length > 0;
+    refreshNext();
+  }
+
+  function userItem(member) {
+    const item = document.createElement('li');
+    const label = document.createElement('label');
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.value = member.userId;
+    input.dataset.name = member.name;
+    const avatar = document.createElement('span');
+    avatar.className = 'avatar';
+    avatar.textContent = member.name.slice(-2);
+    const name = document.createElement('span');
+    name.textContent = member.name;
+    const check = document.createElement('span');
+    check.className = 'user-check';
+    label.append(input, avatar, name, check);
+    item.appendChild(label);
+    return item;
+  }
+
+  function isTextFile(file) {
+    return file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt');
+  }
+
+  function fileSize(bytes) {
+    if (bytes < 1024 * 1024) return Math.max(1, Math.round(bytes / 1024)) + 'KB';
+    return (bytes / 1024 / 1024).toFixed(1) + 'MB';
+  }
 
   function encodeBase64(bytes) {
     let binary = '';
@@ -149,187 +625,44 @@
     }
   }
 
-  login.addEventListener('click', function () {
-    authenticate(window.HomeSecondBrainAuth.login);
-  });
-  signup.addEventListener('click', function () {
-    authenticate(window.HomeSecondBrainAuth.signUp);
-  });
-  document.getElementById('logout').addEventListener('click', logout);
-
-  [loginName, loginPassword].forEach(function (input) {
-    input.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && !event.isComposing) {
-        event.preventDefault();
-        authenticate(window.HomeSecondBrainAuth.login);
-      }
-    });
-  });
-
-  document.querySelectorAll('input[name="audience"]').forEach(function (radio) {
-    radio.addEventListener('change', function () {
-      users.style.opacity = radio.value === 'public' && radio.checked ? '.45' : '1';
-    });
-  });
-
-  async function loadUsers() {
-    const response = await fetch('/api/knowledge/users');
-    if (!response.ok) {
-      showLogin();
-      return;
-    }
-    const body = await response.json();
-    users.innerHTML = '';
-    if (body.users.length === 0) {
-      users.innerHTML = '<span class="hint">등록을 완료한 사용자가 없습니다.</span>';
-      return;
-    }
-    body.users.forEach(function (member) {
-      const label = document.createElement('label');
-      label.className = 'choice';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
-      input.name = 'userId';
-      input.value = member.userId;
-      const text = document.createElement('span');
-      text.textContent = member.name;
-      label.append(input, text);
-      users.appendChild(label);
-    });
-  }
-
-  document.getElementById('knowledge-form').addEventListener('submit', async function (event) {
-    event.preventDefault();
-    const submit = document.getElementById('submit');
-    const isPublic = document.querySelector('input[name="audience"]:checked').value === 'public';
-    const allowedUserIds = Array.from(document.querySelectorAll('input[name="userId"]:checked')).map(function (item) {
-      return item.value;
-    });
-    if (!isPublic && allowedUserIds.length === 0) {
-      status.textContent = '열람할 사용자를 한 명 이상 선택하세요.';
-      return;
-    }
-    const sourceType = document.getElementById('sourceType').value;
-    const inputText = document.getElementById('text').value;
-    if (!inputText.trim() && !reference) {
-      status.textContent = '지식 텍스트 또는 PDF·이미지 reference를 입력하세요.';
-      return;
-    }
-    if (sourceType === 'KAKAO' && reference) {
-      status.textContent = '카카오톡 내보내기는 텍스트(.txt)만 사용할 수 있습니다.';
-      return;
-    }
-    stopPolling();
-    submit.disabled = true;
-    status.textContent = '전송 중입니다…';
-    try {
-      const response = await fetch('/api/knowledge/import/analyze', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          sourceType: sourceType,
-          sourceName: document.getElementById('sourceName').value,
-          isPublic: isPublic,
-          allowedUserIds: isPublic ? [] : allowedUserIds,
-          text: inputText,
-          reference: reference
-        })
-      });
-      const body = await response.json().catch(function () { return {}; });
-      if (!response.ok) {
-        if (response.status === 401) showLogin();
-        throw new Error(body.error || '저장하지 못했습니다.');
-      }
-      const accepted = '접수됨: 새 소스 레코드 ' + body.importedRecordCount + '개, 이미 저장된 레코드 ' + body.alreadyStoredRecordCount + '개';
-      status.textContent = accepted + '\n분석을 기다리는 중입니다…';
-      pollJob(body.jobId, accepted);
-    } catch (error) {
-      status.textContent = '실패: ' + error.message;
-    } finally {
-      submit.disabled = false;
-    }
-  });
-
-  // Checks the submitted analysis every JOB_POLL_MILLIS until it completes or fails, or the page is left.
-  function pollJob(jobId, accepted) {
-    pollTimer = setTimeout(async function () {
-      try {
-        const response = await fetch('/api/knowledge/import/jobs/' + jobId);
-        const body = await response.json().catch(function () { return {}; });
-        if (!response.ok) {
-          if (response.status === 401) showLogin();
-          throw new Error(body.error || '분석 상태를 확인하지 못했습니다.');
-        }
-        if (body.status === 'COMPLETED') {
-          status.textContent = accepted + '\n완료: 기록 ' + body.recordCount + '개를 저장했습니다. 에피소드는 메모리 갱신 때 만들어집니다.';
-          return;
-        }
-        if (body.status === 'FAILED') {
-          status.textContent = accepted + '\n분석 실패(서버가 잠시 뒤 다시 시도할 수 있습니다): ' + body.lastError;
-          return;
-        }
-        status.textContent = accepted + '\n' + (body.status === 'PROCESSING' ? '분석 중입니다…' : '분석을 기다리는 중입니다…');
-        pollJob(jobId, accepted);
-      } catch (error) {
-        status.textContent = accepted + '\n실패: ' + error.message;
-      }
-    }, JOB_POLL_MILLIS);
-  }
-
-  function stopPolling() {
-    clearTimeout(pollTimer);
-    pollTimer = null;
-  }
-
-  window.addEventListener('pagehide', stopPolling);
-
   async function authenticate(submit) {
     login.disabled = true;
     signup.disabled = true;
     try {
+      document.getElementById('auth-error').textContent = '';
       await submit(loginName.value, loginPassword.value);
       loginPassword.value = '';
-      await showAuthenticated();
-      status.textContent = '로그인했습니다.';
+      auth.hidden = true;
+      await loadUsers();
     } catch (error) {
-      status.textContent = '실패: ' + error.message;
+      document.getElementById('auth-error').textContent = error.message;
     } finally {
       login.disabled = false;
       signup.disabled = false;
     }
   }
 
-  async function logout() {
-    await window.HomeSecondBrainAuth.logout();
-    showLogin();
-  }
-
-  async function showAuthenticated() {
-    auth.hidden = true;
-    account.hidden = false;
-    await loadUsers();
-  }
-
   function showLogin() {
-    account.hidden = true;
     auth.hidden = false;
-    users.innerHTML = '<span class="hint">로그인하세요.</span>';
-    status.textContent = '로그인하거나 가입하세요.';
     loginName.focus();
   }
 
   async function restoreAuthentication() {
     const response = await window.HomeSecondBrainAuth.restore();
-    if (!response.ok) {
-      showLogin();
-      return;
-    }
-    status.textContent = '준비됨';
-    await showAuthenticated();
+    if (response.ok) await loadUsers();
+    else showLogin();
   }
 
+  function trackVisualViewportHeight() {
+    const applyHeight = function () {
+      document.documentElement.style.setProperty('--viewport-height', window.visualViewport.height + 'px');
+    };
+    window.visualViewport.addEventListener('resize', applyHeight);
+    applyHeight();
+  }
+
+  trackVisualViewportHeight();
+  showStep(1);
   restoreAuthentication();
 </script>
 </body>

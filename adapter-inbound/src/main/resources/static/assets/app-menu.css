@@ -1,0 +1,50 @@
+.menu-bar { flex: none; margin-bottom: 14px; }
+.menu-bar button, .drawer button {
+  border: 0;
+  border-radius: 13px;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+button.menu-toggle {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  min-width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #1e5b46;
+}
+.menu-toggle svg { width: 24px; height: 24px; }
+.drawer {
+  margin: 0;
+  width: min(280px, 80vw);
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  border: 0;
+  border-radius: 0 22px 22px 0;
+  padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+  background: #fbfaf6;
+  color: #1d2a26;
+  box-shadow: 0 22px 55px rgba(36,53,46,.18);
+}
+.drawer[open] { display: flex; flex-direction: column; gap: 18px; animation: drawer-slide-in .2s ease-out; }
+.drawer::backdrop { background: rgba(29,42,38,.4); }
+@keyframes drawer-slide-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
+.drawer ul { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.drawer a {
+  display: block;
+  color: #1e5b46;
+  border-radius: 12px;
+  padding: 12px 14px;
+  text-decoration: none;
+  font-weight: 800;
+}
+.drawer a[aria-current="page"] { color: white; background: #1e5b46; }
+button.menu-close { align-self: flex-start; min-width: 0; height: 40px; padding: 0 18px; background: #e8eee9; color: #1e5b46; }
+.menu-account { margin-top: auto; padding-top: 14px; border-top: 1px solid #e1e5e1; }
+.menu-account[hidden] { display: none; }
+button.menu-logout { width: 100%; height: 48px; padding: 0 18px; border: 1px solid #ecd2ce; background: transparent; color: #8a332b; }

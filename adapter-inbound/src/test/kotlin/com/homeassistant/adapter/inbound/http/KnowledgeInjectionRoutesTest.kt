@@ -64,7 +64,7 @@ class KnowledgeInjectionRoutesTest {
 
         assertEquals(HttpStatusCode.OK, response.status)
         assertTrue(response.bodyAsText().contains("지식 주입"))
-        assertTrue(response.bodyAsText().contains("/conversation"))
+        assertTrue(response.bodyAsText().contains("/assets/app-menu.js"))
         assertTrue(response.bodyAsText().contains("/assets/http-auth-session.js"))
         assertTrue(!response.bodyAsText().contains("localStorage"))
         assertTrue(!response.bodyAsText().contains("sessionStorage"))

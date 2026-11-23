@@ -15,7 +15,7 @@ import kotlin.test.assertTrue
 
 class StaticPagesTest {
     @Test
-    fun `pages and their script are served from the static folder`() = testApplication {
+    fun `pages and their shared assets are served from the static folder`() = testApplication {
         application { configureRoutes(unusedAnalysis) }
 
         val page = client.get("/knowledge")
@@ -24,6 +24,12 @@ class StaticPagesTest {
         val script = client.get("/assets/http-auth-session.js")
         assertEquals(HttpStatusCode.OK, script.status)
         assertTrue(script.contentType()!!.match(ContentType.Text.JavaScript))
+        val menuScript = client.get("/assets/app-menu.js")
+        assertEquals(HttpStatusCode.OK, menuScript.status)
+        assertTrue(menuScript.contentType()!!.match(ContentType.Text.JavaScript))
+        val menuStyle = client.get("/assets/app-menu.css")
+        assertEquals(HttpStatusCode.OK, menuStyle.status)
+        assertTrue(menuStyle.contentType()!!.match(ContentType.Text.CSS))
     }
 
     @Test

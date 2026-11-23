@@ -29,5 +29,6 @@ class RetiredEpisodeTreeRoutesTest {
             assertContains(page.bodyAsText(), "/assets/http-auth-session.js")
             assertFalse(page.bodyAsText().contains("href=\"/episodes\""))
         }
+        assertFalse(client.get("/assets/app-menu.js").bodyAsText().contains("/episodes"))
     }
 }

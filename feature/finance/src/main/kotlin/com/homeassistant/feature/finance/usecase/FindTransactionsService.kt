@@ -4,6 +4,7 @@ import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.finance.TransactionSearch
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.TransactionOwners
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.identity.UserId
 import java.time.format.DateTimeFormatter
@@ -27,7 +28,7 @@ class FindTransactionsService(
     }
 
     private fun criteria(userId: UserId, search: TransactionSearch) = FinanceTransactionCriteria(
-        ownerIds = setOf(userId),
+        owners = TransactionOwners.All(setOf(userId)),
         from = search.from.atStartOfDay(),
         to = search.to.plusDays(1).atStartOfDay(),
         category = search.category,

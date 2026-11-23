@@ -2,6 +2,7 @@ package com.homeassistant.feature.finance.usecase
 
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.TransactionOwners
 import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
@@ -18,7 +19,7 @@ class ImportFinanceTransactionsServiceTest {
         val savedCount = ImportFinanceTransactionsService(ledger).import(listOf(LUNCH, LUNCH))
 
         assertEquals(1, savedCount)
-        assertEquals(listOf(LUNCH), ledger.findMatching(FinanceTransactionCriteria(setOf(OWNER), NOVEMBER_START, DECEMBER_START)))
+        assertEquals(listOf(LUNCH), ledger.findMatching(FinanceTransactionCriteria(TransactionOwners.All(setOf(OWNER)), NOVEMBER_START, DECEMBER_START)))
     }
 
     @Test
@@ -45,7 +46,7 @@ class ImportFinanceTransactionsServiceTest {
 
         override fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction> =
             stored.values
-                .filter { it.ownerId in criteria.ownerIds && it.occurredAt >= criteria.from && it.occurredAt < criteria.to }
+                .filter { it.ownerId in criteria.owners.userIds && it.occurredAt >= criteria.from && it.occurredAt < criteria.to }
                 .sortedBy { it.occurredAt }
 
         override fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal> =

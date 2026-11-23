@@ -3,6 +3,7 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.inbound.finance.FindMonthlySpending
 import com.homeassistant.application.port.inbound.finance.MonthlySpending
 import com.homeassistant.application.port.inbound.finance.SpendingGroup
+import com.homeassistant.application.port.inbound.finance.SpendingTransaction
 import com.homeassistant.application.port.inbound.identity.UserRegistry
 import com.homeassistant.application.port.inbound.sourceimport.SourceImport
 import com.homeassistant.application.port.inbound.sourceimport.SourceImportJobReport
@@ -62,7 +63,7 @@ class FinanceSpendingRoutesTest {
                 "groups":[{"name":"신용카드","currency":"KRW","total":-8000,
                 "count":1,"transactions":[{"owner":"운영자","occurredAt":"2026-11-03T12:30:15","majorCategory":"식비",
                 "minorCategory":"한식","description":"김밥천국","amount":-8000,"currency":"KRW",
-                "paymentMethod":"신용카드"}]}]}
+                "paymentMethod":"식비 카드"}]}]}
                 """.trimIndent(),
             ),
             JsonSerializer.json.parseToJsonElement(response.bodyAsText()),
@@ -129,7 +130,7 @@ class FinanceSpendingRoutesTest {
             scope: SpendingScope,
         ): MonthlySpending {
             requests += SpendingRequest(userId, month, grouping, scope)
-            val group = SpendingGroup("신용카드", "KRW", -8_000, 1, listOf(LUNCH))
+            val group = SpendingGroup("신용카드", "KRW", -8_000, 1, listOf(SpendingTransaction(LUNCH, "식비 카드")))
             val operator = RegisteredUser(UserId("operator"), "운영자")
             return MonthlySpending(month, grouping, scope, listOf(operator), listOf(group))
         }

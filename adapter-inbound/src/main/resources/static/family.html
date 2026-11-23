@@ -124,6 +124,12 @@
     .empty { margin: 0; color: #738079; font-size: 13px; }
     .code { margin-top: 12px; font-size: 28px; font-weight: 800; letter-spacing: .12em; font-variant-numeric: tabular-nums; }
     .join { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; }
+    .panel { overflow-y: auto; }
+    #payment-methods { display: flex; flex-direction: column; gap: 10px; margin: 0 0 12px; padding: 0; list-style: none; }
+    #payment-methods li { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 9rem); gap: 6px 10px; align-items: center; }
+    #payment-methods label { display: flex; gap: 8px; align-items: center; margin: 0; color: #1d2a26; font-size: 14px; font-weight: 700; overflow-wrap: anywhere; }
+    #payment-methods input[type="checkbox"] { width: 18px; height: 18px; flex: none; accent-color: #1e5b46; }
+    #payment-methods input[type="text"] { padding: 8px 10px; font-size: 14px; }
     #status { margin: 0; padding: 14px 20px 0; color: #738079; font-size: 13px; }
     #status:empty { display: none; }
     #status[data-state="error"] { color: #8a332b; }
@@ -176,6 +182,13 @@
       <p id="no-members" class="empty" hidden>아직 가족이 없습니다. 초대 코드를 만들어 가족에게 알려 주거나, 받은 코드를 입력하세요.</p>
     </div>
     <div class="section">
+      <h2>가족에게 보여 줄 결제수단</h2>
+      <p class="hint">체크한 결제수단의 지출만 가족 지출에 나옵니다. 별칭을 붙이면 결제수단 이름 대신 별칭으로 보입니다.</p>
+      <ul id="payment-methods"></ul>
+      <p id="no-payment-methods" class="empty" hidden>아직 주입된 거래가 없습니다.</p>
+      <button id="save-payment-methods" type="button" hidden>저장</button>
+    </div>
+    <div class="section">
       <h2>가족 초대</h2>
       <button id="invite" type="button">초대 코드 만들기</button>
       <div id="code" class="code" hidden></div>
@@ -204,6 +217,9 @@
   const codeHint = document.getElementById('code-hint');
   const joinCode = document.getElementById('join-code');
   const join = document.getElementById('join');
+  const paymentMethodList = document.getElementById('payment-methods');
+  const noPaymentMethods = document.getElementById('no-payment-methods');
+  const savePaymentMethods = document.getElementById('save-payment-methods');
   const menu = document.getElementById('menu');
   const menuToggle = document.getElementById('menu-toggle');
 
@@ -241,7 +257,7 @@
       setStatus('', '');
       loadMembers();
     } catch (error) {
-      showError(error);
+      showError(error, {});
     } finally {
       invite.disabled = false;
     }
@@ -264,18 +280,83 @@
       showMembers(household.members);
       setStatus('ready', '가족에 합류했습니다.');
     } catch (error) {
-      showError(error);
+      showError(error, {
+        400: '초대 코드가 맞지 않거나, 이미 쓰였거나, 만료되었습니다.',
+        409: '이미 다른 사람과 가족으로 묶여 있어 합류할 수 없습니다.'
+      });
     } finally {
       join.disabled = false;
     }
   });
 
+  savePaymentMethods.addEventListener('click', async function () {
+    savePaymentMethods.disabled = true;
+    try {
+      const saved = await request('/api/finance/payment-methods', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentMethods: chosenPaymentMethods() })
+      });
+      showPaymentMethods(saved.paymentMethods);
+      setStatus('ready', '결제수단 설정을 저장했습니다.');
+    } catch (error) {
+      showError(error, { 400: '별칭은 30자까지 쓸 수 있습니다.' });
+    } finally {
+      savePaymentMethods.disabled = false;
+    }
+  });
+
+  function loadAll() {
+    loadMembers();
+    loadPaymentMethods();
+  }
+
   async function loadMembers() {
     try {
       showMembers((await request('/api/household/members')).members);
     } catch (error) {
-      showError(error);
+      showError(error, {});
     }
+  }
+
+  async function loadPaymentMethods() {
+    try {
+      showPaymentMethods((await request('/api/finance/payment-methods')).paymentMethods);
+    } catch (error) {
+      showError(error, {});
+    }
+  }
+
+  function showPaymentMethods(paymentMethods) {
+    paymentMethodList.replaceChildren.apply(paymentMethodList, paymentMethods.map(function (setting) {
+      const item = document.createElement('li');
+      item.dataset.paymentMethod = setting.paymentMethod;
+      const label = document.createElement('label');
+      const shared = document.createElement('input');
+      shared.type = 'checkbox';
+      shared.checked = setting.shared;
+      label.append(shared, document.createTextNode(setting.paymentMethod));
+      const alias = document.createElement('input');
+      alias.type = 'text';
+      alias.maxLength = 30;
+      alias.placeholder = '별칭';
+      alias.value = setting.alias || '';
+      alias.setAttribute('aria-label', setting.paymentMethod + ' 별칭');
+      item.append(label, alias);
+      return item;
+    }));
+    noPaymentMethods.hidden = paymentMethods.length > 0;
+    savePaymentMethods.hidden = paymentMethods.length === 0;
+  }
+
+  function chosenPaymentMethods() {
+    return Array.from(paymentMethodList.children).map(function (item) {
+      return {
+        paymentMethod: item.dataset.paymentMethod,
+        shared: item.querySelector('input[type="checkbox"]').checked,
+        alias: item.querySelector('input[type="text"]').value
+      };
+    });
   }
 
   function showMembers(members) {
@@ -297,15 +378,11 @@
     this.status = status;
   }
 
-  function showError(error) {
+  function showError(error, messages) {
     if (error instanceof HouseholdError && error.status === 401) {
       showLogin();
       return;
     }
-    const messages = {
-      400: '초대 코드가 맞지 않거나, 이미 쓰였거나, 만료되었습니다.',
-      409: '이미 다른 사람과 가족으로 묶여 있어 합류할 수 없습니다.'
-    };
     setStatus('error', (error instanceof HouseholdError && messages[error.status]) ||
       '요청을 처리하지 못했습니다. 잠시 후 다시 시도하세요.');
   }
@@ -322,7 +399,7 @@
       loginPassword.value = '';
       auth.hidden = true;
       setStatus('', '');
-      loadMembers();
+      loadAll();
     } catch (error) {
       setStatus('error', error.message);
     } finally {
@@ -345,7 +422,7 @@
   }
 
   trackVisualViewportHeight();
-  loadMembers();
+  loadAll();
 </script>
 </body>
 </html>

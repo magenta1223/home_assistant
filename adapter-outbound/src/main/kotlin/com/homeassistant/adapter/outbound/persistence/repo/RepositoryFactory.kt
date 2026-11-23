@@ -15,6 +15,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.compon
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.group.GroupRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.memory.xmemory.embedding.ComponentEmbeddingRepositoryImpl
 import com.homeassistant.adapter.outbound.persistence.repo.finance.FinanceTransactionRepositoryImpl
+import com.homeassistant.adapter.outbound.persistence.repo.finance.PaymentMethodSettingRepositoryImpl
 
 object RepositoryFactory {
     fun create(dbPath: String): RepositoryStores {
@@ -36,6 +37,7 @@ object RepositoryFactory {
             households = households,
             financeTransactions = FinanceTransactionRepositoryImpl(db),
             householdMembers = households,
+            paymentMethodSettings = PaymentMethodSettingRepositoryImpl(db),
         )
     }
 }

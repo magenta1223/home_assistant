@@ -21,24 +21,36 @@ interface FinanceTransactionRepository {
 
     /**
      * The totals of the transactions matching [criteria], one per [grouping] value and currency, the smallest sum (the
-     * largest spending) first.
+     * largest spending) first. A payment method is grouped under its owner's alias when it has one.
      */
     fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal>
 }
 
 /**
- * Which transactions of [ownerIds] to find: those that occurred at or after [from] and before [to], only those whose
+ * Which transactions to find: those of [owners] that occurred at or after [from] and before [to], only those whose
  * major or minor category is [category] when it is given, only those whose description contains
  * [descriptionContains] when it is given, and only those of [type] when it is given.
  */
 data class FinanceTransactionCriteria(
-    val ownerIds: Set<UserId>,
+    val owners: TransactionOwners,
     val from: LocalDateTime,
     val to: LocalDateTime,
     val category: String? = null,
     val descriptionContains: String? = null,
     val type: String? = null,
 )
+
+/** Whose transactions to find. */
+sealed interface TransactionOwners {
+    /** The owners whose transactions are found. */
+    val userIds: Set<UserId>
+
+    /** Every transaction of [userIds]. */
+    data class All(override val userIds: Set<UserId>) : TransactionOwners
+
+    /** The transactions of [userIds] paid with a payment method its owner shares with their household. */
+    data class SharedBy(override val userIds: Set<UserId>) : TransactionOwners
+}
 
 /** The [count] transactions in [currency] whose grouped value is [name], and the signed sum of their amounts. */
 data class SpendingTotal(

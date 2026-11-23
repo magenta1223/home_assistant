@@ -4,6 +4,7 @@ import com.homeassistant.adapter.outbound.persistence.repo.RepositoryFactory
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
 import com.homeassistant.feature.finance.port.outbound.SpendingTotal
+import com.homeassistant.feature.finance.port.outbound.TransactionOwners
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
@@ -93,7 +94,7 @@ class FinanceTransactionRepositoryTest {
         val partnersDinner = DINNER.copy(ownerId = UserId("member-2"))
         val strangersLunch = LUNCH.copy(ownerId = UserId("member-3"))
         transactions.save(listOf(LUNCH, partnersDinner, strangersLunch))
-        val household = FinanceTransactionCriteria(setOf(OWNER, UserId("member-2")), NOVEMBER_START, DECEMBER_START)
+        val household = FinanceTransactionCriteria(TransactionOwners.All(setOf(OWNER, UserId("member-2"))), NOVEMBER_START, DECEMBER_START)
 
         assertEquals(listOf(LUNCH, partnersDinner), transactions.findMatching(household))
         assertEquals(
@@ -158,14 +159,14 @@ class FinanceTransactionRepositoryTest {
     }
 
     private fun novemberOf(ownerId: UserId, type: String? = null) =
-        FinanceTransactionCriteria(setOf(ownerId), NOVEMBER_START, DECEMBER_START, type = type)
+        FinanceTransactionCriteria(TransactionOwners.All(setOf(ownerId)), NOVEMBER_START, DECEMBER_START, type = type)
 
     private fun FinanceTransactionRepository.findInNovember(
         ownerId: UserId,
         category: String? = null,
         descriptionContains: String? = null,
     ): List<FinanceTransaction> =
-        findMatching(FinanceTransactionCriteria(setOf(ownerId), NOVEMBER_START, DECEMBER_START, category, descriptionContains))
+        findMatching(FinanceTransactionCriteria(TransactionOwners.All(setOf(ownerId)), NOVEMBER_START, DECEMBER_START, category, descriptionContains))
 
     private fun withRepository(test: (FinanceTransactionRepository) -> Unit) {
         val path = Files.createTempFile("finance-transactions", ".db")

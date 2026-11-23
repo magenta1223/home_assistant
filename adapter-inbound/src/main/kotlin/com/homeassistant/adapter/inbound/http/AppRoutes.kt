@@ -10,6 +10,7 @@ import com.homeassistant.application.port.inbound.finance.FindTransactions
 import com.homeassistant.application.port.inbound.chat.SearchMemory
 import com.homeassistant.adapter.inbound.mcp.contextToolServer
 import com.homeassistant.application.port.inbound.finance.ImportFinanceTransactions
+import com.homeassistant.application.port.inbound.finance.PaymentMethodSettings
 import com.homeassistant.application.port.inbound.household.Households
 import com.homeassistant.domain.identity.UserId
 import io.ktor.server.application.Application
@@ -25,6 +26,7 @@ fun Application.configureRoutes(
     chat: Chat? = null,
     importFinanceTransactions: ImportFinanceTransactions? = null,
     findMonthlySpending: FindMonthlySpending? = null,
+    paymentMethodSettings: PaymentMethodSettings? = null,
     households: Households? = null,
     contextAccess: ContextAccess? = null,
     searchMemory: SearchMemory? = null,
@@ -44,6 +46,7 @@ fun Application.configureRoutes(
             chatRoutes(chat)
             financeImportRoutes(importFinanceTransactions)
             financeSpendingRoutes(findMonthlySpending)
+            paymentMethodSettingRoutes(paymentMethodSettings)
             householdRoutes(households)
         }
     }

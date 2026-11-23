@@ -34,6 +34,7 @@ object ApplicationServicesFactory {
             households = identity.households,
             importFinanceTransactions = finance.importTransactions,
             findMonthlySpending = finance.findMonthlySpending,
+            paymentMethodSettings = finance.paymentMethodSettings,
             contextAccess = chat.contextAccess,
             searchMemory = chat.searchMemory,
             findTransactions = chat.findTransactions,

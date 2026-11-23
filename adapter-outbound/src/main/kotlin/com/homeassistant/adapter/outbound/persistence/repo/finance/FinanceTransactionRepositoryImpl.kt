@@ -2,15 +2,18 @@ package com.homeassistant.adapter.outbound.persistence.repo.finance
 
 import com.homeassistant.adapter.outbound.persistence.db.SqliteDatabases
 import com.homeassistant.adapter.outbound.persistence.db.tables.FinanceTransactionTable
+import com.homeassistant.adapter.outbound.persistence.db.tables.PaymentMethodSettingTable
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
 import com.homeassistant.feature.finance.port.outbound.SpendingTotal
+import com.homeassistant.feature.finance.port.outbound.TransactionOwners
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.identity.UserId
 import org.jetbrains.exposed.sql.LikePattern
 import org.jetbrains.exposed.sql.Op
-import org.jetbrains.exposed.sql.Column
+import org.jetbrains.exposed.sql.Coalesce
+import org.jetbrains.exposed.sql.ExpressionWithColumnType
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.greaterEq
@@ -23,7 +26,6 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.batchUpsert
 import org.jetbrains.exposed.sql.count
 import org.jetbrains.exposed.sql.sum
-import org.jetbrains.exposed.sql.selectAll
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -60,7 +62,8 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
     }
 
     override fun findMatching(criteria: FinanceTransactionCriteria): List<FinanceTransaction> = db.read {
-        FinanceTransactionTable.selectAll()
+        transactionsWithPaymentMethodSettings()
+            .select(FinanceTransactionTable.columns)
             .where { matching(criteria) }
             .orderBy(FinanceTransactionTable.occurredAt)
             .map { it.toFinanceTransaction() }
@@ -68,10 +71,11 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
 
     override fun findTotalsBy(grouping: SpendingGrouping, criteria: FinanceTransactionCriteria): List<SpendingTotal> =
         db.read {
-            val name = grouping.column()
+            val name = grouping.groupedName()
             val amount = FinanceTransactionTable.amount.sum()
             val count = FinanceTransactionTable.amount.count()
-            FinanceTransactionTable.select(name, FinanceTransactionTable.currency, amount, count)
+            transactionsWithPaymentMethodSettings()
+                .select(name, FinanceTransactionTable.currency, amount, count)
                 .where { matching(criteria) }
                 .groupBy(name, FinanceTransactionTable.currency)
                 .orderBy(amount to SortOrder.ASC, name to SortOrder.ASC, FinanceTransactionTable.currency to SortOrder.ASC)
@@ -85,16 +89,16 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
                 }
         }
 
-    /** The column holding the value that [this] groups by. */
-    private fun SpendingGrouping.column(): Column<String> = when (this) {
+    /** The name a transaction is grouped under: its major category, or its payment method's alias or name. */
+    private fun SpendingGrouping.groupedName(): ExpressionWithColumnType<String> = when (this) {
         SpendingGrouping.CATEGORY -> FinanceTransactionTable.majorCategory
-        SpendingGrouping.PAYMENT_METHOD -> FinanceTransactionTable.paymentMethod
+        SpendingGrouping.PAYMENT_METHOD -> Coalesce(PaymentMethodSettingTable.alias, FinanceTransactionTable.paymentMethod)
     }
 
     /** The SQL condition of [criteria]; a criterion that is not given adds no condition. */
     private fun matching(criteria: FinanceTransactionCriteria): Op<Boolean> =
         listOfNotNull(
-            FinanceTransactionTable.userId inList criteria.ownerIds.map(UserId::value),
+            ownedBy(criteria.owners),
             FinanceTransactionTable.occurredAt greaterEq criteria.from.toEpochMillis(),
             FinanceTransactionTable.occurredAt less criteria.to.toEpochMillis(),
             criteria.category?.let {
@@ -103,6 +107,15 @@ internal class FinanceTransactionRepositoryImpl(private val db: SqliteDatabases)
             criteria.descriptionContains?.let { FinanceTransactionTable.description like containing(it) },
             criteria.type?.let { FinanceTransactionTable.type eq it },
         ).reduce(Op<Boolean>::and)
+
+    /** The transactions of [owners]; for shared ones, only those paid with a payment method its owner shares. */
+    private fun ownedBy(owners: TransactionOwners): Op<Boolean> {
+        val ofOwners = FinanceTransactionTable.userId inList owners.userIds.map(UserId::value)
+        return when (owners) {
+            is TransactionOwners.All -> ofOwners
+            is TransactionOwners.SharedBy -> ofOwners and (PaymentMethodSettingTable.shared eq true)
+        }
+    }
 
     /** Matches text that contains [part] anywhere, with the wildcards in [part] taken literally. */
     private fun containing(part: String): LikePattern =

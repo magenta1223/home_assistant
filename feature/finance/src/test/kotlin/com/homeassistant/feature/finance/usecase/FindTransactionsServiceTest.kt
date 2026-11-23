@@ -3,6 +3,7 @@ package com.homeassistant.feature.finance.usecase
 import com.homeassistant.application.port.inbound.finance.TransactionSearch
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionCriteria
 import com.homeassistant.feature.finance.port.outbound.FinanceTransactionRepository
+import com.homeassistant.feature.finance.port.outbound.TransactionOwners
 import com.homeassistant.feature.finance.port.outbound.SpendingTotal
 import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
@@ -20,7 +21,7 @@ class FindTransactionsServiceTest {
         val report = FindTransactionsService(ledger).find(MEMBER, TransactionSearch(NOV_1, NOV_30, category = "식비"))
 
         assertEquals(
-            FinanceTransactionCriteria(setOf(MEMBER), NOV_1.atStartOfDay(), NOV_30.plusDays(1).atStartOfDay(), "식비", null),
+            FinanceTransactionCriteria(TransactionOwners.All(setOf(MEMBER)), NOV_1.atStartOfDay(), NOV_30.plusDays(1).atStartOfDay(), "식비", null),
             ledger.criteria.single(),
         )
         assertEquals(

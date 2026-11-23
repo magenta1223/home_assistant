@@ -55,6 +55,7 @@ internal object DatabaseFactory {
                 HouseholdMemberTable,
                 HouseholdInvitationTable,
                 FinanceTransactionTable,
+                PaymentMethodSettingTable,
             )
         }
         val readerConfig = readerConfig()

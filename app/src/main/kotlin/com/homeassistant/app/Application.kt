@@ -60,6 +60,7 @@ fun Application.module() {
             chat = services.chat,
             importFinanceTransactions = services.importFinanceTransactions,
             findMonthlySpending = services.findMonthlySpending,
+            paymentMethodSettings = services.paymentMethodSettings,
             households = services.households,
             contextAccess = services.contextAccess,
             searchMemory = services.searchMemory,

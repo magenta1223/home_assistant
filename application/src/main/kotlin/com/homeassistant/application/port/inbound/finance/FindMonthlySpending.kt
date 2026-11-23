@@ -41,5 +41,11 @@ data class SpendingGroup(
     val currency: String,
     val total: Long,
     val count: Int,
-    val transactions: List<FinanceTransaction>,
+    val transactions: List<SpendingTransaction>,
+)
+
+/** An expense with the name its payment method is shown by: the owner's alias for it, or its own name. */
+data class SpendingTransaction(
+    val transaction: FinanceTransaction,
+    val paymentMethodName: String,
 )

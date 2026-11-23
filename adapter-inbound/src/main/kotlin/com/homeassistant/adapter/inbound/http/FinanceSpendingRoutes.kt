@@ -3,8 +3,8 @@ package com.homeassistant.adapter.inbound.http
 import com.homeassistant.application.port.inbound.finance.FindMonthlySpending
 import com.homeassistant.application.port.inbound.finance.MonthlySpending
 import com.homeassistant.application.port.inbound.finance.SpendingGroup
+import com.homeassistant.application.port.inbound.finance.SpendingTransaction
 import com.homeassistant.configuration.AppConfig
-import com.homeassistant.domain.finance.FinanceTransaction
 import com.homeassistant.domain.finance.SpendingGrouping
 import com.homeassistant.domain.finance.SpendingScope
 import com.homeassistant.domain.identity.UserId
@@ -20,9 +20,10 @@ import java.time.YearMonth
 import java.time.format.DateTimeParseException
 
 /**
- * Answers the expenses of the `month` query parameter (`yyyy-MM`) of the authenticated user (`scope=mine`) or of
- * their household (`scope=household`), grouped by the `by` query parameter: `category` or `paymentMethod`. In the
- * household scope each expense names its owner.
+ * Answers the expenses of the `month` query parameter (`yyyy-MM`) of the authenticated user (`scope=mine`) or the
+ * shared expenses of their household (`scope=household`), grouped by the `by` query parameter: `category` or
+ * `paymentMethod`. Payment methods are named by their owners' aliases, and in the household scope each expense names
+ * its owner.
  */
 internal fun Route.financeSpendingRoutes(findMonthlySpending: FindMonthlySpending?) {
     get(AppConfig.ROUTE_FINANCE_SPENDING) {
@@ -92,19 +93,19 @@ private fun SpendingGroup.toResponse(memberNames: Map<UserId, String>) = Spendin
     currency = currency,
     total = total,
     count = count,
-    transactions = transactions.map { it.toResponse(memberNames[it.ownerId]) },
+    transactions = transactions.map { it.toResponse(memberNames[it.transaction.ownerId]) },
 )
 
-private fun FinanceTransaction.toResponse(owner: String?) = SpendingTransactionResponse(
+private fun SpendingTransaction.toResponse(owner: String?) = SpendingTransactionResponse(
     owner = owner,
-    occurredAt = occurredAt.toString(),
-    majorCategory = majorCategory,
-    minorCategory = minorCategory,
-    description = description,
-    amount = amount,
-    currency = currency,
-    paymentMethod = paymentMethod,
-    memo = memo,
+    occurredAt = transaction.occurredAt.toString(),
+    majorCategory = transaction.majorCategory,
+    minorCategory = transaction.minorCategory,
+    description = transaction.description,
+    amount = transaction.amount,
+    currency = transaction.currency,
+    paymentMethod = paymentMethodName,
+    memo = transaction.memo,
 )
 
 @Serializable
